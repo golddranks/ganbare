@@ -37,7 +37,9 @@ fn main() {
                 };
             },
             ("rm", Some(args)) => {
-                println!("Removing user with email {}", args.value_of("email").unwrap());
+                let email = args.value_of("email").unwrap();
+                println!("Removing user with email {}", email);
+                remove_user(&conn, email).unwrap();
             },
             ("add", Some(args)) => {
                 let email = args.value_of("email").unwrap();
@@ -45,7 +47,7 @@ fn main() {
                 add_user(&conn, email).unwrap();
             },
          _ => {
-            unreachable!(); // clap should exit before this if none of the subcommands are entered.
+            unreachable!(); // clap should exit before reaching here if none of the subcommands are entered.
          },
         }
     

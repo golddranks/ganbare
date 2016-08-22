@@ -4,10 +4,11 @@ version = "0.1.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [dependencies]
-diesel = "0.7"
+diesel = { git = "https://github.com/diesel-rs/diesel.git", features = ["chrono"]}
 diesel_codegen = {version = "0.7", default-features = false, features = ["postgres"] }
 dotenv = "0.8"
 dotenv_macros = "0.9"
 rust-crypto = "0.2"
 error-chain = "0.5"
 clap = "2"
+chrono = "0.2"

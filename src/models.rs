@@ -1,4 +1,5 @@
 use super::schema::users;
+use chrono::{DateTime, UTC};
 
 #[insertable_into(users)]
 pub struct NewUser<'a> {
@@ -11,7 +12,7 @@ pub struct NewUser<'a> {
 pub struct User {
     pub id: i32,
     pub email: String,
-    pub joined: super::diesel::data_types::PgDate,
+    pub joined: DateTime<UTC>,
     pub salt: Vec<u8>,
     pub password_hash: Vec<u8>,
     pub rounds: i16,
