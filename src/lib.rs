@@ -17,10 +17,9 @@ use dotenv::dotenv;
 use std::env;
 
 
-mod schema;
-mod models;
-
-mod errors {
+pub mod schema;
+pub mod models;
+pub mod errors {
     error_chain! { }
 }
 
@@ -40,9 +39,10 @@ pub fn add_user(conn : &PgConnection, email : &str) -> Result<usize> {
 
     let new_user = NewUser {
         email : email,
-        password_hash : "",
-        salt : "",
+        password_hash : b"",
+        salt : b"",
     };
 
     diesel::insert(&new_user).into(users::table).execute(conn).chain_err(|| "Couldn't create a new user!")
 }
+
