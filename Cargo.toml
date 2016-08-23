@@ -12,3 +12,7 @@ rust-crypto = "0.2"
 error-chain = "0.5"
 clap = "2"
 chrono = "0.2"
+rpassword = "0.2"
+rand = "0.3"
+rustc-serialize = "0.3"
+binary_macros = { version = "0.1", path = "../binary_macros" }

@@ -6,6 +6,7 @@ pub struct NewUser<'a> {
     pub email: &'a str,
     pub password_hash: &'a [u8],
     pub salt: &'a [u8],
+    pub rounds: i16,
 }
 
 #[derive(Queryable, Debug)]

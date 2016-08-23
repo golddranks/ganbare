@@ -3,6 +3,7 @@ extern crate diesel;
 
 #[macro_use]
 extern crate clap;
+extern crate rpassword;
 
 use ganbare::*;
 use ganbare::models::User;
@@ -44,7 +45,9 @@ fn main() {
             ("add", Some(args)) => {
                 let email = args.value_of("email").unwrap();
                 println!("Adding a user with email {}", email);
-                add_user(&conn, email).unwrap();
+                println!("Enter a password:");
+                let password = rpassword::read_password().unwrap();
+                add_user(&conn, email, &password).unwrap();
             },
          _ => {
             unreachable!(); // clap should exit before reaching here if none of the subcommands are entered.
