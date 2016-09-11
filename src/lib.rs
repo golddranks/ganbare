@@ -25,6 +25,7 @@ pub mod models;
 pub mod password;
 pub mod errors {
     error_chain! {
+
         errors {
             NoSuchUser(email: String) {
                 description("No such user exists")
@@ -40,7 +41,11 @@ pub mod errors {
             }
             PasswordTooShort {
                 description("Password too short")
-                display("A valid password must be at least 8 characters.")
+                display("A valid password must be at least 8 characters (bytes).")
+            }
+            PasswordTooLong {
+                description("Password too long")
+                display("A valid password must be at maximum 1024 characters (bytes).")
             }
             PasswordDoesntMatch {
                 description("Password doesn't match")
@@ -63,29 +68,40 @@ pub fn establish_connection() -> Result<PgConnection> {
         .chain_err(|| "Error connecting to database!")
 }
 
+pub fn get_user_by_email(user_email : &str, conn : &PgConnection) -> Result<models::User> {
+    use schema::users::dsl::*;
+    use diesel::result::Error::NotFound;
 
-pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<()> {
+    match users.filter(email.eq(user_email)).first(conn) {
+        Ok(u) => Ok(u),
+        Err(e) => match e {
+            NotFound => Err(ErrorKind::NoSuchUser(user_email.into()).into()),
+            e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
+        }
+    }
+}
+
+pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<models::User> {
     use schema::{users, passwords};
-    use models::{NewUser, NewPassword, Password};
+    use models::{NewUser, User};
 
     if email.len() > 254 { return Err(ErrorKind::EmailAddressTooLong.into()) };
     if !email.contains("@") { return Err(ErrorKind::EmailAddressNotValid.into()) };
 
     let pw = password::set_password(password).chain_err(|| "Setting password didn't succeed!")?;
 
-    let pw_row : NewPassword = pw.into();
-    let db_pw : Password = diesel::insert(&pw_row)
-        .into(passwords::table)
-        .get_result(conn)
-        .chain_err(|| "Couldn't insert the new password into database!")?;
-
     let new_user = NewUser {
         email : email,
-        password : db_pw.id,
     };
 
-    diesel::insert(&new_user).into(users::table).execute(conn).chain_err(|| "Couldn't create a new user!")?;
-    Ok(())
+    let user : User = diesel::insert(&new_user).into(users::table).get_result(conn).chain_err(|| "Couldn't create a new user!")?;
+
+    diesel::insert(&pw.into_db(user.id))
+        .into(passwords::table)
+        .execute(conn)
+        .chain_err(|| "Couldn't insert the new password into database!")?;
+
+    Ok(user)
 }
 
 pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<usize> {
@@ -97,6 +113,7 @@ pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<usize> {
         Ok(_) => unreachable!(), // Two or more users with the same e-mail address can't exist, by the "unique" constraint in DB schema.
         Err(e) => Err(e).chain_err(|| "Couldn't remove the user!"),
     }
+
     
 
 }

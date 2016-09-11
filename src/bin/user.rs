@@ -39,15 +39,36 @@ fn main() {
             },
             ("rm", Some(args)) => {
                 let email = args.value_of("email").unwrap();
-                println!("Removing user with email {}", email);
-                remove_user(&conn, email).unwrap();
+                println!("Removing user with e-mail {}", email);
+
+                let user = match get_user_by_email(&email, &conn) {
+                    Ok(u) => u,
+                    Err(e) => { println!("Error: {}", e); return; },
+                };
+                match remove_user(&conn, email) {
+                    Ok(_) => { println!("Success! User removed. Removed user: {:?}", user); },
+                    Err(e) => { println!("Error: {}", e); return; },
+                };
             },
             ("add", Some(args)) => {
+                use ganbare::errors::ErrorKind::NoSuchUser;
                 let email = args.value_of("email").unwrap();
-                println!("Adding a user with email {}", email);
+                match get_user_by_email(&email, &conn) {
+                    Err(Error(kind, _)) => match kind {
+                        NoSuchUser(email) => println!("Adding a user with email {}", email),
+                        _ => { println!("Error: {:?}", kind); return; },
+                    },
+                    Ok(_) => { println!("Error: User already exists!"); return; },
+                }
                 println!("Enter a password:");
-                let password = rpassword::read_password().unwrap();
-                add_user(&conn, email, &password).unwrap();
+                let password = match rpassword::read_password() {
+                    Err(_) => { println!("Error: couldn't read the password from keyboard."); return; },
+                    Ok(pw) => pw,
+                };
+                match add_user(&conn, email, &password) {
+                    Ok(u) => println!("Added user successfully: {:?}", u),
+                    Err(err_chain) => for err in err_chain.iter() { println!("Error: {}", err) },
+                }
             },
          _ => {
             unreachable!(); // clap should exit before reaching here if none of the subcommands are entered.

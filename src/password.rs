@@ -3,7 +3,7 @@ use dotenv::dotenv;
 use std::env;
 
 use errors::*;
-use models::{Password, NewPassword};
+use models::{Password};
 
 #[derive(Clone, Copy)]
 pub struct HashedPassword {
@@ -29,9 +29,10 @@ impl From<Password> for HashedPassword {
 }
 
 
-impl Into<NewPassword> for HashedPassword {
-    fn into(self) -> NewPassword{
-        NewPassword {
+impl HashedPassword {
+    pub fn into_db(self, user_id : i32) -> Password{
+        Password {
+            id: user_id,
             salt: (&self.salt[..]).into(),
             password_hash: (&self.hash[..]).into(),
             initial_rounds: self.initial_rounds,
@@ -68,6 +69,7 @@ pub fn set_password(plaintext_pw : &str) -> Result<HashedPassword> {
     use rand::{OsRng, Rng};
 
     if plaintext_pw.len() < 8 { return Err(ErrorKind::PasswordTooShort.into()) };
+    if plaintext_pw.len() > 1024 { return Err(ErrorKind::PasswordTooLong.into()) };
 
     let mut salt = [0_u8; 16];
     OsRng::new().chain_err(|| "Unable to connect to the system random number generator!")?.fill_bytes(&mut salt);
