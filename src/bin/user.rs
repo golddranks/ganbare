@@ -27,6 +27,7 @@ fn main() {
         .subcommand(SubCommand::with_name("ls").about("List all users"))
         .subcommand(SubCommand::with_name("rm").about("Remove user").arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("add").about("Add a new user").arg(Arg::with_name("email").required(true)))
+        .subcommand(SubCommand::with_name("login").about("Login").arg(Arg::with_name("email").required(true)))
         .get_matches();
         let conn = establish_connection().unwrap();
         match matches.subcommand() {
@@ -41,7 +42,7 @@ fn main() {
                 let email = args.value_of("email").unwrap();
                 println!("Removing user with e-mail {}", email);
 
-                let user = match get_user_by_email(&email, &conn) {
+                let user = match get_user_by_email(&conn, &email) {
                     Ok(u) => u,
                     Err(e) => { println!("Error: {}", e); return; },
                 };
@@ -53,7 +54,7 @@ fn main() {
             ("add", Some(args)) => {
                 use ganbare::errors::ErrorKind::NoSuchUser;
                 let email = args.value_of("email").unwrap();
-                match get_user_by_email(&email, &conn) {
+                match get_user_by_email(&conn, &email) {
                     Err(Error(kind, _)) => match kind {
                         NoSuchUser(email) => println!("Adding a user with email {}", email),
                         _ => { println!("Error: {:?}", kind); return; },
@@ -67,6 +68,18 @@ fn main() {
                 };
                 match add_user(&conn, email, &password) {
                     Ok(u) => println!("Added user successfully: {:?}", u),
+                    Err(err_chain) => for err in err_chain.iter() { println!("Error: {}", err) },
+                }
+            },
+            ("login", Some(args)) => {
+                let email = args.value_of("email").unwrap();
+                println!("Enter a password:");
+                let password = match rpassword::read_password() {
+                    Err(_) => { println!("Error: couldn't read the password from keyboard."); return; },
+                    Ok(pw) => pw,
+                };
+                match auth_user(&conn, email, &password) {
+                    Ok(u) => println!("Logged in successfully: {:?}", u),
                     Err(err_chain) => for err in err_chain.iter() { println!("Error: {}", err) },
                 }
             },

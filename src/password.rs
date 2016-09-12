@@ -33,8 +33,8 @@ impl HashedPassword {
     pub fn into_db(self, user_id : i32) -> Password{
         Password {
             id: user_id,
-            salt: (&self.salt[..]).into(),
             password_hash: (&self.hash[..]).into(),
+            salt: (&self.salt[..]).into(),
             initial_rounds: self.initial_rounds,
             extra_rounds: self.extra_rounds,
         }

@@ -51,6 +51,10 @@ pub mod errors {
                 description("Password doesn't match")
                 display("Password doesn't match.")
             }
+            AuthError {
+                description("Can't authenticate user")
+                display("Username (= e-mail) or password doesn't match.")
+            }
         }
     }
 }
@@ -68,7 +72,7 @@ pub fn establish_connection() -> Result<PgConnection> {
         .chain_err(|| "Error connecting to database!")
 }
 
-pub fn get_user_by_email(user_email : &str, conn : &PgConnection) -> Result<models::User> {
+pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<models::User> {
     use schema::users::dsl::*;
     use diesel::result::Error::NotFound;
 
@@ -79,6 +83,22 @@ pub fn get_user_by_email(user_email : &str, conn : &PgConnection) -> Result<mode
             e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
         }
     }
+}
+
+fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(models::User, models::Password)> {
+    use schema::users;
+    use schema::passwords;
+    use diesel::result::Error::NotFound;
+
+    let user: models::User = match users::table.filter(users::email.eq(user_email)).first(&*conn) {
+        Ok(u) => Ok(u),
+        Err(e) => match e {
+            NotFound => Err(ErrorKind::NoSuchUser(user_email.into()).into()),
+            e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
+        }
+    }?;
+    let password = passwords::table.filter(passwords::id.eq(user.id)).first(&*conn).chain_err(|| "Error.")?;
+    Ok((user, password))
 }
 
 pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<models::User> {
@@ -113,8 +133,17 @@ pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<usize> {
         Ok(_) => unreachable!(), // Two or more users with the same e-mail address can't exist, by the "unique" constraint in DB schema.
         Err(e) => Err(e).chain_err(|| "Couldn't remove the user!"),
     }
-
-    
-
 }
 
+pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Result<models::User> {
+    let (user, hashed_pw) = match get_user_pass_by_email(conn, email) {
+        Ok(o) => o,
+        Err(_) => return Err(ErrorKind::AuthError.into()),
+    };
+    match password::check_password(plaintext_pw, hashed_pw.into()) {
+        Ok(_) => (),
+        Err(_) => return Err(ErrorKind::AuthError.into()),
+    }
+    Ok(user)
+}
+    
