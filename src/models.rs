@@ -8,6 +8,7 @@ pub struct NewUser<'a> {
     pub email: &'a str,
 }
 
+#[has_many(passwords, foreign_key = "id")] // actually, the relationship is one-to-1..0
 #[derive(Identifiable, Queryable, Debug)]
 pub struct User {
     pub id: i32,
@@ -15,6 +16,7 @@ pub struct User {
     pub joined: DateTime<UTC>,
 }
 
+#[belongs_to(User)]
 #[insertable_into(passwords)]
 #[derive(Identifiable, Queryable, Debug)]
 pub struct Password {

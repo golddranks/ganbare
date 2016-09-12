@@ -22,10 +22,11 @@ use std::env;
 
 pub mod schema;
 pub mod models;
+use models::{User, Password};
 pub mod password;
 pub mod errors {
-    error_chain! {
 
+    error_chain! {
         errors {
             NoSuchUser(email: String) {
                 description("No such user exists")
@@ -85,23 +86,31 @@ pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<mode
     }
 }
 
-fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(models::User, models::Password)> {
+fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(User, Password)> {
     use schema::users;
     use schema::passwords;
     use diesel::result::Error::NotFound;
 
-    let user: models::User = match users::table.filter(users::email.eq(user_email)).first(&*conn) {
-        Ok(u) => Ok(u),
-        Err(e) => match e {
-            NotFound => Err(ErrorKind::NoSuchUser(user_email.into()).into()),
-            e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
+    let joined_table = users::table.inner_join(passwords::table);
+    let filtered  = <_ as FilterDsl<_>>::filter(joined_table, users::email.eq(user_email));
+    let res = <_ as LoadDsl<_>>::first(filtered, &*conn);
+    let (user, password) = res.unwrap();
+
+    /*let (user, password) = match users::table
+        .inner_join(passwords::table)
+        .filter(joined_table)
+        .first(&*conn)
+        {
+            Ok(u) => Ok(u),
+            Err(e) => match e {
+                NotFound => Err(ErrorKind::NoSuchUser(user_email.into()).into()),
+                e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
         }
-    }?;
-    let password = passwords::table.filter(passwords::id.eq(user.id)).first(&*conn).chain_err(|| "Error.")?;
+    }?;*/
     Ok((user, password))
 }
 
-pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<models::User> {
+pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<User> {
     use schema::{users, passwords};
     use models::{NewUser, User};
 
@@ -135,15 +144,11 @@ pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<usize> {
     }
 }
 
-pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Result<models::User> {
-    let (user, hashed_pw) = match get_user_pass_by_email(conn, email) {
-        Ok(o) => o,
-        Err(_) => return Err(ErrorKind::AuthError.into()),
-    };
-    match password::check_password(plaintext_pw, hashed_pw.into()) {
-        Ok(_) => (),
-        Err(_) => return Err(ErrorKind::AuthError.into()),
-    }
+pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Result<User> {
+    let (user, hashed_pw_from_db) = get_user_pass_by_email(conn, email)
+                                .map_err::<Error, _>(|_| ErrorKind::AuthError.into())?;
+    let _ = password::check_password(plaintext_pw, hashed_pw_from_db.into())
+                                .map_err::<Error, _>(|_| ErrorKind::AuthError.into())?;
     Ok(user)
 }
     
