@@ -42,12 +42,8 @@ fn main() {
                 let email = args.value_of("email").unwrap();
                 println!("Removing user with e-mail {}", email);
 
-                let user = match get_user_by_email(&conn, &email) {
-                    Ok(u) => u,
-                    Err(e) => { println!("Error: {}", e); return; },
-                };
                 match remove_user(&conn, email) {
-                    Ok(_) => { println!("Success! User removed. Removed user: {:?}", user); },
+                    Ok(user) => { println!("Success! User removed. Removed user: {:?}", user); },
                     Err(e) => { println!("Error: {}", e); return; },
                 };
             },

@@ -77,13 +77,13 @@ pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<mode
     use schema::users::dsl::*;
     use diesel::result::Error::NotFound;
 
-    match users.filter(email.eq(user_email)).first(conn) {
-        Ok(u) => Ok(u),
-        Err(e) => match e {
-            NotFound => Err(ErrorKind::NoSuchUser(user_email.into()).into()),
-            e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
-        }
-    }
+    users
+        .filter(email.eq(user_email))
+        .first(conn)
+        .map_err(|e| match e {
+                e @ NotFound => Err::<(), diesel::result::Error>(e).chain_err(|| ErrorKind::NoSuchUser(user_email.into())).unwrap_err(),
+                e => Err::<(), diesel::result::Error>(e).chain_err(|| "Error when trying to retrieve user!").unwrap_err(),
+        })
 }
 
 fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(User, Password)> {
@@ -114,7 +114,10 @@ pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<U
         email : email,
     };
 
-    let user : User = diesel::insert(&new_user).into(users::table).get_result(conn).chain_err(|| "Couldn't create a new user!")?;
+    let user : User = diesel::insert(&new_user)
+        .into(users::table)
+        .get_result(conn)
+        .chain_err(|| "Couldn't create a new user!")?;
 
     diesel::insert(&pw.into_db(user.id))
         .into(passwords::table)
@@ -124,15 +127,16 @@ pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<U
     Ok(user)
 }
 
-pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<usize> {
+pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<User> {
     use schema::users::dsl::*;
+    use diesel::result::Error::NotFound;
 
-    match diesel::delete(users.filter(email.eq(rm_email))).execute(conn) {
-        Ok(0) => Err(ErrorKind::NoSuchUser(rm_email.into()).into()),
-        Ok(1) => Ok(1),
-        Ok(_) => unreachable!(), // Two or more users with the same e-mail address can't exist, by the "unique" constraint in DB schema.
-        Err(e) => Err(e).chain_err(|| "Couldn't remove the user!"),
-    }
+    diesel::delete(users.filter(email.eq(rm_email)))
+        .get_result(conn)
+        .map_err(|e| match e {
+                e @ NotFound => Err::<(), diesel::result::Error>(e).chain_err(|| ErrorKind::NoSuchUser(rm_email.into())).unwrap_err(),
+                e => Err::<(), diesel::result::Error>(e).chain_err(|| "Couldn't remove the user!").unwrap_err(),
+        })
 }
 
 pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Result<User> {
