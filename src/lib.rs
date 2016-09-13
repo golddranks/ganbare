@@ -91,23 +91,14 @@ fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(Us
     use schema::passwords;
     use diesel::result::Error::NotFound;
 
-    let joined_table = users::table.inner_join(passwords::table);
-    let filtered  = <_ as FilterDsl<_>>::filter(joined_table, users::email.eq(user_email));
-    let res = <_ as LoadDsl<_>>::first(filtered, &*conn);
-    let (user, password) = res.unwrap();
-
-    /*let (user, password) = match users::table
+    users::table
         .inner_join(passwords::table)
-        .filter(joined_table)
+        .filter(users::email.eq(user_email))
         .first(&*conn)
-        {
-            Ok(u) => Ok(u),
-            Err(e) => match e {
-                NotFound => Err(ErrorKind::NoSuchUser(user_email.into()).into()),
-                e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
-        }
-    }?;*/
-    Ok((user, password))
+        .map_err(|e| match e {
+                e @ NotFound => Err::<(), diesel::result::Error>(e).chain_err(|| ErrorKind::NoSuchUser(user_email.into())).unwrap_err(),
+                e => Err::<(), diesel::result::Error>(e).chain_err(|| "Error when trying to retrieve user!").unwrap_err(),
+        })
 }
 
 pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<User> {

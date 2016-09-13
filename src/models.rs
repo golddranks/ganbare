@@ -16,7 +16,7 @@ pub struct User {
     pub joined: DateTime<UTC>,
 }
 
-#[belongs_to(User)]
+
 #[insertable_into(passwords)]
 #[derive(Identifiable, Queryable, Debug)]
 pub struct Password {
@@ -25,4 +25,17 @@ pub struct Password {
     pub salt: Vec<u8>,
     pub initial_rounds: i16,
     pub extra_rounds: i16,
+}
+
+
+BelongsTo! {
+    (User, foreign_key = id)
+    #[table_name(passwords)]
+    pub struct Password {
+        pub id: i32,
+        pub password_hash: Vec<u8>,
+        pub salt: Vec<u8>,
+        pub initial_rounds: i16,
+        pub extra_rounds: i16,
+    }
 }
