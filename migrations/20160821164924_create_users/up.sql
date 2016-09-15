@@ -1,7 +1,7 @@
 CREATE TABLE users (
 	id SERIAL PRIMARY KEY,
 	email VARCHAR NOT NULL UNIQUE,
-	joined timestamptz NOT NULL DEFAULT current_timestamp
+	joined TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 );
 
 CREATE TABLE passwords (
@@ -10,4 +10,12 @@ CREATE TABLE passwords (
 	salt BYTEA NOT NULL,
 	initial_rounds SMALLINT NOT NULL DEFAULT 0,
 	extra_rounds SMALLINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE sessions (
+	id BYTEA PRIMARY KEY,
+	user_id SERIAL REFERENCES users ON DELETE CASCADE,
+	started TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	last_seen TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	last_ip BYTEA NOT NULL
 );

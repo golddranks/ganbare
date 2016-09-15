@@ -1,5 +1,5 @@
 #![recursion_limit = "1024"]
-#![feature(custom_derive, question_mark, custom_attribute, plugin)]
+#![feature(custom_derive, question_mark, custom_attribute, plugin, ipv6_to_octets)]
 #![plugin(diesel_codegen, dotenv_macros, binary_macros)]
 
 #[macro_use]
@@ -20,10 +20,11 @@ use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use dotenv::dotenv;
 use std::env;
+use std::net::IpAddr;
 
 pub mod schema;
 pub mod models;
-use models::{User, Password};
+use models::{User, Password, Session, NewUser, NewSession};
 pub mod password;
 pub mod errors {
 
@@ -108,7 +109,6 @@ fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(Us
 
 pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<User> {
     use schema::{users, passwords};
-    use models::{NewUser, User};
 
     if email.len() > 254 { return Err(ErrorKind::EmailAddressTooLong.into()) };
     if !email.contains("@") { return Err(ErrorKind::EmailAddressNotValid.into()) };
@@ -160,5 +160,32 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Res
                                     err
                                 })?;
     Ok(user)
+}
+
+/// TODO refactor this function, this is only a temporary helper
+pub fn session_id(sess : &Session) -> String {
+    use data_encoding::base16;
+    base16::encode(sess.id.as_ref())
+}
+
+pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
+    use rand::{OsRng, Rng};
+    use schema::sessions;
+    let mut session_id = [0_u8; 32];
+    OsRng::new().chain_err(|| "Unable to connect to the system random number generator!")?.fill_bytes(&mut session_id);
+
+    let ip_as_bytes = match ip {
+        IpAddr::V4(ip) => { ip.octets()[..].to_vec() },
+        IpAddr::V6(ip) => { ip.octets()[..].to_vec() },
+    };
+    let new_sess = NewSession {
+        id: session_id.to_vec(),
+        user_id: user.id,
+        last_ip: ip_as_bytes,
+    };
+    diesel::insert(&new_sess)
+        .into(sessions::table)
+        .get_result(conn)
+        .chain_err(|| "Couldn't start a session!")
 }
     
