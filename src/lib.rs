@@ -14,6 +14,7 @@ extern crate chrono;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate data_encoding;
+extern crate pencil;
 
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
@@ -27,6 +28,10 @@ pub mod password;
 pub mod errors {
 
     error_chain! {
+        foreign_links {
+            ::diesel::result::Error, DieselError;
+            ::pencil::PencilError, PencilError;
+        }
         errors {
             NoSuchUser(email: String) {
                 description("No such user exists")
@@ -65,7 +70,7 @@ use errors::*;
 
 
 
-pub fn establish_connection() -> Result<PgConnection> {
+pub fn db_connect() -> Result<PgConnection> {
     dotenv().ok();
     let database_url = env::var("GANBARE_DATABASE_URL")
         .chain_err(|| "GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")?;
@@ -73,7 +78,7 @@ pub fn establish_connection() -> Result<PgConnection> {
         .chain_err(|| "Error connecting to database!")
 }
 
-pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<models::User> {
+pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<User> {
     use schema::users::dsl::*;
     use diesel::result::Error::NotFound;
 
@@ -81,8 +86,8 @@ pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<mode
         .filter(email.eq(user_email))
         .first(conn)
         .map_err(|e| match e {
-                e @ NotFound => Err::<(), diesel::result::Error>(e).chain_err(|| ErrorKind::NoSuchUser(user_email.into())).unwrap_err(),
-                e => Err::<(), diesel::result::Error>(e).chain_err(|| "Error when trying to retrieve user!").unwrap_err(),
+                e @ NotFound => e.caused_err(|| ErrorKind::NoSuchUser(user_email.into())),
+                e => e.caused_err(|| "Error when trying to retrieve user!"),
         })
 }
 
@@ -96,8 +101,8 @@ fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(Us
         .filter(users::email.eq(user_email))
         .first(&*conn)
         .map_err(|e| match e {
-                e @ NotFound => Err::<(), diesel::result::Error>(e).chain_err(|| ErrorKind::NoSuchUser(user_email.into())).unwrap_err(),
-                e => Err::<(), diesel::result::Error>(e).chain_err(|| "Error when trying to retrieve user!").unwrap_err(),
+                e @ NotFound => e.caused_err(|| ErrorKind::NoSuchUser(user_email.into())),
+                e => e.caused_err(|| "Error when trying to retrieve user!"),
         })
 }
 
@@ -134,16 +139,26 @@ pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<User> {
     diesel::delete(users.filter(email.eq(rm_email)))
         .get_result(conn)
         .map_err(|e| match e {
-                e @ NotFound => Err::<(), diesel::result::Error>(e).chain_err(|| ErrorKind::NoSuchUser(rm_email.into())).unwrap_err(),
-                e => Err::<(), diesel::result::Error>(e).chain_err(|| "Couldn't remove the user!").unwrap_err(),
+                e @ NotFound => e.caused_err(|| ErrorKind::NoSuchUser(rm_email.into())),
+                e => e.caused_err(|| "Couldn't remove the user!"),
         })
 }
 
 pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Result<User> {
     let (user, hashed_pw_from_db) = get_user_pass_by_email(conn, email)
-                                .map_err::<Error, _>(|_| ErrorKind::AuthError.into())?;
+                                .map_err(|err| {
+                                    if let &ErrorKind::NoSuchUser(_) = err.kind() {
+                                        return ErrorKind::AuthError.to_err();
+                                    };
+                                    err
+                                })?;
     let _ = password::check_password(plaintext_pw, hashed_pw_from_db.into())
-                                .map_err::<Error, _>(|_| ErrorKind::AuthError.into())?;
+                                .map_err(|err| {
+                                    if let &ErrorKind::PasswordDoesntMatch = err.kind() {
+                                        return ErrorKind::AuthError.to_err();
+                                    };
+                                    err
+                                })?;
     Ok(user)
 }
     

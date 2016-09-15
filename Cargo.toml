@@ -9,7 +9,7 @@ diesel_codegen = {version = "0.7", default-features = false, features = ["postgr
 dotenv = "0.8"
 dotenv_macros = "0.9"
 rust-crypto = "0.2"
-error-chain = "0.5"
+error-chain = { path = "../error-chain" }
 clap = "2"
 chrono = "0.2"
 rpassword = "0.2"
@@ -17,4 +17,7 @@ rand = "0.3"
 rustc-serialize = "0.3"
 binary_macros = "0.1"
 data-encoding = "1.1"
-pencil = { path = "pencil" }
+pencil = { path = "../pencil" }
+hyper = "0.9"
+env_logger = "0.3"
+log = "*"

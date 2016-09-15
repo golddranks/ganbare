@@ -29,7 +29,7 @@ fn main() {
         .subcommand(SubCommand::with_name("add").about("Add a new user").arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("login").about("Login").arg(Arg::with_name("email").required(true)))
         .get_matches();
-        let conn = establish_connection().unwrap();
+        let conn = db_connect().unwrap();
         match matches.subcommand() {
             ("ls", Some(_)) => {
                 let users = list_users(&conn).unwrap();
