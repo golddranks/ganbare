@@ -6,6 +6,7 @@ extern crate dotenv;
 extern crate env_logger;
 extern crate hyper;
 #[macro_use]  extern crate lazy_static;
+extern crate time;
 
 use dotenv::dotenv;
 use std::env;
@@ -22,20 +23,19 @@ lazy_static! {
 }
 
 fn get_user(req : &Request) -> Result<Option<User>> {
-    if let Some(cookies) = req.cookies() {
-    if let Some(session_id) = ganbare::get_cookie(cookies) {
+    if let Some(session_id) = req.cookies().and_then(ganbare::get_cookie) {
+        if session_id.len() != ganbare::SESSID_BITS/4 { return Ok(None) };
         let conn = ganbare::db_connect().map_err(|_| abort(500).unwrap_err())?;
-        if let Ok((g_user, _)) = ganbare::check_session(&conn, session_id, req.request.remote_addr.ip()) {
-            return Ok(Some(g_user));
-        }
-    }}
-    Ok(None)
+        ganbare::check_session(&conn, session_id, req.request.remote_addr.ip())
+            .map(|sess| Some(sess.0))
+    } else {
+        Ok(None)
+    }
 }
 
 
 fn hello(request: &mut Request) -> PencilResult {
     let user = get_user(&*request).map_err(|_| abort(500).unwrap_err())?;
-
 
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
@@ -72,6 +72,21 @@ fn login(request: &mut Request) -> PencilResult {
 }
 
 
+fn logout(request: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect().map_err(|_| abort(500).unwrap_err())?;
+    if let Some(session_id) = request.cookies().and_then(ganbare::get_cookie) {
+        ganbare::end_session(&conn, &session_id)
+            .map_err(|_| abort(500).unwrap_err())?;
+    };
+    let mut cookie = CookiePair::new("session_id".to_owned(), "".to_owned());
+    cookie.path = Some("/".to_owned());
+    cookie.domain = Some(SITE_DOMAIN.to_owned());
+    cookie.expires = Some(time::empty_tm());
+
+    redirect("/", 303).map(|mut r| { r.set_cookie(SetCookie(vec![cookie])); r })
+}
+
+
 fn main() {
     dotenv().ok();
     let mut app = Pencil::new(".");
@@ -85,6 +100,7 @@ fn main() {
     debug!("* Running on http://localhost:5000/, serving at {:?}", *SITE_DOMAIN);
 
     app.get("/", "hello", hello);
+    app.get("/logout", "logout", logout);
     app.post("/login", "login", login);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {

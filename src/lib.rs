@@ -162,7 +162,7 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Res
     Ok(user)
 }
 
-const SESSID_BITS : usize = 128;
+pub const SESSID_BITS : usize = 128;
 
 /// TODO refactor this function, this is only a temporary helper
 pub fn sess_to_hex(sess : &Session) -> String {
@@ -171,18 +171,20 @@ pub fn sess_to_hex(sess : &Session) -> String {
 }
 
 /// TODO refactor this function, this is only a temporary helper
-pub fn sess_to_bin(sessid : &str) -> std::result::Result<Vec<u8>, data_encoding::decode::Error> {
+pub fn sess_to_bin(sessid : &str) -> Result<Vec<u8>> {
     use data_encoding::base16;
-    assert_eq!(sessid.len(), SESSID_BITS/4);
-    base16::decode(sessid.as_bytes())
+    if sessid.len() == SESSID_BITS/4 {
+        base16::decode(sessid.as_bytes()).chain_err(|| "Malformed session ID!")
+    } else {
+        Err("Malformed session ID!".into())
+    } // TODO make this into a real error variant
 }
 
 extern crate hyper;
-use hyper::header::{Cookie, CookiePair};
+use hyper::header::{Cookie};
 /// TODO refactor this function, this is only a temporary helper
 pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
     for c in cookies.0.iter() {
-        println!("COOKIEN SISÄLTÖ: {:?}", c);
         if c.name == "session_id" {
             return Some(c.value.as_ref());
         }
@@ -193,12 +195,23 @@ pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
 pub fn check_session(conn : &PgConnection, session_id : &str, ip : IpAddr) -> Result<(User, Session)> {
     use schema::{users, sessions};
 
+    // TODO refresh the IP and last_seen!!!
     let (session, user) = sessions::table
         .inner_join(users::table)
-        .filter(sessions::id.eq(sess_to_bin(session_id).chain_err(|| "Session ID was malformed!")?))
+        .filter(sessions::id.eq(sess_to_bin(session_id)?))
         .first(conn)
         .chain_err(|| "Couldn't get the session.")?;
     Ok((user, session))
+} 
+
+pub fn end_session(conn : &PgConnection, session_id : &str) -> Result<()> {
+    use schema::sessions;
+
+    diesel::delete(sessions::table
+        .filter(sessions::id.eq(sess_to_bin(session_id).chain_err(|| "Session ID was malformed!")?)))
+        .execute(conn)
+        .chain_err(|| "Couldn't end the session.")?;
+    Ok(())
 } 
 
 pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
