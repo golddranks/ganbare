@@ -162,16 +162,50 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Res
     Ok(user)
 }
 
+const SESSID_BITS : usize = 128;
+
 /// TODO refactor this function, this is only a temporary helper
-pub fn session_id(sess : &Session) -> String {
+pub fn sess_to_hex(sess : &Session) -> String {
     use data_encoding::base16;
     base16::encode(sess.id.as_ref())
 }
 
+/// TODO refactor this function, this is only a temporary helper
+pub fn sess_to_bin(sessid : &str) -> std::result::Result<Vec<u8>, data_encoding::decode::Error> {
+    use data_encoding::base16;
+    assert_eq!(sessid.len(), SESSID_BITS/4);
+    base16::decode(sessid.as_bytes())
+}
+
+extern crate hyper;
+use hyper::header::{Cookie, CookiePair};
+/// TODO refactor this function, this is only a temporary helper
+pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
+    for c in cookies.0.iter() {
+        println!("COOKIEN SISÄLTÖ: {:?}", c);
+        if c.name == "session_id" {
+            return Some(c.value.as_ref());
+        }
+    };
+    None
+}
+
+pub fn check_session(conn : &PgConnection, session_id : &str, ip : IpAddr) -> Result<(User, Session)> {
+    use schema::{users, sessions};
+
+    let (session, user) = sessions::table
+        .inner_join(users::table)
+        .filter(sessions::id.eq(sess_to_bin(session_id).chain_err(|| "Session ID was malformed!")?))
+        .first(conn)
+        .chain_err(|| "Couldn't get the session.")?;
+    Ok((user, session))
+} 
+
 pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
     use rand::{OsRng, Rng};
     use schema::sessions;
-    let mut session_id = [0_u8; 32];
+
+    let mut session_id = [0_u8; SESSID_BITS/8];
     OsRng::new().chain_err(|| "Unable to connect to the system random number generator!")?.fill_bytes(&mut session_id);
 
     let ip_as_bytes = match ip {

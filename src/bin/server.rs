@@ -14,17 +14,38 @@ use ganbare::errors::*;
 use std::collections::BTreeMap;
 use hyper::header::{SetCookie, CookiePair};
 use pencil::{Pencil, Request, PencilResult, redirect, abort};
+use ganbare::models::User;
 
 lazy_static! {
     static ref SITE_DOMAIN : String = { dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
-    .unwrap_or_else(|_| "ENV VAR GANBARE_SITE_DOMAIN NOT SET".into()) };
+    .unwrap_or_else(|_| "".into()) };
 }
 
+fn get_user(req : &Request) -> Result<Option<User>> {
+    if let Some(cookies) = req.cookies() {
+    if let Some(session_id) = ganbare::get_cookie(cookies) {
+        let conn = ganbare::db_connect().map_err(|_| abort(500).unwrap_err())?;
+        if let Ok((g_user, _)) = ganbare::check_session(&conn, session_id, req.request.remote_addr.ip()) {
+            return Ok(Some(g_user));
+        }
+    }}
+    Ok(None)
+}
+
+
 fn hello(request: &mut Request) -> PencilResult {
+    let user = get_user(&*request).map_err(|_| abort(500).unwrap_err())?;
+
+
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
-    return request.app.render_template("hello.html", &context);
+
+    match user {
+        Some(_) => request.app.render_template("main.html", &context),
+        None => request.app.render_template("hello.html", &context),
+    }
 }
+
 
 fn login(request: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect().map_err(|_| abort(500).unwrap_err())?;
@@ -39,26 +60,28 @@ fn login(request: &mut Request) -> PencilResult {
                     _ => abort(500).unwrap_err(),
                 })?;
     };
-    
+
     let session = ganbare::start_session(&conn, &user, request.request.remote_addr.ip())
         .map_err(|_| abort(500).unwrap_err())?;
 
-    let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::session_id(&session));
+    let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::sess_to_hex(&session));
     cookie.path = Some("/".to_owned());
     cookie.domain = Some(SITE_DOMAIN.to_owned());
 
     redirect("/", 303).map(|mut r| { r.set_cookie(SetCookie(vec![cookie])); r })
 }
 
+
 fn main() {
     dotenv().ok();
     let mut app = Pencil::new(".");
     app.register_template("hello.html");
+    app.register_template("main.html");
     app.enable_static_file_handling();
 
-    app.set_debug(true);
-    app.set_log_level();
-    env_logger::init().unwrap();
+//    app.set_debug(true);
+//    app.set_log_level();
+//    env_logger::init().unwrap();
     debug!("* Running on http://localhost:5000/, serving at {:?}", *SITE_DOMAIN);
 
     app.get("/", "hello", hello);
