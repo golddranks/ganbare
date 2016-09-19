@@ -27,12 +27,13 @@ use std::net::IpAddr;
 
 pub mod schema;
 pub mod models;
-use models::{User, Password, Session, NewUser, NewSession, RefreshSession};
+use models::{User, Password, Session, NewUser, NewSession, RefreshSession, NewPendingEmailConfirm, PendingEmailConfirm};
 pub mod password;
 pub mod errors {
 
     error_chain! {
         foreign_links {
+            ::std::io::Error, StdIoError;
             ::diesel::result::Error, DieselError;
             ::pencil::PencilError, PencilError;
         }
@@ -268,4 +269,41 @@ pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<
         .get_result(conn)
         .chain_err(|| "Couldn't start a session!") // TODO if the session id already exists, this is going to fail? (A few-in-a 2^128 change, though...)
 }
-    
+
+pub fn add_pending_email_confirm(conn : &PgConnection, email : &str) -> Result<String> {
+    use schema::pending_email_confirms;
+    let secret = data_encoding::base64url::encode(&fresh_sessid()?[..]);
+    {
+        let confirm = NewPendingEmailConfirm {
+            email: email,
+            secret: secret.as_ref(),
+        };
+        diesel::insert(&confirm)
+            .into(pending_email_confirms::table)
+            .execute(conn)
+            .chain_err(|| "Error :(")?;
+    }
+    Ok(secret)
+}
+
+pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Result<String> {
+    use schema::pending_email_confirms;
+    let confirm : PendingEmailConfirm = pending_email_confirms::table
+        .filter(pending_email_confirms::secret.eq(secret))
+        .first(conn)
+        .chain_err(|| "No such secret/email found :(")?;
+    Ok(confirm.email)
+}
+
+pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, secret : &str) -> Result<User> {
+    use schema::pending_email_confirms;
+    let email = check_pending_email_confirm(&*conn, secret)?;
+    let user = add_user(&*conn, &email, password)?;
+
+    diesel::delete(pending_email_confirms::table
+        .filter(pending_email_confirms::secret.eq(secret)))
+        .execute(conn)
+        .chain_err(|| "Couldn't delete the pending request.")?;
+
+    Ok(user)
+}

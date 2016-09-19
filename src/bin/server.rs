@@ -11,6 +11,7 @@ extern crate time;
 use dotenv::dotenv;
 use std::env;
 use ganbare::errors::*;
+use std::net::IpAddr;
 
 use std::collections::BTreeMap;
 use hyper::header::{SetCookie, CookiePair, Cookie};
@@ -88,12 +89,18 @@ fn hello(request: &mut Request) -> PencilResult {
 
 
 fn login(request: &mut Request) -> PencilResult {
+    let ip = request.request.remote_addr.ip();
+    let login_form = request.form();
+    let email = login_form.get("email").map(String::as_ref).unwrap_or("");
+    let plaintext_pw = login_form.get("password").map(String::as_ref).unwrap_or("");
+
+    do_login(email, plaintext_pw, ip)
+}
+
+fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> PencilResult {
     let conn = ganbare::db_connect().map_err(|_| abort(500).unwrap_err())?;
     let user;
     {
-        let login_form = request.form();
-        let email = login_form.get("email").map(String::as_ref).unwrap_or("");
-        let plaintext_pw = login_form.get("password").map(String::as_ref).unwrap_or("");
         user = ganbare::auth_user(&conn, email, plaintext_pw)
             .map_err(|e| match e.kind() {
                     &ErrorKind::AuthError => { println!("VITTU {:?}", e); abort(401).unwrap_err() },
@@ -101,7 +108,7 @@ fn login(request: &mut Request) -> PencilResult {
                 })?;
     };
 
-    let session = ganbare::start_session(&conn, &user, request.request.remote_addr.ip())
+    let session = ganbare::start_session(&conn, &user, ip)
         .map_err(|_| abort(500).unwrap_err())?;
 
     redirect("/", 303).map(|resp| resp.refresh_cookie(&session) )
@@ -118,12 +125,48 @@ fn logout(request: &mut Request) -> PencilResult {
     redirect("/", 303).map(ResponseExt::expire_cookie)
 }
 
+fn error(err_msg : &str) -> pencil::PencilError {
+    println!("Error: {}", err_msg);
+    abort(500).unwrap_err()
+}
+
+
+fn confirm(request: &mut Request) -> PencilResult {
+
+    let secret = request.args().get("secret")
+        .ok_or_else(|| error("Can't get argument secret from URL!") )?;
+    let conn = ganbare::db_connect()
+        .map_err(|_| error("Can't connect to database!") )?;
+    let email = ganbare::check_pending_email_confirm(&conn, &secret)
+        .map_err(|_| error("Check pending email confirms failed!"))?;
+
+    let mut context = BTreeMap::new();
+    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    context.insert("email".to_string(), email);
+    context.insert("secret".to_string(), secret.clone());
+
+    request.app.render_template("confirm.html", &context)
+}
+
+fn confirm_final(request: &mut Request) -> PencilResult {
+    let ip = request.request.remote_addr.ip();
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let secret = request.args().get("secret")
+            .ok_or_else(|| abort(500).unwrap_err() )?.clone();
+    let password = request.form().get("password")
+        .ok_or_else(|| abort(500).unwrap_err() )?;
+    let user = ganbare::complete_pending_email_confirm(&conn, password, &secret).map_err(|_| abort(500).unwrap_err())?;
+
+    do_login(&user.email, &password, ip)
+}
 
 fn main() {
     dotenv().ok();
     let mut app = Pencil::new(".");
     app.register_template("hello.html");
     app.register_template("main.html");
+    app.register_template("confirm.html");
     app.enable_static_file_handling();
 
 //    app.set_debug(true);
@@ -134,6 +177,8 @@ fn main() {
     app.get("/", "hello", hello);
     app.get("/logout", "logout", logout);
     app.post("/login", "login", login);
+    app.get("/confirm", "confirm", confirm);
+    app.post("/confirm", "confirm_final", confirm_final);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {
         Err(_) => {

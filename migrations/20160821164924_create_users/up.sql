@@ -4,6 +4,12 @@ CREATE TABLE users (
 	joined TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 );
 
+CREATE TABLE pending_email_confirms (
+	secret VARCHAR PRIMARY KEY,
+	email VARCHAR NOT NULL,
+	added TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+);
+
 CREATE TABLE passwords (
 	id SERIAL REFERENCES users ON DELETE CASCADE PRIMARY KEY,
 	password_hash BYTEA NOT NULL,

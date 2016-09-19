@@ -79,3 +79,17 @@ BelongsTo! {
         pub last_ip: Vec<u8>,
 }
 }
+
+
+#[derive(Queryable, Debug)]
+pub struct PendingEmailConfirm {
+    pub secret: String,
+    pub email: String,
+    pub added: DateTime<UTC>,
+}
+
+#[insertable_into(pending_email_confirms)]
+pub struct NewPendingEmailConfirm<'a> {
+    pub secret: &'a str,
+    pub email: &'a str,
+}
