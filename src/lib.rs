@@ -8,6 +8,9 @@ extern crate diesel;
 #[macro_use]
 extern crate error_chain;
 
+#[macro_use]
+extern crate lazy_static;
+
 extern crate dotenv;
 extern crate crypto;
 extern crate chrono;
@@ -24,7 +27,7 @@ use std::net::IpAddr;
 
 pub mod schema;
 pub mod models;
-use models::{User, Password, Session, NewUser, NewSession};
+use models::{User, Password, Session, NewUser, NewSession, RefreshSession};
 pub mod password;
 pub mod errors {
 
@@ -61,6 +64,14 @@ pub mod errors {
             AuthError {
                 description("Can't authenticate user")
                 display("Username (= e-mail) or password doesn't match.")
+            }
+            BadSessId {
+                description("Malformed session ID!")
+                display("Malformed session ID!")
+            }
+            NoSuchSess {
+                description("Session doesn't exist!")
+                display("Session doesn't exist!")
             }
         }
     }
@@ -167,40 +178,55 @@ pub const SESSID_BITS : usize = 128;
 /// TODO refactor this function, this is only a temporary helper
 pub fn sess_to_hex(sess : &Session) -> String {
     use data_encoding::base16;
-    base16::encode(sess.id.as_ref())
+    base16::encode(sess.sess_id.as_ref())
 }
 
 /// TODO refactor this function, this is only a temporary helper
 pub fn sess_to_bin(sessid : &str) -> Result<Vec<u8>> {
     use data_encoding::base16;
     if sessid.len() == SESSID_BITS/4 {
-        base16::decode(sessid.as_bytes()).chain_err(|| "Malformed session ID!")
+        base16::decode(sessid.as_bytes()).chain_err(|| ErrorKind::BadSessId)
     } else {
-        Err("Malformed session ID!".into())
-    } // TODO make this into a real error variant
+        Err(ErrorKind::BadSessId.to_err())
+    }
 }
 
-extern crate hyper;
-use hyper::header::{Cookie};
-/// TODO refactor this function, this is only a temporary helper
-pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
-    for c in cookies.0.iter() {
-        if c.name == "session_id" {
-            return Some(c.value.as_ref());
-        }
-    };
-    None
-}
 
 pub fn check_session(conn : &PgConnection, session_id : &str, ip : IpAddr) -> Result<(User, Session)> {
     use schema::{users, sessions};
+    use diesel::ExpressionMethods;
+    use diesel::query_builder::AsChangeset;
+    use diesel::result::Error::NotFound;
 
-    // TODO refresh the IP and last_seen!!!
-    let (session, user) = sessions::table
-        .inner_join(users::table)
-        .filter(sessions::id.eq(sess_to_bin(session_id)?))
+    let new_sessid = fresh_sessid()?;
+
+    let ip_as_bytes = match ip {
+        IpAddr::V4(ip) => { ip.octets()[..].to_vec() },
+        IpAddr::V6(ip) => { ip.octets()[..].to_vec() },
+    };
+
+    let fresh_sess = RefreshSession {
+        sess_id: &new_sessid,
+        last_ip: ip_as_bytes,
+        last_seen: chrono::UTC::now(),
+    };
+
+    let session : Session = diesel::update(
+            sessions::table
+            .filter(sessions::sess_id.eq(sess_to_bin(session_id)?))
+        )
+        .set(fresh_sess.as_changeset())
+        .get_result(conn)
+        .map_err(|e| match e {
+                e @ NotFound => e.caused_err(|| ErrorKind::NoSuchSess),
+                e => e.caused_err(|| "Couldn't update the session."),
+        })?;
+
+    let user = users::table
+        .filter(users::id.eq(session.user_id))
         .first(conn)
-        .chain_err(|| "Couldn't get the session.")?;
+        .chain_err(|| "Couldn't get the user.")?;
+
     Ok((user, session))
 } 
 
@@ -208,31 +234,38 @@ pub fn end_session(conn : &PgConnection, session_id : &str) -> Result<()> {
     use schema::sessions;
 
     diesel::delete(sessions::table
-        .filter(sessions::id.eq(sess_to_bin(session_id).chain_err(|| "Session ID was malformed!")?)))
+        .filter(sessions::sess_id.eq(sess_to_bin(session_id).chain_err(|| "Session ID was malformed!")?)))
         .execute(conn)
         .chain_err(|| "Couldn't end the session.")?;
     Ok(())
 } 
 
-pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
-    use rand::{OsRng, Rng};
-    use schema::sessions;
-
+fn fresh_sessid() -> Result<[u8; SESSID_BITS/8]> {
+    use rand::{Rng, OsRng};
     let mut session_id = [0_u8; SESSID_BITS/8];
     OsRng::new().chain_err(|| "Unable to connect to the system random number generator!")?.fill_bytes(&mut session_id);
+    Ok(session_id)
+}
+
+pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
+    use schema::sessions;
+
+    let new_sessid = fresh_sessid()?;
 
     let ip_as_bytes = match ip {
         IpAddr::V4(ip) => { ip.octets()[..].to_vec() },
         IpAddr::V6(ip) => { ip.octets()[..].to_vec() },
     };
+
     let new_sess = NewSession {
-        id: session_id.to_vec(),
+        sess_id: &new_sessid,
         user_id: user.id,
         last_ip: ip_as_bytes,
     };
+
     diesel::insert(&new_sess)
         .into(sessions::table)
         .get_result(conn)
-        .chain_err(|| "Couldn't start a session!")
+        .chain_err(|| "Couldn't start a session!") // TODO if the session id already exists, this is going to fail? (A few-in-a 2^128 change, though...)
 }
     

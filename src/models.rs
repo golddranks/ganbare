@@ -1,5 +1,6 @@
 use super::schema::*;
 
+use diesel::ExpressionMethods;
 use chrono::{DateTime, UTC};
 
 #[insertable_into(users)]
@@ -42,15 +43,24 @@ BelongsTo! {
 
 #[insertable_into(sessions)]
 #[derive(Debug)]
-pub struct NewSession {
-    pub id: Vec<u8>,
+pub struct NewSession<'a> {
+    pub sess_id: &'a [u8],
     pub user_id: i32,
     pub last_ip: Vec<u8>,
 }
 
+
+#[changeset_for(sessions)]
+pub struct RefreshSession<'a> {
+    pub sess_id: &'a [u8],
+    pub last_ip: Vec<u8>,
+    pub last_seen: DateTime<UTC>,
+}
+
 #[derive(Identifiable, Queryable, Debug)]
 pub struct Session {
-    pub id: Vec<u8>,
+    pub id: i32,
+    pub sess_id: Vec<u8>,
     pub user_id: i32,
     pub started: DateTime<UTC>,
     pub last_seen: DateTime<UTC>,
@@ -61,7 +71,8 @@ BelongsTo! {
     (User, foreign_key = user_id)
     #[table_name(sessions)]
     pub struct Session {
-        pub id: [u8; 32],
+        pub id: i32,
+        pub sess_id: [u8; 32],
         pub user_id: i32,
         pub started: DateTime<UTC>,
         pub last_seen: DateTime<UTC>,

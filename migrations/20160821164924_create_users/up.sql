@@ -13,7 +13,8 @@ CREATE TABLE passwords (
 );
 
 CREATE TABLE sessions (
-	id BYTEA PRIMARY KEY,
+	id SERIAL PRIMARY KEY,
+	sess_id BYTEA NOT NULL UNIQUE,
 	user_id SERIAL REFERENCES users ON DELETE CASCADE,
 	started TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	last_seen TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
