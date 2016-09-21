@@ -2,14 +2,10 @@
 #![feature(custom_derive, question_mark, custom_attribute, plugin, ipv6_to_octets)]
 #![plugin(diesel_codegen, dotenv_macros, binary_macros)]
 
-#[macro_use]
-extern crate diesel;
-
-#[macro_use]
-extern crate error_chain;
-
-#[macro_use]
-extern crate lazy_static;
+#[macro_use] extern crate diesel;
+#[macro_use] extern crate error_chain;
+#[macro_use] extern crate lazy_static;
+#[macro_use] extern crate mime;
 
 extern crate dotenv;
 extern crate crypto;
@@ -19,11 +15,14 @@ extern crate rustc_serialize;
 extern crate data_encoding;
 extern crate pencil;
 
+
 use diesel::prelude::*;
-use diesel::pg::PgConnection;
 use dotenv::dotenv;
 use std::env;
 use std::net::IpAddr;
+
+
+pub use diesel::pg::PgConnection;
 
 pub mod schema;
 pub mod models;
@@ -80,8 +79,6 @@ pub mod errors {
 
 
 use errors::*;
-
-
 
 pub fn db_connect() -> Result<PgConnection> {
     dotenv().ok();
@@ -306,4 +303,15 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
         .chain_err(|| "Couldn't delete the pending request.")?;
 
     Ok(user)
+}
+
+
+pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<String> {
+    Ok("juu".into())
+}
+
+
+
+pub fn get_line_file(conn : &PgConnection, line_id : &str) -> (String, mime::Mime) {
+    ("cards/card00001/voice00001/card1-01.mp3".into(), mime!(Audio/Mpeg)) // TODO
 }

@@ -21,13 +21,21 @@
 		cursor: default;
 		opacity: 0.95;
 		text-align: center;
+		min-height: 17em;
 
 		@include vendor('transform-origin', '50% 50%');
 		@include vendor('transform', 'rotateX(0deg)');
 		@include vendor('transition', (
 			'opacity #{_duration(main)} ease',
-			'transform #{_duration(main)} ease'
+			'transform #{_duration(main)} ease',
 		));
+
+		#settings {
+			font-size: 0.9em;
+			position: absolute;
+			top: 0;
+			right: 0.4em;
+		}
 
 		.avatar {
 			position: relative;
@@ -35,10 +43,11 @@
 			margin-bottom: _size(element-margin);
 
 			img {
+				max-width: 40%;
 				display: block;
 				margin: 0 auto;
 				border-radius: 100%;
-				box-shadow: 0 0 0 1.5em _palette(bg);
+				box-shadow: 0 0 1.5em 1.5em _palette(bg);
 			}
 
 			&:before {

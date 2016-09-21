@@ -6,7 +6,9 @@ extern crate dotenv;
 extern crate env_logger;
 extern crate hyper;
 #[macro_use]  extern crate lazy_static;
+#[macro_use]  extern crate mime;
 extern crate time;
+extern crate rustc_serialize;
 
 use dotenv::dotenv;
 use std::env;
@@ -15,7 +17,8 @@ use std::net::IpAddr;
 
 use std::collections::BTreeMap;
 use hyper::header::{SetCookie, CookiePair, Cookie};
-use pencil::{Pencil, Request, Response, PencilResult, redirect, abort};
+use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify};
+use pencil::helpers::send_file;
 use ganbare::models::{User, Session};
 
 lazy_static! {
@@ -33,9 +36,8 @@ pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
     None
 }
 
-fn get_user(req : &Request) -> Result<Option<(User, Session)>> {
+fn get_user_refresh_sessid(conn : &ganbare::PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
     if let Some(session_id) = req.cookies().and_then(get_cookie) {
-        let conn = ganbare::db_connect().map_err(|_| abort(500).unwrap_err())?;
         ganbare::check_session(&conn, session_id, req.request.remote_addr.ip())
             .map(|user_sess| Some(user_sess))
             .or_else(|e| match e.kind() {
@@ -75,7 +77,9 @@ fn expire_cookie(mut self) -> Self {
 }
 
 fn hello(request: &mut Request) -> PencilResult {
-    let user_session = get_user(&*request).map_err(|_| abort(500).unwrap_err())?;
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user_refresh_sessid(&conn, &*request).map_err(|_| abort(500).unwrap_err())?;
 
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
@@ -86,7 +90,6 @@ fn hello(request: &mut Request) -> PencilResult {
         None => request.app.render_template("hello.html", &context),
     }
 }
-
 
 fn login(request: &mut Request) -> PencilResult {
     let ip = request.request.remote_addr.ip();
@@ -161,6 +164,40 @@ fn confirm_final(request: &mut Request) -> PencilResult {
     do_login(&user.email, &password, ip)
 }
 
+#[derive(RustcEncodable)]
+struct Quiz {
+    username: String,
+    lines: String,
+}
+
+fn new_quiz(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user_refresh_sessid(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
+
+    let line_path = "/api/get_line/".to_string() + &ganbare::get_new_quiz(&conn, &user)
+        .map_err(|_| abort(500).unwrap_err())?;
+ 
+    jsonify(&Quiz { username: user.email,lines: line_path })
+        .map(|resp| resp.refresh_cookie(&sess))
+}
+
+fn get_line(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user_refresh_sessid(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    let line_id = req.view_args.get("line_id").expect("Line ID should exist as an arg.");
+    let (file_path, mime_type) = ganbare::get_line_file(&conn, line_id);
+
+    send_file(&file_path, mime_type, false)
+        .map(|resp| resp.refresh_cookie(&sess))
+}
+
 fn main() {
     dotenv().ok();
     let mut app = Pencil::new(".");
@@ -175,10 +212,12 @@ fn main() {
     debug!("* Running on http://localhost:5000/, serving at {:?}", *SITE_DOMAIN);
 
     app.get("/", "hello", hello);
-    app.get("/logout", "logout", logout);
+    app.post("/logout", "logout", logout);
     app.post("/login", "login", login);
     app.get("/confirm", "confirm", confirm);
     app.post("/confirm", "confirm_final", confirm_final);
+    app.get("/api/new_quiz", "new_quiz", new_quiz);
+    app.get("/api/get_line/<line_id:string>", "get_line", get_line);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {
         Err(_) => {

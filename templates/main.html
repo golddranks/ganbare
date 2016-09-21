@@ -6,6 +6,8 @@
 -->
 <html>
 	<head>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+		<script src="static/ts/quiz.js"></script>
 		<title>{{ title }}</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -22,21 +24,26 @@
 
 				<!-- Main -->
 					<section id="main">
-						<header>
-							<span class="avatar"><img src="static/images/avatar.jpg" alt="" /></span>
-							<h1>{{ title }}</h1>
-							<p>Tieteellinen koe japanin ääntämyksestä</p>
-						</header>
-						<hr />
-						<h2>Tervetuloa!</h2>
-						<a href="/logout">Kirjaudu ulos</a>
-						<hr />
+						<section id="settings">
+							<form action="/logout" method="post">
+								<button type="submit" class="linklike">Kirjaudu ulos</button>
+							</form>
+						</section>
+						<section id="quiz">
+						<span class="avatar"><button class="imgbutton"><img src="static/images/play-button.png" alt="" /></button></span>
+						</section>
 					</section>
 
 				<!-- Footer -->
 					<footer id="footer">
 						<ul class="copyright">
-							<li>&copy; Pyry Kontio</li><li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
+							<li>&copy; Pyry Kontio</li>
+							<li>
+							Design: <a href="http://html5up.net">HTML5 UP</a>
+							(<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>)</li>
+							<li>
+							Icons: <a href="http://www.flaticon.com/authors/appzgear" title="Appzgear">Appzgear</a> from <a href="http://www.flaticon.com" title="Flaticon">www.flaticon.com</a>
+							(<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>)</li>
 						</ul>
 					</footer>
 

@@ -17,6 +17,7 @@ dependencies = [
  "lazy_static 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lettre 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mime 0.2.2",
  "pencil 0.3.0",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rpassword 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -468,10 +469,15 @@ dependencies = [
 [[package]]
 name = "mime"
 version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "mime"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+replace = "mime 0.2.2"
 
 [[package]]
 name = "mime_guess"

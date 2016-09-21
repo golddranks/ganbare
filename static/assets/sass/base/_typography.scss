@@ -10,7 +10,7 @@
 
 /* Type */
 
-	body, input, select, textarea {
+	body, input, select, textarea, button {
 		color: _palette(fg);
 		font-family: _font(family);
 		font-size: 14pt;
@@ -29,7 +29,12 @@
 		}
 	}
 
-	a {
+	a,
+	.linklike {
+		padding: 0 0;
+		background: none;
+		border: none;
+		cursor: pointer;
 		@include vendor('transition', (
 			'color #{_duration(transition)} ease',
 			'border-color #{_duration(transition)} ease'

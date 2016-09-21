@@ -1,0 +1,37 @@
+@import '../libs/vars';
+@import '../libs/functions';
+@import '../libs/mixins';
+
+.imgbutton {
+
+	img {
+		background-color: _palette(bg);
+	}
+
+	@include vendor('transform-origin', '50% 50%');
+	padding: 0 0;
+	color: inherit;
+	text-decoration: none;
+	height: auto;
+	width: auto;
+	border: none;
+
+	&:enabled:hover {
+		@include vendor('transform', 'scale(1.05)');
+		@include vendor('transition', (
+			'opacity #{_duration(transition)} ease',
+			'transform #{_duration(transition)} ease'
+		));
+	}
+	
+	
+	&:enabled:active {
+		@include vendor('transform', 'scale(0.9)');
+		@include vendor('transition', (
+			'opacity #{_duration(fast)} ease-out',
+			'transform #{_duration(fast)} ease-out'
+		));
+	}
+
+	
+}

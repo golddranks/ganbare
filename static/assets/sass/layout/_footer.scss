@@ -26,6 +26,7 @@
 
 			li {
 				display: inline-block;
+				max-height: 1em;
 				margin: 0 0 0 (0.85em - (_size(letter-spacing) * 2));
 				padding: 0 0 0 0.85em;
 				border-left: solid _size(border-width) rgba(255,255,255,0.5);
