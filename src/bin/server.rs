@@ -17,7 +17,7 @@ use std::net::IpAddr;
 
 use std::collections::BTreeMap;
 use hyper::header::{SetCookie, CookiePair, Cookie};
-use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify};
+use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify, HTTPError};
 use pencil::helpers::send_file;
 use ganbare::models::{User, Session};
 
@@ -92,12 +92,24 @@ fn hello(request: &mut Request) -> PencilResult {
 }
 
 fn login(request: &mut Request) -> PencilResult {
+    let app = request.app;
     let ip = request.request.remote_addr.ip();
     let login_form = request.form();
-    let email = login_form.get("email").map(String::as_ref).unwrap_or("");
-    let plaintext_pw = login_form.get("password").map(String::as_ref).unwrap_or("");
+    let email = login_form.get("email").map(String::to_string).unwrap_or_default();
+    let plaintext_pw = login_form.get("password").map(String::to_string).unwrap_or_default();
 
-    do_login(email, plaintext_pw, ip)
+    let mut context = BTreeMap::new();
+    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    context.insert("authError".to_string(), "true".to_string());
+
+    do_login(&email, &plaintext_pw, ip)
+        .or_else(|e| match e {
+            pencil::PencilError::PenHTTPError(Unauthorized) => {
+                let mut result = app.render_template("hello.html", &context);
+                result.map(|mut resp| {resp.status_code = 401; resp})
+            },
+            _ => Err(e),
+        })
 }
 
 fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> PencilResult {
@@ -106,7 +118,7 @@ fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> PencilResult {
     {
         user = ganbare::auth_user(&conn, email, plaintext_pw)
             .map_err(|e| match e.kind() {
-                    &ErrorKind::AuthError => { println!("VITTU {:?}", e); abort(401).unwrap_err() },
+                    &ErrorKind::AuthError => abort(401).unwrap_err(),
                     _ => abort(500).unwrap_err(),
                 })?;
     };
@@ -197,6 +209,7 @@ fn get_line(req: &mut Request) -> PencilResult {
     send_file(&file_path, mime_type, false)
         .map(|resp| resp.refresh_cookie(&sess))
 }
+
 
 fn main() {
     dotenv().ok();

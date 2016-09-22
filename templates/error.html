@@ -23,25 +23,12 @@
 				<!-- Main -->
 					<section id="main">
 						<header>
-							<span class="avatar"><img src="static/images/avatar.jpg" alt="" /></span>
 							<h1>{{ title }}</h1>
 							<p>Tieteellinen koe japanin ääntämyksestä</p>
 						</header>
 						<hr />
-						{{#if authError}}<strong class="error">Käyttäjänimi tai salasana oli väärin!</strong>{{/if}}
-						<h2>{{#if authError}}Kokeile uudelleen{{/if}}{{#unless authError}}Koehenkilö, kirjaudu sisään{{/unless}}</h2>
-						<form method="post" action="/login">
-							<div class="field">
-								<input type="email" name="email" id="email" placeholder="Sähköposti" />
-							</div>
-							<div class="field">
-								<input type="password" name="password" id="password" placeholder="Salasana" />
-							</div>
-							<div class="field">
-								<input type="submit" class="button" value="Sisään">
-							</div>
-						</form>
-						<hr />
+
+						<h2>{{ errorName }}</h2>
 					</section>
 
 				<!-- Footer -->

@@ -592,6 +592,8 @@ button,
   -webkit-transition: opacity 1s ease, -webkit-transform 1s ease;
   -ms-transition: opacity 1s ease, -ms-transform 1s ease;
   transition: opacity 1s ease, transform 1s ease; }
+  #main .error {
+    color: red; }
   #main #settings {
     font-size: 0.9em;
     position: absolute;
