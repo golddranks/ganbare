@@ -1,8 +1,10 @@
 #![recursion_limit = "1024"]
-#![feature(custom_derive, question_mark, custom_attribute, plugin, ipv6_to_octets)]
+#![feature(proc_macro)]
+#![feature(custom_derive, custom_attribute, plugin)]
 #![plugin(diesel_codegen, dotenv_macros, binary_macros)]
 
 #[macro_use] extern crate diesel;
+#[macro_use] extern crate diesel_codegen;
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate mime;

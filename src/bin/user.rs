@@ -1,4 +1,3 @@
-#![feature(question_mark)]
 extern crate ganbare;
 extern crate diesel;
 
@@ -19,7 +18,6 @@ use std::io::Read;
 use ganbare::*;
 use ganbare::models::User;
 use diesel::prelude::*;
-use diesel::pg::PgConnection;
 use ganbare::errors::*;
 
 use lettre::transport::smtp::response::Response as EmailResponse;
