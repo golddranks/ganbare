@@ -81,11 +81,12 @@ pub struct NewSkillNugget<'a> {
     pub skill_summary: &'a str,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Queryable, Associations, Identifiable)]
 #[table_name="skill_nuggets"]
-pub struct SkillNugget<'a> {
+#[has_many(quiz_questions, foreign_key = "skill_id")]
+pub struct SkillNugget {
     pub id: i32,
-    pub skill_summary: &'a str,
+    pub skill_summary: String,
 }
 
 #[derive(Insertable)]
@@ -95,12 +96,14 @@ pub struct NewQuizQuestion<'a> {
     pub question_summary: &'a str,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Queryable, Associations, Identifiable)]
+#[belongs_to(SkillNugget, foreign_key = "skill_id")]
+#[has_many(question_answers, foreign_key = "question_id")]
 #[table_name="quiz_questions"]
-pub struct QuizQuestion<'a> {
+pub struct QuizQuestion {
     pub id: i32,
     pub skill_id: i32,
-    pub question_summary: &'a str,
+    pub question_summary: String,
 }
 
 #[derive(Insertable)]
@@ -110,12 +113,14 @@ pub struct NewAnswer<'a> {
     pub answer_text: &'a str,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Queryable, Associations, Identifiable)]
 #[table_name="question_answers"]
-pub struct Answer<'a> {
+#[belongs_to(QuizQuestion, foreign_key = "question_id")]
+#[has_many(question_audio, foreign_key = "answer_id")]
+pub struct Answer {
     pub id: i32,
     pub question_id: i32,
-    pub answer_text: &'a str,
+    pub answer_text: String,
 }
 
 #[derive(Insertable)]
@@ -125,10 +130,11 @@ pub struct NewQuestionAudio<'a> {
     pub audio_file: &'a str,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Queryable, Associations, Identifiable)]
 #[table_name="question_audio"]
-pub struct QuestionAudio<'a> {
+#[belongs_to(Answer, foreign_key = "answer_id")]
+pub struct QuestionAudio {
     pub id: i32,
     pub answer_id: i32,
-    pub audio_file: &'a str,
+    pub audio_file: String,
 }
