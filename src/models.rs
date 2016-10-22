@@ -30,20 +30,6 @@ pub struct Password {
     pub extra_rounds: i16,
 }
 
-/*
-BelongsTo! {
-    (User, foreign_key = id)
-    #[table_name(passwords)]
-    pub struct Password {
-        pub id: i32,
-        pub password_hash: Vec<u8>,
-        pub salt: Vec<u8>,
-        pub initial_rounds: i16,
-        pub extra_rounds: i16,
-    }
-}
-*/
-
 #[derive(Debug, Insertable)]
 #[table_name="sessions"]
 pub struct NewSession<'a> {
@@ -71,20 +57,7 @@ pub struct Session {
     pub last_seen: DateTime<UTC>,
     pub last_ip: Vec<u8>,
 }
-/*
-BelongsTo! {
-    (User, foreign_key = user_id)
-    #[table_name(sessions)]
-    pub struct Session {
-        pub id: i32,
-        pub sess_id: [u8; 32],
-        pub user_id: i32,
-        pub started: DateTime<UTC>,
-        pub last_seen: DateTime<UTC>,
-        pub last_ip: Vec<u8>,
-}
-}
-*/
+
 
 #[derive(Queryable, Debug)]
 pub struct PendingEmailConfirm {
@@ -99,4 +72,63 @@ pub struct PendingEmailConfirm {
 pub struct NewPendingEmailConfirm<'a> {
     pub secret: &'a str,
     pub email: &'a str,
+}
+
+
+#[derive(Insertable)]
+#[table_name="skill_nuggets"]
+pub struct NewSkillNugget<'a> {
+    pub skill_summary: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name="skill_nuggets"]
+pub struct SkillNugget<'a> {
+    pub id: i32,
+    pub skill_summary: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name="quiz_questions"]
+pub struct NewQuizQuestion<'a> {
+    pub skill_id: i32,
+    pub question_summary: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name="quiz_questions"]
+pub struct QuizQuestion<'a> {
+    pub id: i32,
+    pub skill_id: i32,
+    pub question_summary: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name="question_answers"]
+pub struct NewAnswer<'a> {
+    pub question_id: i32,
+    pub answer_text: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name="question_answers"]
+pub struct Answer<'a> {
+    pub id: i32,
+    pub question_id: i32,
+    pub answer_text: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name="question_audio"]
+pub struct NewQuestionAudio<'a> {
+    pub answer_id: i32,
+    pub audio_file: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name="question_audio"]
+pub struct QuestionAudio<'a> {
+    pub id: i32,
+    pub answer_id: i32,
+    pub audio_file: &'a str,
 }
