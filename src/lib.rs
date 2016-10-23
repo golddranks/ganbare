@@ -28,7 +28,7 @@ pub use diesel::pg::PgConnection;
 
 pub mod schema;
 pub mod models;
-use models::{User, Password, Session, NewUser, NewSession, RefreshSession, NewPendingEmailConfirm, PendingEmailConfirm};
+use models::*;
 pub mod password;
 pub mod errors {
 
@@ -307,12 +307,13 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
+pub fn create_quiz(conn : &PgConnection) -> Result<String> {
+    Ok("Juu".into())
+}
 
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<String> {
     Ok("juu".into())
 }
-
-
 
 pub fn get_line_file(conn : &PgConnection, line_id : &str) -> (String, mime::Mime) {
     ("cards/card00001/voice00001/card1-01.mp3".into(), mime!(Audio/Mpeg)) // TODO

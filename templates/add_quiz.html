@@ -1,0 +1,64 @@
+<!DOCTYPE HTML>
+<!--
+	Identity by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+		<script src="static/ts/add_quiz.js"></script>
+		<title>{{ title }}</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!--[if lte IE 8]><script src="static/assets/js/html5shiv.js"></script><![endif]-->
+		<link rel="stylesheet" href="static/assets/css/main.css" />
+		<!--[if lte IE 9]><link rel="stylesheet" href="static/assets/css/ie9.css" /><![endif]-->
+		<!--[if lte IE 8]><link rel="stylesheet" href="static/assets/css/ie8.css" /><![endif]-->
+		<noscript><link rel="stylesheet" href="static/assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-loading">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Main -->
+					<section id="main">
+						<form action="add_quiz" method="post">
+							<input type="hidden" id="lowest_fieldset" name="lowest_fieldset" value="1">
+							<p><input type="text" id="name" name="name" placeholder="Kysymyksen listanimi"></p>
+							<p><input type="text" id="explanation" name="explanation" placeholder="Kysymyksen selitysteksti"></p>
+							<div id="choice_1">
+								<label>1. vastausvaihtoehto</label>
+								<div class="fileUpload button"><span>Kysymys (audio)</span>
+									<input type="file" name="choice_1_question" accept="audio/*" class="upload question" /></div>
+								<div class="fileUpload button"><span>Vastaus (audio)</span>
+									<input type="file" name="choice_1_answer_audio" accept="audio/*" class="upload answer_audio" /></div>
+								<p><input type="text" class="answer_text" name="choice_1_answer_text" placeholder="Vastaus (teksti)"></p>
+							</div>
+							<p style="text-align: right"><input type="button" id="add_answer" value="+"></p>
+							<p><input type="text" name="skill_nugget" placeholder="Taidonjyvä"></p>
+							<p><input type="submit" value="Ok"></p>
+						</form>
+					</section>
+
+				<!-- Footer -->
+					<footer id="footer">
+						<ul class="copyright">
+							<li>&copy; Pyry Kontio</li><li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
+						</ul>
+					</footer>
+
+			</div>
+
+		<!-- Scripts -->
+			<!--[if lte IE 8]><script src="static/assets/js/respond.min.js"></script><![endif]-->
+			<script>
+				if ('addEventListener' in window) {
+					window.addEventListener('load', function() { document.body.className = document.body.className.replace(/\bis-loading\b/, ''); });
+					document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
+				}
+			</script>
+
+	</body>
+</html>

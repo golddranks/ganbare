@@ -81,7 +81,7 @@ pub struct NewSkillNugget<'a> {
     pub skill_summary: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="skill_nuggets"]
 #[has_many(quiz_questions, foreign_key = "skill_id")]
 pub struct SkillNugget {
@@ -96,7 +96,7 @@ pub struct NewQuizQuestion<'a> {
     pub question_summary: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(question_answers, foreign_key = "question_id")]
 #[table_name="quiz_questions"]
@@ -113,7 +113,7 @@ pub struct NewAnswer<'a> {
     pub answer_text: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="question_answers"]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
 #[has_many(question_audio, foreign_key = "answer_id")]
@@ -130,7 +130,7 @@ pub struct NewQuestionAudio<'a> {
     pub audio_file: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="question_audio"]
 #[belongs_to(Answer, foreign_key = "answer_id")]
 pub struct QuestionAudio {

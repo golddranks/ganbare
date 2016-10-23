@@ -199,6 +199,24 @@ form {
     form > .field > :last-child {
       margin-bottom: 0; }
 
+/* stylized file upload button added by Pyry */
+.fileUpload {
+  position: relative;
+  overflow: hidden;
+  margin: 10px; }
+
+.fileUpload input.upload {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0;
+  filter: alpha(opacity=0); }
+
+/* addition ends */
 label {
   color: #313f47;
   display: block;

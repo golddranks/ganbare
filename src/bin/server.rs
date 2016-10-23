@@ -1,4 +1,3 @@
-#![feature(question_mark)]
 extern crate ganbare;
 extern crate pencil;
 extern crate dotenv;
@@ -17,7 +16,7 @@ use std::net::IpAddr;
 
 use std::collections::BTreeMap;
 use hyper::header::{SetCookie, CookiePair, Cookie};
-use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify, HTTPError};
+use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify};
 use pencil::helpers::send_file;
 use ganbare::models::{User, Session};
 
@@ -104,8 +103,8 @@ fn login(request: &mut Request) -> PencilResult {
 
     do_login(&email, &plaintext_pw, ip)
         .or_else(|e| match e {
-            pencil::PencilError::PenHTTPError(Unauthorized) => {
-                let mut result = app.render_template("hello.html", &context);
+            pencil::PencilError::PenHTTPError(pencil::HTTPError::Unauthorized) => {
+                let result = app.render_template("hello.html", &context);
                 result.map(|mut resp| {resp.status_code = 401; resp})
             },
             _ => Err(e),
@@ -199,7 +198,7 @@ fn new_quiz(req: &mut Request) -> PencilResult {
 fn get_line(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let (user, sess) = get_user_refresh_sessid(&conn, req)
+    let (_, sess) = get_user_refresh_sessid(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
@@ -210,6 +209,45 @@ fn get_line(req: &mut Request) -> PencilResult {
         .map(|resp| resp.refresh_cookie(&sess))
 }
 
+fn add_quiz_form(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user_refresh_sessid(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
+
+    match user_session {
+        Some((_, sess)) => {
+
+            let mut context = BTreeMap::new();
+            context.insert("title".to_string(), "akusento.ganba.re".to_string());
+            req.app.render_template("add_quiz.html", &context)
+                            .map(|resp| resp.refresh_cookie(&sess))
+            },
+        None => abort(401),
+    }
+}
+
+fn add_quiz_post(req: &mut Request) -> PencilResult  {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user_refresh_sessid(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
+
+
+    match user_session {
+        Some((_, sess)) => {
+
+            let login_form = req.form();
+            let lowest_fieldset = login_form.get("lowest_fieldset").and_then(|s| str::parse::<i32>(s).ok()).unwrap_or_default();
+            let question_name = login_form.get("name").map(String::to_string).unwrap_or_default();
+            let question_explanation = login_form.get("explanation").map(String::to_string).unwrap_or_default();
+            let skill_nugget = login_form.get("skill_nugget").map(String::to_string).unwrap_or_default();
+
+            redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&sess) )
+
+            },
+        None => abort(401),
+    }
+}
+
 
 fn main() {
     dotenv().ok();
@@ -217,17 +255,20 @@ fn main() {
     app.register_template("hello.html");
     app.register_template("main.html");
     app.register_template("confirm.html");
+    app.register_template("add_quiz.html");
     app.enable_static_file_handling();
 
-//    app.set_debug(true);
-//    app.set_log_level();
-//    env_logger::init().unwrap();
+ //   app.set_debug(true);
+ //   app.set_log_level();
+ //   env_logger::init().unwrap();
     debug!("* Running on http://localhost:5000/, serving at {:?}", *SITE_DOMAIN);
 
     app.get("/", "hello", hello);
     app.post("/logout", "logout", logout);
     app.post("/login", "login", login);
     app.get("/confirm", "confirm", confirm);
+    app.get("/add_quiz", "add_quiz_form", add_quiz_form);
+    app.post("/add_quiz", "add_quiz_post", add_quiz_post);
     app.post("/confirm", "confirm_final", confirm_final);
     app.get("/api/new_quiz", "new_quiz", new_quiz);
     app.get("/api/get_line/<line_id:string>", "get_line", get_line);
