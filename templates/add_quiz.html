@@ -24,17 +24,24 @@
 
 				<!-- Main -->
 					<section id="main">
-						<form action="add_quiz" method="post">
+						<form action="add_quiz" method="post" style="min-width: 37em;">
 							<input type="hidden" id="lowest_fieldset" name="lowest_fieldset" value="1">
 							<p><input type="text" id="name" name="name" placeholder="Kysymyksen listanimi"></p>
 							<p><input type="text" id="explanation" name="explanation" placeholder="Kysymyksen selitysteksti"></p>
-							<div id="choice_1">
+							<div class="fieldset" id="choice_1">
 								<label>1. vastausvaihtoehto</label>
-								<div class="fileUpload button"><span>Kysymys (audio)</span>
-									<input type="file" name="choice_1_question" accept="audio/*" class="upload question" /></div>
-								<div class="fileUpload button"><span>Vastaus (audio)</span>
-									<input type="file" name="choice_1_answer_audio" accept="audio/*" class="upload answer_audio" /></div>
-								<p><input type="text" class="answer_text" name="choice_1_answer_text" placeholder="Vastaus (teksti)"></p>
+								<p class="inlineContainer">
+									<input type="hidden" class="q_variations" name="choice_1_q_variations" value="1">
+									<span class="fileUpload button q_variant"><span>Kysymys (audio 1)</span>
+									<input type="file" name="choice_1_q_variant_1" accept="audio/*" class="upload question" /></span><input
+									type="button" class="addVariant" value="+">
+								</p>
+								<p class="inlineContainer">
+									<span class="fileUpload button"><span>Vastaus (audio)</span>
+									<input type="file" name="choice_1_answer_audio" accept="audio/*" class="upload answer_audio" /></span><input
+										type="text" class="answer_text" name="choice_1_answer_text" placeholder="Vastaus (teksti)" style="width: 25em;">
+								</p>
+								<hr style="margin: 1em 0;">
 							</div>
 							<p style="text-align: right"><input type="button" id="add_answer" value="+"></p>
 							<p><input type="text" name="skill_nugget" placeholder="Taidonjyvä"></p>

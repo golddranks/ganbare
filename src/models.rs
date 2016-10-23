@@ -93,7 +93,8 @@ pub struct SkillNugget {
 #[table_name="quiz_questions"]
 pub struct NewQuizQuestion<'a> {
     pub skill_id: i32,
-    pub question_summary: &'a str,
+    pub q_name: &'a str,
+    pub q_explanation: &'a str,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
@@ -103,7 +104,8 @@ pub struct NewQuizQuestion<'a> {
 pub struct QuizQuestion {
     pub id: i32,
     pub skill_id: i32,
-    pub question_summary: String,
+    pub q_name: String,
+    pub q_explanation: String,
 }
 
 #[derive(Insertable)]

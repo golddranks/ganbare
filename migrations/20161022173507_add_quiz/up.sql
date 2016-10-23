@@ -6,7 +6,8 @@ CREATE TABLE skill_nuggets (
 CREATE TABLE quiz_questions (
 	id SERIAL PRIMARY KEY,
 	skill_id SERIAL REFERENCES skill_nuggets,
-	question_summary VARCHAR NOT NULL
+	q_name VARCHAR NOT NULL,
+	q_explanation VARCHAR NOT NULL
 );
 
 CREATE TABLE question_answers (

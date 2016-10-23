@@ -1,3 +1,5 @@
+#![feature(inclusive_range_syntax)]
+
 extern crate ganbare;
 extern crate pencil;
 extern crate dotenv;
@@ -227,6 +229,34 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
 }
 
 fn add_quiz_post(req: &mut Request) -> PencilResult  {
+
+    fn parse_form(form: &pencil::datastructures::MultiDict<String>) -> Result<(String, String, String, Vec<ganbare::Fieldset>)> {
+
+        macro_rules! parse {
+            ($expression:expr) => ($expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?)
+        }
+
+        let lowest_fieldset = str::parse::<i32>(&parse!(form.get("lowest_fieldset")))?;
+        let question_name = parse!(form.get("name"));
+        let question_explanation = parse!(form.get("question_explanation"));
+        let skill_nugget = parse!(form.get("skill_nugget"));
+
+        let mut fieldsets = Vec::with_capacity(3);
+        for i in 1...lowest_fieldset {
+            let q_variations = str::parse::<i32>(&parse!(form.get(&format!("choice_{}_q_variations", i))))?;
+            let mut q_variants = Vec::with_capacity(3);
+            for v in 1...q_variations {
+                q_variants.push(parse!(form.get(&format!("choice_{}_q_variant_{}", i, v))));
+            }
+            let answer_audio = parse!(form.get(&format!("choice_{}_answer_audio", i)));
+            let answer_text = parse!(form.get(&format!("choice_{}_answer_text", i)));
+            let fields = ganbare::Fieldset {q_variants: q_variants, answer_audio: answer_audio, answer_text: answer_text};
+            fieldsets.push(fields);
+        }
+
+        Ok((question_name, question_explanation, skill_nugget, fieldsets))
+    }
+
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user_refresh_sessid(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
@@ -235,11 +265,9 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
     match user_session {
         Some((_, sess)) => {
 
-            let login_form = req.form();
-            let lowest_fieldset = login_form.get("lowest_fieldset").and_then(|s| str::parse::<i32>(s).ok()).unwrap_or_default();
-            let question_name = login_form.get("name").map(String::to_string).unwrap_or_default();
-            let question_explanation = login_form.get("explanation").map(String::to_string).unwrap_or_default();
-            let skill_nugget = login_form.get("skill_nugget").map(String::to_string).unwrap_or_default();
+            let form = parse_form(req.form()).map_err(|_| abort(500).unwrap_err())?;
+
+            ganbare::create_quiz(&conn, form);
 
             redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&sess) )
 

@@ -202,8 +202,7 @@ form {
 /* stylized file upload button added by Pyry */
 .fileUpload {
   position: relative;
-  overflow: hidden;
-  margin: 10px; }
+  overflow: hidden; }
 
 .fileUpload input.upload {
   position: absolute;
@@ -255,6 +254,13 @@ textarea {
   select:focus,
   textarea:focus {
     border-color: #ff7496; }
+
+.inlineContainer > span, .inlineContainer > input, .inlineContainer > button {
+  display: inline-block !important;
+  width: auto;
+  margin-right: 0.3em;
+  margin-left: 0.3em;
+  padding: 0 0.5em !important; }
 
 .select-wrapper {
   text-decoration: none;

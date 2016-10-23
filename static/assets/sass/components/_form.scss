@@ -27,7 +27,6 @@
 .fileUpload {
     position: relative;
     overflow: hidden;
-    margin: 10px;
 }
 .fileUpload input.upload {
     position: absolute;
@@ -40,6 +39,8 @@
     opacity: 0;
     filter: alpha(opacity=0);
 }
+
+
 /* addition ends */
 
 	label {
@@ -55,6 +56,7 @@
 	input[type="tel"],
 	select,
 	textarea {
+
 		@include vendor('appearance', 'none');
 		border-radius: _size(border-radius);
 		border: solid 1px _palette(border);
@@ -72,7 +74,17 @@
 		&:focus {
 			border-color: _palette(highlight);
 		}
+
 	}
+
+
+.inlineContainer > span, .inlineContainer > input, .inlineContainer > button {
+			display: inline-block !important;
+			width: auto;
+			margin-right: 0.3em;
+			margin-left: 0.3em;
+    		padding: 0 0.5em !important;
+}
 
 	.select-wrapper {
 		@include icon('\f078');

@@ -34,6 +34,7 @@ pub mod errors {
 
     error_chain! {
         foreign_links {
+            ::std::num::ParseIntError, ParseIntError;
             ::std::io::Error, StdIoError;
             ::diesel::result::Error, DieselError;
             ::pencil::PencilError, PencilError;
@@ -74,6 +75,10 @@ pub mod errors {
             NoSuchSess {
                 description("Session doesn't exist!")
                 display("Session doesn't exist!")
+            }
+            FormParseError {
+                description("Can't parse the HTTP form!")
+                display("Can't parse the HTTP form!")
             }
         }
     }
@@ -307,8 +312,24 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
-pub fn create_quiz(conn : &PgConnection) -> Result<String> {
-    Ok("Juu".into())
+
+pub struct Fieldset {
+    pub q_variants: Vec<String>,
+    pub answer_audio: String,
+    pub answer_text: String,
+}
+
+
+pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
+    use schema::quiz_questions;
+
+    let new_quiz = NewQuizQuestion { skill_id: 0, q_name: &data.0, q_explanation: &data.1 };
+
+    let quiz : QuizQuestion = diesel::insert(&new_quiz)
+        .into(quiz_questions::table)
+        .get_result(conn)
+        .chain_err(|| "Couldn't create a new question!")?;
+    Ok(quiz)
 }
 
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<String> {
