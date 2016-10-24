@@ -98,8 +98,8 @@ fn login(request: &mut Request) -> PencilResult {
     let app = request.app;
     let ip = request.request.remote_addr.ip();
     let login_form = request.form_mut();
-    let email = login_form.get("email").map(String::to_string).unwrap_or_default();
-    let plaintext_pw = login_form.get("password").map(String::to_string).unwrap_or_default();
+    let email = login_form.take("email").unwrap_or_default();
+    let plaintext_pw = login_form.take("password").unwrap_or_default();
 
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());

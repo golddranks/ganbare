@@ -13,7 +13,8 @@ CREATE TABLE quiz_questions (
 CREATE TABLE question_answers (
 	id SERIAL PRIMARY KEY,
 	question_id SERIAL REFERENCES quiz_questions,
-	answer_text VARCHAR NOT NULL
+	answer_text VARCHAR NOT NULL,
+	answer_audio VARCHAR NOT NULL
 );
 
 CREATE TABLE question_audio (

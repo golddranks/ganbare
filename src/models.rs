@@ -113,6 +113,7 @@ pub struct QuizQuestion {
 pub struct NewAnswer<'a> {
     pub question_id: i32,
     pub answer_text: &'a str,
+    pub answer_audio: &'a str,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
@@ -123,6 +124,7 @@ pub struct Answer {
     pub id: i32,
     pub question_id: i32,
     pub answer_text: String,
+    pub answer_audio: String,
 }
 
 #[derive(Insertable)]

@@ -330,6 +330,18 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
         .into(quiz_questions::table)
         .get_result(conn)
         .chain_err(|| "Couldn't create a new question!")?;
+    for fieldset in &data.3 {
+        let a_audio = &fieldset.answer_audio;
+
+        let path;
+        if let &Some(ref path_mime) = a_audio {
+            path = path_mime.0.to_str().expect("this is an ascii path!");
+        } else {
+            path = "";
+        }
+
+        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, answer_audio: path };
+    }
     Ok(quiz)
 }
 
