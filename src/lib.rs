@@ -18,11 +18,12 @@ extern crate data_encoding;
 extern crate pencil;
 
 
+
 use diesel::prelude::*;
 use dotenv::dotenv;
 use std::env;
 use std::net::IpAddr;
-
+use std::path::PathBuf;
 
 pub use diesel::pg::PgConnection;
 
@@ -312,10 +313,10 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
-
+#[derive(Debug)]
 pub struct Fieldset {
-    pub q_variants: Vec<String>,
-    pub answer_audio: String,
+    pub q_variants: Vec<(PathBuf, mime::Mime)>,
+    pub answer_audio: Option<(PathBuf, mime::Mime)>,
     pub answer_text: String,
 }
 

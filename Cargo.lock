@@ -18,6 +18,7 @@ dependencies = [
  "lettre 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.2.2",
+ "mime_multipart 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pencil 0.3.0",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rpassword 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",

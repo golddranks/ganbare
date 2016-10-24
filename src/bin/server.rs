@@ -10,7 +10,9 @@ extern crate hyper;
 #[macro_use]  extern crate mime;
 extern crate time;
 extern crate rustc_serialize;
+extern crate rand;
 
+use rand::thread_rng;
 use dotenv::dotenv;
 use std::env;
 use ganbare::errors::*;
@@ -95,7 +97,7 @@ fn hello(request: &mut Request) -> PencilResult {
 fn login(request: &mut Request) -> PencilResult {
     let app = request.app;
     let ip = request.request.remote_addr.ip();
-    let login_form = request.form();
+    let login_form = request.form_mut();
     let email = login_form.get("email").map(String::to_string).unwrap_or_default();
     let plaintext_pw = login_form.get("password").map(String::to_string).unwrap_or_default();
 
@@ -170,7 +172,7 @@ fn confirm_final(request: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?;
     let secret = request.args().get("secret")
             .ok_or_else(|| abort(500).unwrap_err() )?.clone();
-    let password = request.form().get("password")
+    let password = request.form_mut().get("password")
         .ok_or_else(|| abort(500).unwrap_err() )?;
     let user = ganbare::complete_pending_email_confirm(&conn, password, &secret).map_err(|_| abort(500).unwrap_err())?;
 
@@ -230,31 +232,72 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
 
 fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
-    fn parse_form(form: &pencil::datastructures::MultiDict<String>) -> Result<(String, String, String, Vec<ganbare::Fieldset>)> {
+    fn parse_form(req: &mut Request) -> Result<(String, String, String, Vec<ganbare::Fieldset>)> {
 
         macro_rules! parse {
-            ($expression:expr) => ($expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?)
+            ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
         }
+        req.load_form_data();
+        let form = req.form().expect("Form data should be loaded!");
+        let files = req.files().expect("Form data should be loaded!");;
 
         let lowest_fieldset = str::parse::<i32>(&parse!(form.get("lowest_fieldset")))?;
+        if lowest_fieldset > 10 { return Err(ErrorKind::FormParseError.to_err()); }
+
         let question_name = parse!(form.get("name"));
-        let question_explanation = parse!(form.get("question_explanation"));
+        let question_explanation = parse!(form.get("explanation"));
         let skill_nugget = parse!(form.get("skill_nugget"));
 
-        let mut fieldsets = Vec::with_capacity(3);
+        let mut fieldsets = Vec::with_capacity(lowest_fieldset as usize);
         for i in 1...lowest_fieldset {
+
             let q_variations = str::parse::<i32>(&parse!(form.get(&format!("choice_{}_q_variations", i))))?;
-            let mut q_variants = Vec::with_capacity(3);
+            if lowest_fieldset > 100 { return Err(ErrorKind::FormParseError.to_err()); }
+
+            let mut q_variants = Vec::with_capacity(q_variations as usize);
             for v in 1...q_variations {
-                q_variants.push(parse!(form.get(&format!("choice_{}_q_variant_{}", i, v))));
+                if let Some(mut file) = files.get(&format!("choice_{}_q_variant_{}", i, v)) {
+                    if file.size.expect("Size should've been parsed at this phase.") == 0 {
+                        continue; // Don't save files with size 0;
+                    }
+                    let mut file = file.clone();
+                    file.do_not_delete_on_drop();
+                    q_variants.push((file.path.clone(), file.content_type().ok_or(ErrorKind::FormParseError.to_err())?));
+                }
             }
-            let answer_audio = parse!(form.get(&format!("choice_{}_answer_audio", i)));
+            let answer_audio = files.get(&format!("choice_{}_answer_audio", i));
+            let mut answer_audio_path;
+            if let Some(path) = answer_audio {
+                if path.size.expect("Size should've been parsed at this phase.") == 0 {
+                    answer_audio_path = None;
+                } else {
+                    let mut cloned_path = path.clone();
+                    cloned_path.do_not_delete_on_drop();
+                    answer_audio_path = Some(
+                        (cloned_path.path.clone(), cloned_path.content_type().ok_or(ErrorKind::FormParseError.to_err())?)
+                    )
+                }
+            } else {
+                answer_audio_path = None;
+            };
+
             let answer_text = parse!(form.get(&format!("choice_{}_answer_text", i)));
-            let fields = ganbare::Fieldset {q_variants: q_variants, answer_audio: answer_audio, answer_text: answer_text};
+            let fields = ganbare::Fieldset {q_variants: q_variants, answer_audio: answer_audio_path, answer_text: answer_text};
             fieldsets.push(fields);
         }
 
         Ok((question_name, question_explanation, skill_nugget, fieldsets))
+    }
+
+    fn move_to_new_path(path: &mut std::path::PathBuf) -> Result<()> {
+        use rand::Rng;
+        let mut new_path = std::path::PathBuf::from("audio/");
+        let mut filename = "%FT%H-%M-%SZ".to_string();
+        filename.extend(thread_rng().gen_ascii_chars().take(10));
+        new_path.push(time::strftime(&filename, &time::now()).unwrap());
+        std::fs::rename(&*path, &new_path)?;
+        std::mem::swap(path, &mut new_path);
+        Ok(())
     }
 
     let conn = ganbare::db_connect()
@@ -265,7 +308,17 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
     match user_session {
         Some((_, sess)) => {
 
-            let form = parse_form(req.form()).map_err(|_| abort(500).unwrap_err())?;
+            let mut form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(500).unwrap_err()})?;
+            for f in &mut form.3 {
+                if let Some((ref mut temp_path, _)) = f.answer_audio {
+                    move_to_new_path(temp_path).map_err(|_| abort(500).unwrap_err())?;
+                }
+                for &mut (ref mut temp_path, _) in &mut f.q_variants {
+                    move_to_new_path(temp_path).map_err(|_| abort(500).unwrap_err())?;
+                }
+            }
+
+            println!("{:?}", form);
 
             ganbare::create_quiz(&conn, form);
 

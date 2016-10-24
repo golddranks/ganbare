@@ -24,17 +24,17 @@
 
 				<!-- Main -->
 					<section id="main">
-						<form action="add_quiz" method="post" style="min-width: 37em;">
+						<form action="add_quiz" method="post" style="min-width: 37em;" enctype="multipart/form-data">
 							<input type="hidden" id="lowest_fieldset" name="lowest_fieldset" value="1">
 							<p><input type="text" id="name" name="name" placeholder="Kysymyksen listanimi"></p>
 							<p><input type="text" id="explanation" name="explanation" placeholder="Kysymyksen selitysteksti"></p>
-							<div class="fieldset" id="choice_1">
+							<div class="fieldset" id="proto_fieldset">
 								<label>1. vastausvaihtoehto</label>
 								<p class="inlineContainer">
 									<input type="hidden" class="q_variations" name="choice_1_q_variations" value="1">
 									<span class="fileUpload button q_variant"><span>Kysymys (audio 1)</span>
-									<input type="file" name="choice_1_q_variant_1" accept="audio/*" class="upload question" /></span><input
-									type="button" class="addVariant" value="+">
+									<input type="file" name="choice_1_q_variant_1" accept="audio/*" class="upload question" /></span><button
+									type="button" class="addVariant">+</button>
 								</p>
 								<p class="inlineContainer">
 									<span class="fileUpload button"><span>Vastaus (audio)</span>
@@ -43,7 +43,7 @@
 								</p>
 								<hr style="margin: 1em 0;">
 							</div>
-							<p style="text-align: right"><input type="button" id="add_answer" value="+"></p>
+							<p style="text-align: right"><button type="button" id="add_answer">+</button></p>
 							<p><input type="text" name="skill_nugget" placeholder="Taidonjyvä"></p>
 							<p><input type="submit" value="Ok"></p>
 						</form>

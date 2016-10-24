@@ -86,6 +86,11 @@
     		padding: 0 0.5em !important;
 }
 
+.fileSelected {
+	background-color: #F8DDDD !important;
+	border-color: #FF6666 !important;
+}
+
 	.select-wrapper {
 		@include icon('\f078');
 		display: block;
