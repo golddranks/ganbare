@@ -318,9 +318,13 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
                 }
             }
 
-            println!("{:?}", form);
+            println!("Form: {:?}", form);
 
-            ganbare::create_quiz(&conn, form);
+            let result = ganbare::create_quiz(&conn, form);
+            if let Err(ref e) = result {
+                println!("Error! {:?}", e);
+            }
+            result.map_err(|_| abort(500).unwrap_err())?;
 
             redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&sess) )
 

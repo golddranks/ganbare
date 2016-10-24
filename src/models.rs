@@ -89,10 +89,11 @@ pub struct SkillNugget {
     pub skill_summary: String,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, AsChangeset)]
+#[changeset_options(treat_none_as_null = "true")]
 #[table_name="quiz_questions"]
 pub struct NewQuizQuestion<'a> {
-    pub skill_id: i32,
+    pub skill_id: Option<i32>,
     pub q_name: &'a str,
     pub q_explanation: &'a str,
 }
@@ -103,7 +104,7 @@ pub struct NewQuizQuestion<'a> {
 #[table_name="quiz_questions"]
 pub struct QuizQuestion {
     pub id: i32,
-    pub skill_id: i32,
+    pub skill_id: Option<i32>,
     pub q_name: String,
     pub q_explanation: String,
 }

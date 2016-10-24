@@ -322,14 +322,19 @@ pub struct Fieldset {
 
 
 pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
-    use schema::quiz_questions;
+    use schema::{quiz_questions, question_answers, question_audio};
 
-    let new_quiz = NewQuizQuestion { skill_id: 0, q_name: &data.0, q_explanation: &data.1 };
+    println!("Creating quiz!");
+
+    let new_quiz = NewQuizQuestion { skill_id: None, q_name: &data.0, q_explanation: &data.1 };
 
     let quiz : QuizQuestion = diesel::insert(&new_quiz)
         .into(quiz_questions::table)
-        .get_result(conn)
+        .get_result(&*conn)
         .chain_err(|| "Couldn't create a new question!")?;
+
+    println!("{:?}", &quiz);
+
     for fieldset in &data.3 {
         let a_audio = &fieldset.answer_audio;
 
@@ -341,6 +346,27 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
         }
 
         let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, answer_audio: path };
+
+        let answer : Answer = diesel::insert(&new_answer)
+            .into(question_answers::table)
+            .get_result(&*conn)
+            .chain_err(|| "Couldn't create a new answer!")?;
+
+        println!("{:?}", &answer);
+
+        for q_audio in &fieldset.q_variants {
+
+            let path = q_audio.0.to_str().expect("this is an ascii path");
+            let new_q_audio = NewQuestionAudio {answer_id: answer.id, audio_file: path};
+
+            let q_audio : QuestionAudio = diesel::insert(&new_q_audio)
+                .into(question_audio::table)
+                .get_result(&*conn)
+                .chain_err(|| "Couldn't create a new question_audio!")?;
+
+            println!("{:?}", &q_audio);
+        }
+        
     }
     Ok(quiz)
 }
