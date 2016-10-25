@@ -206,6 +206,7 @@ fn get_line(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
+
     let line_id = req.view_args.get("line_id").expect("Line ID should exist as an arg.");
     let (file_path, mime_type) = ganbare::get_line_file(&conn, line_id);
 
@@ -256,7 +257,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
             let mut q_variants = Vec::with_capacity(q_variations as usize);
             for v in 1...q_variations {
-                if let Some(mut file) = files.get(&format!("choice_{}_q_variant_{}", i, v)) {
+                if let Some(file) = files.get(&format!("choice_{}_q_variant_{}", i, v)) {
                     if file.size.expect("Size should've been parsed at this phase.") == 0 {
                         continue; // Don't save files with size 0;
                     }
@@ -266,7 +267,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
                 }
             }
             let answer_audio = files.get(&format!("choice_{}_answer_audio", i));
-            let mut answer_audio_path;
+            let answer_audio_path;
             if let Some(path) = answer_audio {
                 if path.size.expect("Size should've been parsed at this phase.") == 0 {
                     answer_audio_path = None;
@@ -318,12 +319,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
                 }
             }
 
-            println!("Form: {:?}", form);
-
             let result = ganbare::create_quiz(&conn, form);
-            if let Err(ref e) = result {
-                println!("Error! {:?}", e);
-            }
             result.map_err(|_| abort(500).unwrap_err())?;
 
             redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&sess) )

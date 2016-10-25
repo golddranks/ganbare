@@ -8,7 +8,7 @@ $(function () {
             play_button.off("click");
             play_button.prop("disabled", true);
             $("#quiz .avatar").fadeOut(400);
-            audioElement.setAttribute('src', result.lines);
         });
+        audioElement.setAttribute('src', result.lines);
     });
 });

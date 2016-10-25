@@ -128,6 +128,20 @@ pub struct Answer {
 }
 
 #[derive(Insertable)]
+#[table_name="narrators"]
+pub struct NewNarrator<'a> {
+    pub name: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="narrators"]
+#[has_many(question_audio, foreign_key = "narrator_id")]
+pub struct Narrator {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Insertable)]
 #[table_name="question_audio"]
 pub struct NewQuestionAudio<'a> {
     pub answer_id: i32,
@@ -135,23 +149,10 @@ pub struct NewQuestionAudio<'a> {
     pub audio_file: &'a str,
 }
 
-#[derive(Insertable)]
-#[table_name="narrators"]
-pub struct NewNarrator<'a> {
-    pub id: i32,
-    pub name: &'a str,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="narrators"]
-pub struct Narrator {
-    pub id: i32,
-    pub name: String,
-}
-
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="question_audio"]
 #[belongs_to(Answer, foreign_key = "answer_id")]
+#[belongs_to(Narrator, foreign_key = "narrator_id")]
 pub struct QuestionAudio {
     pub id: i32,
     pub answer_id: i32,
