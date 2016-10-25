@@ -17,8 +17,14 @@ CREATE TABLE question_answers (
 	answer_audio VARCHAR NOT NULL
 );
 
+CREATE TABLE narrators (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR NOT NULL
+);
+
 CREATE TABLE question_audio (
 	id SERIAL PRIMARY KEY,
 	answer_id SERIAL REFERENCES question_answers,
+	narrator_id SERIAL REFERENCES narrators,
 	audio_file VARCHAR NOT NULL
 );

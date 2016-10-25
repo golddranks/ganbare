@@ -89,8 +89,7 @@ pub struct SkillNugget {
     pub skill_summary: String,
 }
 
-#[derive(Insertable, AsChangeset)]
-#[changeset_options(treat_none_as_null = "true")]
+#[derive(Insertable)]
 #[table_name="quiz_questions"]
 pub struct NewQuizQuestion<'a> {
     pub skill_id: Option<i32>,
@@ -132,7 +131,22 @@ pub struct Answer {
 #[table_name="question_audio"]
 pub struct NewQuestionAudio<'a> {
     pub answer_id: i32,
+    pub narrator_id: i32,
     pub audio_file: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name="narrators"]
+pub struct NewNarrator<'a> {
+    pub id: i32,
+    pub name: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="narrators"]
+pub struct Narrator {
+    pub id: i32,
+    pub name: String,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
@@ -141,5 +155,6 @@ pub struct NewQuestionAudio<'a> {
 pub struct QuestionAudio {
     pub id: i32,
     pub answer_id: i32,
+    pub narrator_id: i32,
     pub audio_file: String,
 }

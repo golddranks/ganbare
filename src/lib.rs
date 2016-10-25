@@ -357,7 +357,7 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
         for q_audio in &fieldset.q_variants {
 
             let path = q_audio.0.to_str().expect("this is an ascii path");
-            let new_q_audio = NewQuestionAudio {answer_id: answer.id, audio_file: path};
+            let new_q_audio = NewQuestionAudio {answer_id: answer.id, narrator_id: 0, audio_file: path};
 
             let q_audio : QuestionAudio = diesel::insert(&new_q_audio)
                 .into(question_audio::table)
