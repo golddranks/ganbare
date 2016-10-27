@@ -39,9 +39,9 @@ pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
     None
 }
 
-fn get_user_refresh_sessid(conn : &ganbare::PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
+fn get_user(conn : &ganbare::PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
     if let Some(session_id) = req.cookies().and_then(get_cookie) {
-        ganbare::check_session(&conn, session_id, req.request.remote_addr.ip())
+        ganbare::check_session(&conn, session_id)
             .map(|user_sess| Some(user_sess))
             .or_else(|e| match e.kind() {
                 &ErrorKind::BadSessId => Ok(None),
@@ -54,14 +54,16 @@ fn get_user_refresh_sessid(conn : &ganbare::PgConnection, req : &Request) -> Res
 }
 
 trait ResponseExt {
-    fn refresh_cookie(mut self, &Session) -> Self;
+    fn refresh_cookie(mut self, &ganbare::PgConnection, &Session, IpAddr) -> Self;
     fn expire_cookie(mut self) -> Self;
 }
 
 impl ResponseExt for Response {
 
-fn refresh_cookie(mut self, sess : &Session) -> Self {
-    let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::sess_to_hex(sess));
+fn refresh_cookie(mut self, conn: &ganbare::PgConnection, old_sess : &Session, ip: IpAddr) -> Self {
+    let sess = ganbare::refresh_session(&conn, old_sess.sess_id.as_slice(), ip).expect("Session is already checked to be valid");
+
+    let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::sess_to_hex(&sess));
     cookie.path = Some("/".to_owned());
     cookie.domain = Some(SITE_DOMAIN.to_owned());
     cookie.expires = Some(time::now_utc() + time::Duration::weeks(2));
@@ -82,14 +84,14 @@ fn expire_cookie(mut self) -> Self {
 fn hello(request: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let user_session = get_user_refresh_sessid(&conn, &*request).map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user(&conn, &*request).map_err(|_| abort(500).unwrap_err())?;
 
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
 
     match user_session {
         Some((_, sess)) => request.app.render_template("main.html", &context)
-                            .map(|resp| resp.refresh_cookie(&sess)),
+                            .map(|resp| resp.refresh_cookie(&conn, &sess, request.remote_addr().ip())),
         None => request.app.render_template("hello.html", &context),
     }
 }
@@ -129,7 +131,7 @@ fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> PencilResult {
     let session = ganbare::start_session(&conn, &user, ip)
         .map_err(|_| abort(500).unwrap_err())?;
 
-    redirect("/", 303).map(|resp| resp.refresh_cookie(&session) )
+    redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &session, ip) )
 }
 
 
@@ -188,7 +190,7 @@ struct Quiz {
 fn new_quiz(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let (user, sess) = get_user_refresh_sessid(&conn, req)
+    let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
 
@@ -197,28 +199,34 @@ fn new_quiz(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?;
  
     jsonify(&Quiz { username: user.email,lines: line_path })
-        .map(|resp| resp.refresh_cookie(&sess))
+        .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 fn get_line(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let (_, sess) = get_user_refresh_sessid(&conn, req)
+    let (_, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
-
-    let line_id = req.view_args.get("line_id").expect("Line ID should exist as an arg.");
-    let (file_path, mime_type) = ganbare::get_line_file(&conn, line_id);
+    let line_id = req.view_args.get("line_id").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let line_id = line_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let (file_path, mime_type) = ganbare::get_line_file(&conn, line_id)
+        .map_err(|e| {
+            match e.kind() {
+                &ErrorKind::FileNotFound => abort(404).unwrap_err(),
+                _ => abort(500).unwrap_err(),
+            }
+        })?;
 
     send_file(&file_path, mime_type, false)
-        .map(|resp| resp.refresh_cookie(&sess))
+        .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 fn add_quiz_form(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let user_session = get_user_refresh_sessid(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
 
     match user_session {
         Some((_, sess)) => {
@@ -226,7 +234,7 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
             let mut context = BTreeMap::new();
             context.insert("title".to_string(), "akusento.ganba.re".to_string());
             req.app.render_template("add_quiz.html", &context)
-                            .map(|resp| resp.refresh_cookie(&sess))
+                            .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
             },
         None => abort(401),
     }
@@ -313,7 +321,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let user_session = get_user_refresh_sessid(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
 
 
     match user_session {
@@ -334,7 +342,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
             let result = ganbare::create_quiz(&conn, form);
             result.map_err(|_| abort(500).unwrap_err())?;
 
-            redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&sess) )
+            redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 
             },
         None => abort(401),
@@ -364,7 +372,7 @@ fn main() {
     app.post("/add_quiz", "add_quiz_post", add_quiz_post);
     app.post("/confirm", "confirm_final", confirm_final);
     app.get("/api/new_quiz", "new_quiz", new_quiz);
-    app.get("/api/get_line/<line_id:string>", "get_line", get_line);
+    app.get("/api/get_line/<line_id:int>", "get_line", get_line);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {
         Err(_) => {

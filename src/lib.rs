@@ -81,6 +81,10 @@ pub mod errors {
                 description("Can't parse the HTTP form!")
                 display("Can't parse the HTTP form!")
             }
+            FileNotFound {
+                description("Can't find that file!")
+                display("Can't find that file!")
+            }
         }
     }
 }
@@ -198,7 +202,25 @@ pub fn sess_to_bin(sessid : &str) -> Result<Vec<u8>> {
 }
 
 
-pub fn check_session(conn : &PgConnection, session_id : &str, ip : IpAddr) -> Result<(User, Session)> {
+pub fn check_session(conn : &PgConnection, session_id : &str) -> Result<(User, Session)> {
+    use schema::{users, sessions};
+    use diesel::ExpressionMethods;
+    use diesel::query_builder::AsChangeset;
+    use diesel::result::Error::NotFound;
+
+    let (session, user) : (Session, User) = sessions::table
+        .inner_join(users::table)
+        .filter(sessions::sess_id.eq(sess_to_bin(session_id)?))
+        .get_result(conn)
+        .map_err(|e| match e {
+                e @ NotFound => e.caused_err(|| ErrorKind::NoSuchSess),
+                e => e.caused_err(|| "Database error?!"),
+        })?;
+
+    Ok((user, session))
+} 
+
+pub fn refresh_session(conn : &PgConnection, session_id : &[u8], ip : IpAddr) -> Result<Session> {
     use schema::{users, sessions};
     use diesel::ExpressionMethods;
     use diesel::query_builder::AsChangeset;
@@ -219,7 +241,7 @@ pub fn check_session(conn : &PgConnection, session_id : &str, ip : IpAddr) -> Re
 
     let session : Session = diesel::update(
             sessions::table
-            .filter(sessions::sess_id.eq(sess_to_bin(session_id)?))
+            .filter(sessions::sess_id.eq(session_id))
         )
         .set(fresh_sess.as_changeset())
         .get_result(conn)
@@ -228,12 +250,7 @@ pub fn check_session(conn : &PgConnection, session_id : &str, ip : IpAddr) -> Re
                 e => e.caused_err(|| "Couldn't update the session."),
         })?;
 
-    let user = users::table
-        .filter(users::id.eq(session.user_id))
-        .first(conn)
-        .chain_err(|| "Couldn't get the user.")?;
-
-    Ok((user, session))
+    Ok(session)
 } 
 
 pub fn end_session(conn : &PgConnection, session_id : &str) -> Result<()> {
@@ -302,6 +319,7 @@ pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Resul
 
 pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, secret : &str) -> Result<User> {
     use schema::pending_email_confirms;
+
     let email = check_pending_email_confirm(&*conn, secret)?;
     let user = add_user(&*conn, &email, password)?;
 
@@ -404,10 +422,20 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
 }
 
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<String> {
-    Ok("juu".into())
+    Ok("2016-10-27T18-34-40Z5DBTgjwAc5.mp3".into())
 }
 
-pub fn get_line_file(conn : &PgConnection, line_id : &str) -> (String, mime::Mime) {
+pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {
+    use schema::audio_files::dsl::*;
+    use diesel::result::Error::NotFound;
 
-    ("cards/card00001/voice00001/card1-01.mp3".into(), mime!(Audio/Mpeg)) // TODO
+    let file : AudioFile = audio_files
+        .filter(id.eq(line_id))
+        .get_result(&*conn)
+        .map_err(|e| match e {
+                e @ NotFound => e.caused_err(|| ErrorKind::FileNotFound),
+                e => e.caused_err(|| "Couldn't get the file!"),
+        })?;
+
+    Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
 }
