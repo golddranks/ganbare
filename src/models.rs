@@ -109,25 +109,6 @@ pub struct QuizQuestion {
 }
 
 #[derive(Insertable)]
-#[table_name="question_answers"]
-pub struct NewAnswer<'a> {
-    pub question_id: i32,
-    pub answer_text: &'a str,
-    pub answer_audio: &'a str,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="question_answers"]
-#[belongs_to(QuizQuestion, foreign_key = "question_id")]
-#[has_many(question_audio, foreign_key = "answer_id")]
-pub struct Answer {
-    pub id: i32,
-    pub question_id: i32,
-    pub answer_text: String,
-    pub answer_audio: String,
-}
-
-#[derive(Insertable)]
 #[table_name="narrators"]
 pub struct NewNarrator<'a> {
     pub name: &'a str,
@@ -135,27 +116,57 @@ pub struct NewNarrator<'a> {
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="narrators"]
-#[has_many(question_audio, foreign_key = "narrator_id")]
+#[has_many(audio_files, foreign_key = "narrators_id")]
 pub struct Narrator {
     pub id: i32,
     pub name: String,
 }
 
 #[derive(Insertable)]
-#[table_name="question_audio"]
-pub struct NewQuestionAudio<'a> {
-    pub answer_id: i32,
-    pub narrator_id: i32,
-    pub audio_file: &'a str,
+#[table_name="audio_files"]
+pub struct NewAudioFile<'a> {
+    pub narrators_id: i32,
+    pub file_path: &'a str,
+    pub mime: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="audio_files"]
+#[belongs_to(Narrator, foreign_key = "narrators_id")]
+#[has_many(question_audio, foreign_key = "id")]
+#[has_many(question_answers, foreign_key = "audio_files_id")]
+pub struct AudioFile {
+    pub id: i32,
+    pub narrators_id: i32,
+    pub file_path: String,
+    pub mime: String,
+}
+
+#[derive(Insertable)]
+#[table_name="question_answers"]
+pub struct NewAnswer<'a> {
+    pub question_id: i32,
+    pub audio_files_id: i32,
+    pub answer_text: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="question_answers"]
+#[belongs_to(QuizQuestion, foreign_key = "question_id")]
+#[belongs_to(AudioFile, foreign_key = "answer_audio")]
+#[has_many(question_audio, foreign_key = "question_answers_id")]
+pub struct Answer {
+    pub id: i32,
+    pub question_id: i32,
+    pub audio_files_id: i32,
+    pub answer_text: String,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="question_audio"]
-#[belongs_to(Answer, foreign_key = "answer_id")]
-#[belongs_to(Narrator, foreign_key = "narrator_id")]
+#[belongs_to(Answer, foreign_key = "question_answers_id")]
+#[belongs_to(AudioFile, foreign_key = "id")]
 pub struct QuestionAudio {
     pub id: i32,
-    pub answer_id: i32,
-    pub narrator_id: i32,
-    pub audio_file: String,
+    pub question_answers_id: i32,
 }

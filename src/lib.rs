@@ -315,14 +315,14 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
 
 #[derive(Debug)]
 pub struct Fieldset {
-    pub q_variants: Vec<(PathBuf, mime::Mime)>,
-    pub answer_audio: Option<(PathBuf, mime::Mime)>,
+    pub q_variants: Vec<(PathBuf, Option<String>, mime::Mime)>,
+    pub answer_audio: Option<(PathBuf, Option<String>, mime::Mime)>,
     pub answer_text: String,
 }
 
 
 pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
-    use schema::{quiz_questions, question_answers, question_audio, narrators};
+    use schema::{quiz_questions, question_answers, question_audio, narrators, audio_files};
 
     println!("Creating quiz!");
 
@@ -335,7 +335,6 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
 
     println!("{:?}", &quiz);
 
-
     let new_narrator = NewNarrator { name: "anonymous" };
     
     let narrator : Narrator = diesel::insert(&new_narrator)
@@ -343,18 +342,32 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
         .get_result(&*conn)
         .chain_err(|| "Couldn't create a new narrator!")?;
 
+    println!("{:?}", &narrator);
 
     for fieldset in &data.3 {
         let a_audio = &fieldset.answer_audio;
 
         let path;
+        let mime;
         if let &Some(ref path_mime) = a_audio {
             path = path_mime.0.to_str().expect("this is an ascii path!");
+            mime = format!("{}", &path_mime.2);
         } else {
             path = "";
+            mime = "".to_string();
         }
 
-        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, answer_audio: path };
+        let new_a_audio = NewAudioFile {narrators_id: narrator.id, file_path: path, mime: &mime};
+
+        let a_audio : AudioFile = diesel::insert(&new_a_audio)
+            .into(audio_files::table)
+            .get_result(&*conn)
+            .chain_err(|| "Couldn't create a new audio file!")?;
+
+        println!("{:?}", &a_audio);
+
+
+        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, audio_files_id: a_audio.id };
 
         let answer : Answer = diesel::insert(&new_answer)
             .into(question_answers::table)
@@ -366,14 +379,24 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
         for q_audio in &fieldset.q_variants {
 
             let path = q_audio.0.to_str().expect("this is an ascii path");
-            let new_q_audio = NewQuestionAudio {answer_id: answer.id, narrator_id: narrator.id, audio_file: path};
+            let mime = format!("{}", q_audio.2);
+            let new_q_audio = NewAudioFile {narrators_id: narrator.id, file_path: path, mime: &mime};
 
-            let q_audio : QuestionAudio = diesel::insert(&new_q_audio)
+            let q_audio : AudioFile = diesel::insert(&new_q_audio)
+                .into(audio_files::table)
+                .get_result(&*conn)
+                .chain_err(|| "Couldn't create a new audio file!")?;
+
+            println!("{:?}", &q_audio);
+
+            let new_q_audio_link = QuestionAudio {id: q_audio.id, question_answers_id: answer.id };
+
+            let q_audio_link : QuestionAudio = diesel::insert(&new_q_audio_link)
                 .into(question_audio::table)
                 .get_result(&*conn)
                 .chain_err(|| "Couldn't create a new question_audio!")?;
 
-            println!("{:?}", &q_audio);
+            println!("{:?}", &q_audio_link);
         }
         
     }
@@ -385,5 +408,6 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<String> {
 }
 
 pub fn get_line_file(conn : &PgConnection, line_id : &str) -> (String, mime::Mime) {
+
     ("cards/card00001/voice00001/card1-01.mp3".into(), mime!(Audio/Mpeg)) // TODO
 }

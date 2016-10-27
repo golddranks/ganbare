@@ -10,21 +10,26 @@ CREATE TABLE quiz_questions (
 	q_explanation VARCHAR NOT NULL
 );
 
-CREATE TABLE question_answers (
-	id SERIAL PRIMARY KEY,
-	question_id SERIAL REFERENCES quiz_questions,
-	answer_text VARCHAR NOT NULL,
-	answer_audio VARCHAR NOT NULL
-);
-
 CREATE TABLE narrators (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR NOT NULL
 );
 
-CREATE TABLE question_audio (
+CREATE TABLE audio_files (
 	id SERIAL PRIMARY KEY,
-	answer_id SERIAL REFERENCES question_answers,
-	narrator_id SERIAL REFERENCES narrators,
-	audio_file VARCHAR NOT NULL
+	narrators_id SERIAL REFERENCES narrators,
+	file_path VARCHAR NOT NULL,
+	mime VARCHAR NOT NULL
+);
+
+CREATE TABLE question_answers (
+	id SERIAL PRIMARY KEY,
+	question_id SERIAL REFERENCES quiz_questions,
+	audio_files_id SERIAL REFERENCES audio_files,
+	answer_text VARCHAR NOT NULL
+);
+
+CREATE TABLE question_audio (
+	id SERIAL REFERENCES audio_files ON DELETE CASCADE PRIMARY KEY,
+	question_answers_id SERIAL REFERENCES question_answers
 );

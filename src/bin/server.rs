@@ -192,7 +192,8 @@ fn new_quiz(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
 
-    let line_path = "/api/get_line/".to_string() + &ganbare::get_new_quiz(&conn, &user)
+    let quiz_path = ganbare::get_new_quiz(&conn, &user);
+    let line_path = "/api/get_line/".to_string() + &quiz_path
         .map_err(|_| abort(500).unwrap_err())?;
  
     jsonify(&Quiz { username: user.email,lines: line_path })
@@ -263,7 +264,11 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
                     }
                     let mut file = file.clone();
                     file.do_not_delete_on_drop();
-                    q_variants.push((file.path.clone(), file.content_type().ok_or(ErrorKind::FormParseError.to_err())?));
+                    q_variants.push(
+                        (file.path.clone(),
+                        file.filename().map_err(|_| ErrorKind::FormParseError.to_err())?,
+                        file.content_type().ok_or(ErrorKind::FormParseError.to_err())?)
+                    );
                 }
             }
             let answer_audio = files.get(&format!("choice_{}_answer_audio", i));
@@ -275,7 +280,9 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
                     let mut cloned_path = path.clone();
                     cloned_path.do_not_delete_on_drop();
                     answer_audio_path = Some(
-                        (cloned_path.path.clone(), cloned_path.content_type().ok_or(ErrorKind::FormParseError.to_err())?)
+                        (cloned_path.path.clone(),
+                        cloned_path.filename().map_err(|_| ErrorKind::FormParseError.to_err())?,
+                        cloned_path.content_type().ok_or(ErrorKind::FormParseError.to_err())?)
                     )
                 }
             } else {
@@ -290,11 +297,14 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         Ok((question_name, question_explanation, skill_nugget, fieldsets))
     }
 
-    fn move_to_new_path(path: &mut std::path::PathBuf) -> Result<()> {
+    fn move_to_new_path(path: &mut std::path::PathBuf, orig_filename: Option<&str>) -> Result<()> {
         use rand::Rng;
         let mut new_path = std::path::PathBuf::from("audio/");
         let mut filename = "%FT%H-%M-%SZ".to_string();
         filename.extend(thread_rng().gen_ascii_chars().take(10));
+        println!("Extension: {:?}, {:?}", path, path.extension());
+        filename.push_str(".");
+        filename.push_str(std::path::Path::new(orig_filename.unwrap_or("")).extension().and_then(|s| s.to_str()).unwrap_or("noextension"));
         new_path.push(time::strftime(&filename, &time::now()).unwrap());
         std::fs::rename(&*path, &new_path)?;
         std::mem::swap(path, &mut new_path);
@@ -311,11 +321,13 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
             let mut form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(500).unwrap_err()})?;
             for f in &mut form.3 {
-                if let Some((ref mut temp_path, _)) = f.answer_audio {
-                    move_to_new_path(temp_path).map_err(|_| abort(500).unwrap_err())?;
+                if let Some((ref mut temp_path, ref mut filename, _)) = f.answer_audio {
+                    move_to_new_path(temp_path, filename.as_ref().map(|s| s.as_str()))
+                        .map_err(|_| abort(500).unwrap_err())?;
                 }
-                for &mut (ref mut temp_path, _) in &mut f.q_variants {
-                    move_to_new_path(temp_path).map_err(|_| abort(500).unwrap_err())?;
+                for &mut (ref mut temp_path, ref mut filename, _) in &mut f.q_variants {
+                    move_to_new_path(temp_path, filename.as_ref().map(|s| s.as_str()))
+                        .map_err(|_| abort(500).unwrap_err())?;
                 }
             }
 
