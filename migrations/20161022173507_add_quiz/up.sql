@@ -25,7 +25,7 @@ CREATE TABLE audio_files (
 CREATE TABLE question_answers (
 	id SERIAL PRIMARY KEY,
 	question_id SERIAL REFERENCES quiz_questions,
-	audio_files_id SERIAL REFERENCES audio_files,
+	audio_files_id INTEGER REFERENCES audio_files,
 	answer_text VARCHAR NOT NULL
 );
 

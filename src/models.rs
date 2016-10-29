@@ -146,7 +146,7 @@ pub struct AudioFile {
 #[table_name="question_answers"]
 pub struct NewAnswer<'a> {
     pub question_id: i32,
-    pub audio_files_id: i32,
+    pub audio_files_id: Option<i32>,
     pub answer_text: &'a str,
 }
 
@@ -158,7 +158,7 @@ pub struct NewAnswer<'a> {
 pub struct Answer {
     pub id: i32,
     pub question_id: i32,
-    pub audio_files_id: i32,
+    pub audio_files_id: Option<i32>,
     pub answer_text: String,
 }
 

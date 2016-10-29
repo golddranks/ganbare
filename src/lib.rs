@@ -205,7 +205,6 @@ pub fn sess_to_bin(sessid : &str) -> Result<Vec<u8>> {
 pub fn check_session(conn : &PgConnection, session_id : &str) -> Result<(User, Session)> {
     use schema::{users, sessions};
     use diesel::ExpressionMethods;
-    use diesel::query_builder::AsChangeset;
     use diesel::result::Error::NotFound;
 
     let (session, user) : (Session, User) = sessions::table
@@ -221,7 +220,7 @@ pub fn check_session(conn : &PgConnection, session_id : &str) -> Result<(User, S
 } 
 
 pub fn refresh_session(conn : &PgConnection, session_id : &[u8], ip : IpAddr) -> Result<Session> {
-    use schema::{users, sessions};
+    use schema::{sessions};
     use diesel::ExpressionMethods;
     use diesel::query_builder::AsChangeset;
     use diesel::result::Error::NotFound;
@@ -353,39 +352,47 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
 
     println!("{:?}", &quiz);
 
-    let new_narrator = NewNarrator { name: "anonymous" };
-    
-    let narrator : Narrator = diesel::insert(&new_narrator)
-        .into(narrators::table)
-        .get_result(&*conn)
-        .chain_err(|| "Couldn't create a new narrator!")?;
+    let mut narrator = None;
 
-    println!("{:?}", &narrator);
+    fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>) -> Result<i32> {
+        if let Some(ref narrator) = *opt_narrator {
+            Ok(narrator.id)
+        } else {
+
+            let new_narrator : Narrator = diesel::insert(&NewNarrator { name: "anonymous" })
+                .into(narrators::table)
+                .get_result(conn)
+                .chain_err(|| "Couldn't create a new narrator!")?;
+
+            println!("{:?}", &new_narrator);
+            let narr_id = new_narrator.id;
+            *opt_narrator = Some(new_narrator);
+            Ok(narr_id)
+        }
+    }
+
 
     for fieldset in &data.3 {
         let a_audio = &fieldset.answer_audio;
 
-        let path;
-        let mime;
-        if let &Some(ref path_mime) = a_audio {
-            path = path_mime.0.to_str().expect("this is an ascii path!");
-            mime = format!("{}", &path_mime.2);
-        } else {
-            path = "";
-            mime = "".to_string();
-        }
+        let a_audio_id = if let &Some(ref path_mime) = a_audio {
 
-        let new_a_audio = NewAudioFile {narrators_id: narrator.id, file_path: path, mime: &mime};
+            let path = path_mime.0.to_str().expect("this is an ascii path!");
+            let mime = format!("{}", &path_mime.2);
 
-        let a_audio : AudioFile = diesel::insert(&new_a_audio)
-            .into(audio_files::table)
-            .get_result(&*conn)
-            .chain_err(|| "Couldn't create a new audio file!")?;
+            let new_a_audio = NewAudioFile {narrators_id: default_narrator_id(&*conn, &mut narrator)?, file_path: path, mime: &mime};
+            
+            let a_audio : AudioFile = diesel::insert(&new_a_audio)
+                .into(audio_files::table)
+                .get_result(&*conn)
+                .chain_err(|| "Couldn't create a new audio file!")?;
+            Some(a_audio.id)
 
-        println!("{:?}", &a_audio);
+        } else { None };
 
+        println!("{:?}", &a_audio_id);
 
-        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, audio_files_id: a_audio.id };
+        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, audio_files_id: a_audio_id };
 
         let answer : Answer = diesel::insert(&new_answer)
             .into(question_answers::table)
@@ -398,7 +405,7 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
 
             let path = q_audio.0.to_str().expect("this is an ascii path");
             let mime = format!("{}", q_audio.2);
-            let new_q_audio = NewAudioFile {narrators_id: narrator.id, file_path: path, mime: &mime};
+            let new_q_audio = NewAudioFile {narrators_id: default_narrator_id(&*conn, &mut narrator)?, file_path: path, mime: &mime};
 
             let q_audio : AudioFile = diesel::insert(&new_q_audio)
                 .into(audio_files::table)
