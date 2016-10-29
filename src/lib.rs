@@ -428,8 +428,37 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
     Ok(quiz)
 }
 
-pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<String> {
-    Ok("2016-10-27T18-34-40Z5DBTgjwAc5.mp3".into())
+pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<(QuizQuestion, Vec<(Answer, Vec<QuestionAudio>)>)> {
+    use schema::{quiz_questions, question_answers};
+
+    // BUG this fails WHEN THERE IS NO QUIZES SAVED, check that case (it's because of .first())
+
+        println!("0");
+
+    let qq : QuizQuestion = quiz_questions::table
+        .first(&*conn)
+        .chain_err(|| "Can't load quiz!")?;
+
+        println!("1");
+
+    let aas : Vec<Answer> = question_answers::table
+        .filter(question_answers::question_id.eq(qq.id))
+        .load(&*conn)
+        .chain_err(|| "Can't load quiz!")?;
+
+        println!("2");
+
+    let qqs : Vec<Vec<QuestionAudio>> = QuestionAudio
+        ::belonging_to(&aas)
+        .load(&*conn)
+        .chain_err(|| "Can't load quiz!")?
+        .grouped_by(&aas);
+
+        println!("3");
+
+    let answers : Vec<(_, Vec<_>)>  = aas.into_iter().zip(qqs).collect();
+
+    Ok((qq, answers))
 }
 
 pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {

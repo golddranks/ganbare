@@ -188,15 +188,23 @@ struct Quiz {
 }
 
 fn new_quiz(req: &mut Request) -> PencilResult {
+    use rand::Rng;
+
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
 
-    let quiz_path = ganbare::get_new_quiz(&conn, &user);
-    let line_path = "/api/get_line/".to_string() + &quiz_path
-        .map_err(|_| abort(500).unwrap_err())?;
+    let (qq, aas) = ganbare::get_new_quiz(&conn, &user).map_err(|_| abort(500).unwrap_err())?;
+
+    let mut rng = rand::thread_rng();
+
+    let &(ref answer, ref q_audio) = rng.choose(&aas).expect("Shouldn't be empty! (There are at least two answers by default.)");
+
+    let chosen_audio = rng.choose(q_audio).expect("BUG / FIXME: This may actually be empty!!!");
+
+    let line_path = format!("/api/get_line/{}", chosen_audio.id);
  
     jsonify(&Quiz { username: user.email,lines: line_path })
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
