@@ -219,10 +219,9 @@ pub fn check_session(conn : &PgConnection, session_id : &str) -> Result<(User, S
     Ok((user, session))
 } 
 
-pub fn refresh_session(conn : &PgConnection, session_id : &[u8], ip : IpAddr) -> Result<Session> {
+pub fn refresh_session(conn : &PgConnection, old_session : &Session, ip : IpAddr) -> Result<Session> {
     use schema::{sessions};
     use diesel::ExpressionMethods;
-    use diesel::query_builder::AsChangeset;
     use diesel::result::Error::NotFound;
 
     let new_sessid = fresh_sessid()?;
@@ -232,22 +231,33 @@ pub fn refresh_session(conn : &PgConnection, session_id : &[u8], ip : IpAddr) ->
         IpAddr::V6(ip) => { ip.octets()[..].to_vec() },
     };
 
-    let fresh_sess = RefreshSession {
+    let fresh_sess = NewSession {
         sess_id: &new_sessid,
-        last_ip: ip_as_bytes,
+        user_id: old_session.user_id,
+        started: old_session.started,
         last_seen: chrono::UTC::now(),
+        last_ip: ip_as_bytes,
     };
 
-    let session : Session = diesel::update(
-            sessions::table
-            .filter(sessions::sess_id.eq(session_id))
-        )
-        .set(fresh_sess.as_changeset())
+    let session : Session = diesel::insert(&fresh_sess)
+        .into(sessions::table)
         .get_result(conn)
         .map_err(|e| match e {
                 e @ NotFound => e.caused_err(|| ErrorKind::NoSuchSess),
                 e => e.caused_err(|| "Couldn't update the session."),
         })?;
+
+    // This will delete the user's old sessions IDs, but only after the creation of a new one is underway.
+    // In continuous usage, the IDs older than 1 minute will be deleted. But if the user doesn't authenticate,
+    // for a while, the newest session IDs will remain until the user returns.
+    let num_deleted = diesel::delete(
+            sessions::table
+                .filter(sessions::user_id.eq(old_session.user_id))
+                .filter(sessions::last_seen.lt(chrono::UTC::now()-chrono::Duration::minutes(1)))
+        ).execute(&*conn)
+        .map_err(|_| "Can't delete old sessions!")?;
+
+    println!("Deleted {:?} sessions", num_deleted);
 
     Ok(session)
 } 
@@ -282,6 +292,8 @@ pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<
     let new_sess = NewSession {
         sess_id: &new_sessid,
         user_id: user.id,
+        started: chrono::UTC::now(),
+        last_seen: chrono::UTC::now(),
         last_ip: ip_as_bytes,
     };
 

@@ -61,7 +61,7 @@ trait ResponseExt {
 impl ResponseExt for Response {
 
 fn refresh_cookie(mut self, conn: &ganbare::PgConnection, old_sess : &Session, ip: IpAddr) -> Self {
-    let sess = ganbare::refresh_session(&conn, old_sess.sess_id.as_slice(), ip).expect("Session is already checked to be valid");
+    let sess = ganbare::refresh_session(&conn, &old_sess, ip).expect("Session should already checked to be valid");
 
     let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::sess_to_hex(&sess));
     cookie.path = Some("/".to_owned());
@@ -184,7 +184,8 @@ fn confirm_final(request: &mut Request) -> PencilResult {
 #[derive(RustcEncodable)]
 struct Quiz {
     username: String,
-    lines: String,
+    q_line: String,
+    a_line: String,
 }
 
 fn new_quiz(req: &mut Request) -> PencilResult {
@@ -200,13 +201,14 @@ fn new_quiz(req: &mut Request) -> PencilResult {
 
     let mut rng = rand::thread_rng();
 
-    let &(ref answer, ref q_audio) = rng.choose(&aas).expect("Shouldn't be empty! (There are at least two answers by default.)");
+    let &(ref chosen_a_audio, ref q_audio) = rng.choose(&aas).expect("Shouldn't be empty! (There are at least two answers by default.)");
 
-    let chosen_audio = rng.choose(q_audio).expect("BUG / FIXME: This may actually be empty!!!");
+    let chosen_q_audio = rng.choose(q_audio).expect("BUG / FIXME: This may actually be empty!!!");
 
-    let line_path = format!("/api/get_line/{}", chosen_audio.id);
+    let q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
+    let a_line_path = format!("/api/get_line/{}", chosen_a_audio.id);
  
-    jsonify(&Quiz { username: user.email,lines: line_path })
+    jsonify(&Quiz { username: user.email, q_line: q_line_path, a_line: a_line_path })
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
@@ -216,6 +218,8 @@ fn get_line(req: &mut Request) -> PencilResult {
     let (_, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    println!("Authorized: {:?}", &sess);
 
     let line_id = req.view_args.get("line_id").expect("Pencil guarantees that Line ID should exist as an arg.");
     let line_id = line_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");

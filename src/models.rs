@@ -1,6 +1,5 @@
 use super::schema::*;
 
-use diesel::ExpressionMethods;
 use chrono::{DateTime, UTC};
 
 #[derive(Insertable)]
@@ -35,17 +34,11 @@ pub struct Password {
 pub struct NewSession<'a> {
     pub sess_id: &'a [u8],
     pub user_id: i32,
-    pub last_ip: Vec<u8>,
-}
-
-
-#[derive(AsChangeset)]
-#[table_name="sessions"]
-pub struct RefreshSession<'a> {
-    pub sess_id: &'a [u8],
-    pub last_ip: Vec<u8>,
+    pub started: DateTime<UTC>,
     pub last_seen: DateTime<UTC>,
+    pub last_ip: Vec<u8>,
 }
+
 
 #[derive(Identifiable, Queryable, Debug, Associations)]
 #[belongs_to(User, foreign_key = "user_id")]
