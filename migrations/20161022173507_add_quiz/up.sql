@@ -7,7 +7,8 @@ CREATE TABLE quiz_questions (
 	id SERIAL PRIMARY KEY,
 	skill_id INTEGER REFERENCES skill_nuggets,
 	q_name VARCHAR NOT NULL,
-	q_explanation VARCHAR NOT NULL
+	q_explanation VARCHAR NOT NULL,
+	question_text VARCHAR NOT NULL
 );
 
 CREATE TABLE narrators (

@@ -88,6 +88,7 @@ pub struct NewQuizQuestion<'a> {
     pub skill_id: Option<i32>,
     pub q_name: &'a str,
     pub q_explanation: &'a str,
+    pub question_text: &'a str,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
@@ -99,6 +100,7 @@ pub struct QuizQuestion {
     pub skill_id: Option<i32>,
     pub q_name: String,
     pub q_explanation: String,
+    pub question_text: String,
 }
 
 #[derive(Insertable)]

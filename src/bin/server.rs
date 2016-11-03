@@ -184,8 +184,10 @@ fn confirm_final(request: &mut Request) -> PencilResult {
 #[derive(RustcEncodable)]
 struct Quiz {
     username: String,
-    q_line: String,
-    a_line: String,
+    explanation: String,
+    question: (String, String),
+    right_answer: (String, Option<String>),
+    wrong_answers: Vec<(String, Option<String>)>,
 }
 
 fn new_quiz(req: &mut Request) -> PencilResult {
@@ -197,18 +199,25 @@ fn new_quiz(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
 
-    let (qq, aas) = ganbare::get_new_quiz(&conn, &user).map_err(|_| abort(500).unwrap_err())?;
+    let (qq, mut aas) = ganbare::get_new_quiz(&conn, &user).map_err(|_| abort(500).unwrap_err())?;
 
     let mut rng = rand::thread_rng();
+    rng.shuffle(&mut aas);
+    let (right_a, q_audio) = aas.pop().expect("Shouldn't be empty! (There are at least two answers by default.)");
 
-    let &(ref chosen_a_audio, ref q_audio) = rng.choose(&aas).expect("Shouldn't be empty! (There are at least two answers by default.)");
-
-    let chosen_q_audio = rng.choose(q_audio).expect("BUG / FIXME: This may actually be empty!!!");
+    let chosen_q_audio = rng.choose(&q_audio).expect("BUG / FIXME: This may actually be empty!!!");
 
     let q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
-    let a_line_path = format!("/api/get_line/{}", chosen_a_audio.id);
+    let right_a_line_path = right_a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
+
+    let mut wrong_answers = Vec::with_capacity(aas.len());
+    for (a, _) in aas {
+        let wrong_a_line_path = a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
+        wrong_answers.push((a.answer_text, wrong_a_line_path));
+    }
+
  
-    jsonify(&Quiz { username: user.email, q_line: q_line_path, a_line: a_line_path })
+    jsonify(&Quiz { username: user.email, explanation: qq.q_explanation, question: (qq.question_text, q_line_path), right_answer: (right_a.answer_text, right_a_line_path), wrong_answers: wrong_answers })
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
@@ -254,7 +263,7 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
 
 fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
-    fn parse_form(req: &mut Request) -> Result<(String, String, String, Vec<ganbare::Fieldset>)> {
+    fn parse_form(req: &mut Request) -> Result<(String, String, String, String, Vec<ganbare::Fieldset>)> {
 
         macro_rules! parse {
             ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
@@ -268,6 +277,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
         let question_name = parse!(form.get("name"));
         let question_explanation = parse!(form.get("explanation"));
+        let question_text = parse!(form.get("question_text"));
         let skill_nugget = parse!(form.get("skill_nugget"));
 
         let mut fieldsets = Vec::with_capacity(lowest_fieldset as usize);
@@ -314,7 +324,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
             fieldsets.push(fields);
         }
 
-        Ok((question_name, question_explanation, skill_nugget, fieldsets))
+        Ok((question_name, question_explanation, question_text, skill_nugget, fieldsets))
     }
 
     fn move_to_new_path(path: &mut std::path::PathBuf, orig_filename: Option<&str>) -> Result<()> {
@@ -340,7 +350,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         Some((_, sess)) => {
 
             let mut form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(500).unwrap_err()})?;
-            for f in &mut form.3 {
+            for f in &mut form.4 {
                 if let Some((ref mut temp_path, ref mut filename, _)) = f.answer_audio {
                     move_to_new_path(temp_path, filename.as_ref().map(|s| s.as_str()))
                         .map_err(|_| abort(500).unwrap_err())?;

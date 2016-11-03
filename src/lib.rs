@@ -350,12 +350,12 @@ pub struct Fieldset {
 }
 
 
-pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
+pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
     use schema::{quiz_questions, question_answers, question_audio, narrators, audio_files};
 
     println!("Creating quiz!");
 
-    let new_quiz = NewQuizQuestion { skill_id: None, q_name: &data.0, q_explanation: &data.1 };
+    let new_quiz = NewQuizQuestion { skill_id: None, q_name: &data.0, q_explanation: &data.1, question_text: &data.2 };
 
     let quiz : QuizQuestion = diesel::insert(&new_quiz)
         .into(quiz_questions::table)
@@ -384,7 +384,7 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, Vec<Fiel
     }
 
 
-    for fieldset in &data.3 {
+    for fieldset in &data.4 {
         let a_audio = &fieldset.answer_audio;
 
         let a_audio_id = if let &Some(ref path_mime) = a_audio {
@@ -451,14 +451,10 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<(QuizQuestion,
         .first(&*conn)
         .chain_err(|| "Can't load quiz!")?;
 
-        println!("1");
-
     let aas : Vec<Answer> = question_answers::table
         .filter(question_answers::question_id.eq(qq.id))
         .load(&*conn)
         .chain_err(|| "Can't load quiz!")?;
-
-        println!("2");
 
     let qqs : Vec<Vec<QuestionAudio>> = QuestionAudio
         ::belonging_to(&aas)
@@ -466,9 +462,9 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<(QuizQuestion,
         .chain_err(|| "Can't load quiz!")?
         .grouped_by(&aas);
 
-        println!("3");
-
     let answers : Vec<(_, Vec<_>)>  = aas.into_iter().zip(qqs).collect();
+
+    println!("{:?}", answers);
 
     Ok((qq, answers))
 }
