@@ -24,6 +24,12 @@ use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify};
 use pencil::helpers::send_file;
 use ganbare::models::{User, Session};
 
+
+macro_rules! try_or {
+    ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
+}
+
+
 lazy_static! {
     static ref SITE_DOMAIN : String = { dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
     .unwrap_or_else(|_| "".into()) };
@@ -202,11 +208,8 @@ fn new_quiz(req: &mut Request) -> PencilResult {
     let new_quiz = ganbare::get_new_quiz(&conn, &user)
         .map_err(|_| abort(500).unwrap_err())?;
 
-    let (qq, mut aas) = match new_quiz {
-        Some(x) => x,
-        None => return jsonify(&()),
-    };
-    
+    let (qq, mut aas) = try_or!{new_quiz, else return jsonify(&())}; 
+
     let mut answers = Vec::with_capacity(aas.len());
 
     let (right_a_id, q_line_path); 

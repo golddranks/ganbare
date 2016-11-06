@@ -27,6 +27,12 @@ use std::path::PathBuf;
 
 pub use diesel::pg::PgConnection;
 
+
+macro_rules! try_or {
+    ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
+}
+
+
 pub mod schema;
 pub mod models;
 use models::*;
@@ -463,10 +469,7 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<(QuizQu
             e => Err(e.caused_err(|| "Can't load quiz!")),
         })?;
 
-    let qq = match qq {
-        Some(x) => x,
-        None => return Ok(None),
-    };
+    let qq = try_or!{ qq, else return Ok(None) };
 
     let aas : Vec<Answer> = question_answers::table
         .filter(question_answers::question_id.eq(qq.id))
