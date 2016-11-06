@@ -85,6 +85,10 @@ pub mod errors {
                 description("Can't find that file!")
                 display("Can't find that file!")
             }
+            DatabaseOdd {
+                description("There's something wrong with the contents of the DB vs. how it should be!")
+                display("There's something wrong with the contents of the DB vs. how it should be!")
+            }
         }
     }
 }
@@ -250,14 +254,12 @@ pub fn refresh_session(conn : &PgConnection, old_session : &Session, ip : IpAddr
     // This will delete the user's old sessions IDs, but only after the creation of a new one is underway.
     // In continuous usage, the IDs older than 1 minute will be deleted. But if the user doesn't authenticate,
     // for a while, the newest session IDs will remain until the user returns.
-    let num_deleted = diesel::delete(
+    diesel::delete(
             sessions::table
                 .filter(sessions::user_id.eq(old_session.user_id))
                 .filter(sessions::last_seen.lt(chrono::UTC::now()-chrono::Duration::minutes(1)))
         ).execute(&*conn)
         .map_err(|_| "Can't delete old sessions!")?;
-
-    println!("Deleted {:?} sessions", num_deleted);
 
     Ok(session)
 } 
@@ -355,6 +357,16 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
 
     println!("Creating quiz!");
 
+    let answers = data.4;
+    if answers.len() == 0 {
+        return Err(ErrorKind::FormParseError.into());
+    }
+    for a in &answers {
+        if a.q_variants.len() == 0 {
+            return Err(ErrorKind::FormParseError.into());
+        }
+    }
+
     let new_quiz = NewQuizQuestion { skill_id: None, q_name: &data.0, q_explanation: &data.1, question_text: &data.2 };
 
     let quiz : QuizQuestion = diesel::insert(&new_quiz)
@@ -383,8 +395,7 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
         }
     }
 
-
-    for fieldset in &data.4 {
+    for fieldset in &answers {
         let a_audio = &fieldset.answer_audio;
 
         let a_audio_id = if let &Some(ref path_mime) = a_audio {
@@ -440,16 +451,22 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
     Ok(quiz)
 }
 
-pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<(QuizQuestion, Vec<(Answer, Vec<QuestionAudio>)>)> {
+pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<(QuizQuestion, Vec<(Answer, Vec<QuestionAudio>)>)>> {
     use schema::{quiz_questions, question_answers};
+    use diesel::result::Error::NotFound;
 
-    // BUG this fails WHEN THERE IS NO QUIZES SAVED, check that case (it's because of .first())
-
-        println!("0");
-
-    let qq : QuizQuestion = quiz_questions::table
+    let qq : Option<QuizQuestion> = quiz_questions::table
         .first(&*conn)
-        .chain_err(|| "Can't load quiz!")?;
+        .map(|r| Some(r))
+        .or_else(|e| match e {
+            NotFound => Ok(None),
+            e => Err(e.caused_err(|| "Can't load quiz!")),
+        })?;
+
+    let qq = match qq {
+        Some(x) => x,
+        None => return Ok(None),
+    };
 
     let aas : Vec<Answer> = question_answers::table
         .filter(question_answers::question_id.eq(qq.id))
@@ -462,11 +479,15 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<(QuizQuestion,
         .chain_err(|| "Can't load quiz!")?
         .grouped_by(&aas);
 
+    for q in &qqs { // Sanity check
+        if q.len() == 0 {
+            return Err(ErrorKind::DatabaseOdd.into());
+        }
+    };
+
     let answers : Vec<(_, Vec<_>)>  = aas.into_iter().zip(qqs).collect();
 
-    println!("{:?}", answers);
-
-    Ok((qq, answers))
+    Ok(Some((qq, answers)))
 }
 
 pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {

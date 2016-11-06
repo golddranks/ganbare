@@ -54,8 +54,8 @@ fn get_user(conn : &ganbare::PgConnection, req : &Request) -> Result<Option<(Use
 }
 
 trait ResponseExt {
-    fn refresh_cookie(mut self, &ganbare::PgConnection, &Session, IpAddr) -> Self;
-    fn expire_cookie(mut self) -> Self;
+    fn refresh_cookie(self, &ganbare::PgConnection, &Session, IpAddr) -> Self;
+    fn expire_cookie(self) -> Self;
 }
 
 impl ResponseExt for Response {
@@ -186,8 +186,8 @@ struct Quiz {
     username: String,
     explanation: String,
     question: (String, String),
-    right_answer: (String, Option<String>),
-    wrong_answers: Vec<(String, Option<String>)>,
+    right_a: i32,
+    answers: Vec<(i32, String, Option<String>)>,
 }
 
 fn new_quiz(req: &mut Request) -> PencilResult {
@@ -199,26 +199,38 @@ fn new_quiz(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
 
-    let (qq, mut aas) = ganbare::get_new_quiz(&conn, &user).map_err(|_| abort(500).unwrap_err())?;
+    let new_quiz = ganbare::get_new_quiz(&conn, &user)
+        .map_err(|_| abort(500).unwrap_err())?;
 
+    let (qq, mut aas) = match new_quiz {
+        Some(x) => x,
+        None => return jsonify(&()),
+    };
+    
+    let mut answers = Vec::with_capacity(aas.len());
+
+    let (right_a_id, q_line_path); 
     let mut rng = rand::thread_rng();
-    rng.shuffle(&mut aas);
-    let (right_a, q_audio) = aas.pop().expect("Shouldn't be empty! (There are at least two answers by default.)");
-
-    let chosen_q_audio = rng.choose(&q_audio).expect("BUG / FIXME: This may actually be empty!!!");
-
-    let q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
-    let right_a_line_path = right_a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
-
-    let mut wrong_answers = Vec::with_capacity(aas.len());
+    {
+        let &(ref right_a, ref q_audio) = rng.choose(&mut aas).expect("Shouldn't be empty! (There are at least two answers by default.)");
+        right_a_id = right_a.id;
+        let chosen_q_audio = rng.choose(&q_audio).expect("Shouldn't be empty!");
+        q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
+    }
     for (a, _) in aas {
-        let wrong_a_line_path = a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
-        wrong_answers.push((a.answer_text, wrong_a_line_path));
+        let a_line_path = a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
+        answers.push((a.id, a.answer_text, a_line_path));
     }
 
+    rng.shuffle(&mut answers);
  
-    jsonify(&Quiz { username: user.email, explanation: qq.q_explanation, question: (qq.question_text, q_line_path), right_answer: (right_a.answer_text, right_a_line_path), wrong_answers: wrong_answers })
-        .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    jsonify(&Quiz {
+        username: user.email,
+        explanation: qq.q_explanation,
+        question: (qq.question_text, q_line_path),
+        right_a: right_a_id,
+        answers: answers,
+    }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 fn get_line(req: &mut Request) -> PencilResult {
@@ -227,8 +239,6 @@ fn get_line(req: &mut Request) -> PencilResult {
     let (_, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
-
-    println!("Authorized: {:?}", &sess);
 
     let line_id = req.view_args.get("line_id").expect("Pencil guarantees that Line ID should exist as an arg.");
     let line_id = line_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
@@ -332,7 +342,6 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         let mut new_path = std::path::PathBuf::from("audio/");
         let mut filename = "%FT%H-%M-%SZ".to_string();
         filename.extend(thread_rng().gen_ascii_chars().take(10));
-        println!("Extension: {:?}, {:?}", path, path.extension());
         filename.push_str(".");
         filename.push_str(std::path::Path::new(orig_filename.unwrap_or("")).extension().and_then(|s| s.to_str()).unwrap_or("noextension"));
         new_path.push(time::strftime(&filename, &time::now()).unwrap());
@@ -362,7 +371,10 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
             }
 
             let result = ganbare::create_quiz(&conn, form);
-            result.map_err(|_| abort(500).unwrap_err())?;
+            result.map_err(|e| match e.kind() {
+                &ErrorKind::FormParseError => abort(400).unwrap_err(),
+                _ => abort(500).unwrap_err(),
+            })?;
 
             redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 
