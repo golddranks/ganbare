@@ -262,7 +262,7 @@ textarea {
   margin-left: 0.3em;
   padding: 0 0.5em !important; }
 
-.fileSelected {
+.buttonHilight {
   background-color: #F8DDDD !important;
   border-color: #FF6666 !important; }
 
@@ -595,6 +595,20 @@ button,
     -webkit-transition: opacity 0.05s ease-out, -webkit-transform 0.05s ease-out;
     -ms-transition: opacity 0.05s ease-out, -ms-transform 0.05s ease-out;
     transition: opacity 0.05s ease-out, transform 0.05s ease-out; }
+
+/* AnswerMark */
+.answerMark {
+  position: absolute;
+  left: calc(50% - 111px);
+  top: calc(60% - 111px);
+  transition: all 200ms linear; }
+
+.answerMark.hidden {
+  opacity: 0;
+  transform: scale(3); }
+
+.answerList {
+  position: relative; }
 
 /* Main */
 #main {

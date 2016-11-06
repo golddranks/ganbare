@@ -1,0 +1,18 @@
+
+/* AnswerMark */
+
+.answerMark {
+	position: absolute;
+	left: calc(50% - 111px);
+	top: calc(60% - 111px);
+    transition: all 200ms linear;
+}
+
+.answerMark.hidden {
+	opacity: 0;
+	transform: scale(3);
+}
+
+.answerList {
+	position: relative;
+}

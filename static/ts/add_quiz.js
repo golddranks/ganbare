@@ -7,7 +7,7 @@ $(function () {
     var lowest_fieldset_number = 0;
     var variants = {};
     function change_upload_button_red() {
-        $(this).parent().addClass("fileSelected");
+        $(this).parent().addClass("buttonHilight");
     }
     function add_q_audio() {
         var plus_button = $(this);
