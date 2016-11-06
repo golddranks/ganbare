@@ -8,9 +8,21 @@ var main = $("#main");
 var answerList = $(".answerList");
 var questionText = $(".questionText");
 
-function spawnAnswerButton(text, path) {
+var correct = <HTMLAudioElement>document.getElementById('sfxCorrect');
+var wrong = <HTMLAudioElement>document.getElementById('sfxWrong');
+
+
+function spawnAnswerButton(text, path, isCorrect) {
 	var newAnswerButton = prototypeAnswer.clone();
-	newAnswerButton.children("button").text(text);
+	newAnswerButton.children("button")
+		.text(text)
+		.click(function(){
+			if (isCorrect) {
+				correct.play();
+			} else {
+				wrong.play();
+			}
+		});
 	answerList.append(newAnswerButton);
 };
 
@@ -30,13 +42,15 @@ $.getJSON("/api/new_quiz", function(result) {
 		explanation.text(result.explanation);
 
 		var qAudio = document.createElement('audio');
+		qAudio.setAttribute("preload", "auto");
 		var aAudio = [];
 
 		$(qAudio).bind('ended', function() {
 			answerList.hide();
 			questionText.text(result.question[0]);
 			result.answers.forEach(function(a, i) {
-				spawnAnswerButton(a[1], a[2]);
+				var isCorrect = (result.right_a === a[0])?true:false;
+				spawnAnswerButton(a[1], a[2], isCorrect);
 			});
 			answerList.slideDown();
 		});
@@ -52,6 +66,7 @@ $.getJSON("/api/new_quiz", function(result) {
 		qAudio.setAttribute('src', result.question[1]);
 		aAudio.forEach(function(a, i) {
 			var audio = document.createElement('audio');
+			audio.setAttribute("preload", "auto");
 			audio.setAttribute('src', result.answers[result.right_a][1]);
 			aAudio[a[0]] = audio;
 		});
