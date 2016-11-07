@@ -1,9 +1,5 @@
 # To Do list
 
-
-- Add visual effects for correct & wrong answers
-- Load a new question after answering the old
-- Design a HTTP API for reporting the result
 - Implement a timer for the answers
 - Design database schema for saving quiz results and timing data
 - Design functions that choose the next question
