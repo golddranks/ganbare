@@ -614,8 +614,8 @@ button,
 #main {
   position: relative;
   max-width: 100%;
-  min-width: 27em;
-  padding: 4.5em 3em 3em 3em ;
+  min-width: 28em;
+  padding: 4.5em 1em 3em 1em ;
   background: #ffffff;
   border-radius: 4px;
   cursor: default;
@@ -656,8 +656,8 @@ button,
       display: block;
       position: absolute;
       top: 50%;
-      left: -3em;
-      width: calc(100% + 6em);
+      left: -1em;
+      width: calc(100% + 2em);
       height: 1px;
       z-index: -1;
       background: #c8cccf; }

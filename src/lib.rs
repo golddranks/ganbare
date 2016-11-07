@@ -1,5 +1,6 @@
 #![recursion_limit = "1024"]
 #![feature(proc_macro)]
+#![feature(field_init_shorthand)]
 #![feature(custom_derive, custom_attribute, plugin)]
 #![plugin(diesel_codegen, dotenv_macros, binary_macros)]
 
@@ -457,12 +458,13 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
     Ok(quiz)
 }
 
-pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<(QuizQuestion, Vec<(Answer, Vec<QuestionAudio>)>)>> {
+fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<Vec<QuestionAudio>>)>> {
     use schema::{quiz_questions, question_answers};
     use diesel::result::Error::NotFound;
 
     let qq : Option<QuizQuestion> = quiz_questions::table
-        .first(&*conn)
+        .filter(quiz_questions::id.eq(id))
+        .get_result(&*conn)
         .map(|r| Some(r))
         .or_else(|e| match e {
             NotFound => Ok(None),
@@ -487,10 +489,56 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<(QuizQu
             return Err(ErrorKind::DatabaseOdd.into());
         }
     };
+    
+    Ok(Some((qq, aas, qqs)))
+}
 
-    let answers : Vec<(_, Vec<_>)>  = aas.into_iter().zip(qqs).collect();
+pub struct Quiz {
+    pub question: QuizQuestion,
+    pub question_audio: Vec<QuestionAudio>,
+    pub right_answer_id: i32,
+    pub answers: Vec<Answer>,
+}
 
-    Ok(Some((qq, answers)))
+pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
+    use rand::Rng;
+
+    let (question, answers, mut qqs) = try_or!{ load_quiz(conn, 1)?, else return Ok(None) };
+
+    let mut rng = rand::thread_rng();
+    let index = rng.gen_range(0, answers.len());
+    let right_answer_id = answers[index].id;
+    let question_audio = qqs.remove(index);
+
+    Ok(Some(Quiz{question, question_audio, right_answer_id, answers}))
+}
+
+pub fn get_next_quiz(conn : &PgConnection, user : &User, answer: (i32, i32, i32))
+-> Result<Option<Quiz>>
+{
+    use rand::Rng;
+
+    let question_id = answer.0;
+    let right_answer_id = answer.1;
+    let answer_id = answer.2;
+    let answer_correct = right_answer_id == answer_id;
+
+    if answer_correct {
+        let (question, answers, mut qqs) = try_or!{ load_quiz(conn, 1)?, else return Ok(None) };
+
+        let mut rng = rand::thread_rng();
+        let index = rng.gen_range(0, answers.len());
+        let new_right_answer_id = answers[index].id;
+        let question_audio = qqs.remove(index);
+    
+        Ok(Some(Quiz{question, question_audio, new_right_answer_id, answers}))
+    } else {
+        let (question, answers, qqs ) = try_or!{ load_quiz(conn, question_id)?, else return Ok(None) };
+        let question_audio : Vec<QuestionAudio> = qqs.into_iter()
+            .find(|qa| qa[0].question_answers_id == right_answer_id )
+            .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
+        Ok(Some(Quiz{question, question_audio, right_answer_id, answers}))
+    }
 }
 
 pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {

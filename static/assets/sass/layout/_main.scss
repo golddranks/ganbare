@@ -13,8 +13,8 @@
 	#main {
 		position: relative;
 		max-width: 100%;
-		min-width: 27em;
-		@include padding(4.5em, 3em);
+		min-width: 28em;
+		@include padding(4.5em, 1em);
 
 		background: _palette(bg);
 		border-radius: _size(border-radius);
@@ -59,8 +59,8 @@
 				display: block;
 				position: absolute;
 				top: 50%;
-				left: -3em;
-				width: calc(100% + 6em);
+				left: -1em;
+				width: calc(100% + 2em);
 				height: _size(border-width);
 				z-index: -1;
 				background: _palette(border);

@@ -30,13 +30,16 @@
 							</form>
 						</section>
 						<section id="quiz">
-						<audio preload="auto" src="/static/assets/sfx/correct.mp3" id="sfxCorrect"></audio>
-						<audio preload="auto" src="/static/assets/sfx/wrong.mp3" id="sfxWrong"></audio>
+						<audio src="/static/assets/sfx/correct.mp3" id="sfxCorrect" style="display: none;"></audio>
+						<audio src="" id="questionAudio" style="display: none;"></audio>
+						<audio src="/static/assets/sfx/wrong.mp3" id="sfxWrong" style="display:none;"></audio>
 						<p class="explanation"></p>
 						<span class="avatar"><button class="imgbutton"><img src="static/images/play-button.png" alt="" /></button></span>
 						<div class="answerList">
-							<p class="questionText"><p/>
-							<p class="answer"><button></button></p>
+							<img src="/static/images/maru_red.png" id="maru" class="answerMark hidden" style="display:none;">
+							<img src="/static/images/batsu.png" id="batsu" class="answerMark hidden" style="display:none;">
+							<p class="questionText"></p>
+							<p class="answer" style="display: none;"><button></button></p>
 						</div>
 						</section>
 					</section>

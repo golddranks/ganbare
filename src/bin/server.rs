@@ -188,7 +188,8 @@ fn confirm_final(request: &mut Request) -> PencilResult {
 }
 
 #[derive(RustcEncodable)]
-struct Quiz {
+struct QuizJson {
+    question_id: i32,
     username: String,
     explanation: String,
     question: (String, String),
@@ -208,31 +209,29 @@ fn new_quiz(req: &mut Request) -> PencilResult {
     let new_quiz = ganbare::get_new_quiz(&conn, &user)
         .map_err(|_| abort(500).unwrap_err())?;
 
-    let (qq, mut aas) = try_or!{new_quiz, else return jsonify(&())}; 
+    let ganbare::Quiz{ question, question_audio, right_answer_id, answers } = try_or!{new_quiz, else return jsonify(&())}; 
 
-    let mut answers = Vec::with_capacity(aas.len());
+    let mut answers_json = Vec::with_capacity(answers.len());
 
-    let (right_a_id, q_line_path); 
     let mut rng = rand::thread_rng();
-    {
-        let &(ref right_a, ref q_audio) = rng.choose(&mut aas).expect("Shouldn't be empty! (There are at least two answers by default.)");
-        right_a_id = right_a.id;
-        let chosen_q_audio = rng.choose(&q_audio).expect("Shouldn't be empty!");
-        q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
-    }
-    for (a, _) in aas {
+    let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
+    let q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
+    
+
+    for a in answers {
         let a_line_path = a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
-        answers.push((a.id, a.answer_text, a_line_path));
+        answers_json.push((a.id, a.answer_text, a_line_path));
     }
 
-    rng.shuffle(&mut answers);
+    rng.shuffle(&mut answers_json);
  
-    jsonify(&Quiz {
+    jsonify(&QuizJson {
+        question_id: question.id,
         username: user.email,
-        explanation: qq.q_explanation,
-        question: (qq.question_text, q_line_path),
-        right_a: right_a_id,
-        answers: answers,
+        explanation: question.q_explanation,
+        question: (question.question_text, q_line_path),
+        right_a: right_answer_id,
+        answers: answers_json,
     }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
@@ -274,13 +273,14 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
     }
 }
 
+macro_rules! parse {
+    ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
+}
+
 fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
     fn parse_form(req: &mut Request) -> Result<(String, String, String, String, Vec<ganbare::Fieldset>)> {
 
-        macro_rules! parse {
-            ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
-        }
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
         let files = req.files().expect("Form data should be loaded!");;
@@ -361,7 +361,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
     match user_session {
         Some((_, sess)) => {
 
-            let mut form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(500).unwrap_err()})?;
+            let mut form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(400).unwrap_err()})?;
             for f in &mut form.4 {
                 if let Some((ref mut temp_path, ref mut filename, _)) = f.answer_audio {
                     move_to_new_path(temp_path, filename.as_ref().map(|s| s.as_str()))
@@ -384,6 +384,56 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
             },
         None => abort(401),
     }
+}
+
+fn next_quiz(req: &mut Request) -> PencilResult {
+    use rand::Rng;
+
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
+
+    fn parse_answer(req : &mut Request) -> Result<(i32, i32, i32)> {
+        req.load_form_data();
+        let form = req.form().expect("Form data should be loaded!");
+        let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
+        let right_a_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
+        let answer_id = str::parse::<i32>(&parse!(form.get("answer_id")))?;
+        Ok((question_id, right_a_id, answer_id))
+    };
+
+    let answer = parse_answer(req)
+        .map_err(|_| abort(400).unwrap_err())?;
+
+
+    let new_quiz = ganbare::get_next_quiz(&conn, &user, answer)
+        .map_err(|_| abort(500).unwrap_err())?;
+
+    let ganbare::Quiz{ question: qq, question_audio, right_answer_id, answers } = try_or!{new_quiz, else return jsonify(&())}; 
+
+    let mut json_answers = Vec::with_capacity(answers.len());
+
+    let mut rng = rand::thread_rng();
+    let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
+    let q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
+    
+    for a in answers {
+        let a_line_path = a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
+        json_answers.push((a.id, a.answer_text, a_line_path));
+    }
+
+    rng.shuffle(&mut json_answers);
+ 
+    jsonify(&QuizJson {
+        question_id: qq.id,
+        username: user.email,
+        explanation: qq.q_explanation,
+        question: (qq.question_text, q_line_path),
+        right_a: right_answer_id,
+        answers: json_answers,
+    }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 
@@ -409,6 +459,7 @@ fn main() {
     app.post("/add_quiz", "add_quiz_post", add_quiz_post);
     app.post("/confirm", "confirm_final", confirm_final);
     app.get("/api/new_quiz", "new_quiz", new_quiz);
+    app.post("/api/next_quiz", "next_quiz", next_quiz);
     app.get("/api/get_line/<line_id:int>", "get_line", get_line);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {
