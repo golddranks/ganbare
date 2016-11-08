@@ -165,3 +165,27 @@ pub struct QuestionAudio {
     pub id: i32,
     pub question_answers_id: i32,
 }
+
+#[derive(Insertable)]
+#[table_name="answer_data"]
+pub struct NewAnswerData {
+    pub user_id: i32,
+    pub correct_qa_id: i32,
+    pub answered_qa_id: i32,
+    pub answer_time_ms: i32,
+    pub correct: bool,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="answer_data"]
+#[belongs_to(User, foreign_key = "user_id")]
+pub struct AnswerData {
+    pub id: i32,
+    pub user_id: i32,
+    pub correct_qa_id: i32,
+    pub answered_qa_id: i32,
+    pub answered_date: DateTime<UTC>,
+    pub answer_time_ms: i32,
+    pub correct: bool,
+}
+

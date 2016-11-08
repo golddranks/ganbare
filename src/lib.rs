@@ -505,7 +505,7 @@ pub struct Answered {
     pub question_id: i32,
     pub right_answer_id: i32,
     pub answered_id: i32,
-    pub time: f32,
+    pub time: i32,
 }
 
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
@@ -522,7 +522,19 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
 }
 
 fn log_answer(conn : &PgConnection, user : &User, answer: &Answered) -> Result<()> {
-    println!("Time: {:?}", answer.time);
+    use schema::answer_data;
+
+    let answerdata = NewAnswerData {
+        user_id: user.id,
+        correct_qa_id: answer.right_answer_id,
+        answered_qa_id: answer.answered_id,
+        answer_time_ms: answer.time,
+        correct: answer.right_answer_id == answer.answered_id
+    };
+    diesel::insert(&answerdata)
+        .into(answer_data::table)
+        .execute(conn)
+        .chain_err(|| "Couldn't save the answer data to database!")?;
     Ok(())
 }
 

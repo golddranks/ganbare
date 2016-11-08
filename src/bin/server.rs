@@ -402,7 +402,7 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
         let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
         let answered_id = str::parse::<i32>(&parse!(form.get("answer_id")))?;
-        let time = str::parse::<f32>(&parse!(form.get("time")))?;
+        let time = str::parse::<i32>(&parse!(form.get("time")))?;
         Ok(ganbare::Answered{question_id, right_answer_id, answered_id, time})
     };
 
