@@ -43,6 +43,7 @@ pub mod errors {
     error_chain! {
         foreign_links {
             ::std::num::ParseIntError, ParseIntError;
+            ::std::num::ParseFloatError, ParseFloatError;
             ::std::io::Error, StdIoError;
             ::diesel::result::Error, DieselError;
             ::pencil::PencilError, PencilError;
@@ -500,6 +501,13 @@ pub struct Quiz {
     pub answers: Vec<Answer>,
 }
 
+pub struct Answered {
+    pub question_id: i32,
+    pub right_answer_id: i32,
+    pub answered_id: i32,
+    pub time: f32,
+}
+
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
     use rand::Rng;
 
@@ -513,30 +521,36 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
     Ok(Some(Quiz{question, question_audio, right_answer_id, answers}))
 }
 
-pub fn get_next_quiz(conn : &PgConnection, user : &User, answer: (i32, i32, i32))
+fn log_answer(conn : &PgConnection, user : &User, answer: &Answered) -> Result<()> {
+    println!("Time: {:?}", answer.time);
+    Ok(())
+}
+
+pub fn get_next_quiz(conn : &PgConnection, user : &User, answer: Answered)
 -> Result<Option<Quiz>>
 {
     use rand::Rng;
 
-    let question_id = answer.0;
-    let right_answer_id = answer.1;
-    let answer_id = answer.2;
-    let answer_correct = right_answer_id == answer_id;
+    let prev_answer_correct = answer.right_answer_id == answer.answered_id;
 
-    if answer_correct {
+    log_answer(&*conn, user, &answer)?;
+
+    if prev_answer_correct {
         let (question, answers, mut qqs) = try_or!{ load_quiz(conn, 1)?, else return Ok(None) };
 
         let mut rng = rand::thread_rng();
-        let index = rng.gen_range(0, answers.len());
-        let new_right_answer_id = answers[index].id;
-        let question_audio = qqs.remove(index);
+        let random_answer_index = rng.gen_range(0, answers.len());
+        let right_answer_id = answers[random_answer_index].id;
+        let question_audio = qqs.remove(random_answer_index);
     
-        Ok(Some(Quiz{question, question_audio, new_right_answer_id, answers}))
+        Ok(Some(Quiz{question, question_audio, right_answer_id, answers}))
     } else {
-        let (question, answers, qqs ) = try_or!{ load_quiz(conn, question_id)?, else return Ok(None) };
+        let (question, answers, qqs ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
+        let right_answer_id = answer.right_answer_id;
         let question_audio : Vec<QuestionAudio> = qqs.into_iter()
             .find(|qa| qa[0].question_answers_id == right_answer_id )
             .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
+
         Ok(Some(Quiz{question, question_audio, right_answer_id, answers}))
     }
 }

@@ -18,7 +18,9 @@ $(function () {
     var wrong = document.getElementById('sfxWrong');
     var currentQuestion = null;
     var aAudio = [];
+    var timeAudioEnded = null;
     $(qAudio).bind('ended', function () {
+        timeAudioEnded = Date.now();
         questionText.text(currentQuestion.question[0]);
         answerList.slideDown();
     });
@@ -49,6 +51,7 @@ $(function () {
             .click(function () {
             $(this).addClass("buttonHilight");
             var mark = null;
+            var time = Date.now() - timeAudioEnded;
             if (isCorrect) {
                 mark = maru;
                 explanation.text("Oikein! Seuraava kysymys.");
@@ -60,7 +63,12 @@ $(function () {
                 wrong.play();
             }
             semaphore = 2;
-            $.post("/api/next_quiz", { answer_id: ansId, right_a_id: currentQuestion.right_a, question_id: currentQuestion.question_id }, function (result) {
+            $.post("/api/next_quiz", {
+                answer_id: ansId,
+                right_a_id: currentQuestion.right_a,
+                question_id: currentQuestion.question_id,
+                time: time
+            }, function (result) {
                 currentQuestion = result;
                 nextQuestion();
             });

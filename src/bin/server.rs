@@ -1,4 +1,5 @@
 #![feature(inclusive_range_syntax)]
+#![feature(field_init_shorthand)]
 
 extern crate ganbare;
 extern crate pencil;
@@ -395,13 +396,14 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
 
-    fn parse_answer(req : &mut Request) -> Result<(i32, i32, i32)> {
+    fn parse_answer(req : &mut Request) -> Result<ganbare::Answered> {
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
         let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
-        let right_a_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
-        let answer_id = str::parse::<i32>(&parse!(form.get("answer_id")))?;
-        Ok((question_id, right_a_id, answer_id))
+        let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
+        let answered_id = str::parse::<i32>(&parse!(form.get("answer_id")))?;
+        let time = str::parse::<f32>(&parse!(form.get("time")))?;
+        Ok(ganbare::Answered{question_id, right_answer_id, answered_id, time})
     };
 
     let answer = parse_answer(req)
