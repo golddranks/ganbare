@@ -170,7 +170,7 @@ pub struct QuestionAudio {
 #[table_name="answer_data"]
 pub struct NewAnswerData {
     pub user_id: i32,
-    pub correct_qa_id: i32,
+    pub q_audio_id: i32,
     pub answered_qa_id: i32,
     pub answer_time_ms: i32,
     pub correct: bool,
@@ -182,7 +182,7 @@ pub struct NewAnswerData {
 pub struct AnswerData {
     pub id: i32,
     pub user_id: i32,
-    pub correct_qa_id: i32,
+    pub q_audio_id: i32,
     pub answered_qa_id: i32,
     pub answered_date: DateTime<UTC>,
     pub answer_time_ms: i32,

@@ -193,9 +193,9 @@ struct QuizJson {
     question_id: i32,
     username: String,
     explanation: String,
-    question: (String, String),
+    question: (String, i32),
     right_a: i32,
-    answers: Vec<(i32, String, Option<String>)>,
+    answers: Vec<(i32, String, Option<i32>)>,
 }
 
 fn new_quiz(req: &mut Request) -> PencilResult {
@@ -216,12 +216,10 @@ fn new_quiz(req: &mut Request) -> PencilResult {
 
     let mut rng = rand::thread_rng();
     let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
-    let q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
     
 
     for a in answers {
-        let a_line_path = a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
-        answers_json.push((a.id, a.answer_text, a_line_path));
+        answers_json.push((a.id, a.answer_text, a.audio_files_id));
     }
 
     rng.shuffle(&mut answers_json);
@@ -230,7 +228,7 @@ fn new_quiz(req: &mut Request) -> PencilResult {
         question_id: question.id,
         username: user.email,
         explanation: question.q_explanation,
-        question: (question.question_text, q_line_path),
+        question: (question.question_text, chosen_q_audio.id),
         right_a: right_answer_id,
         answers: answers_json,
     }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
@@ -387,6 +385,11 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
     }
 }
 
+fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
+    println!("{:?}", err);
+    abort(500).unwrap_err()
+}
+
 fn next_quiz(req: &mut Request) -> PencilResult {
     use rand::Rng;
 
@@ -402,16 +405,16 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
         let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
         let answered_id = str::parse::<i32>(&parse!(form.get("answer_id")))?;
+        let q_audio_id = str::parse::<i32>(&parse!(form.get("q_audio_id")))?;
         let time = str::parse::<i32>(&parse!(form.get("time")))?;
-        Ok(ganbare::Answered{question_id, right_answer_id, answered_id, time})
+        Ok(ganbare::Answered{question_id, right_answer_id, answered_id, q_audio_id, time})
     };
 
     let answer = parse_answer(req)
         .map_err(|_| abort(400).unwrap_err())?;
 
-
     let new_quiz = ganbare::get_next_quiz(&conn, &user, answer)
-        .map_err(|_| abort(500).unwrap_err())?;
+        .map_err(|e| internal_error(e))?;
 
     let ganbare::Quiz{ question: qq, question_audio, right_answer_id, answers } = try_or!{new_quiz, else return jsonify(&())}; 
 
@@ -419,11 +422,9 @@ fn next_quiz(req: &mut Request) -> PencilResult {
 
     let mut rng = rand::thread_rng();
     let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
-    let q_line_path = format!("/api/get_line/{}", chosen_q_audio.id);
-    
+
     for a in answers {
-        let a_line_path = a.audio_files_id.map(|id| format!("/api/get_line/{}", id));
-        json_answers.push((a.id, a.answer_text, a_line_path));
+        json_answers.push((a.id, a.answer_text, a.audio_files_id));
     }
 
     rng.shuffle(&mut json_answers);
@@ -432,12 +433,11 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         question_id: qq.id,
         username: user.email,
         explanation: qq.q_explanation,
-        question: (qq.question_text, q_line_path),
+        question: (qq.question_text, chosen_q_audio.id),
         right_a: right_answer_id,
         answers: json_answers,
     }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
-
 
 fn main() {
     dotenv().ok();

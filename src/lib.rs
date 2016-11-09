@@ -505,6 +505,7 @@ pub struct Answered {
     pub question_id: i32,
     pub right_answer_id: i32,
     pub answered_id: i32,
+    pub q_audio_id: i32,
     pub time: i32,
 }
 
@@ -526,7 +527,7 @@ fn log_answer(conn : &PgConnection, user : &User, answer: &Answered) -> Result<(
 
     let answerdata = NewAnswerData {
         user_id: user.id,
-        correct_qa_id: answer.right_answer_id,
+        q_audio_id: answer.q_audio_id,
         answered_qa_id: answer.answered_id,
         answer_time_ms: answer.time,
         correct: answer.right_answer_id == answer.answered_id

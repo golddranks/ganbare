@@ -44,7 +44,7 @@ $(function () {
         askQuestion(currentQuestion);
     }
     ;
-    function spawnAnswerButton(ansId, text, path, isCorrect) {
+    function spawnAnswerButton(ansId, text, ansAudioId, isCorrect) {
         var newAnswerButton = prototypeAnswer.clone();
         newAnswerButton.children("button")
             .text(text)
@@ -67,6 +67,7 @@ $(function () {
                 answer_id: ansId,
                 right_a_id: currentQuestion.right_a,
                 question_id: currentQuestion.question_id,
+                q_audio_id: currentQuestion.question[1],
                 time: time
             }, function (result) {
                 currentQuestion = result;
@@ -78,10 +79,10 @@ $(function () {
             setTimeout(function () { answerList.slideUp(400); }, 2200);
             setTimeout(function () { explanation.text("Loading..."); nextQuestion(); }, 4000);
         });
-        if (path !== null) {
+        if (ansAudioId !== null) {
             var audio = document.createElement('audio');
             audio.setAttribute("preload", "auto");
-            audio.setAttribute('src', path);
+            audio.setAttribute('src', "/api/get_line/" + ansAudioId);
             aAudio[ansId] = audio;
         }
         answerList.append(newAnswerButton);
@@ -107,7 +108,7 @@ $(function () {
             var isCorrect = (question.right_a === a[0]) ? true : false;
             spawnAnswerButton(a[0], a[1], a[2], isCorrect);
         });
-        qAudio.setAttribute('src', question.question[1]);
+        qAudio.setAttribute('src', "/api/get_line/" + question.question[1]);
     }
     $.getJSON("/api/new_quiz", function (result) {
         if (result === null) {
