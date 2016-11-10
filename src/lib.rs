@@ -519,7 +519,7 @@ fn log_answer(conn : &PgConnection, user : &User, answer: &Answered, new: bool) 
         .execute(conn)
         .chain_err(|| "Couldn't save the answer data to database!")?;
 
-    let next_due_date = chrono::UTC::now() + chrono::Duration::days(answer.due_delay as i64);
+    let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(answer.due_delay as i64);
 
     // Update the data for this question (due date, statistics etc.)
     if new {
@@ -551,7 +551,6 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
     use schema::{quiz_questions, question_data};
     let dues = question_data::table
         .select(question_data::question_id)
-        .order(question_data::due_date.desc())
         .filter(question_data::user_id.eq(user_id));
 
     let due_questions : Vec<(QuizQuestion, QuestionData)>;
@@ -560,6 +559,7 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
         due_questions = quiz_questions::table
             .inner_join(question_data::table)
             .filter(quiz_questions::id.eq(any(dues)))
+            .order(question_data::due_date.desc())
             .limit(5)
             .get_results(conn)
             .chain_err(|| "Can't get due question!")?;
@@ -639,8 +639,10 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: Answered)
     let prev_answer_correct = answer.right_answer_id == answer.answered_id;
     let prev_answer_new = answer.due_delay == -1;
     if prev_answer_new || !prev_answer_correct {
-        answer.due_delay = 1;
-    };
+        answer.due_delay = 30;
+    } else if prev_answer_correct {
+        answer.due_delay *= 2;
+    }
 
     log_answer(&*conn, user, &answer, prev_answer_new)?;
 

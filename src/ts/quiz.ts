@@ -117,11 +117,24 @@ function askQuestion(question) {
 		avatar.fadeOut(100);
 		return;
 	} else if (new Date(question.due_date) > new Date()) {
-		var dur_minutes = (new Date(question.due_date).getTime() - Date.now())/1000/60;
-		var dur_hours = Math.floor(dur_minutes/60);
-		var dur_minutes_remainder = Math.floor(dur_minutes%60);
-		explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
-			+ dur_hours +" tunnin ja "+dur_minutes_remainder+" minuutin päästä");
+		var dur_seconds = (new Date(question.due_date).getTime() - Date.now())/1000;
+		var dur_hours = Math.floor(dur_seconds/3600);
+		var dur_minutes_remainder = Math.floor((dur_seconds % 3600) / 60);
+		var dur_seconds_remainder = Math.floor((dur_seconds % 3600) % 60);
+
+		if (dur_hours > 0) {
+			explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+				+ dur_hours +" tunnin ja "+dur_minutes_remainder+" minuutin päästä");
+		} else if (dur_hours === 0 && dur_minutes_remainder > 4) {
+			explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+				+ dur_minutes_remainder+" minuutin päästä");
+		} else if (dur_hours === 0 && dur_minutes_remainder > 0) {
+			explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+				+ dur_minutes_remainder+" minuutin ja "+ dur_seconds_remainder +" sekunnin päästä");
+		} else if (dur_hours === 0 && dur_minutes_remainder === 0) {
+			explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+				+ dur_seconds_remainder +" sekunnin päästä");
+		}
 		play_button.prop("disabled", true);
 		avatar.fadeOut(100);
 		return;
