@@ -94,6 +94,7 @@ pub struct NewQuizQuestion<'a> {
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(question_answers, foreign_key = "question_id")]
+#[has_many(question_data, foreign_key = "question_id")]
 #[table_name="quiz_questions"]
 pub struct QuizQuestion {
     pub id: i32,
@@ -187,5 +188,16 @@ pub struct AnswerData {
     pub answered_date: DateTime<UTC>,
     pub answer_time_ms: i32,
     pub correct: bool,
+}
+
+#[derive(Insertable, Queryable, Associations, Debug)]
+#[table_name="question_data"]
+#[belongs_to(User, foreign_key = "user_id")]
+#[belongs_to(QuizQuestion, foreign_key = "question_id")]
+pub struct QuestionData {
+    pub user_id: i32,
+    pub question_id: i32,
+    pub due_date: DateTime<UTC>,
+    pub due_delay: i32,
 }
 

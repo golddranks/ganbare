@@ -499,6 +499,7 @@ pub struct Quiz {
     pub question_audio: Vec<QuestionAudio>,
     pub right_answer_id: i32,
     pub answers: Vec<Answer>,
+    pub due_delay: i32,
 }
 
 pub struct Answered {
@@ -507,24 +508,13 @@ pub struct Answered {
     pub answered_id: i32,
     pub q_audio_id: i32,
     pub time: i32,
+    pub due_delay: i32,
 }
 
-pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
-    use rand::Rng;
+fn log_answer(conn : &PgConnection, user : &User, answer: &Answered, new: bool) -> Result<()> {
+    use schema::{answer_data, question_data};
 
-    let (question, answers, mut qqs) = try_or!{ load_quiz(conn, 1)?, else return Ok(None) };
-
-    let mut rng = rand::thread_rng();
-    let index = rng.gen_range(0, answers.len());
-    let right_answer_id = answers[index].id;
-    let question_audio = qqs.remove(index);
-
-    Ok(Some(Quiz{question, question_audio, right_answer_id, answers}))
-}
-
-fn log_answer(conn : &PgConnection, user : &User, answer: &Answered) -> Result<()> {
-    use schema::answer_data;
-
+    // Insert the specifics of this answer event
     let answerdata = NewAnswerData {
         user_id: user.id,
         q_audio_id: answer.q_audio_id,
@@ -536,27 +526,96 @@ fn log_answer(conn : &PgConnection, user : &User, answer: &Answered) -> Result<(
         .into(answer_data::table)
         .execute(conn)
         .chain_err(|| "Couldn't save the answer data to database!")?;
+
+    let next_due_date = chrono::UTC::now() + chrono::Duration::days(answer.due_delay as i64);
+
+    // Update the data for this question (due date, statistics etc.)
+    if new {
+        let questiondata = QuestionData {
+            user_id: user.id,
+            question_id: answer.question_id,
+            due_date: next_due_date,
+            due_delay: answer.due_delay,
+        };
+        diesel::insert(&questiondata)
+            .into(question_data::table)
+            .execute(conn)
+            .chain_err(|| "Couldn't save the question tally data to database!")?;
+    } else {
+        let rows_updated = diesel::update(question_data::table.filter(question_data::user_id.eq(user.id)).filter(question_data::question_id.eq(answer.question_id)))
+            .set(( question_data::due_date.eq(next_due_date), question_data::due_delay.eq(answer.due_delay) ))
+            .execute(conn)
+            .chain_err(|| "Couldn't save the question tally data to database!")?;
+
+        if rows_updated != 1 {
+            return Err("It seems that the rows that should've been updated, are not in the database!".into());
+        }
+    }
     Ok(())
 }
 
-pub fn get_next_quiz(conn : &PgConnection, user : &User, answer: Answered)
--> Result<Option<Quiz>>
-{
+fn get_due_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<(QuizQuestion, QuestionData)>> {
+    use diesel::expression::dsl::*;
+    use schema::{quiz_questions, question_data};
+    let dues = question_data::table
+        .select(question_data::question_id)
+        .filter(question_data::user_id.eq(user_id))
+        .filter(question_data::due_date.lt(chrono::UTC::now()))
+        .order(question_data::due_date.desc());
+
+    let due_questions : Vec<(QuizQuestion, QuestionData)> = quiz_questions::table
+        .inner_join(question_data::table)
+        .filter(quiz_questions::id.eq(any(dues)))
+        .limit(5)
+        .get_results(conn)
+        .chain_err(|| "Can't get due question!")?;
+    Ok(due_questions)
+}
+
+fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQuestion>> {
+    use diesel::expression::dsl::*;
+    use schema::{quiz_questions, question_data};
+    let dues = question_data::table
+        .select(question_data::question_id)
+        .filter(question_data::user_id.eq(user_id));
+
+    let new_questions : Vec<QuizQuestion> = quiz_questions::table
+        .filter(quiz_questions::id.ne(all(dues)))
+        .limit(5)
+        .get_results(conn)
+        .chain_err(|| "Can't get due question!")?;
+
+    Ok(new_questions)
+}
+
+pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
     use rand::Rng;
 
-    let prev_answer_correct = answer.right_answer_id == answer.answered_id;
+    let question = try_or!{ get_new_questions(&*conn, user.id)?.pop(), else return Ok(None) };
+    let (question, answers, mut qqs) = try_or!{ load_quiz(conn, question.id)?, else return Ok(None) };
 
-    log_answer(&*conn, user, &answer)?;
+    let mut rng = rand::thread_rng();
+    let random_answer_index = rng.gen_range(0, answers.len());
+    let right_answer_id = answers[random_answer_index].id;
+    let question_audio = qqs.remove(random_answer_index);
+    let due_delay = -1;
+
+    Ok(Some(Quiz{question, question_audio, right_answer_id, answers, due_delay}))
+}
+
+pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: Answered)
+-> Result<Option<Quiz>> {
+
+    let prev_answer_correct = answer.right_answer_id == answer.answered_id;
+    let prev_answer_new = answer.due_delay == -1;
+    if prev_answer_new || !prev_answer_correct {
+        answer.due_delay = 1;
+    };
+
+    log_answer(&*conn, user, &answer, prev_answer_new)?;
 
     if prev_answer_correct {
-        let (question, answers, mut qqs) = try_or!{ load_quiz(conn, 1)?, else return Ok(None) };
-
-        let mut rng = rand::thread_rng();
-        let random_answer_index = rng.gen_range(0, answers.len());
-        let right_answer_id = answers[random_answer_index].id;
-        let question_audio = qqs.remove(random_answer_index);
-    
-        Ok(Some(Quiz{question, question_audio, right_answer_id, answers}))
+        return get_new_quiz(conn, user);
     } else {
         let (question, answers, qqs ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
         let right_answer_id = answer.right_answer_id;
@@ -564,7 +623,7 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer: Answered)
             .find(|qa| qa[0].question_answers_id == right_answer_id )
             .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
 
-        Ok(Some(Quiz{question, question_audio, right_answer_id, answers}))
+        Ok(Some(Quiz{question, question_audio, right_answer_id, answers, due_delay: answer.due_delay}))
     }
 }
 

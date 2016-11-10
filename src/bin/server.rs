@@ -196,6 +196,7 @@ struct QuizJson {
     question: (String, i32),
     right_a: i32,
     answers: Vec<(i32, String, Option<i32>)>,
+    due_delay: i32,
 }
 
 fn new_quiz(req: &mut Request) -> PencilResult {
@@ -210,7 +211,7 @@ fn new_quiz(req: &mut Request) -> PencilResult {
     let new_quiz = ganbare::get_new_quiz(&conn, &user)
         .map_err(|_| abort(500).unwrap_err())?;
 
-    let ganbare::Quiz{ question, question_audio, right_answer_id, answers } = try_or!{new_quiz, else return jsonify(&())}; 
+    let ganbare::Quiz{ question, question_audio, right_answer_id, answers, due_delay } = try_or!{new_quiz, else return jsonify(&())}; 
 
     let mut answers_json = Vec::with_capacity(answers.len());
 
@@ -231,6 +232,7 @@ fn new_quiz(req: &mut Request) -> PencilResult {
         question: (question.question_text, chosen_q_audio.id),
         right_a: right_answer_id,
         answers: answers_json,
+        due_delay: due_delay,
     }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
@@ -407,7 +409,8 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         let answered_id = str::parse::<i32>(&parse!(form.get("answer_id")))?;
         let q_audio_id = str::parse::<i32>(&parse!(form.get("q_audio_id")))?;
         let time = str::parse::<i32>(&parse!(form.get("time")))?;
-        Ok(ganbare::Answered{question_id, right_answer_id, answered_id, q_audio_id, time})
+        let due_delay = str::parse::<i32>(&parse!(form.get("due_delay")))?;
+        Ok(ganbare::Answered{question_id, right_answer_id, answered_id, q_audio_id, due_delay, time})
     };
 
     let answer = parse_answer(req)
@@ -416,7 +419,7 @@ fn next_quiz(req: &mut Request) -> PencilResult {
     let new_quiz = ganbare::get_next_quiz(&conn, &user, answer)
         .map_err(|e| internal_error(e))?;
 
-    let ganbare::Quiz{ question: qq, question_audio, right_answer_id, answers } = try_or!{new_quiz, else return jsonify(&())}; 
+    let ganbare::Quiz{ question: qq, question_audio, right_answer_id, answers, due_delay } = try_or!{new_quiz, else return jsonify(&())}; 
 
     let mut json_answers = Vec::with_capacity(answers.len());
 
@@ -436,6 +439,7 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         question: (qq.question_text, chosen_q_audio.id),
         right_a: right_answer_id,
         answers: json_answers,
+        due_delay: due_delay,
     }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 

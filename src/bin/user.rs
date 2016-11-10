@@ -79,6 +79,7 @@ fn main() {
         .subcommand(SubCommand::with_name("ls").about("List all users"))
         .subcommand(SubCommand::with_name("rm").about("Remove user").arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("add").about("Add a new user").arg(Arg::with_name("email").required(true)))
+        .subcommand(SubCommand::with_name("force_add").about("Add a new user without email confirmation").arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("login").about("Login").arg(Arg::with_name("email").required(true)))
         .get_matches();
     let conn = db_connect().unwrap();
@@ -117,7 +118,7 @@ fn main() {
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}\nCause: {:?}", err, err.cause ()) },
             }
         },
-        ("add_with_password", Some(args)) => {
+        ("force_add", Some(args)) => {
             use ganbare::errors::ErrorKind::NoSuchUser;
             let email = args.value_of("email").unwrap();
             match get_user_by_email(&conn, &email) {

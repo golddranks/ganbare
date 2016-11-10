@@ -49,7 +49,7 @@ function nextQuestion() {
 	askQuestion(currentQuestion);
 };
 
-function spawnAnswerButton(ansId, text, ansAudioId, isCorrect) {
+function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
 	var newAnswerButton = prototypeAnswer.clone();
 	newAnswerButton.children("button")
 		.text(text)
@@ -74,6 +74,7 @@ function spawnAnswerButton(ansId, text, ansAudioId, isCorrect) {
 				question_id: currentQuestion.question_id,
 				q_audio_id: currentQuestion.question[1],
 				time: time,
+				due_delay: question.due_delay,
 			}, function(result) {
 				currentQuestion = result;
 				nextQuestion();
@@ -102,8 +103,6 @@ function cleanState() {
 	explanation.text("");
 	answerList.children(".answer")
 		.remove();
-	avatar.fadeIn();
-	play_button.prop("disabled", false);
 	answerList.hide();
 }
 
@@ -111,30 +110,29 @@ function cleanState() {
 function askQuestion(question) {
 
 	cleanState();
+
+	if (question === null) {
+		explanation.text("Ei ole mitään kysyttävää ☹️");
+		play_button.prop("disabled", true);
+		avatar.fadeOut(100);
+		return;
+	} else {
+		avatar.fadeIn();
+		play_button.prop("disabled", false);
+	}
+
 	currentQuestion = question;
 
 	explanation.text(question.explanation);
 
 	question.answers.forEach(function(a, i) {
 		var isCorrect = (question.right_a === a[0])?true:false;
-		spawnAnswerButton(a[0], a[1], a[2], isCorrect);
+		spawnAnswerButton(a[0], a[1], a[2], isCorrect, question);
 	});
 
 	qAudio.setAttribute('src', "/api/get_line/"+question.question[1]);
 }
 
-$.getJSON("/api/new_quiz", function(result) {
-
-	if (result === null) {
-		explanation.text("Ei ole mitään kysyttävää ☹️");
-		play_button.off("click");
-		play_button.prop("disabled", true);
-		main.css("min-height", main.css( "height" ));
-		avatar.fadeOut(100);
-		return;
-	}
-
-	askQuestion(result);
-});
+$.getJSON("/api/new_quiz", askQuestion);
 
 });
