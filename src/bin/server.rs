@@ -12,6 +12,7 @@ extern crate hyper;
 extern crate time;
 extern crate rustc_serialize;
 extern crate rand;
+extern crate chrono;
 
 use rand::thread_rng;
 use dotenv::dotenv;
@@ -197,6 +198,7 @@ struct QuizJson {
     right_a: i32,
     answers: Vec<(i32, String, Option<i32>)>,
     due_delay: i32,
+    due_date: Option<String>,
 }
 
 fn new_quiz(req: &mut Request) -> PencilResult {
@@ -211,7 +213,7 @@ fn new_quiz(req: &mut Request) -> PencilResult {
     let new_quiz = ganbare::get_new_quiz(&conn, &user)
         .map_err(|_| abort(500).unwrap_err())?;
 
-    let ganbare::Quiz{ question, question_audio, right_answer_id, answers, due_delay } = try_or!{new_quiz, else return jsonify(&())}; 
+    let ganbare::Quiz{ question, question_audio, right_answer_id, answers, due_delay, due_date } = try_or!{new_quiz, else return jsonify(&())}; 
 
     let mut answers_json = Vec::with_capacity(answers.len());
 
@@ -232,7 +234,8 @@ fn new_quiz(req: &mut Request) -> PencilResult {
         question: (question.question_text, chosen_q_audio.id),
         right_a: right_answer_id,
         answers: answers_json,
-        due_delay: due_delay,
+        due_delay,
+        due_date: due_date.map(|d| d.to_rfc3339()),
     }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
@@ -419,7 +422,7 @@ fn next_quiz(req: &mut Request) -> PencilResult {
     let new_quiz = ganbare::get_next_quiz(&conn, &user, answer)
         .map_err(|e| internal_error(e))?;
 
-    let ganbare::Quiz{ question: qq, question_audio, right_answer_id, answers, due_delay } = try_or!{new_quiz, else return jsonify(&())}; 
+    let ganbare::Quiz{ question: qq, question_audio, right_answer_id, answers, due_delay, due_date } = try_or!{new_quiz, else return jsonify(&())}; 
 
     let mut json_answers = Vec::with_capacity(answers.len());
 
@@ -439,7 +442,8 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         question: (qq.question_text, chosen_q_audio.id),
         right_a: right_answer_id,
         answers: json_answers,
-        due_delay: due_delay,
+        due_delay,
+        due_date: due_date.map(|d| d.to_rfc3339()),
     }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 

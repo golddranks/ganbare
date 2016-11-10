@@ -11,7 +11,7 @@ dotenv_macros = "0.9"
 rust-crypto = "0.2"
 error-chain = { path = "../error-chain" }
 clap = "2"
-chrono = "0.2"
+chrono = { version = "0.2", features = ["rustc-serialize"]}
 rpassword = "0.2"
 rand = "0.3"
 rustc-serialize = "0.3"

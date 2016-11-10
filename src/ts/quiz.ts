@@ -116,6 +116,15 @@ function askQuestion(question) {
 		play_button.prop("disabled", true);
 		avatar.fadeOut(100);
 		return;
+	} else if (new Date(question.due_date) > new Date()) {
+		var dur_minutes = (new Date(question.due_date).getTime() - Date.now())/1000/60;
+		var dur_hours = Math.floor(dur_minutes/60);
+		var dur_minutes_remainder = Math.floor(dur_minutes%60);
+		explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+			+ dur_hours +" tunnin ja "+dur_minutes_remainder+" minuutin päästä");
+		play_button.prop("disabled", true);
+		avatar.fadeOut(100);
+		return;
 	} else {
 		avatar.fadeIn();
 		play_button.prop("disabled", false);

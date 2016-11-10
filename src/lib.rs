@@ -494,14 +494,6 @@ fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec
     Ok(Some((qq, aas, qqs)))
 }
 
-pub struct Quiz {
-    pub question: QuizQuestion,
-    pub question_audio: Vec<QuestionAudio>,
-    pub right_answer_id: i32,
-    pub answers: Vec<Answer>,
-    pub due_delay: i32,
-}
-
 pub struct Answered {
     pub question_id: i32,
     pub right_answer_id: i32,
@@ -554,21 +546,36 @@ fn log_answer(conn : &PgConnection, user : &User, answer: &Answered, new: bool) 
     Ok(())
 }
 
-fn get_due_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<(QuizQuestion, QuestionData)>> {
+fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(QuizQuestion, QuestionData)>> {
     use diesel::expression::dsl::*;
     use schema::{quiz_questions, question_data};
     let dues = question_data::table
         .select(question_data::question_id)
-        .filter(question_data::user_id.eq(user_id))
-        .filter(question_data::due_date.lt(chrono::UTC::now()))
-        .order(question_data::due_date.desc());
+        .order(question_data::due_date.desc())
+        .filter(question_data::user_id.eq(user_id));
 
-    let due_questions : Vec<(QuizQuestion, QuestionData)> = quiz_questions::table
-        .inner_join(question_data::table)
-        .filter(quiz_questions::id.eq(any(dues)))
-        .limit(5)
-        .get_results(conn)
+    let due_questions : Vec<(QuizQuestion, QuestionData)>;
+    if allow_peeking { 
+
+        due_questions = quiz_questions::table
+            .inner_join(question_data::table)
+            .filter(quiz_questions::id.eq(any(dues)))
+            .limit(5)
+            .get_results(conn)
+            .chain_err(|| "Can't get due question!")?;
+
+    } else {
+
+        due_questions = quiz_questions::table
+            .inner_join(question_data::table)
+            .filter(quiz_questions::id.eq(any(
+                dues.filter(question_data::due_date.lt(chrono::UTC::now()))
+            )))
+            .limit(5)
+            .get_results(conn)
         .chain_err(|| "Can't get due question!")?;
+    };
+
     Ok(due_questions)
 }
 
@@ -582,25 +589,48 @@ fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQues
     let new_questions : Vec<QuizQuestion> = quiz_questions::table
         .filter(quiz_questions::id.ne(all(dues)))
         .limit(5)
+        .order(quiz_questions::id.desc())
         .get_results(conn)
         .chain_err(|| "Can't get due question!")?;
 
     Ok(new_questions)
 }
 
+pub struct Quiz {
+    pub question: QuizQuestion,
+    pub question_audio: Vec<QuestionAudio>,
+    pub right_answer_id: i32,
+    pub answers: Vec<Answer>,
+    pub due_delay: i32,
+    pub due_date: Option<chrono::DateTime<chrono::UTC>>,
+}
+
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
     use rand::Rng;
 
-    let question = try_or!{ get_new_questions(&*conn, user.id)?.pop(), else return Ok(None) };
-    let (question, answers, mut qqs) = try_or!{ load_quiz(conn, question.id)?, else return Ok(None) };
+    let (question_id, due_delay, due_date);
+    if let Some(q) = get_new_questions(&*conn, user.id)?.pop() {
+        question_id = q.id;
+        due_delay = -1;
+        due_date = None;
+    } else {
+        if let Some((q, qdata)) = get_due_questions(&*conn, user.id, true)?.pop() {
+            question_id = q.id;
+            due_delay = qdata.due_delay;
+            due_date = Some(qdata.due_date);
+        } else {
+            return Ok(None);
+        }
+    }
+
+    let (question, answers, mut qqs) = try_or!{ load_quiz(conn, question_id)?, else return Ok(None) };
 
     let mut rng = rand::thread_rng();
     let random_answer_index = rng.gen_range(0, answers.len());
     let right_answer_id = answers[random_answer_index].id;
     let question_audio = qqs.remove(random_answer_index);
-    let due_delay = -1;
 
-    Ok(Some(Quiz{question, question_audio, right_answer_id, answers, due_delay}))
+    Ok(Some(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date}))
 }
 
 pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: Answered)
@@ -614,16 +644,18 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: Answered)
 
     log_answer(&*conn, user, &answer, prev_answer_new)?;
 
-    if prev_answer_correct {
+    if prev_answer_correct {   
         return get_new_quiz(conn, user);
-    } else {
+
+    } else { // Ask the same question again.
+
         let (question, answers, qqs ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
         let right_answer_id = answer.right_answer_id;
         let question_audio : Vec<QuestionAudio> = qqs.into_iter()
             .find(|qa| qa[0].question_answers_id == right_answer_id )
             .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
 
-        Ok(Some(Quiz{question, question_audio, right_answer_id, answers, due_delay: answer.due_delay}))
+        Ok(Some(Quiz{question, question_audio, right_answer_id, answers, due_delay: answer.due_delay, due_date: None}))
     }
 }
 
