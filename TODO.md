@@ -1,7 +1,6 @@
 # To Do list
 
 Today
-- Design a password changing screen
 - Word teaching cards
 - Design an alternative mode for quizes: traditional/output
 
