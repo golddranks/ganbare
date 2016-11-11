@@ -703,13 +703,25 @@ pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mim
     Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
 }
 
-pub fn create_word(conn : &PgConnection, data: (String, String, Vec<String>)) -> Result<()> {
+pub fn create_word(conn : &PgConnection, data: (String, String, Vec<(PathBuf, Option<String>, mime::Mime)>)) -> Result<Word> {
+    use schema::words;
+
+    let mut narrator = None;
+    for mut file in data.2 {
+        save_audio(&*conn, &mut narrator, &mut file)?;
+    }
 
     let new_word = NewWord {
         word: data.0.as_str(),
         explanation: data.1.as_str(),
-        audio_bundle: 1,
+        audio_bundle: 1, // FIXME
         skill_nugget: None,
     };
-    Ok(())
+
+    let word = diesel::insert(&new_word)
+        .into(words::table)
+        .get_result(conn)
+        .chain_err(|| "Can't insert a new word!")?;
+
+    Ok(word)
 }
