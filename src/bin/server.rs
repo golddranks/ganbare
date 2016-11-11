@@ -14,7 +14,6 @@ extern crate rustc_serialize;
 extern crate rand;
 extern crate chrono;
 
-use rand::thread_rng;
 use dotenv::dotenv;
 use std::env;
 use ganbare::errors::*;
@@ -340,19 +339,6 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         Ok((question_name, question_explanation, question_text, skill_nugget, fieldsets))
     }
 
-    fn move_to_new_path(path: &mut std::path::PathBuf, orig_filename: Option<&str>) -> Result<()> {
-        use rand::Rng;
-        let mut new_path = std::path::PathBuf::from("audio/");
-        let mut filename = "%FT%H-%M-%SZ".to_string();
-        filename.extend(thread_rng().gen_ascii_chars().take(10));
-        filename.push_str(".");
-        filename.push_str(std::path::Path::new(orig_filename.unwrap_or("")).extension().and_then(|s| s.to_str()).unwrap_or("noextension"));
-        new_path.push(time::strftime(&filename, &time::now()).unwrap());
-        std::fs::rename(&*path, &new_path)?;
-        std::mem::swap(path, &mut new_path);
-        Ok(())
-    }
-
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
@@ -361,18 +347,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
     match user_session {
         Some((_, sess)) => {
 
-            let mut form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(400).unwrap_err()})?;
-            for f in &mut form.4 {
-                if let Some((ref mut temp_path, ref mut filename, _)) = f.answer_audio {
-                    move_to_new_path(temp_path, filename.as_ref().map(|s| s.as_str()))
-                        .map_err(|_| abort(500).unwrap_err())?;
-                }
-                for &mut (ref mut temp_path, ref mut filename, _) in &mut f.q_variants {
-                    move_to_new_path(temp_path, filename.as_ref().map(|s| s.as_str()))
-                        .map_err(|_| abort(500).unwrap_err())?;
-                }
-            }
-
+            let form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(400).unwrap_err()})?;
             let result = ganbare::create_quiz(&conn, form);
             result.map_err(|e| match e.kind() {
                 &ErrorKind::FormParseError => abort(400).unwrap_err(),
@@ -380,7 +355,6 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
             })?;
 
             redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
-
             },
         None => abort(401),
     }

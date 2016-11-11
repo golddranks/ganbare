@@ -202,3 +202,43 @@ pub struct QuestionData {
     pub due_delay: i32,
 }
 
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="audio_bundle"]
+pub struct AudioBundle {
+    pub id: i32,
+    pub listname: String,
+}
+
+#[derive(Insertable)]
+#[table_name="audio_bundle"]
+pub struct NewAudioBundle<'a> {
+    pub listname: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Debug)]
+#[table_name="audio_bundle_file"]
+pub struct AudioBundleFile {
+    pub bundle_id: i32,
+    pub file_id: i32,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="words"]
+pub struct Word {
+    pub id: i32,
+    pub word: String,
+    pub explanation: String,
+    pub audio_bundle: i32,
+    pub skill_nugget: Option<i32>,
+}
+
+#[derive(Insertable)]
+#[table_name="words"]
+pub struct NewWord<'a> {
+    pub word: &'a str,
+    pub explanation: &'a str,
+    pub audio_bundle: i32,
+    pub skill_nugget: Option<i32>,
+}
+
+

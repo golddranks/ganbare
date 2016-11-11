@@ -15,3 +15,22 @@ CREATE TABLE question_data (
 	due_delay INTEGER NOT NULL,
 	PRIMARY KEY(user_id, question_id)
 );
+
+CREATE TABLE audio_bundle (
+	id SERIAL PRIMARY KEY,
+	listname VARCHAR
+);
+
+CREATE TABLE audio_bundle_file (
+	bundle_id SERIAL REFERENCES audio_bundle,
+	file_id SERIAL REFERENCES audio_files,
+	PRIMARY KEY(bundle_id, file_id)
+);
+
+CREATE TABLE words (
+	id SERIAL PRIMARY KEY,
+	word VARCHAR NOT NULL,
+	explanation VARCHAR NOT NULL,
+	audio_bundle SERIAL REFERENCES audio_bundle,
+	skill_nugget INTEGER REFERENCES skill_nuggets
+);

@@ -10,6 +10,7 @@
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate mime;
 
+extern crate time;
 extern crate dotenv;
 extern crate crypto;
 extern crate chrono;
@@ -20,6 +21,7 @@ extern crate pencil;
 
 
 
+use rand::thread_rng;
 use diesel::prelude::*;
 use dotenv::dotenv;
 use std::env;
@@ -369,12 +371,65 @@ pub struct Fieldset {
 }
 
 
+fn save_audio_file(path: &mut std::path::PathBuf, orig_filename: &str) -> Result<()> {
+    use rand::Rng;
+    let mut new_path = std::path::PathBuf::from("audio/");
+    let mut filename = "%FT%H-%M-%SZ".to_string();
+    filename.extend(thread_rng().gen_ascii_chars().take(10));
+    filename.push_str(".");
+    filename.push_str(std::path::Path::new(orig_filename).extension().and_then(|s| s.to_str()).unwrap_or("noextension"));
+    new_path.push(time::strftime(&filename, &time::now()).unwrap());
+    std::fs::rename(&*path, &new_path)?;
+    std::mem::swap(path, &mut new_path);
+    Ok(())
+}
+
+fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>) -> Result<i32> {
+    use schema::narrators;
+
+    if let Some(ref narrator) = *opt_narrator {
+        Ok(narrator.id)
+    } else {
+
+        let new_narrator : Narrator = diesel::insert(&NewNarrator { name: "anonymous" })
+            .into(narrators::table)
+            .get_result(conn)
+            .chain_err(|| "Couldn't create a new narrator!")?;
+
+        println!("{:?}", &new_narrator);
+        let narr_id = new_narrator.id;
+        *opt_narrator = Some(new_narrator);
+        Ok(narr_id)
+    }
+}
+
+
+fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &mut (PathBuf, Option<String>, mime::Mime)) -> Result<AudioFile> {
+    use schema::audio_files;
+
+    save_audio_file(&mut file.0, file.1.as_ref().map(|s| s.as_str()).unwrap_or(""))?;
+
+    let file_path = file.0.to_str().expect("this is an ascii path");
+    let mime = &format!("{}", file.2);
+    let narrators_id = default_narrator_id(&*conn, &mut narrator)?;
+    let new_q_audio = NewAudioFile {narrators_id, file_path, mime};
+
+    let q_audio : AudioFile = diesel::insert(&new_q_audio)
+        .into(audio_files::table)
+        .get_result(&*conn)
+        .chain_err(|| "Couldn't create a new audio file!")?;
+
+    println!("{:?}", &q_audio);
+    Ok(q_audio)
+}
+
+
 pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
-    use schema::{quiz_questions, question_answers, question_audio, narrators, audio_files};
+    use schema::{quiz_questions, question_answers, question_audio};
 
     println!("Creating quiz!");
 
-    let answers = data.4;
+    let mut answers = data.4;
     if answers.len() == 0 {
         return Err(ErrorKind::FormParseError.into());
     }
@@ -395,44 +450,13 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
 
     let mut narrator = None;
 
-    fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>) -> Result<i32> {
-        if let Some(ref narrator) = *opt_narrator {
-            Ok(narrator.id)
-        } else {
-
-            let new_narrator : Narrator = diesel::insert(&NewNarrator { name: "anonymous" })
-                .into(narrators::table)
-                .get_result(conn)
-                .chain_err(|| "Couldn't create a new narrator!")?;
-
-            println!("{:?}", &new_narrator);
-            let narr_id = new_narrator.id;
-            *opt_narrator = Some(new_narrator);
-            Ok(narr_id)
-        }
-    }
-
-    for fieldset in &answers {
-        let a_audio = &fieldset.answer_audio;
-
-        let a_audio_id = if let &Some(ref path_mime) = a_audio {
-
-            let path = path_mime.0.to_str().expect("this is an ascii path!");
-            let mime = format!("{}", &path_mime.2);
-
-            let new_a_audio = NewAudioFile {narrators_id: default_narrator_id(&*conn, &mut narrator)?, file_path: path, mime: &mime};
-            
-            let a_audio : AudioFile = diesel::insert(&new_a_audio)
-                .into(audio_files::table)
-                .get_result(&*conn)
-                .chain_err(|| "Couldn't create a new audio file!")?;
-            Some(a_audio.id)
-
-        } else { None };
-
-        println!("{:?}", &a_audio_id);
-
-        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, audio_files_id: a_audio_id };
+    for fieldset in &mut answers {
+        let audio_files_id = match fieldset.answer_audio {
+            Some(ref mut a) => { Some(save_audio(&*conn, &mut narrator, a)?.id) },
+            None => { None },
+        };
+        
+        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, audio_files_id };
 
         let answer : Answer = diesel::insert(&new_answer)
             .into(question_answers::table)
@@ -441,20 +465,10 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
 
         println!("{:?}", &answer);
 
-        for q_audio in &fieldset.q_variants {
+        for mut q_audio in &mut fieldset.q_variants {
+            let audio_file = save_audio(&*conn, &mut narrator, &mut q_audio)?;
 
-            let path = q_audio.0.to_str().expect("this is an ascii path");
-            let mime = format!("{}", q_audio.2);
-            let new_q_audio = NewAudioFile {narrators_id: default_narrator_id(&*conn, &mut narrator)?, file_path: path, mime: &mime};
-
-            let q_audio : AudioFile = diesel::insert(&new_q_audio)
-                .into(audio_files::table)
-                .get_result(&*conn)
-                .chain_err(|| "Couldn't create a new audio file!")?;
-
-            println!("{:?}", &q_audio);
-
-            let new_q_audio_link = QuestionAudio {id: q_audio.id, question_answers_id: answer.id };
+            let new_q_audio_link = QuestionAudio {id: audio_file.id, question_answers_id: answer.id };
 
             let q_audio_link : QuestionAudio = diesel::insert(&new_q_audio_link)
                 .into(question_audio::table)
@@ -560,9 +574,12 @@ fn log_answer(conn : &PgConnection, user : &User, answer: &Answered, new: bool) 
 fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(QuizQuestion, QuestionData)>> {
     use diesel::expression::dsl::*;
     use schema::{quiz_questions, question_data};
+
     let dues = question_data::table
         .select(question_data::question_id)
-        .filter(question_data::user_id.eq(user_id));
+        .filter(question_data::user_id.eq(user_id))
+        .order(question_data::due_date.asc())
+        .limit(5);
 
     let due_questions : Vec<(QuizQuestion, QuestionData)>;
     if allow_peeking { 
@@ -570,8 +587,7 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
         due_questions = quiz_questions::table
             .inner_join(question_data::table)
             .filter(quiz_questions::id.eq(any(dues)))
-            .order(question_data::due_date.desc())
-            .limit(5)
+            .order(question_data::due_date.asc())
             .get_results(conn)
             .chain_err(|| "Can't get due question!")?;
 
@@ -582,7 +598,7 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
             .filter(quiz_questions::id.eq(any(
                 dues.filter(question_data::due_date.lt(chrono::UTC::now()))
             )))
-            .limit(5)
+            .order(question_data::due_date.asc())
             .get_results(conn)
         .chain_err(|| "Can't get due question!")?;
     };
@@ -600,7 +616,7 @@ fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQues
     let new_questions : Vec<QuizQuestion> = quiz_questions::table
         .filter(quiz_questions::id.ne(all(dues)))
         .limit(5)
-        .order(quiz_questions::id.desc())
+        .order(quiz_questions::id.asc())
         .get_results(conn)
         .chain_err(|| "Can't get due question!")?;
 
@@ -620,12 +636,12 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
     use rand::Rng;
 
     let (question_id, due_delay, due_date);
-    if let Some(q) = get_new_questions(&*conn, user.id)?.pop() {
+    if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
         question_id = q.id;
         due_delay = -1;
         due_date = None;
     } else {
-        if let Some((q, qdata)) = get_due_questions(&*conn, user.id, true)?.pop() {
+        if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, true)?.get(0) {
             question_id = q.id;
             due_delay = qdata.due_delay;
             due_date = Some(qdata.due_date);
@@ -685,4 +701,15 @@ pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mim
         })?;
 
     Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
+}
+
+pub fn create_word(conn : &PgConnection, data: (String, String, Vec<String>)) -> Result<()> {
+
+    let new_word = NewWord {
+        word: data.0.as_str(),
+        explanation: data.1.as_str(),
+        audio_bundle: 1,
+        skill_nugget: None,
+    };
+    Ok(())
 }
