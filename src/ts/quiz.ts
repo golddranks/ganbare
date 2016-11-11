@@ -11,6 +11,7 @@ var main = $("#main");
 var answerList = $(".answerList");
 var questionText = $(".questionText");
 var explanation = $("#quiz .explanation");
+var status = $("#quiz .status");
 var play_button = $("#quiz .avatar .imgbutton");
 var maru = $("#maru");
 var batsu = $("#batsu");
@@ -31,7 +32,9 @@ $(qAudio).bind('ended', function() {
 	timeAudioEnded = Date.now();
 	topmessage.text("Vastausaikaa 8 s");
 	questionText.text(currentQuestion.question[0]);
-	answerList.slideDown();
+	answerList.slideDown(400, function() {	
+		main.css("min-height", main.css("height"));
+	});
 	var thisQ = currentQuestion; // Let the closures capture a local variable, not global
 	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
 	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
@@ -47,9 +50,10 @@ play_button.click(function() {
    	if (play_button.prop("disabled")) {
    		return;
    	};
+   	status.slideUp();
 	play_button.prop("disabled", true);
 	qAudio.play();
-	main.css("min-height", main.css( "height" ));
+	main.css("min-height", main.css("height"));
 	avatar.fadeOut(400);
 });
 
@@ -80,17 +84,19 @@ function answerQuestion(ansId, isCorrect, question) {
 	var time = Date.now() - timeAudioEnded;
 	if (isCorrect) {
 		mark = maru;
-		explanation.text("Oikein! Seuraava kysymys.");
+		status.text("Oikein! Seuraava kysymys.");
 		correct.play();
 	} else if (ansId > 0) {
 		mark = batsu;
-		explanation.text("Pieleen meni, kokeile uudestaan!");
+		status.text("Pieleen meni, kokeile uudestaan!");
 		wrong.play();
 	} else if (ansId === -1) {
 		mark = batsu;
-		explanation.text("Aika loppui!");
+		status.text("Aika loppui!");
 		wrong.play();
 	}
+	status.show();
+	explanation.hide();
 	semaphore = 2;
 
 	$.post("/api/next_quiz", {
@@ -107,8 +113,7 @@ function answerQuestion(ansId, isCorrect, question) {
 	mark.show();
 	mark.removeClass("hidden");
 	window.setTimeout(function() { mark.fadeOut(400); }, 1700);
-	window.setTimeout(function() { answerList.slideUp(400); }, 2200);
-	window.setTimeout(function() { explanation.text("Loading..."); nextQuestion(); }, 4000);
+	window.setTimeout(function() { answerList.slideUp(400, function() { explanation.text("Loading..."); nextQuestion(); }); }, 2200);
 }
 
 function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
@@ -135,6 +140,7 @@ function cleanState() {
 	answerMarks.addClass("hidden");
 	currentQuestion = null;
 	explanation.text("");
+	explanation.show();
 	topmessage.text("");
 	answerList.children(".answer")
 		.remove();
@@ -188,6 +194,7 @@ function askQuestion(question) {
 		return;
 	} else {
 		avatar.fadeIn();
+		explanation.slideDown();
 		play_button.prop("disabled", false);
 	}
 

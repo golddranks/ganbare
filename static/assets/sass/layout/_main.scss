@@ -39,13 +39,14 @@
 
 		#menuButton {
 			z-index: 200;
+			opacity: 0.2;
 			img {
 				max-width: 100%;
 				height: auto;
 			}
 			border: none;
 			padding: 0;
-			width: 3em;
+			width: 2.5em;
 			position: absolute;
 			top: 0;
 			right: 0.4em;
