@@ -32,3 +32,10 @@
 あたり
 いけん
 いぜん
+
+
+0. Neuvoittele sanojen järkevyydestä
+1. Nauhoita sanat yksittäin
+2. Neuvoittele carrier sentecejen järkevyydestä
+3. Nauhoita carrier sentencejen kanssa
+4. Nauhoita lisäkertoja

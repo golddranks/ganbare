@@ -506,11 +506,13 @@ pub struct Answered {
 fn log_answer(conn : &PgConnection, user : &User, answer: &Answered, new: bool) -> Result<()> {
     use schema::{answer_data, question_data};
 
+    let answered_id = if answer.answered_id > 0 { Some(answer.answered_id) } else { None };
+
     // Insert the specifics of this answer event
     let answerdata = NewAnswerData {
         user_id: user.id,
         q_audio_id: answer.q_audio_id,
-        answered_qa_id: answer.answered_id,
+        answered_qa_id: answered_id,
         answer_time_ms: answer.time,
         correct: answer.right_answer_id == answer.answered_id
     };

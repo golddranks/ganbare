@@ -24,16 +24,21 @@
 
 				<!-- Main -->
 					<section id="main">
+						<section id="topmessage">
+							<p class="topmessageparagraph"></p>
+						</section>
+						<button id="menuButton" class="iconlike"><img src="/static/images/menu.png"></button>
 						<section id="settings">
-							<form action="/logout" method="post">
-								<button type="submit" class="linklike">Kirjaudu ulos</button>
-							</form>
+							<ul id="settingsMenu">
+								<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
+								<li><a href="/change_password">Vaihda salasanaa</a></li>
+							</ul>
 						</section>
 						<section id="quiz">
 						<audio src="/static/assets/sfx/correct.mp3" id="sfxCorrect" style="display: none;"></audio>
 						<audio src="" id="questionAudio" style="display: none;"></audio>
 						<audio src="/static/assets/sfx/wrong.mp3" id="sfxWrong" style="display:none;"></audio>
-						<p class="explanation"></p>
+						<p class="explanation">　</p>
 						<span class="avatar"><button class="imgbutton"><img src="static/images/play-button.png" alt="" /></button></span>
 						<div class="answerList">
 							<img src="/static/images/maru_red.png" id="maru" class="answerMark hidden" style="display:none;">

@@ -409,7 +409,7 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         let form = req.form().expect("Form data should be loaded!");
         let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
         let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
-        let answered_id = str::parse::<i32>(&parse!(form.get("answer_id")))?;
+        let answered_id = str::parse::<i32>(&parse!(form.get("answered_id")))?;
         let q_audio_id = str::parse::<i32>(&parse!(form.get("q_audio_id")))?;
         let time = str::parse::<i32>(&parse!(form.get("time")))?;
         let due_delay = str::parse::<i32>(&parse!(form.get("due_delay")))?;

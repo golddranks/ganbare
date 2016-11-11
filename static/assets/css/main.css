@@ -615,7 +615,7 @@ button,
   position: relative;
   max-width: 100%;
   min-width: 28em;
-  padding: 4.5em 1em 3em 1em ;
+  padding: 4.5em 2em 3em 2em ;
   background: #ffffff;
   border-radius: 4px;
   cursor: default;
@@ -636,11 +636,54 @@ button,
   transition: opacity 1s ease, transform 1s ease; }
   #main .error {
     color: red; }
-  #main #settings {
-    font-size: 0.9em;
+  #main #menuButton {
+    z-index: 200;
+    border: none;
+    padding: 0;
+    width: 3em;
     position: absolute;
     top: 0;
     right: 0.4em; }
+    #main #menuButton img {
+      max-width: 100%;
+      height: auto; }
+  #main #settings {
+    z-index: 100;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(225, 223, 232, 0.6);
+    border-radius: 4px;
+    text-align: right;
+    font-size: 0.8rem; }
+    #main #settings button.linklike {
+      height: auto;
+      line-height: 2em;
+      font-size: 0.8rem; }
+    #main #settings ul {
+      position: absolute;
+      top: 3.5em;
+      right: 0;
+      background: #ffffff;
+      border-radius: 4px;
+      box-shadow: -2px 3px 6px -1px #c8cccf;
+      padding: 1em 4em 1em 1em;
+      margin: 0; }
+      #main #settings ul li {
+        margin: 0;
+        list-style-type: none; }
+  #main #topmessage {
+    line-height: 2em;
+    font-size: 0.8rem;
+    position: absolute;
+    top: 0;
+    left: 0.4em; }
+  #main hr {
+    position: relative;
+    left: -2em;
+    width: calc(100% + 4em); }
   #main .avatar {
     position: relative;
     display: block;
@@ -656,8 +699,8 @@ button,
       display: block;
       position: absolute;
       top: 50%;
-      left: -1em;
-      width: calc(100% + 2em);
+      left: -2em;
+      width: calc(100% + 4em);
       height: 1px;
       z-index: -1;
       background: #c8cccf; }

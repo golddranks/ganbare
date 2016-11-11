@@ -14,7 +14,7 @@
 		position: relative;
 		max-width: 100%;
 		min-width: 28em;
-		@include padding(4.5em, 1em);
+		@include padding(4.5em, 2em);
 
 		background: _palette(bg);
 		border-radius: _size(border-radius);
@@ -34,11 +34,69 @@
 			color: red;
 		}
 
-		#settings {
-			font-size: 0.9em;
+		#quiz {
+		}
+
+		#menuButton {
+			z-index: 200;
+			img {
+				max-width: 100%;
+				height: auto;
+			}
+			border: none;
+			padding: 0;
+			width: 3em;
 			position: absolute;
 			top: 0;
 			right: 0.4em;
+		}
+
+		#settings {
+			z-index: 100;
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+
+			background-color: rgba(225, 223, 232, 0.6);
+			border-radius: _size(border-radius);
+
+			button.linklike {
+				height: auto;
+				line-height: 2em;
+				font-size: 0.8rem;
+			}
+			ul {
+				position: absolute;
+				top: 3.5em;
+				right: 0;
+				background: _palette(bg);
+				border-radius: _size(border-radius);
+				box-shadow: -2px 3px 6px -1px _palette(border);
+				padding: 1em 4em 1em 1em;
+				margin: 0;
+				li {
+					margin: 0;
+					list-style-type: none;
+				}
+			}
+			text-align: right;
+			font-size: 0.8rem;
+		}
+
+		#topmessage {
+			line-height: 2em;
+			font-size: 0.8rem;
+			position: absolute;
+			top: 0;
+			left: 0.4em;
+		}
+
+		hr {
+			position: relative;
+			left: -2em;
+			width: calc(100% + 4em);
 		}
 
 		.avatar {
@@ -59,8 +117,8 @@
 				display: block;
 				position: absolute;
 				top: 50%;
-				left: -1em;
-				width: calc(100% + 2em);
+				left: -2em;
+				width: calc(100% + 4em);
 				height: _size(border-width);
 				z-index: -1;
 				background: _palette(border);
