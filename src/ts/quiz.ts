@@ -1,7 +1,6 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
 
 $(function() {
-
 /* init the static machinery */
 
 var prototypeAnswer = $(".answer").remove();
@@ -31,6 +30,7 @@ var timeAudioEnded = null;
 $(qAudio).bind('ended', function() {
 	timeAudioEnded = Date.now();
 	topmessage.text("Vastausaikaa 8 s");
+	topmessage.fadeIn();
 	questionText.text(currentQuestion.question[0]);
 	answerList.slideDown(400, function() {	
 		main.css("min-height", main.css("height"));
@@ -41,7 +41,7 @@ $(qAudio).bind('ended', function() {
 	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
 	window.setTimeout(function() {
 		if (thisQ.answered) {return};
-		topmessage.text(""); 
+		topmessage.fadeOut(); 
 		answerQuestion(-1, false, thisQ);
 	}, 8000);
 });
@@ -69,6 +69,7 @@ function toggleMenu() {
 settingsArea.hide();
 settingsArea.click(toggleMenu);
 menuButton.click(toggleMenu);
+$("#settingsMenu").click(function( event ) { event.stopPropagation(); });
 
 /* dynamics */
 
@@ -113,7 +114,12 @@ function answerQuestion(ansId, isCorrect, question) {
 	mark.show();
 	mark.removeClass("hidden");
 	window.setTimeout(function() { mark.fadeOut(400); }, 1700);
-	window.setTimeout(function() { answerList.slideUp(400, function() { explanation.text("Loading..."); nextQuestion(); }); }, 2200);
+	window.setTimeout(function() { answerList.slideUp(400, function() {
+		topmessage.fadeOut();
+		explanation.text("Loading...");
+		explanation.slideDown();
+		nextQuestion();
+	}); }, 2200);
 }
 
 function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
@@ -140,8 +146,8 @@ function cleanState() {
 	answerMarks.addClass("hidden");
 	currentQuestion = null;
 	explanation.text("");
-	explanation.show();
-	topmessage.text("");
+	explanation.hide();
+	topmessage.fadeOut();
 	answerList.children(".answer")
 		.remove();
 	answerList.hide();
@@ -157,23 +163,25 @@ function breakTime(question) {
 		// The waiting has ended
 		window.clearInterval(breakTimeWaitHandle);
 		breakTimeWaitHandle = null;
+		status.slideUp();
 		askQuestion(question);
 		return;
 	}
 
 	if (dur_hours > 0) {
-		explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+		status.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
 			+ dur_hours +" tunnin ja "+dur_minutes_remainder+" minuutin päästä");
 	} else if (dur_hours === 0 && dur_minutes_remainder > 4) {
-		explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+		status.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
 			+ dur_minutes_remainder+" minuutin päästä");
 	} else if (dur_hours === 0 && dur_minutes_remainder > 0) {
-		explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+		status.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
 			+ dur_minutes_remainder+" minuutin ja "+ dur_seconds_remainder +" sekunnin päästä");
 	} else if (dur_hours === 0 && dur_minutes_remainder === 0 && dur_seconds_remainder > 0) {
-		explanation.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
+		status.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
 			+ dur_seconds_remainder +" sekunnin päästä");
 	}
+	status.slideDown();
 }
 
 
@@ -182,7 +190,8 @@ function askQuestion(question) {
 	cleanState();
 
 	if (question === null) {
-		explanation.text("Ei ole mitään kysyttävää ☹️");
+		status.text("Ei ole mitään kysyttävää ☹️");
+		status.slideDown();
 		play_button.prop("disabled", true);
 		avatar.fadeOut(100);
 		return;
@@ -192,16 +201,14 @@ function askQuestion(question) {
 		breakTime(question);
 		breakTimeWaitHandle = window.setInterval(function() { breakTime(question); }, 1000);
 		return;
-	} else {
-		avatar.fadeIn();
-		explanation.slideDown();
-		play_button.prop("disabled", false);
 	}
-
 	currentQuestion = question;
 	question.answered = false;
 
 	explanation.text(question.explanation);
+	avatar.fadeIn();
+	explanation.slideDown();
+	play_button.prop("disabled", false);
 
 	question.answers.forEach(function(a, i) {
 		var isCorrect = (question.right_a === a[0])?true:false;

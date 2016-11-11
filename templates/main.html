@@ -25,7 +25,7 @@
 				<!-- Main -->
 					<section id="main">
 						<section id="topmessage">
-							<p class="topmessageparagraph"></p>
+							<p class="topmessageparagraph" style="display: none;"></p>
 						</section>
 						<button id="menuButton" class="iconlike"><img src="/static/images/menu.png"></button>
 						<section id="settings" style="display: none;">
@@ -38,8 +38,8 @@
 						<audio src="/static/assets/sfx/correct.mp3" id="sfxCorrect" style="display: none;"></audio>
 						<audio src="" id="questionAudio" style="display: none;"></audio>
 						<audio src="/static/assets/sfx/wrong.mp3" id="sfxWrong" style="display:none;"></audio>
-						<p class="status" style="display: none;">　</p>
-						<p class="explanation">　</p>
+						<p class="status" style="display: none;"></p>
+						<p class="explanation" style="display: none;"></p>
 						<span class="avatar"><button class="imgbutton"><img src="static/images/play-button.png" alt="" /></button></span>
 						<div class="answerList">
 							<img src="/static/images/maru_red.png" id="maru" class="answerMark hidden" style="display:none;">
@@ -68,10 +68,8 @@
 		<!-- Scripts -->
 			<!--[if lte IE 8]><script src="static/assets/js/respond.min.js"></script><![endif]-->
 			<script>
-				if ('addEventListener' in window) {
-					window.addEventListener('load', function() { document.body.className = document.body.className.replace(/\bis-loading\b/, ''); });
-					document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
-				}
+				$(function() { document.body.className = document.body.className.replace(/\bis-loading\b/, ''); });
+				document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
 			</script>
 
 	</body>

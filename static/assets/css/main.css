@@ -657,13 +657,13 @@ button,
     left: 0;
     background-color: rgba(225, 223, 232, 0.6);
     border-radius: 4px;
-    text-align: right;
     font-size: 0.8rem; }
     #main #settings button.linklike {
       height: auto;
       line-height: 2em;
       font-size: 0.8rem; }
     #main #settings ul {
+      text-align: left;
       position: absolute;
       top: 3.5em;
       right: 0;
