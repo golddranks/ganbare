@@ -195,6 +195,15 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Res
     Ok(user)
 }
 
+pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str) -> Result<()> {
+
+    let pw = password::set_password(new_password).chain_err(|| "Setting password didn't succeed!")?;
+
+    let _ : models::Password = pw.into_db(user_id).save_changes(conn)?;
+
+    Ok(())
+}
+
 pub const SESSID_BITS : usize = 128;
 
 /// TODO refactor this function, this is only a temporary helper
@@ -536,7 +545,7 @@ fn log_answer(conn : &PgConnection, user : &User, answer: &Answered, new: bool) 
             .execute(conn)
             .chain_err(|| "Couldn't save the question tally data to database!")?;
     } else {
-        let rows_updated = diesel::update(question_data::table.filter(question_data::user_id.eq(user.id)).filter(question_data::question_id.eq(answer.question_id)))
+        let rows_updated = diesel::update( question_data::table.filter(question_data::user_id.eq(user.id)).filter(question_data::question_id.eq(answer.question_id)))
             .set(( question_data::due_date.eq(next_due_date), question_data::due_delay.eq(answer.due_delay) ))
             .execute(conn)
             .chain_err(|| "Couldn't save the question tally data to database!")?;

@@ -263,18 +263,14 @@ fn get_line(req: &mut Request) -> PencilResult {
 fn add_quiz_form(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
+    let (_, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
-    match user_session {
-        Some((_, sess)) => {
-
-            let mut context = BTreeMap::new();
-            context.insert("title".to_string(), "akusento.ganba.re".to_string());
-            req.app.render_template("add_quiz.html", &context)
-                            .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
-            },
-        None => abort(401),
-    }
+    let mut context = BTreeMap::new();
+    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    req.app.render_template("add_quiz.html", &context)
+                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 macro_rules! parse {
@@ -447,6 +443,76 @@ fn next_quiz(req: &mut Request) -> PencilResult {
     }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
+fn change_password_form(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (_, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    let mut context = BTreeMap::new();
+
+    let password_changed = req.args_mut().take("password_changed")
+        .and_then(|a| if a == "true" { Some(a) } else { None })
+        .unwrap_or_else(|| "false".to_string());
+
+    context.insert("password_changed".to_string(), password_changed);
+    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    req.app.render_template("change_password.html", &context)
+                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
+fn change_password(req: &mut Request) -> PencilResult {
+
+
+    fn parse_form(req: &mut Request) -> Result<(String, String)> {
+
+        req.load_form_data();
+        let form = req.form().expect("Form data should be loaded!");
+
+        let old_password = parse!(form.get("old_password"));
+        let new_password = parse!(form.get("new_password"));
+        if new_password != parse!(form.get("new_password_check")) {
+            return Err("New passwords don't match!".into());
+        }
+
+        Ok((old_password, new_password))
+    }
+
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    let (old_password, new_password) = parse_form(req)
+        .map_err(|_| abort(400).unwrap_err())?;
+
+    match ganbare::auth_user(&conn, &user.email, &old_password) {
+        Err(e) => return match e.kind() {
+            &ErrorKind::AuthError => {
+                let mut context = BTreeMap::new();
+                context.insert("title".to_string(), "akusento.ganba.re".to_string());
+                context.insert("authError".to_string(), "true".to_string());
+
+                req.app.render_template("change_password.html", &context)
+                    .map(|mut resp| {resp.status_code = 401; resp})
+            },
+            _ => abort(500),
+        },
+        Ok(_) => {
+            ganbare::change_password(&conn, user.id, &new_password)
+                .map_err(|e| match e.kind() {
+                    &ErrorKind::PasswordTooShort => abort(400).unwrap_err(),
+                    _ => internal_error(e),
+                })?;
+        },
+    };
+
+    redirect("/change_password?password_changed=true", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
+}
+
 fn main() {
     dotenv().ok();
     let mut app = Pencil::new(".");
@@ -454,6 +520,7 @@ fn main() {
     app.register_template("main.html");
     app.register_template("confirm.html");
     app.register_template("add_quiz.html");
+    app.register_template("change_password.html");
     app.enable_static_file_handling();
 
  //   app.set_debug(true);
@@ -470,6 +537,8 @@ fn main() {
     app.post("/confirm", "confirm_final", confirm_final);
     app.get("/api/new_quiz", "new_quiz", new_quiz);
     app.post("/api/next_quiz", "next_quiz", next_quiz);
+    app.get("/change_password", "change_password_form", change_password_form);
+    app.post("/change_password", "change_password", change_password);
     app.get("/api/get_line/<line_id:int>", "get_line", get_line);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {

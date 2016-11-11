@@ -1,4 +1,5 @@
 use super::schema::*;
+use diesel::ExpressionMethods;
 
 use chrono::{DateTime, UTC};
 
@@ -18,7 +19,7 @@ pub struct User {
 }
 
 
-#[derive(Identifiable, Queryable, Debug, Insertable, Associations)]
+#[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset)]
 #[belongs_to(User, foreign_key = "id")]
 #[table_name="passwords"]
 pub struct Password {

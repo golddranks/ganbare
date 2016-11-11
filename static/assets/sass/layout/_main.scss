@@ -37,7 +37,7 @@
 		#quiz {
 		}
 
-		#menuButton {
+		.uiButton {
 			z-index: 200;
 			opacity: 0.2;
 			img {
@@ -48,8 +48,16 @@
 			padding: 0;
 			width: 2.5em;
 			position: absolute;
+		}
+
+		#menuButton {
 			top: 0;
 			right: 0.4em;
+		}
+
+		#backButton {
+			top: 0;
+			left: 0.4em;
 		}
 
 		#settings {

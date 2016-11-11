@@ -23,26 +23,6 @@
 	}
 
 
-/* stylized file upload button added by Pyry */
-.fileUpload {
-    position: relative;
-    overflow: hidden;
-}
-.fileUpload input.upload {
-    position: absolute;
-    top: 0;
-    right: 0;
-    margin: 0;
-    padding: 0;
-    font-size: 20px;
-    cursor: pointer;
-    opacity: 0;
-    filter: alpha(opacity=0);
-}
-
-
-/* addition ends */
-
 	label {
 		color: _palette(fg-bold);
 		display: block;
@@ -76,20 +56,6 @@
 		}
 
 	}
-
-
-.inlineContainer > span, .inlineContainer > input, .inlineContainer > button {
-			display: inline-block !important;
-			width: auto;
-			margin-right: 0.3em;
-			margin-left: 0.3em;
-    		padding: 0 0.5em !important;
-}
-
-.buttonHilight {
-	background-color: #F8DDDD !important;
-	border-color: #FF6666 !important;
-}
 
 	.select-wrapper {
 		@include icon('\f078');

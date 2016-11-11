@@ -199,23 +199,6 @@ form {
     form > .field > :last-child {
       margin-bottom: 0; }
 
-/* stylized file upload button added by Pyry */
-.fileUpload {
-  position: relative;
-  overflow: hidden; }
-
-.fileUpload input.upload {
-  position: absolute;
-  top: 0;
-  right: 0;
-  margin: 0;
-  padding: 0;
-  font-size: 20px;
-  cursor: pointer;
-  opacity: 0;
-  filter: alpha(opacity=0); }
-
-/* addition ends */
 label {
   color: #313f47;
   display: block;
@@ -254,17 +237,6 @@ textarea {
   select:focus,
   textarea:focus {
     border-color: #ff7496; }
-
-.inlineContainer > span, .inlineContainer > input, .inlineContainer > button {
-  display: inline-block !important;
-  width: auto;
-  margin-right: 0.3em;
-  margin-left: 0.3em;
-  padding: 0 0.5em !important; }
-
-.buttonHilight {
-  background-color: #F8DDDD !important;
-  border-color: #FF6666 !important; }
 
 .select-wrapper {
   text-decoration: none;
@@ -610,6 +582,34 @@ button,
 .answerList {
   position: relative; }
 
+/* stylized file upload button added by Pyry */
+.fileUpload {
+  position: relative;
+  overflow: hidden; }
+
+.fileUpload input.upload {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0;
+  filter: alpha(opacity=0); }
+
+/* this is for the add_quiz form, to have many input things on the same row. */
+.inlineContainer > span, .inlineContainer > input, .inlineContainer > button {
+  display: inline-block !important;
+  width: auto;
+  margin-right: 0.3em;
+  margin-left: 0.3em;
+  padding: 0 0.5em !important; }
+
+.buttonHilight {
+  background-color: #F8DDDD !important;
+  border-color: #FF6666 !important; }
+
 /* Main */
 #main {
   position: relative;
@@ -636,18 +636,22 @@ button,
   transition: opacity 1s ease, transform 1s ease; }
   #main .error {
     color: red; }
-  #main #menuButton {
+  #main .uiButton {
     z-index: 200;
     opacity: 0.2;
     border: none;
     padding: 0;
     width: 2.5em;
-    position: absolute;
-    top: 0;
-    right: 0.4em; }
-    #main #menuButton img {
+    position: absolute; }
+    #main .uiButton img {
       max-width: 100%;
       height: auto; }
+  #main #menuButton {
+    top: 0;
+    right: 0.4em; }
+  #main #backButton {
+    top: 0;
+    left: 0.4em; }
   #main #settings {
     z-index: 100;
     position: absolute;
