@@ -703,7 +703,7 @@ pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mim
     Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
 }
 
-pub fn create_word(conn : &PgConnection, data: (String, String, Vec<(PathBuf, Option<String>, mime::Mime)>)) -> Result<Word> {
+pub fn create_word(conn : &PgConnection, data: (String, String, String, Vec<(PathBuf, Option<String>, mime::Mime)>)) -> Result<Word> {
     use schema::{words, audio_bundles, audio_bundle_memberships};
 
     let bundle: AudioBundle = diesel::insert(&NewAudioBundle { listname: data.0.as_str() })
@@ -711,8 +711,10 @@ pub fn create_word(conn : &PgConnection, data: (String, String, Vec<(PathBuf, Op
         .get_result(&*conn)
         .chain_err(|| "Can't insert a new audio bundle!")?;
 
+    let skill_nugget = data.2;
+
     let mut narrator = None;
-    for mut file in data.2 {
+    for mut file in data.3 {
         let file = save_audio(&*conn, &mut narrator, &mut file)?;
         diesel::insert(&BundleMembership { bundle_id: bundle.id, file_id: file.id })
             .into(audio_bundle_memberships::table)
