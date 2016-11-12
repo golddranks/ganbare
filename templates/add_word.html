@@ -7,7 +7,7 @@
 <html>
 	<head>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
-		<script src="static/ts/add_quiz.js"></script>
+		<script src="static/ts/add_word.js"></script>
 		<title>{{ title }}</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -24,27 +24,15 @@
 
 				<!-- Main -->
 					<section id="main">
-						<form action="add_quiz" method="post" style="min-width: 37em;" enctype="multipart/form-data">
-							<input type="hidden" id="lowest_fieldset" name="lowest_fieldset" value="1">
-							<p><input type="text" id="name" name="name" placeholder="Kysymyksen listanimi"></p>
+						<form action="/add_word" method="post" style="min-width: 37em;" enctype="multipart/form-data">
+							<input type="hidden" class="audio_variations" name="caudio_variations" value="1">
+							<p><input type="text" id="word" name="word" placeholder="Sana"></p>
 							<p><input type="text" id="explanation" name="explanation" placeholder="Selitysteksti"></p>
-							<p><input type="text" id="question_text" name="question_text" placeholder="Kysymys"></p>
-							<div class="fieldset" id="proto_fieldset">
-								<label>1. vastausvaihtoehto</label>
-								<p class="inlineContainer">
-									<input type="hidden" class="q_variations" name="choice_1_q_variations" value="1">
-									<span class="fileUpload button q_variant"><span>Kysymys (audio 1)</span>
-									<input type="file" name="choice_1_q_variant_1" accept="audio/*" class="upload question" /></span><button
-									type="button" class="addVariant">+</button>
-								</p>
-								<p class="inlineContainer">
-									<span class="fileUpload button"><span>Vastaus (audio)</span>
-									<input type="file" name="choice_1_answer_audio" accept="audio/*" class="upload answer_audio" /></span><input
-										type="text" class="answer_text" name="choice_1_answer_text" placeholder="Vastaus (teksti)" style="width: 25em;">
-								</p>
-								<hr style="margin: 1em 0;">
-							</div>
-							<p style="text-align: right"><button type="button" id="add_answer">+</button></p>
+							<p class="inlineContainer">
+								<span class="fileUpload button audio_variant"><span>Ääntäminen 1</span>
+								<input type="file" name="audio_variant_1" accept="audio/*" class="upload question" /></span><button
+								type="button" class="addVariant">+</button>
+							</p>
 							<p><input type="text" name="skill_nugget" placeholder="Taidonjyvä"></p>
 							<p><input type="submit" value="Ok"></p>
 						</form>

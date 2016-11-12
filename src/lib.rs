@@ -704,17 +704,26 @@ pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mim
 }
 
 pub fn create_word(conn : &PgConnection, data: (String, String, Vec<(PathBuf, Option<String>, mime::Mime)>)) -> Result<Word> {
-    use schema::words;
+    use schema::{words, audio_bundles, audio_bundle_memberships};
+
+    let bundle: AudioBundle = diesel::insert(&NewAudioBundle { listname: data.0.as_str() })
+        .into(audio_bundles::table)
+        .get_result(&*conn)
+        .chain_err(|| "Can't insert a new audio bundle!")?;
 
     let mut narrator = None;
     for mut file in data.2 {
-        save_audio(&*conn, &mut narrator, &mut file)?;
-    }
+        let file = save_audio(&*conn, &mut narrator, &mut file)?;
+        diesel::insert(&BundleMembership { bundle_id: bundle.id, file_id: file.id })
+            .into(audio_bundle_memberships::table)
+            .execute(&*conn)
+            .chain_err(|| "Can't connect an audio file and a bundle.")?;
+    } 
 
     let new_word = NewWord {
         word: data.0.as_str(),
         explanation: data.1.as_str(),
-        audio_bundle: 1, // FIXME
+        audio_bundle: bundle.id,
         skill_nugget: None,
     };
 

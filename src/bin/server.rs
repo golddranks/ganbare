@@ -259,6 +259,15 @@ fn get_line(req: &mut Request) -> PencilResult {
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
+macro_rules! parse {
+    ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
+}
+
+fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
+    println!("{:?}", err);
+    abort(500).unwrap_err()
+}
+
 fn add_quiz_form(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
@@ -270,10 +279,6 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
     req.app.render_template("add_quiz.html", &context)
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
-}
-
-macro_rules! parse {
-    ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
 }
 
 fn add_quiz_post(req: &mut Request) -> PencilResult  {
@@ -343,27 +348,43 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
 
+    let (_, sess) = try_or!{user_session, else return abort(401)};
 
-    match user_session {
-        Some((_, sess)) => {
+    let form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(400).unwrap_err()})?;
+    let result = ganbare::create_quiz(&conn, form);
+    result.map_err(|e| match e.kind() {
+        &ErrorKind::FormParseError => abort(400).unwrap_err(),
+        _ => abort(500).unwrap_err(),
+    })?;
 
-            let form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(400).unwrap_err()})?;
-            let result = ganbare::create_quiz(&conn, form);
-            result.map_err(|e| match e.kind() {
-                &ErrorKind::FormParseError => abort(400).unwrap_err(),
-                _ => abort(500).unwrap_err(),
-            })?;
-
-            redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
-            },
-        None => abort(401),
-    }
+    redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 }
 
-fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
-    println!("{:?}", err);
-    abort(500).unwrap_err()
+fn add_word_form(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (_, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    let mut context = BTreeMap::new();
+    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    req.app.render_template("add_word.html", &context)
+                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
+fn add_word_post(req: &mut Request) -> PencilResult  {
+
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
+
+    let (_, sess) = try_or!{user_session, else return abort(401)};
+
+    println!("{:?}", "adding a word? FIXME UNIMPLEMENTED");
+    
+    redirect("/add_word", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
+}
+
 
 fn next_quiz(req: &mut Request) -> PencilResult {
     use rand::Rng;
@@ -494,6 +515,7 @@ fn main() {
     app.register_template("main.html");
     app.register_template("confirm.html");
     app.register_template("add_quiz.html");
+    app.register_template("add_word.html");
     app.register_template("change_password.html");
     app.enable_static_file_handling();
 
@@ -508,11 +530,13 @@ fn main() {
     app.get("/confirm", "confirm", confirm);
     app.get("/add_quiz", "add_quiz_form", add_quiz_form);
     app.post("/add_quiz", "add_quiz_post", add_quiz_post);
+    app.get("/add_word", "add_word_form", add_word_form);
+    app.post("/add_word", "add_word_post", add_word_post);
     app.post("/confirm", "confirm_final", confirm_final);
-    app.get("/api/new_quiz", "new_quiz", new_quiz);
-    app.post("/api/next_quiz", "next_quiz", next_quiz);
     app.get("/change_password", "change_password_form", change_password_form);
     app.post("/change_password", "change_password", change_password);
+    app.get("/api/new_quiz", "new_quiz", new_quiz);
+    app.post("/api/next_quiz", "next_quiz", next_quiz);
     app.get("/api/get_line/<line_id:int>", "get_line", get_line);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {

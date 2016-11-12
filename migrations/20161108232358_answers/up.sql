@@ -16,13 +16,13 @@ CREATE TABLE question_data (
 	PRIMARY KEY(user_id, question_id)
 );
 
-CREATE TABLE audio_bundle (
+CREATE TABLE audio_bundles (
 	id SERIAL PRIMARY KEY,
-	listname VARCHAR
+	listname VARCHAR NOT NULL
 );
 
-CREATE TABLE audio_bundle_file (
-	bundle_id SERIAL REFERENCES audio_bundle,
+CREATE TABLE audio_bundle_memberships (
+	bundle_id SERIAL REFERENCES audio_bundles,
 	file_id SERIAL REFERENCES audio_files,
 	PRIMARY KEY(bundle_id, file_id)
 );
@@ -31,6 +31,6 @@ CREATE TABLE words (
 	id SERIAL PRIMARY KEY,
 	word VARCHAR NOT NULL,
 	explanation VARCHAR NOT NULL,
-	audio_bundle SERIAL REFERENCES audio_bundle,
+	audio_bundle SERIAL REFERENCES audio_bundles,
 	skill_nugget INTEGER REFERENCES skill_nuggets
 );

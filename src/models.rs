@@ -203,21 +203,21 @@ pub struct QuestionData {
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="audio_bundle"]
+#[table_name="audio_bundles"]
 pub struct AudioBundle {
     pub id: i32,
     pub listname: String,
 }
 
 #[derive(Insertable)]
-#[table_name="audio_bundle"]
+#[table_name="audio_bundles"]
 pub struct NewAudioBundle<'a> {
     pub listname: &'a str,
 }
 
 #[derive(Insertable, Queryable, Associations, Debug)]
-#[table_name="audio_bundle_file"]
-pub struct AudioBundleFile {
+#[table_name="audio_bundle_memberships"]
+pub struct BundleMembership {
     pub bundle_id: i32,
     pub file_id: i32,
 }
