@@ -389,6 +389,7 @@ struct QuizJson {
 
 #[derive(RustcEncodable)]
 struct WordJson {
+    id: i32,
     word: String,
     explanation: String,
     audio_bundle: i32,
@@ -424,8 +425,14 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
             due_date: due_date.map(|d| d.to_rfc3339()),
         })
     },
-    Word(ganbare::models::Word { .. }) => {
-        jsonify(&())
+    Word(ganbare::models::Word { id, word, explanation, audio_bundle, skill_nugget }) => {
+        jsonify(&WordJson {
+            id,
+            word,
+            explanation,
+            audio_bundle,
+            skill_nugget,
+        })
     },
     }
 }

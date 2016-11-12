@@ -640,6 +640,9 @@ pub struct Quiz {
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> {
     use rand::Rng;
 
+    // FIXME
+    return Ok(Some(Card::Word(Word{ id: 1, word: "橋".into(), explanation: "Silta".into(), audio_bundle: 1, skill_nugget: None })));
+
     let (question_id, due_delay, due_date);
     if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
         question_id = q.id;
