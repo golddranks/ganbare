@@ -623,6 +623,11 @@ fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQues
     Ok(new_questions)
 }
 
+pub enum Card {
+    Word(Word),
+    Quiz(Quiz),
+}
+
 pub struct Quiz {
     pub question: QuizQuestion,
     pub question_audio: Vec<QuestionAudio>,
@@ -632,7 +637,7 @@ pub struct Quiz {
     pub due_date: Option<chrono::DateTime<chrono::UTC>>,
 }
 
-pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
+pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> {
     use rand::Rng;
 
     let (question_id, due_delay, due_date);
@@ -657,11 +662,11 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
     let right_answer_id = answers[random_answer_index].id;
     let question_audio = qqs.remove(random_answer_index);
 
-    Ok(Some(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date}))
+    Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date})))
 }
 
 pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: Answered)
--> Result<Option<Quiz>> {
+-> Result<Option<Card>> {
 
     let prev_answer_correct = answer.right_answer_id == answer.answered_id;
     let prev_answer_new = answer.due_delay == -1;
@@ -684,7 +689,7 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: Answered)
             .find(|qa| qa[0].question_answers_id == right_answer_id )
             .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
 
-        Ok(Some(Quiz{question, question_audio, right_answer_id, answers, due_delay: answer.due_delay, due_date: None}))
+        Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay: answer.due_delay, due_date: None})))
     }
 }
 

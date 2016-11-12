@@ -190,77 +190,6 @@ fn confirm_final(request: &mut Request) -> PencilResult {
     do_login(&user.email, &password, ip)
 }
 
-#[derive(RustcEncodable)]
-struct QuizJson {
-    question_id: i32,
-    username: String,
-    explanation: String,
-    question: (String, i32),
-    right_a: i32,
-    answers: Vec<(i32, String, Option<i32>)>,
-    due_delay: i32,
-    due_date: Option<String>,
-}
-
-fn new_quiz(req: &mut Request) -> PencilResult {
-    use rand::Rng;
-
-    let conn = ganbare::db_connect()
-        .map_err(|_| abort(500).unwrap_err())?;
-    let (user, sess) = get_user(&conn, req)
-        .map_err(|_| abort(500).unwrap_err())?
-        .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
-
-    let new_quiz = ganbare::get_new_quiz(&conn, &user)
-        .map_err(|_| abort(500).unwrap_err())?;
-
-    let ganbare::Quiz{ question, question_audio, right_answer_id, answers, due_delay, due_date } = try_or!{new_quiz, else return jsonify(&())}; 
-
-    let mut answers_json = Vec::with_capacity(answers.len());
-
-    let mut rng = rand::thread_rng();
-    let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
-    
-
-    for a in answers {
-        answers_json.push((a.id, a.answer_text, a.audio_files_id));
-    }
-
-    rng.shuffle(&mut answers_json);
- 
-    jsonify(&QuizJson {
-        question_id: question.id,
-        username: user.email,
-        explanation: question.q_explanation,
-        question: (question.question_text, chosen_q_audio.id),
-        right_a: right_answer_id,
-        answers: answers_json,
-        due_delay,
-        due_date: due_date.map(|d| d.to_rfc3339()),
-    }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
-}
-
-fn get_line(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
-        .map_err(|_| abort(500).unwrap_err())?;
-    let (_, sess) = get_user(&conn, req)
-        .map_err(|_| abort(500).unwrap_err())?
-        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
-
-    let line_id = req.view_args.get("line_id").expect("Pencil guarantees that Line ID should exist as an arg.");
-    let line_id = line_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
-    let (file_path, mime_type) = ganbare::get_line_file(&conn, line_id)
-        .map_err(|e| {
-            match e.kind() {
-                &ErrorKind::FileNotFound => abort(404).unwrap_err(),
-                _ => abort(500).unwrap_err(),
-            }
-        })?;
-
-    send_file(&file_path, mime_type, false)
-        .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
-}
-
 macro_rules! parse {
     ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
 }
@@ -424,9 +353,99 @@ fn add_word_post(req: &mut Request) -> PencilResult  {
 }
 
 
-fn next_quiz(req: &mut Request) -> PencilResult {
-    use rand::Rng;
+fn get_line(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (_, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
+    let line_id = req.view_args.get("line_id").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let line_id = line_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let (file_path, mime_type) = ganbare::get_line_file(&conn, line_id)
+        .map_err(|e| {
+            match e.kind() {
+                &ErrorKind::FileNotFound => abort(404).unwrap_err(),
+                _ => abort(500).unwrap_err(),
+            }
+        })?;
+
+    send_file(&file_path, mime_type, false)
+        .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
+
+
+#[derive(RustcEncodable)]
+struct QuizJson {
+    question_id: i32,
+    explanation: String,
+    question: (String, i32),
+    right_a: i32,
+    answers: Vec<(i32, String, Option<i32>)>,
+    due_delay: i32,
+    due_date: Option<String>,
+}
+
+#[derive(RustcEncodable)]
+struct WordJson {
+    word: String,
+    explanation: String,
+    audio_bundle: i32,
+    skill_nugget: Option<i32>,
+}
+
+fn card_to_json(card: ganbare::Card) -> PencilResult {
+    use rand::Rng;
+    use ganbare::Card::*;
+    match card {
+    Quiz(ganbare::Quiz{ question, question_audio, right_answer_id, answers, due_delay, due_date }) => {
+
+        let mut answers_json = Vec::with_capacity(answers.len());
+
+        let mut rng = rand::thread_rng();
+        let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
+        
+
+        for a in answers {
+            answers_json.push((a.id, a.answer_text, a.audio_files_id));
+        }
+
+        rng.shuffle(&mut answers_json);
+        
+
+        jsonify(&QuizJson {
+            question_id: question.id,
+            explanation: question.q_explanation,
+            question: (question.question_text, chosen_q_audio.id),
+            right_a: right_answer_id,
+            answers: answers_json,
+            due_delay,
+            due_date: due_date.map(|d| d.to_rfc3339()),
+        })
+    },
+    Word(ganbare::models::Word { .. }) => {
+        jsonify(&())
+    },
+    }
+}
+
+fn new_quiz(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
+
+    let new_quiz = ganbare::get_new_quiz(&conn, &user)
+        .map_err(|_| abort(500).unwrap_err())?;
+
+    let card = try_or!{new_quiz, else return jsonify(&())}; 
+
+    card_to_json(card).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
+fn next_quiz(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
@@ -451,29 +470,8 @@ fn next_quiz(req: &mut Request) -> PencilResult {
     let new_quiz = ganbare::get_next_quiz(&conn, &user, answer)
         .map_err(|e| internal_error(e))?;
 
-    let ganbare::Quiz{ question: qq, question_audio, right_answer_id, answers, due_delay, due_date } = try_or!{new_quiz, else return jsonify(&())}; 
-
-    let mut json_answers = Vec::with_capacity(answers.len());
-
-    let mut rng = rand::thread_rng();
-    let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
-
-    for a in answers {
-        json_answers.push((a.id, a.answer_text, a.audio_files_id));
-    }
-
-    rng.shuffle(&mut json_answers);
- 
-    jsonify(&QuizJson {
-        question_id: qq.id,
-        username: user.email,
-        explanation: qq.q_explanation,
-        question: (qq.question_text, chosen_q_audio.id),
-        right_a: right_answer_id,
-        answers: json_answers,
-        due_delay,
-        due_date: due_date.map(|d| d.to_rfc3339()),
-    }).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    let card = try_or!{new_quiz, else return jsonify(&())}; 
+    card_to_json(card).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 fn change_password_form(req: &mut Request) -> PencilResult {
