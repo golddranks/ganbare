@@ -84,6 +84,55 @@ pub struct SkillNugget {
 }
 
 #[derive(Insertable)]
+#[table_name="narrators"]
+pub struct NewNarrator<'a> {
+    pub name: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="narrators"]
+#[has_many(audio_files, foreign_key = "narrators_id")]
+pub struct Narrator {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Insertable)]
+#[table_name="audio_files"]
+pub struct NewAudioFile<'a> {
+    pub narrators_id: i32,
+    pub bundle_id: i32,
+    pub file_path: &'a str,
+    pub mime: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="audio_files"]
+#[belongs_to(Narrator, foreign_key = "narrators_id")]
+#[belongs_to(AudioBundle, foreign_key = "bundle_id")]
+pub struct AudioFile {
+    pub id: i32,
+    pub narrators_id: i32,
+    pub bundle_id: i32,
+    pub file_path: String,
+    pub mime: String,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="audio_bundles"]
+#[has_many(audio_files, foreign_key = "bundle_id")]
+pub struct AudioBundle {
+    pub id: i32,
+    pub listname: String,
+}
+
+#[derive(Insertable)]
+#[table_name="audio_bundles"]
+pub struct NewAudioBundle<'a> {
+    pub listname: &'a str,
+}
+
+#[derive(Insertable)]
 #[table_name="quiz_questions"]
 pub struct NewQuizQuestion<'a> {
     pub skill_id: Option<i32>,
@@ -106,66 +155,34 @@ pub struct QuizQuestion {
 }
 
 #[derive(Insertable)]
-#[table_name="narrators"]
-pub struct NewNarrator<'a> {
-    pub name: &'a str,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="narrators"]
-#[has_many(audio_files, foreign_key = "narrators_id")]
-pub struct Narrator {
-    pub id: i32,
-    pub name: String,
-}
-
-#[derive(Insertable)]
-#[table_name="audio_files"]
-pub struct NewAudioFile<'a> {
-    pub narrators_id: i32,
-    pub file_path: &'a str,
-    pub mime: &'a str,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="audio_files"]
-#[belongs_to(Narrator, foreign_key = "narrators_id")]
-#[has_many(question_audio, foreign_key = "id")]
-#[has_many(question_answers, foreign_key = "audio_files_id")]
-pub struct AudioFile {
-    pub id: i32,
-    pub narrators_id: i32,
-    pub file_path: String,
-    pub mime: String,
-}
-
-#[derive(Insertable)]
 #[table_name="question_answers"]
 pub struct NewAnswer<'a> {
     pub question_id: i32,
-    pub audio_files_id: Option<i32>,
+    pub a_audio_bundle: Option<i32>,
+    pub q_audio_bundle: i32,
     pub answer_text: &'a str,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="question_answers"]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
-#[belongs_to(AudioFile, foreign_key = "answer_audio")]
-#[has_many(question_audio, foreign_key = "question_answers_id")]
+#[belongs_to(AudioBundle, foreign_key = "q_audio_bundle")]
+#[table_name="question_answers"]
 pub struct Answer {
     pub id: i32,
     pub question_id: i32,
-    pub audio_files_id: Option<i32>,
+    pub a_audio_bundle: Option<i32>,
+    pub q_audio_bundle: i32,
     pub answer_text: String,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="question_audio"]
-#[belongs_to(Answer, foreign_key = "question_answers_id")]
-#[belongs_to(AudioFile, foreign_key = "id")]
-pub struct QuestionAudio {
+#[table_name="words"]
+pub struct Word {
     pub id: i32,
-    pub question_answers_id: i32,
+    pub word: String,
+    pub explanation: String,
+    pub audio_bundle: i32,
+    pub skill_nugget: Option<i32>,
 }
 
 #[derive(Insertable)]
@@ -202,36 +219,6 @@ pub struct QuestionData {
     pub due_delay: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="audio_bundles"]
-pub struct AudioBundle {
-    pub id: i32,
-    pub listname: String,
-}
-
-#[derive(Insertable)]
-#[table_name="audio_bundles"]
-pub struct NewAudioBundle<'a> {
-    pub listname: &'a str,
-}
-
-#[derive(Insertable, Queryable, Associations, Debug)]
-#[table_name="audio_bundle_memberships"]
-pub struct BundleMembership {
-    pub bundle_id: i32,
-    pub file_id: i32,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="words"]
-pub struct Word {
-    pub id: i32,
-    pub word: String,
-    pub explanation: String,
-    pub audio_bundle: i32,
-    pub skill_nugget: Option<i32>,
-}
-
 #[derive(Insertable)]
 #[table_name="words"]
 pub struct NewWord<'a> {
@@ -249,7 +236,6 @@ pub struct NewWordData {
     pub answer_time_ms: i32,
     pub audio_times: i32,
 }
-
 
 #[derive(Insertable)]
 #[table_name="skill_data"]

@@ -417,14 +417,18 @@ fn new_audio_bundle(conn : &PgConnection, name: &str) -> Result<AudioBundle> {
 
 
 fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &mut (PathBuf, Option<String>, mime::Mime), bundle: &mut Option<AudioBundle>) -> Result<AudioFile> {
-    use schema::{audio_files, audio_bundle_memberships};
+    use schema::{audio_files};
 
     save_audio_file(&mut file.0, file.1.as_ref().map(|s| s.as_str()).unwrap_or(""))?;
+
+    let bundle_id = if let &mut Some(ref bundle) = bundle { bundle.id } else {
+        new_audio_bundle(&*conn, "")?.id
+    };
 
     let file_path = file.0.to_str().expect("this is an ascii path");
     let mime = &format!("{}", file.2);
     let narrators_id = default_narrator_id(&*conn, &mut narrator)?;
-    let new_q_audio = NewAudioFile {narrators_id, file_path, mime};
+    let new_q_audio = NewAudioFile {narrators_id, bundle_id, file_path, mime};
 
     let audio_file : AudioFile = diesel::insert(&new_q_audio)
         .into(audio_files::table)
@@ -433,16 +437,6 @@ fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &
 
     println!("{:?}", &audio_file);
 
-    let bundle_id = if let &mut Some(ref bundle) = bundle { bundle.id } else {
-        new_audio_bundle(&*conn, "")?.id
-    };
-
-    diesel::insert(&BundleMembership { bundle_id, file_id: audio_file.id })
-            .into(audio_bundle_memberships::table)
-            .execute(&*conn)
-            .chain_err(|| "Can't connect an audio file and a bundle.")?;
-    
-    println!("Bundled.");
     
 
     Ok(audio_file)
@@ -450,7 +444,7 @@ fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &
 
 
 pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
-    use schema::{quiz_questions, question_answers, question_audio};
+    use schema::{quiz_questions, question_answers};
 
     println!("Creating quiz!");
 
@@ -476,13 +470,19 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
     let mut narrator = None;
 
     for fieldset in &mut answers {
-        let mut bundle = None;
-        let audio_files_id = match fieldset.answer_audio {
-            Some(ref mut a) => { Some(save_audio(&*conn, &mut narrator, a, &mut bundle)?.id) },
+        let mut a_bundle = None;
+        let a_audio_id = match fieldset.answer_audio {
+            Some(ref mut a) => { Some(save_audio(&*conn, &mut narrator, a, &mut a_bundle)?.id) },
             None => { None },
         };
         
-        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, audio_files_id };
+        let mut q_bundle = None;
+        for mut q_audio in &mut fieldset.q_variants {
+            let audio_file = save_audio(&*conn, &mut narrator, &mut q_audio, &mut q_bundle)?;
+        }
+        let q_bundle = q_bundle.expect("The audio bundle is initialized now.");
+
+        let new_answer = NewAnswer { question_id: quiz.id, answer_text: &fieldset.answer_text, a_audio_bundle: a_audio_id, q_audio_bundle: q_bundle.id };
 
         let answer : Answer = diesel::insert(&new_answer)
             .into(question_answers::table)
@@ -491,26 +491,13 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
 
         println!("{:?}", &answer);
 
-        let mut bundle = None;
-        for mut q_audio in &mut fieldset.q_variants {
-            let audio_file = save_audio(&*conn, &mut narrator, &mut q_audio, &mut bundle)?;
-
-            let new_q_audio_link = QuestionAudio {id: audio_file.id, question_answers_id: answer.id };
-
-            let q_audio_link : QuestionAudio = diesel::insert(&new_q_audio_link)
-                .into(question_audio::table)
-                .get_result(&*conn)
-                .chain_err(|| "Couldn't create a new question_audio!")?;
-
-            println!("{:?}", &q_audio_link);
-        }
         
     }
     Ok(quiz)
 }
 
-fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<Vec<QuestionAudio>>)>> {
-    use schema::{quiz_questions, question_answers};
+fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<Vec<AudioFile>>)>> {
+    use schema::{quiz_questions, question_answers, audio_files, audio_bundles};
     use diesel::result::Error::NotFound;
 
     let qq : Option<QuizQuestion> = quiz_questions::table
@@ -524,24 +511,23 @@ fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec
 
     let qq = try_or!{ qq, else return Ok(None) };
 
-    let aas : Vec<Answer> = question_answers::table
+    let (aas, q_bundles) : (Vec<Answer>, Vec<AudioBundle>) = question_answers::table
         .filter(question_answers::question_id.eq(qq.id))
         .load(&*conn)
         .chain_err(|| "Can't load quiz!")?;
 
-    let qqs : Vec<Vec<QuestionAudio>> = QuestionAudio
-        ::belonging_to(&aas)
+    let q_audio_files : Vec<Vec<AudioFile>> = AudioFile::belonging_to(&q_bundles)
         .load(&*conn)
         .chain_err(|| "Can't load quiz!")?
-        .grouped_by(&aas);
+        .grouped_by(&q_bundles);
 
-    for q in &qqs { // Sanity check
+    for q in &q_audio_files { // Sanity check
         if q.len() == 0 {
             return Err(ErrorKind::DatabaseOdd.into());
         }
     };
     
-    Ok(Some((qq, aas, qqs)))
+    Ok(Some((qq, aas, q_audio_files)))
 }
 
 #[derive(Debug)]
@@ -707,7 +693,7 @@ pub enum Card {
 #[derive(Debug)]
 pub struct Quiz {
     pub question: QuizQuestion,
-    pub question_audio: Vec<QuestionAudio>,
+    pub question_audio: Vec<AudioFile>,
     pub right_answer_id: i32,
     pub answers: Vec<Answer>,
     pub due_delay: i32,
@@ -775,7 +761,7 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
         
                 let (question, answers, qqs ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
                 let right_answer_id = answer.right_answer_id;
-                let question_audio : Vec<QuestionAudio> = qqs.into_iter()
+                let question_audio : Vec<AudioFile> = qqs.into_iter()
                     .find(|qa| qa[0].question_answers_id == right_answer_id )
                     .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
         
