@@ -442,6 +442,30 @@ fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &
     Ok(audio_file)
 }
 
+fn load_audio_from_bundles(conn : &PgConnection, bundles: &[AudioBundle]) -> Result<Vec<Vec<AudioFile>>> {
+    let q_audio_files : Vec<Vec<AudioFile>> = AudioFile::belonging_to(&*bundles)
+        .load(&*conn)
+        .chain_err(|| "Can't load quiz!")?
+        .grouped_by(&*bundles);
+
+    for q in &q_audio_files { // Sanity check
+        if q.len() == 0 {
+            return Err(ErrorKind::DatabaseOdd.into());
+        }
+    };
+    Ok(q_audio_files)
+}
+
+fn load_audio_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<Vec<AudioFile>> {
+    use schema::audio_files;
+
+    let q_audio_files : Vec<AudioFile> = audio_files::table
+        .filter(audio_files::bundle_id.eq(bundle_id))
+        .get_results(&*conn)
+        .chain_err(|| "Can't load quiz!")?;
+    Ok(q_audio_files)
+}
+
 
 pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
     use schema::{quiz_questions, question_answers};
@@ -478,7 +502,7 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
         
         let mut q_bundle = None;
         for mut q_audio in &mut fieldset.q_variants {
-            let audio_file = save_audio(&*conn, &mut narrator, &mut q_audio, &mut q_bundle)?;
+            save_audio(&*conn, &mut narrator, &mut q_audio, &mut q_bundle)?;
         }
         let q_bundle = q_bundle.expect("The audio bundle is initialized now.");
 
@@ -497,7 +521,7 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
 }
 
 fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<Vec<AudioFile>>)>> {
-    use schema::{quiz_questions, question_answers, audio_files, audio_bundles};
+    use schema::{quiz_questions, question_answers, audio_bundles};
     use diesel::result::Error::NotFound;
 
     let qq : Option<QuizQuestion> = quiz_questions::table
@@ -512,20 +536,13 @@ fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec
     let qq = try_or!{ qq, else return Ok(None) };
 
     let (aas, q_bundles) : (Vec<Answer>, Vec<AudioBundle>) = question_answers::table
+        .inner_join(audio_bundles::table)
         .filter(question_answers::question_id.eq(qq.id))
         .load(&*conn)
-        .chain_err(|| "Can't load quiz!")?;
-
-    let q_audio_files : Vec<Vec<AudioFile>> = AudioFile::belonging_to(&q_bundles)
-        .load(&*conn)
         .chain_err(|| "Can't load quiz!")?
-        .grouped_by(&q_bundles);
+        .into_iter().unzip();
 
-    for q in &q_audio_files { // Sanity check
-        if q.len() == 0 {
-            return Err(ErrorKind::DatabaseOdd.into());
-        }
-    };
+    let q_audio_files = load_audio_from_bundles(&*conn, &q_bundles)?;
     
     Ok(Some((qq, aas, q_audio_files)))
 }
@@ -686,7 +703,7 @@ fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
 
 #[derive(Debug)]
 pub enum Card {
-    Word(Word),
+    Word((Word, Vec<AudioFile>)),
     Quiz(Quiz),
 }
 
@@ -704,8 +721,10 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> 
     use rand::Rng;
 
     let mut words = get_new_words(&*conn, user.id)?;
-    if words.len() > 0{
-        Ok(Some(Card::Word(words.swap_remove(0))))
+    if words.len() > 0 {
+        let the_word = words.swap_remove(0);
+        let audio_files = load_audio_from_bundle(&*conn, the_word.audio_bundle)?;
+        Ok(Some(Card::Word((the_word, audio_files))))
     } else {
         let (question_id, due_delay, due_date);
         if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
@@ -759,11 +778,15 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
         
             } else { // Ask the same question again.
         
-                let (question, answers, qqs ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
+                let (question, answers, mut q_audio_files ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
+
                 let right_answer_id = answer.right_answer_id;
-                let question_audio : Vec<AudioFile> = qqs.into_iter()
-                    .find(|qa| qa[0].question_answers_id == right_answer_id )
+                
+                let (i, _) = answers.iter().enumerate()
+                    .find(|&(_, ref qa)| qa.id == right_answer_id )
                     .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
+
+                let question_audio : Vec<AudioFile> = q_audio_files.remove(i);
         
                 return Ok(Some(Card::Quiz(
                     Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date: None}

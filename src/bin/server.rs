@@ -395,7 +395,7 @@ struct WordJson {
     id: i32,
     word: String,
     explanation: String,
-    audio_bundle: i32,
+    audio_id: i32,
     skill_nugget: Option<i32>,
     due_delay: i32,
     due_date: Option<String>,
@@ -404,17 +404,17 @@ struct WordJson {
 fn card_to_json(card: ganbare::Card) -> PencilResult {
     use rand::Rng;
     use ganbare::Card::*;
+    let mut rng = rand::thread_rng();
     match card {
     Quiz(ganbare::Quiz{ question, question_audio, right_answer_id, answers, due_delay, due_date }) => {
 
         let mut answers_json = Vec::with_capacity(answers.len());
 
-        let mut rng = rand::thread_rng();
         let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
         
 
         for a in answers {
-            answers_json.push((a.id, a.answer_text, a.audio_files_id));
+            answers_json.push((a.id, a.answer_text, a.a_audio_bundle));
         }
 
         rng.shuffle(&mut answers_json);
@@ -431,14 +431,17 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
             due_date: due_date.map(|d| d.to_rfc3339()),
         })
     },
-    Word(ganbare::models::Word { id, word, explanation, audio_bundle, skill_nugget }) => {
+    Word((ganbare::models::Word { id, word, explanation, skill_nugget, .. }, audio_files)) => {
+
+        let chosen_audio = rng.choose(&audio_files).expect("Shouldn't be empty!");
+
         jsonify(&WordJson {
             show_accents: true, // FIXME
             quiz_type: "word".into(),
             id,
             word,
             explanation,
-            audio_bundle,
+            audio_id: chosen_audio.id,
             skill_nugget,
             due_delay: 30, // FIXME
             due_date: Some(chrono::UTC::now()).map(|d| d.to_rfc3339()), // FIXME

@@ -294,7 +294,7 @@ $(function () {
         }
         wordShowKana.html(word_html);
         wordExplanation.html(word.explanation);
-        wordAudio.setAttribute('src', "/api/get_line/" + word.audio_bundle);
+        wordAudio.setAttribute('src', "/api/get_line/" + word.audio_id);
         wordAudio.play();
         timesAudioPlayed++;
         timeUsedForAnswering = Date.now();
@@ -304,6 +304,7 @@ $(function () {
     function showQuiz(question) {
         cleanState();
         if (question === null) {
+            questionSection.show();
             questionStatus.text("Ei ole mitään kysyttävää ☹️");
             questionStatus.slideDown();
             play_button.prop("disabled", true);

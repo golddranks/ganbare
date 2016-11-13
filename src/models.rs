@@ -121,6 +121,7 @@ pub struct AudioFile {
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="audio_bundles"]
 #[has_many(audio_files, foreign_key = "bundle_id")]
+#[has_many(question_answers, foreign_key = "q_audio_bundle")]
 pub struct AudioBundle {
     pub id: i32,
     pub listname: String,
@@ -175,6 +176,15 @@ pub struct Answer {
     pub answer_text: String,
 }
 
+#[derive(Insertable)]
+#[table_name="words"]
+pub struct NewWord<'a> {
+    pub word: &'a str,
+    pub explanation: &'a str,
+    pub audio_bundle: i32,
+    pub skill_nugget: Option<i32>,
+}
+
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="words"]
 pub struct Word {
@@ -217,15 +227,6 @@ pub struct QuestionData {
     pub question_id: i32,
     pub due_date: DateTime<UTC>,
     pub due_delay: i32,
-}
-
-#[derive(Insertable)]
-#[table_name="words"]
-pub struct NewWord<'a> {
-    pub word: &'a str,
-    pub explanation: &'a str,
-    pub audio_bundle: i32,
-    pub skill_nugget: Option<i32>,
 }
 
 #[derive(Insertable)]
