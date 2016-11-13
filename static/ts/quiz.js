@@ -38,7 +38,7 @@ $(function () {
         $.post("/api/next_quiz", {
             type: "word",
             word_id: currentQuestion.id,
-            timesAudioPlayed: timesAudioPlayed,
+            times_audio_played: timesAudioPlayed,
             time: Date.now() - timeUsedForAnswering
         }, function (result) {
             currentQuestion = result;

@@ -241,4 +241,22 @@ pub struct NewWord<'a> {
     pub skill_nugget: Option<i32>,
 }
 
+#[derive(Insertable)]
+#[table_name="word_data"]
+pub struct NewWordData {
+    pub user_id: i32,
+    pub word_id: i32,
+    pub answer_time_ms: i32,
+    pub audio_times: i32,
+}
+
+
+#[derive(Insertable)]
+#[table_name="skill_data"]
+pub struct NewSkillData {
+    pub user_id: i32,
+    pub skill_nugget: i32,
+    pub skill_level: i32,
+}
+
 

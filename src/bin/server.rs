@@ -469,21 +469,29 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
 
-    fn parse_answer(req : &mut Request) -> Result<ganbare::AnsweredQuestion> {
+    fn parse_answer(req : &mut Request) -> Result<ganbare::Answered> {
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
         let answer_type = &parse!(form.get("type"));
-        
+
         if answer_type == "word" {
-            unimplemented!();
+            let word_id = str::parse::<i32>(&parse!(form.get("word_id")))?;
+            let times_audio_played = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
+            let time = str::parse::<i32>(&parse!(form.get("time")))?;
+            Ok(ganbare::Answered::Word(
+                ganbare::AnsweredWord{word_id, times_audio_played, time}
+            ))
         } else if answer_type == "question" {
             let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
             let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
             let answered_id = str::parse::<i32>(&parse!(form.get("answered_id")))?;
+            let answered_id = if answered_id > 0 { Some(answered_id) } else { None }; // Negatives mean that question was unanswered (due to time limit)
             let q_audio_id = str::parse::<i32>(&parse!(form.get("q_audio_id")))?;
             let time = str::parse::<i32>(&parse!(form.get("time")))?;
             let due_delay = str::parse::<i32>(&parse!(form.get("due_delay")))?;
-            Ok(ganbare::AnsweredQuestion{question_id, right_answer_id, answered_id, q_audio_id, due_delay, time})
+            Ok(ganbare::Answered::Question(
+                ganbare::AnsweredQuestion{question_id, right_answer_id, answered_id, q_audio_id, due_delay, time}
+            ))
         } else {
             Err(ErrorKind::FormParseError.into())
         }

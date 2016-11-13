@@ -34,3 +34,18 @@ CREATE TABLE words (
 	audio_bundle SERIAL REFERENCES audio_bundles,
 	skill_nugget INTEGER REFERENCES skill_nuggets
 );
+
+CREATE TABLE word_data (
+	user_id SERIAL REFERENCES users,
+	word_id SERIAL REFERENCES words,
+	answer_time_ms INTEGER NOT NULL,
+	audio_times INTEGER NOT NULL,
+	PRIMARY KEY(user_id, word_id)
+);
+
+CREATE TABLE skill_data (
+	user_id SERIAL REFERENCES users,
+	skill_nugget SERIAL REFERENCES skill_nuggets,
+	skill_level INTEGER,
+	PRIMARY KEY(user_id, skill_nugget)
+);

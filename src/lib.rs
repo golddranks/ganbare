@@ -524,29 +524,29 @@ pub enum Answered {
 
 pub struct AnsweredWord {
     pub word_id: i32,
+    pub time: i32,
+    pub times_audio_played: i32,
 }
 
 pub struct AnsweredQuestion {
     pub question_id: i32,
     pub right_answer_id: i32,
-    pub answered_id: i32,
+    pub answered_id: Option<i32>,
     pub q_audio_id: i32,
     pub time: i32,
     pub due_delay: i32,
 }
 
-fn log_answer(conn : &PgConnection, user : &User, answer: &AnsweredQuestion, new: bool) -> Result<()> {
+fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQuestion, new: bool) -> Result<()> {
     use schema::{answer_data, question_data};
-
-    let answered_id = if answer.answered_id > 0 { Some(answer.answered_id) } else { None };
 
     // Insert the specifics of this answer event
     let answerdata = NewAnswerData {
         user_id: user.id,
         q_audio_id: answer.q_audio_id,
-        answered_qa_id: answered_id,
+        answered_qa_id: answer.answered_id,
         answer_time_ms: answer.time,
-        correct: answer.right_answer_id == answer.answered_id
+        correct: answer.right_answer_id == answer.answered_id.unwrap_or(-1),
     };
     diesel::insert(&answerdata)
         .into(answer_data::table)
@@ -577,6 +577,24 @@ fn log_answer(conn : &PgConnection, user : &User, answer: &AnsweredQuestion, new
             return Err("It seems that the rows that should've been updated, are not in the database!".into());
         }
     }
+    Ok(())
+}
+
+fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) -> Result<()> {
+    use schema::{word_data};
+
+    // Insert the specifics of this answer event
+    let answerdata = NewWordData {
+        user_id: user.id,
+        word_id: answer.word_id,
+        audio_times: answer.times_audio_played,
+        answer_time_ms: answer.time,
+    };
+    diesel::insert(&answerdata)
+        .into(word_data::table)
+        .execute(conn)
+        .chain_err(|| "Couldn't save the answer data to database!")?;
+
     Ok(())
 }
 
@@ -677,32 +695,45 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> 
     Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date})))
 }
 
-pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: AnsweredQuestion)
+
+pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
 -> Result<Option<Card>> {
 
-    let prev_answer_correct = answer.right_answer_id == answer.answered_id;
-    let prev_answer_new = answer.due_delay == -1;
-    if prev_answer_new || !prev_answer_correct {
-        answer.due_delay = 30;
-    } else if prev_answer_correct {
-        answer.due_delay *= 2;
+    match answer_enum {
+        Answered::Word(answer_word) => {
+            log_answer_word(&*conn, user, &answer_word)?;
+            return get_new_quiz(conn, user);
+        },
+        Answered::Question(answer) => {
+            let prev_answer_correct = answer.right_answer_id == answer.answered_id.unwrap_or(-1);
+            let prev_answer_new = answer.due_delay == -1;
+            let mut due_delay = answer.due_delay;
+            if prev_answer_new || !prev_answer_correct {
+                due_delay = 30;
+            } else if prev_answer_correct {
+                due_delay *= 2;
+            }
+        
+            log_answer_question(&*conn, user, &answer, prev_answer_new)?;
+        
+            if prev_answer_correct {
+                return get_new_quiz(conn, user);
+        
+            } else { // Ask the same question again.
+        
+                let (question, answers, qqs ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
+                let right_answer_id = answer.right_answer_id;
+                let question_audio : Vec<QuestionAudio> = qqs.into_iter()
+                    .find(|qa| qa[0].question_answers_id == right_answer_id )
+                    .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
+        
+                return Ok(Some(Card::Quiz(
+                    Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date: None}
+                    )))
+            }
+        },
     }
 
-    log_answer(&*conn, user, &answer, prev_answer_new)?;
-
-    if prev_answer_correct {   
-        return get_new_quiz(conn, user);
-
-    } else { // Ask the same question again.
-
-        let (question, answers, qqs ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
-        let right_answer_id = answer.right_answer_id;
-        let question_audio : Vec<QuestionAudio> = qqs.into_iter()
-            .find(|qa| qa[0].question_answers_id == right_answer_id )
-            .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
-
-        Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay: answer.due_delay, due_date: None})))
-    }
 }
 
 pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {
@@ -728,7 +759,7 @@ pub fn create_word(conn : &PgConnection, data: (String, String, String, Vec<(Pat
         .get_result(&*conn)
         .chain_err(|| "Can't insert a new audio bundle!")?;
 
-    let skill_nugget = data.2;
+    let skill_nugget = data.2; // FIXME
 
     let mut narrator = None;
     for mut file in data.3 {
