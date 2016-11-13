@@ -421,9 +421,14 @@ fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &
 
     save_audio_file(&mut file.0, file.1.as_ref().map(|s| s.as_str()).unwrap_or(""))?;
 
-    let bundle_id = if let &mut Some(ref bundle) = bundle { bundle.id } else {
-        new_audio_bundle(&*conn, "")?.id
-    };
+    let bundle_id = if let &mut Some(ref bundle) = bundle {
+            bundle.id
+        } else {
+            let new_bundle = new_audio_bundle(&*conn, "")?;
+            let bundle_id = new_bundle.id;
+            *bundle = Some(new_bundle);
+            bundle_id
+        };
 
     let file_path = file.0.to_str().expect("this is an ascii path");
     let mime = &format!("{}", file.2);
@@ -577,6 +582,7 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
     let answerdata = NewAnswerData {
         user_id: user.id,
         q_audio_id: answer.q_audio_id,
+        correct_qa_id: answer.right_answer_id,
         answered_qa_id: answer.answered_id,
         answer_time_ms: answer.time,
         correct: answer.right_answer_id == answer.answered_id.unwrap_or(-1),
@@ -647,8 +653,9 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
         due_questions = quiz_questions::table
             .inner_join(question_data::table)
             .filter(quiz_questions::id.eq(any(dues)))
+            .filter(question_data::user_id.eq(user_id))
             .order(question_data::due_date.asc())
-            .get_results(conn)
+            .get_results(&*conn)
             .chain_err(|| "Can't get due question!")?;
 
     } else {
@@ -658,9 +665,10 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
             .filter(quiz_questions::id.eq(any(
                 dues.filter(question_data::due_date.lt(chrono::UTC::now()))
             )))
+            .filter(question_data::user_id.eq(user_id))
             .order(question_data::due_date.asc())
-            .get_results(conn)
-        .chain_err(|| "Can't get due question!")?;
+            .get_results(&*conn)
+            .chain_err(|| "Can't get due question!")?;
     };
 
     Ok(due_questions)
@@ -761,14 +769,16 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
             log_answer_word(&*conn, user, &answer_word)?;
             return get_new_quiz(conn, user);
         },
-        Answered::Question(answer) => {
+        Answered::Question(mut answer) => {
             let prev_answer_correct = answer.right_answer_id == answer.answered_id.unwrap_or(-1);
             let prev_answer_new = answer.due_delay == -1;
-            let mut due_delay = answer.due_delay;
-            if prev_answer_new || !prev_answer_correct {
-                due_delay = 30;
-            } else if prev_answer_correct {
-                due_delay *= 2;
+
+            if !prev_answer_correct {
+                answer.due_delay = 0;
+            } else if answer.due_delay <= 0 {
+                answer.due_delay = 30;
+            } else {
+                answer.due_delay *= 2;
             }
         
             log_answer_question(&*conn, user, &answer, prev_answer_new)?;
@@ -789,7 +799,7 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
                 let question_audio : Vec<AudioFile> = q_audio_files.remove(i);
         
                 return Ok(Some(Card::Quiz(
-                    Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date: None}
+                    Quiz{question, question_audio, right_answer_id, answers, due_delay: answer.due_delay, due_date: None}
                     )))
             }
         },

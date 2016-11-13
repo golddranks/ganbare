@@ -113,7 +113,7 @@ $(function () {
         topmessage.fadeIn();
         questionText.text(currentQuestion.question[0]);
         answerList.slideDown(400, function () {
-            main.css("min-height", main.css("height"));
+            //main.css("min-height", main.css("height"));
         });
         var thisQ = currentQuestion; // Let the closures capture a local variable, not global
         window.setTimeout(function () { if (thisQ.answered) {
@@ -215,7 +215,7 @@ $(function () {
     function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
         var newAnswerButton = prototypeAnswer.clone();
         newAnswerButton.children("button")
-            .text(text)
+            .html(text)
             .click(function () {
             $(this).addClass("buttonHilight");
             answerQuestion(ansId, isCorrect, question);
@@ -273,6 +273,7 @@ $(function () {
             questionStatus.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
                 + dur_seconds_remainder + " sekunnin päästä");
         }
+        questionSection.show();
         questionStatus.slideDown();
     }
     function askQuestion(question) {
@@ -304,6 +305,7 @@ $(function () {
     function showQuiz(question) {
         cleanState();
         if (question === null) {
+            console.log("No cards!");
             questionSection.show();
             questionStatus.text("Ei ole mitään kysyttävää ☹️");
             questionStatus.slideDown();
@@ -312,6 +314,7 @@ $(function () {
             return;
         }
         else if (new Date(question.due_date) > new Date()) {
+            console.log("BreakTime!");
             play_button.prop("disabled", true);
             avatar.fadeOut(100);
             breakTime(question);

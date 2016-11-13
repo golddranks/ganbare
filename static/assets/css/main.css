@@ -580,7 +580,14 @@ button,
   transform: scale(3); }
 
 .answerList {
-  position: relative; }
+  position: relative;
+  margin-bottom: -3em; }
+  .answerList button {
+    height: auto;
+    padding: 0.5em 0 0.5em 0; }
+    .answerList button img {
+      max-width: 23em;
+      max-height: 12em; }
 
 /* stylized file upload button added by Pyry */
 .fileUpload {
@@ -615,7 +622,8 @@ button,
 
 #wordExplanation img {
   max-width: 100%;
-  max-height: auto; }
+  height: auto;
+  max-height: 20em; }
 
 #wordShow {
   vertical-align: 13%; }

@@ -119,7 +119,7 @@ $(qAudio).bind('ended', function() {
 	topmessage.fadeIn();
 	questionText.text(currentQuestion.question[0]);
 	answerList.slideDown(400, function() {	
-		main.css("min-height", main.css("height"));
+		//main.css("min-height", main.css("height"));
 	});
 	var thisQ = currentQuestion; // Let the closures capture a local variable, not global
 	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
@@ -213,7 +213,7 @@ function answerQuestion(ansId, isCorrect, question) {
 function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
 	var newAnswerButton = prototypeAnswer.clone();
 	newAnswerButton.children("button")
-		.text(text)
+		.html(text)
 		.click(function(){
 			$(this).addClass("buttonHilight");
 			answerQuestion(ansId, isCorrect, question);
@@ -272,6 +272,7 @@ function breakTime(question) {
 		questionStatus.html("Tauon paikka!<br>Seuraava kysymys avautuu<br>"
 			+ dur_seconds_remainder +" sekunnin päästä");
 	}
+	questionSection.show();
 	questionStatus.slideDown();
 }
 
@@ -312,6 +313,7 @@ function showQuiz(question) {
 	cleanState();
 
 	if (question === null) {
+		console.log("No cards!");
 		questionSection.show();
 		questionStatus.text("Ei ole mitään kysyttävää ☹️");
 		questionStatus.slideDown();
@@ -319,6 +321,7 @@ function showQuiz(question) {
 		avatar.fadeOut(100);
 		return;
 	} else if (new Date(question.due_date) > new Date()) {
+		console.log("BreakTime!");
 		play_button.prop("disabled", true);
 		avatar.fadeOut(100);
 		breakTime(question);
@@ -338,6 +341,6 @@ function showQuiz(question) {
 	}
 
 }
-$.getJSON("/api/new_quiz", showQuiz);
-
+var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
+jqxhr.fail(function() { console.log("Connection fails with getJSON. (/api/new_quiz)"); wordSection.show(); wordStatus.text("Server is down or there is a bug :("); wordStatus.show(); });
 });

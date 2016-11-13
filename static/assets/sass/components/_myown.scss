@@ -16,6 +16,15 @@
 
 .answerList {
 	position: relative;
+	button {
+		height: auto;
+		padding: 0.5em 0 0.5em 0;
+		img {
+			max-width: 23em;
+			max-height: 12em;
+		}
+	}
+	margin-bottom: -3em;
 }
 
 
@@ -58,7 +67,8 @@
 #wordExplanation {
 	img {
 		max-width: 100%;
-		max-height: auto;
+		height: auto;
+		max-height: 20em;
 	}
 }
 
