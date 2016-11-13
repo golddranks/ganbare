@@ -1,9 +1,11 @@
 # To Do list
 
 Today
-- Word teaching cards
-- Design an alternative mode for quizes: traditional/output
+- Audio bundles
+- Skill nuggets
+- Serving words
 - Deploy to akusento.ganba.re
+- Design an alternative mode for quizes: traditional/output
 
 Tomorrow
 - Design a list and edit functionality for questions

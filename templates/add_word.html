@@ -24,6 +24,7 @@
 
 				<!-- Main -->
 					<section id="main">
+						<p>Sana: <span id="wordShowKana"></span></p>
 						<form action="/add_word" method="post" style="min-width: 37em;" enctype="multipart/form-data">
 							<input type="hidden" class="audio_variations" name="audio_variations" value="1">
 							<p><input type="text" id="word" name="word" placeholder="Sana"></p>
@@ -50,7 +51,12 @@
 		<!-- Scripts -->
 			<!--[if lte IE 8]><script src="static/assets/js/respond.min.js"></script><![endif]-->
 			<script>
-				$(function() { document.body.className = document.body.className.replace(/\bis-loading\b/, ''); });
+				$(function() {
+					document.body.className = document.body.className.replace(/\bis-loading\b/, '');
+					$("#word").on('input',function(e){
+						$("#wordShowKana").html(accentuate_kana($("#word").val()))
+					});
+				});
 				document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
 			</script>
 

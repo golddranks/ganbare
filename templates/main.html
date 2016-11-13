@@ -50,7 +50,9 @@
 							</div>
 						</div>
 						<div id="wordSection" style="display: none;">
-							<p><span id="word"></span>　<button id="wordShow"><img src="/static/images/speaker_teal.png" class="soundicon"></button></p>
+							<p><span id="wordShowKana"></span>　
+							<button id="wordShow"><img src="/static/images/speaker_teal.png" class="soundicon"></button></p>
+							<p id="wordStatus" style="display: none;"></p>
 							<div id="wordExplanation"></div>
 							<button id="wordOkButton">Ok, painan sanan mieleeni!</button>
 							<audio src="" id="wordAudio" style="display: none;"></audio>
@@ -76,7 +78,9 @@
 		<!-- Scripts -->
 			<!--[if lte IE 8]><script src="static/assets/js/respond.min.js"></script><![endif]-->
 			<script>
-				$(function() { document.body.className = document.body.className.replace(/\bis-loading\b/, ''); });
+				$(function() {
+					document.body.className = document.body.className.replace(/\bis-loading\b/, '');
+				});
 				document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
 			</script>
 

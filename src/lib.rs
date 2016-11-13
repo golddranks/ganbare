@@ -403,9 +403,21 @@ fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>)
     }
 }
 
+fn new_audio_bundle(conn : &PgConnection, name: &str) -> Result<AudioBundle> {
+    use schema::{audio_bundles};
+        let bundle: AudioBundle = diesel::insert(&NewAudioBundle { listname: name })
+            .into(audio_bundles::table)
+            .get_result(&*conn)
+            .chain_err(|| "Can't insert a new audio bundle!")?;
+        
+        println!("{:?}", bundle);
 
-fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &mut (PathBuf, Option<String>, mime::Mime)) -> Result<AudioFile> {
-    use schema::audio_files;
+        Ok(bundle)
+}
+
+
+fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &mut (PathBuf, Option<String>, mime::Mime), bundle: &mut Option<AudioBundle>) -> Result<AudioFile> {
+    use schema::{audio_files, audio_bundle_memberships};
 
     save_audio_file(&mut file.0, file.1.as_ref().map(|s| s.as_str()).unwrap_or(""))?;
 
@@ -414,13 +426,26 @@ fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &
     let narrators_id = default_narrator_id(&*conn, &mut narrator)?;
     let new_q_audio = NewAudioFile {narrators_id, file_path, mime};
 
-    let q_audio : AudioFile = diesel::insert(&new_q_audio)
+    let audio_file : AudioFile = diesel::insert(&new_q_audio)
         .into(audio_files::table)
         .get_result(&*conn)
         .chain_err(|| "Couldn't create a new audio file!")?;
 
-    println!("{:?}", &q_audio);
-    Ok(q_audio)
+    println!("{:?}", &audio_file);
+
+    let bundle_id = if let &mut Some(ref bundle) = bundle { bundle.id } else {
+        new_audio_bundle(&*conn, "")?.id
+    };
+
+    diesel::insert(&BundleMembership { bundle_id, file_id: audio_file.id })
+            .into(audio_bundle_memberships::table)
+            .execute(&*conn)
+            .chain_err(|| "Can't connect an audio file and a bundle.")?;
+    
+    println!("Bundled.");
+    
+
+    Ok(audio_file)
 }
 
 
@@ -451,8 +476,9 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
     let mut narrator = None;
 
     for fieldset in &mut answers {
+        let mut bundle = None;
         let audio_files_id = match fieldset.answer_audio {
-            Some(ref mut a) => { Some(save_audio(&*conn, &mut narrator, a)?.id) },
+            Some(ref mut a) => { Some(save_audio(&*conn, &mut narrator, a, &mut bundle)?.id) },
             None => { None },
         };
         
@@ -465,8 +491,9 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
 
         println!("{:?}", &answer);
 
+        let mut bundle = None;
         for mut q_audio in &mut fieldset.q_variants {
-            let audio_file = save_audio(&*conn, &mut narrator, &mut q_audio)?;
+            let audio_file = save_audio(&*conn, &mut narrator, &mut q_audio, &mut bundle)?;
 
             let new_q_audio_link = QuestionAudio {id: audio_file.id, question_answers_id: answer.id };
 
@@ -517,17 +544,20 @@ fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec
     Ok(Some((qq, aas, qqs)))
 }
 
+#[derive(Debug)]
 pub enum Answered {
     Word(AnsweredWord),
     Question(AnsweredQuestion),
 }
 
+#[derive(Debug)]
 pub struct AnsweredWord {
     pub word_id: i32,
     pub time: i32,
     pub times_audio_played: i32,
 }
 
+#[derive(Debug)]
 pub struct AnsweredQuestion {
     pub question_id: i32,
     pub right_answer_id: i32,
@@ -645,16 +675,36 @@ fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQues
         .limit(5)
         .order(quiz_questions::id.asc())
         .get_results(conn)
-        .chain_err(|| "Can't get due question!")?;
+        .chain_err(|| "Can't get new question!")?;
 
     Ok(new_questions)
 }
 
+fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
+    use diesel::expression::dsl::*;
+    use schema::{words, word_data};
+
+    let seen = word_data::table
+        .select(word_data::word_id)
+        .filter(word_data::user_id.eq(user_id));
+
+    let new_words : Vec<Word> = words::table
+        .filter(words::id.ne(all(seen)))
+        .limit(5)
+        .order(words::id.asc())
+        .get_results(conn)
+        .chain_err(|| "Can't get new words!")?;
+
+    Ok(new_words)
+}
+
+#[derive(Debug)]
 pub enum Card {
     Word(Word),
     Quiz(Quiz),
 }
 
+#[derive(Debug)]
 pub struct Quiz {
     pub question: QuizQuestion,
     pub question_audio: Vec<QuestionAudio>,
@@ -667,32 +717,34 @@ pub struct Quiz {
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> {
     use rand::Rng;
 
-    // FIXME
-    return Ok(Some(Card::Word(Word{ id: 1, word: "はしの*うえ".into(), explanation: "Silta<br><img src=\"http://media-cdn.tripadvisor.com/media/photo-o/03/b8/94/c8/onaruto-bridge.jpg\">".into(), audio_bundle: 1, skill_nugget: None })));
-
-    let (question_id, due_delay, due_date);
-    if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
-        question_id = q.id;
-        due_delay = -1;
-        due_date = None;
+    let mut words = get_new_words(&*conn, user.id)?;
+    if words.len() > 0{
+        Ok(Some(Card::Word(words.swap_remove(0))))
     } else {
-        if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, true)?.get(0) {
+        let (question_id, due_delay, due_date);
+        if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
             question_id = q.id;
-            due_delay = qdata.due_delay;
-            due_date = Some(qdata.due_date);
+            due_delay = -1;
+            due_date = None;
         } else {
-            return Ok(None);
+            if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, true)?.get(0) {
+                question_id = q.id;
+                due_delay = qdata.due_delay;
+                due_date = Some(qdata.due_date);
+            } else {
+                return Ok(None);
+            }
         }
+    
+        let (question, answers, mut qqs) = try_or!{ load_quiz(conn, question_id)?, else return Ok(None) };
+    
+        let mut rng = rand::thread_rng();
+        let random_answer_index = rng.gen_range(0, answers.len());
+        let right_answer_id = answers[random_answer_index].id;
+        let question_audio = qqs.remove(random_answer_index);
+    
+        Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date})))
     }
-
-    let (question, answers, mut qqs) = try_or!{ load_quiz(conn, question_id)?, else return Ok(None) };
-
-    let mut rng = rand::thread_rng();
-    let random_answer_index = rng.gen_range(0, answers.len());
-    let right_answer_id = answers[random_answer_index].id;
-    let question_audio = qqs.remove(random_answer_index);
-
-    Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date})))
 }
 
 
@@ -752,23 +804,16 @@ pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mim
 }
 
 pub fn create_word(conn : &PgConnection, data: (String, String, String, Vec<(PathBuf, Option<String>, mime::Mime)>)) -> Result<Word> {
-    use schema::{words, audio_bundles, audio_bundle_memberships};
-
-    let bundle: AudioBundle = diesel::insert(&NewAudioBundle { listname: data.0.as_str() })
-        .into(audio_bundles::table)
-        .get_result(&*conn)
-        .chain_err(|| "Can't insert a new audio bundle!")?;
+    use schema::{words};
 
     let skill_nugget = data.2; // FIXME
 
     let mut narrator = None;
+    let mut bundle = Some(new_audio_bundle(&*conn, data.0.as_str())?);
     for mut file in data.3 {
-        let file = save_audio(&*conn, &mut narrator, &mut file)?;
-        diesel::insert(&BundleMembership { bundle_id: bundle.id, file_id: file.id })
-            .into(audio_bundle_memberships::table)
-            .execute(&*conn)
-            .chain_err(|| "Can't connect an audio file and a bundle.")?;
+        save_audio(&*conn, &mut narrator, &mut file, &mut bundle)?;
     } 
+    let bundle = bundle.expect("The audio bundle is initialized now.");
 
     let new_word = NewWord {
         word: data.0.as_str(),

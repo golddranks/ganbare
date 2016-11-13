@@ -1,5 +1,53 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
 
+function accentuate(word) {
+
+	var empty = '<span class="accent">';
+	var middle = '<span class="accent"><img src="/static/images/accent_middle.png">';
+	var start = '<span class="accent"><img src="/static/images/accent_start.png">';
+	var end = '<span class="accent"><img src="/static/images/accent_end.png" class="accent">';
+	var flat_end = '<span class="accent"><img src="/static/images/accent_end_flat.png">';
+	var start_end = '<span class="accent"><img src="/static/images/accent_start_end.png">';
+	var start_end_flat = '<span class="accent"><img src="/static/images/accent_start_end_flat.png">';
+	var start_end_flat_short = '<span class="accent"><img src="/static/images/accent_start_end_flat_short.png">';
+	var peak = '<span class="accent"><img src="/static/images/accent_peak.png">';
+	
+
+	var accentuated = [""];
+	var ended = false;
+	for (var i = 0, len = word.length; i < len; i++) {
+
+		if (word.charAt(i) === "*") {
+			continue;
+		} else if (word.length === 1) {
+			accentuated.push(start_end_flat_short);
+		} else if (i === 0 && word.charAt(i+1) === "*") {
+			accentuated.push(start_end);
+			ended = true;
+		} else if (i === 1 && !ended && word.charAt(i+1) === "*") {
+			accentuated.push(peak);
+			ended = true;
+		} else if (i === 1 && !ended && i === len-1) {
+			accentuated.push(start_end_flat);
+		} else if (i === 1 && !ended && word.charAt(i+1) !== "*") {
+			accentuated.push(start);
+		} else if (i > 1 && !ended && i === len-1) {
+			accentuated.push(flat_end);
+		} else if (i > 1 && !ended && word.charAt(i+1) !== "*") {
+			accentuated.push(middle);
+		} else if (i > 1 && !ended && word.charAt(i+1) === "*") {
+			accentuated.push(end);
+			ended = true;
+		} else {
+			accentuated.push(empty);
+		}
+		accentuated.push(word.charAt(i));
+		accentuated.push("</span>");
+	}
+	return accentuated.join("");
+}
+
+
 $(function() {
 /* init the static machinery */
 
@@ -33,7 +81,8 @@ var wrong = <HTMLAudioElement>document.getElementById('sfxWrong');
 
 /* word-related things */
 var wordShow = $("#wordShow");
-var wordItself = $("#word");
+var wordShowKana = $("#wordShowKana");
+var wordStatus = $("#wordStatus");
 var wordExplanation = $("#wordExplanation");
 var soundIcon = $(".soundicon");
 var wordOkButton = $("#wordOkButton");
@@ -41,7 +90,7 @@ var wordOkButton = $("#wordOkButton");
 wordOkButton.click(function() {
 	semaphore = 2;
 	nextQuestion();
-	$.post("/api/next_quiz", {
+	var jqxhr = $.post("/api/next_quiz", {
 		type: "word",
 		word_id: currentQuestion.id,
 		times_audio_played: timesAudioPlayed,
@@ -50,6 +99,7 @@ wordOkButton.click(function() {
 		currentQuestion = result;
 		nextQuestion();
 	});
+	jqxhr.fail(function() { wordStatus.text("Server is down or there is a bug :("); wordStatus.show(); });
 });
 
 var wordAudio = <HTMLAudioElement>document.getElementById('wordAudio');
@@ -136,7 +186,8 @@ function answerQuestion(ansId, isCorrect, question) {
 	questionExplanation.hide();
 	semaphore = 2;
 
-	$.post("/api/next_quiz", {
+	var jqxhr = $.post("/api/next_quiz", {
+		type: "question",
 		answered_id: ansId,
 		right_a_id: currentQuestion.right_a,
 		question_id: currentQuestion.question_id,
@@ -147,6 +198,7 @@ function answerQuestion(ansId, isCorrect, question) {
 		currentQuestion = result;
 		nextQuestion();
 	});
+	jqxhr.fail(function() { questionStatus.text("Server is down or there is a bug :("); questionStatus.show(); });
 	mark.show();
 	mark.removeClass("hidden");
 	window.setTimeout(function() { mark.fadeOut(400); }, 1700);
@@ -238,52 +290,6 @@ function askQuestion(question) {
 	qAudio.setAttribute('src', "/api/get_line/"+question.question[1]);
 }
 
-function accentuate(word) {
-
-	var empty = '<span class="accent">';
-	var middle = '<span class="accent"><img src="/static/images/accent_middle.png">';
-	var start = '<span class="accent"><img src="/static/images/accent_start.png">';
-	var end = '<span class="accent"><img src="/static/images/accent_end.png" class="accent">';
-	var flat_end = '<span class="accent"><img src="/static/images/accent_end_flat.png">';
-	var start_end = '<span class="accent"><img src="/static/images/accent_start_end.png">';
-	var start_end_flat = '<span class="accent"><img src="/static/images/accent_start_end_flat.png">';
-	var start_end_flat_short = '<span class="accent"><img src="/static/images/accent_start_end_flat_short.png">';
-	var peak = '<span class="accent"><img src="/static/images/accent_peak.png">';
-	
-
-	var accentuated = [];
-	var ended = false;
-	for (var i = 0, len = word.length; i < len; i++) {
-
-		if (word.charAt(i) === "*") {
-			continue;
-		} else if (word.length === 1) {
-			accentuated.push(start_end_flat_short);
-		} else if (i === 0 && word.charAt(i+1) === "*") {
-			accentuated.push(start_end);
-			ended = true;
-		} else if (i === 1 && !ended && word.charAt(i+1) === "*") {
-			accentuated.push(peak);
-			ended = true;
-		} else if (i === 1 && !ended && i === len-1) {
-			accentuated.push(start_end_flat);
-		} else if (i === 1 && !ended && word.charAt(i+1) !== "*") {
-			accentuated.push(start);
-		} else if (i > 1 && !ended && i === len-1) {
-			accentuated.push(flat_end);
-		} else if (i > 1 && !ended && word.charAt(i+1) !== "*") {
-			accentuated.push(middle);
-		} else if (i > 1 && !ended && word.charAt(i+1) === "*") {
-			accentuated.push(end);
-			ended = true;
-		} else {
-			accentuated.push(empty);
-		}
-		accentuated.push(word.charAt(i));
-		accentuated.push("</span>");
-	}
-	return accentuated.join("");
-}
 
 function showWord(word) {
 
@@ -291,11 +297,12 @@ function showWord(word) {
 	if (word.show_accents) {
 		word_html = accentuate(word.word);
 	} 
-	wordItself.html(word_html);
+	wordShowKana.html(word_html);
 	wordExplanation.html(word.explanation);
 	wordAudio.setAttribute('src', "/api/get_line/"+word.audio_bundle);
 	wordAudio.play();
 	timesAudioPlayed++;
+	timeUsedForAnswering = Date.now();
 	soundIcon.prop("src", "/static/images/speaker_pink.png");
 	wordSection.show();
 }
@@ -330,7 +337,6 @@ function showQuiz(question) {
 	}
 
 }
-
 $.getJSON("/api/new_quiz", showQuiz);
 
 });
