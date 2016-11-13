@@ -610,6 +610,39 @@ button,
   background-color: #F8DDDD !important;
   border-color: #FF6666 !important; }
 
+#wordSection {
+  max-width: 40em; }
+
+#wordExplanation img {
+  max-width: 100%;
+  max-height: auto; }
+
+#wordShow {
+  vertical-align: 13%; }
+
+#word {
+  font-size: 2em;
+  letter-spacing: 0.1em; }
+
+span.accent {
+  position: relative; }
+  span.accent img {
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+    z-index: -100;
+    position: absolute;
+    top: -0.12em;
+    left: -0.1em;
+    width: 1.1em; }
+
+.soundicon {
+  vertical-align: -20%;
+  width: 2em;
+  height: auto; }
+
 /* Main */
 #main {
   position: relative;

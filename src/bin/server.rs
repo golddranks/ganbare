@@ -378,6 +378,7 @@ fn get_line(req: &mut Request) -> PencilResult {
 
 #[derive(RustcEncodable)]
 struct QuizJson {
+    quiz_type: String,
     question_id: i32,
     explanation: String,
     question: (String, i32),
@@ -389,11 +390,15 @@ struct QuizJson {
 
 #[derive(RustcEncodable)]
 struct WordJson {
+    show_accents: bool,
+    quiz_type: String,
     id: i32,
     word: String,
     explanation: String,
     audio_bundle: i32,
     skill_nugget: Option<i32>,
+    due_delay: i32,
+    due_date: Option<String>,
 }
 
 fn card_to_json(card: ganbare::Card) -> PencilResult {
@@ -416,6 +421,7 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
         
 
         jsonify(&QuizJson {
+            quiz_type: "question".into(),
             question_id: question.id,
             explanation: question.q_explanation,
             question: (question.question_text, chosen_q_audio.id),
@@ -427,11 +433,15 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
     },
     Word(ganbare::models::Word { id, word, explanation, audio_bundle, skill_nugget }) => {
         jsonify(&WordJson {
+            show_accents: true, // FIXME
+            quiz_type: "word".into(),
             id,
             word,
             explanation,
             audio_bundle,
             skill_nugget,
+            due_delay: 30, // FIXME
+            due_date: Some(chrono::UTC::now()).map(|d| d.to_rfc3339()), // FIXME
         })
     },
     }
@@ -459,16 +469,24 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
 
-    fn parse_answer(req : &mut Request) -> Result<ganbare::Answered> {
+    fn parse_answer(req : &mut Request) -> Result<ganbare::AnsweredQuestion> {
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
-        let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
-        let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
-        let answered_id = str::parse::<i32>(&parse!(form.get("answered_id")))?;
-        let q_audio_id = str::parse::<i32>(&parse!(form.get("q_audio_id")))?;
-        let time = str::parse::<i32>(&parse!(form.get("time")))?;
-        let due_delay = str::parse::<i32>(&parse!(form.get("due_delay")))?;
-        Ok(ganbare::Answered{question_id, right_answer_id, answered_id, q_audio_id, due_delay, time})
+        let answer_type = &parse!(form.get("type"));
+        
+        if answer_type == "word" {
+            unimplemented!();
+        } else if answer_type == "question" {
+            let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
+            let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
+            let answered_id = str::parse::<i32>(&parse!(form.get("answered_id")))?;
+            let q_audio_id = str::parse::<i32>(&parse!(form.get("q_audio_id")))?;
+            let time = str::parse::<i32>(&parse!(form.get("time")))?;
+            let due_delay = str::parse::<i32>(&parse!(form.get("due_delay")))?;
+            Ok(ganbare::AnsweredQuestion{question_id, right_answer_id, answered_id, q_audio_id, due_delay, time})
+        } else {
+            Err(ErrorKind::FormParseError.into())
+        }
     };
 
     let answer = parse_answer(req)

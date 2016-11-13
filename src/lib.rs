@@ -517,7 +517,16 @@ fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec
     Ok(Some((qq, aas, qqs)))
 }
 
-pub struct Answered {
+pub enum Answered {
+    Word(AnsweredWord),
+    Question(AnsweredQuestion),
+}
+
+pub struct AnsweredWord {
+    pub word_id: i32,
+}
+
+pub struct AnsweredQuestion {
     pub question_id: i32,
     pub right_answer_id: i32,
     pub answered_id: i32,
@@ -526,7 +535,7 @@ pub struct Answered {
     pub due_delay: i32,
 }
 
-fn log_answer(conn : &PgConnection, user : &User, answer: &Answered, new: bool) -> Result<()> {
+fn log_answer(conn : &PgConnection, user : &User, answer: &AnsweredQuestion, new: bool) -> Result<()> {
     use schema::{answer_data, question_data};
 
     let answered_id = if answer.answered_id > 0 { Some(answer.answered_id) } else { None };
@@ -641,7 +650,7 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> 
     use rand::Rng;
 
     // FIXME
-    return Ok(Some(Card::Word(Word{ id: 1, word: "橋".into(), explanation: "Silta".into(), audio_bundle: 1, skill_nugget: None })));
+    return Ok(Some(Card::Word(Word{ id: 1, word: "はしの*うえ".into(), explanation: "Silta<br><img src=\"http://media-cdn.tripadvisor.com/media/photo-o/03/b8/94/c8/onaruto-bridge.jpg\">".into(), audio_bundle: 1, skill_nugget: None })));
 
     let (question_id, due_delay, due_date);
     if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
@@ -668,7 +677,7 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> 
     Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date})))
 }
 
-pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: Answered)
+pub fn get_next_quiz(conn : &PgConnection, user : &User, mut answer: AnsweredQuestion)
 -> Result<Option<Card>> {
 
     let prev_answer_correct = answer.right_answer_id == answer.answered_id;
