@@ -75,6 +75,7 @@ $(function () {
     var timeUsedForAnswering = null;
     var timesAudioPlayed = 0;
     var qAudio = document.getElementById('questionAudio');
+    var qAudioSource = $("#questionAudio source");
     var correct = document.getElementById('sfxCorrect');
     var wrong = document.getElementById('sfxWrong');
     /* word-related things */
@@ -104,6 +105,12 @@ $(function () {
         wordAudio.play();
         soundIcon.prop("src", "/static/images/speaker_pink.png");
     });
+    function bugMessage() {
+        cleanState();
+        questionSection.show();
+        questionStatus.text("Server is down or there is a bug :(");
+        questionStatus.show();
+    }
     $(wordAudio).bind('ended', function () {
         soundIcon.prop("src", "/static/images/speaker_teal.png");
     });
@@ -142,6 +149,7 @@ $(function () {
         questionStatus.slideUp();
         play_button.prop("disabled", true);
         qAudio.play();
+        console.log("Playing!");
         main.css("min-height", main.css("height"));
         avatar.fadeOut(400);
     });
@@ -190,11 +198,11 @@ $(function () {
         var jqxhr = $.post("/api/next_quiz", {
             type: "question",
             answered_id: ansId,
-            right_a_id: currentQuestion.right_a,
-            question_id: currentQuestion.question_id,
-            q_audio_id: currentQuestion.question[1],
+            right_a_id: question.right_a,
+            question_id: question.question_id,
+            q_audio_id: question.question[1],
             time: time,
-            due_delay: currentQuestion.due_delay
+            due_delay: question.due_delay
         }, function (result) {
             currentQuestion = result;
             nextQuestion();
@@ -207,7 +215,7 @@ $(function () {
             answerList.slideUp(400, function () {
                 topmessage.fadeOut();
                 questionExplanation.text("Loading...");
-                questionExplanation.slideDown();
+                questionExplanation.show();
                 nextQuestion();
             });
         }, 2200);
@@ -235,6 +243,7 @@ $(function () {
         questionSection.hide();
         aAudio = [];
         answerMarks.hide();
+        avatar.hide();
         answerMarks.addClass("hidden");
         currentQuestion = null;
         questionExplanation.text("");
@@ -334,5 +343,17 @@ $(function () {
             questionStatus.show();
         }
     }
-    $.getJSON("/api/new_quiz", showQuiz);
+    $("audio").on("error", function (e) {
+        console.log("Error with audio element!");
+        bugMessage();
+    });
+    $("source").on("error", function (e) {
+        console.log("Error with audio element!");
+        bugMessage();
+    });
+    var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
+    jqxhr.fail(function () {
+        console.log("Connection fails with getJSON. (/api/new_quiz)");
+        bugMessage();
+    });
 });

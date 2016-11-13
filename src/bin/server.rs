@@ -28,6 +28,9 @@ use pencil::helpers::send_file;
 use ganbare::models::{User, Session};
 
 
+//const JQUERY_URL: &'static str = "https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js";
+const JQUERY_URL: &'static str = "/static/assets/js/jquery.min.js";
+
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
 }
@@ -97,6 +100,7 @@ fn hello(request: &mut Request) -> PencilResult {
 
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    context.insert("jquery_url".to_string(), JQUERY_URL.to_string());
 
     match user_session {
         Some((_, sess)) => request.app.render_template("main.html", &context)

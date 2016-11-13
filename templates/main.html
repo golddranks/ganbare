@@ -6,7 +6,7 @@
 -->
 <html>
 	<head>
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+		<script src="{{jquery_url}}"></script>
 		<script src="static/ts/quiz.js"></script>
 		<title>{{ title }}</title>
 		<meta charset="utf-8" />
@@ -37,7 +37,7 @@
 						<section id="quiz">
 						<div id="questionSection" style="display: none;">
 							<audio src="/static/assets/sfx/correct.mp3" id="sfxCorrect" style="display: none;"></audio>
-							<audio src="" id="questionAudio" style="display: none;"></audio>
+							<audio id="questionAudio" style="display: none;"></audio>
 							<audio src="/static/assets/sfx/wrong.mp3" id="sfxWrong" style="display:none;"></audio>
 							<p id="questionStatus" style="display: none;"></p>
 							<p id="questionExplanation" style="display: none;"></p>
