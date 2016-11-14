@@ -52,6 +52,7 @@ $(function() {
 /* init the static machinery */
 
 var main = $("#main");
+var errorStatus = $("#errorStatus");
 
 /* question-related things */
 var prototypeAnswer = $(".answer").remove();
@@ -71,7 +72,7 @@ var semaphore = 0;
 var topmessage = $(".topmessageparagraph");
 var breakTimeWaitHandle = null;
 var aAudio = [];
-var currentQuestion = null;
+let currentQuestion = null;
 var timeUsedForAnswering = null;
 var timesAudioPlayed = 0;
 
@@ -112,9 +113,8 @@ wordShow.click(function() {
 function bugMessage(e) {
 	console.log("Bug?", e);
 	cleanState();
-	questionSection.show();
-	questionStatus.text("Server is down or there is a bug :(");
-	questionStatus.show();
+	errorStatus.text("Server is down or there is a bug :(");
+	errorStatus.show();
 }
 
 $(wordAudio).bind('ended', function() {
@@ -135,7 +135,7 @@ $(qAudio).bind('ended', function() {
 	window.setTimeout(function() {
 		if (thisQ.answered) {return};
 		topmessage.fadeOut(); 
-		answerQuestion(-1, false, thisQ);
+		answerQuestion(-1, false, thisQ, null);
 	}, 8000);
 });
 
@@ -173,8 +173,10 @@ function nextQuestion() {
 	showQuiz(currentQuestion);
 };
 
-function answerQuestion(ansId, isCorrect, question) {
+function answerQuestion(ansId, isCorrect, question, button) {
+	if (question.answered) { return; };
 	question.answered = true;
+	$(this).addClass("buttonHilight");
 	var mark = null;
 	var time = Date.now() - timeUsedForAnswering;
 	if (isCorrect) {
@@ -207,6 +209,12 @@ function answerQuestion(ansId, isCorrect, question) {
 		nextQuestion();
 	});
 	jqxhr.fail(function(e) { bugMessage(e); });
+	if (button === null) {
+		mark.css("top", "55%;");
+	} else {
+		var top = $(button).position().top + ($(button).height()/2);
+		mark.css("top", top + "px");
+	}
 	mark.show();
 	mark.removeClass("hidden");
 	window.setTimeout(function() { mark.fadeOut(400); }, 1700);
@@ -223,8 +231,7 @@ function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
 	newAnswerButton.children("button")
 		.html(text)
 		.click(function(){
-			$(this).addClass("buttonHilight");
-			answerQuestion(ansId, isCorrect, question);
+			answerQuestion(ansId, isCorrect, question, this);
 		});
 
 	if (ansAudioId !== null) {
@@ -244,7 +251,6 @@ function cleanState() {
 	answerMarks.hide();
 	avatar.hide();
 	answerMarks.addClass("hidden");
-	currentQuestion = null;
 	questionExplanation.text("");
 	questionExplanation.hide();
 	topmessage.fadeOut();
@@ -351,10 +357,27 @@ function showQuiz(question) {
 
 }
 
-$("audio").on("error", function (e) {
-        console.log("Error with audio element!");
-		bugMessage(e);
-    });
+$("#questionAudio").on("error", function (e) {
+	if (currentQuestion === null || currentQuestion.quiz_type !== "question") { return false; };
+	var audio = $(this);
+	var src = audio.attr("src");
+       console.log("Error with qAudio element! Trying again after 3 secs.", src);
+	bugMessage(e);
+	setTimeout(function() {
+		audio.attr("src", src);
+	}, 3000);
+});
+
+$("#wordAudio").on("error", function (e) {
+	if (currentQuestion === null || currentQuestion.quiz_type !== "word") { return false; };
+	var audio = $(this);
+	var src = audio.attr("src");
+    console.log("Error with wordAudio element! Trying again after 3 secs.", src);
+	bugMessage(e);
+	setTimeout(function() {
+		audio.attr("src", src);
+	}, 3000);
+});
 
 var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
 jqxhr.fail(function(e) {

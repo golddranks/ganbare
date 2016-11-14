@@ -374,8 +374,14 @@ fn get_line(req: &mut Request) -> PencilResult {
             }
         })?;
 
+    use pencil::{PencilError, HTTPError};
+
     send_file(&file_path, mime_type, false)
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+        .map_err(|e| match e {
+            PencilError::PenHTTPError(HTTPError::NotFound) => { println!("The file database is borked?"); internal_error(e) },
+            _ => { internal_error(e) }
+        })
 }
 
 

@@ -53,6 +53,7 @@ function accentuate(word) {
 $(function () {
     /* init the static machinery */
     var main = $("#main");
+    var errorStatus = $("#errorStatus");
     /* question-related things */
     var prototypeAnswer = $(".answer").remove();
     prototypeAnswer.show();
@@ -96,7 +97,7 @@ $(function () {
             currentQuestion = result;
             nextQuestion();
         });
-        jqxhr.fail(function () { wordStatus.text("Server is down or there is a bug :("); wordStatus.show(); });
+        jqxhr.fail(function (e) { bugMessage(e); });
     });
     var wordAudio = document.getElementById('wordAudio');
     wordShow.click(function () {
@@ -107,9 +108,8 @@ $(function () {
     function bugMessage(e) {
         console.log("Bug?", e);
         cleanState();
-        questionSection.show();
-        questionStatus.text("Server is down or there is a bug :(");
-        questionStatus.show();
+        errorStatus.text("Server is down or there is a bug :(");
+        errorStatus.show();
     }
     $(wordAudio).bind('ended', function () {
         soundIcon.prop("src", "/static/images/speaker_teal.png");
@@ -136,7 +136,7 @@ $(function () {
             }
             ;
             topmessage.fadeOut();
-            answerQuestion(-1, false, thisQ);
+            answerQuestion(-1, false, thisQ, null);
         }, 8000);
     });
     play_button.click(function () {
@@ -171,8 +171,13 @@ $(function () {
         showQuiz(currentQuestion);
     }
     ;
-    function answerQuestion(ansId, isCorrect, question) {
+    function answerQuestion(ansId, isCorrect, question, button) {
+        if (question.answered) {
+            return;
+        }
+        ;
         question.answered = true;
+        $(this).addClass("buttonHilight");
         var mark = null;
         var time = Date.now() - timeUsedForAnswering;
         if (isCorrect) {
@@ -205,7 +210,14 @@ $(function () {
             currentQuestion = result;
             nextQuestion();
         });
-        jqxhr.fail(function () { questionStatus.text("Server is down or there is a bug :("); questionStatus.show(); });
+        jqxhr.fail(function (e) { bugMessage(e); });
+        if (button === null) {
+            mark.css("top", "55%;");
+        }
+        else {
+            var top = $(button).position().top + ($(button).height() / 2);
+            mark.css("top", top + "px");
+        }
         mark.show();
         mark.removeClass("hidden");
         window.setTimeout(function () { mark.fadeOut(400); }, 1700);
@@ -223,8 +235,7 @@ $(function () {
         newAnswerButton.children("button")
             .html(text)
             .click(function () {
-            $(this).addClass("buttonHilight");
-            answerQuestion(ansId, isCorrect, question);
+            answerQuestion(ansId, isCorrect, question, this);
         });
         if (ansAudioId !== null) {
             var audio = document.createElement('audio');
@@ -243,7 +254,6 @@ $(function () {
         answerMarks.hide();
         avatar.hide();
         answerMarks.addClass("hidden");
-        currentQuestion = null;
         questionExplanation.text("");
         questionExplanation.hide();
         topmessage.fadeOut();
@@ -341,9 +351,31 @@ $(function () {
             bugMessage(null);
         }
     }
-    $("audio").on("error", function (e) {
-        console.log("Error with audio element!");
+    $("#questionAudio").on("error", function (e) {
+        if (currentQuestion === null || currentQuestion.quiz_type !== "question") {
+            return false;
+        }
+        ;
+        var audio = $(this);
+        var src = audio.attr("src");
+        console.log("Error with qAudio element! Trying again after 3 secs.", src);
         bugMessage(e);
+        setTimeout(function () {
+            audio.attr("src", src);
+        }, 3000);
+    });
+    $("#wordAudio").on("error", function (e) {
+        if (currentQuestion === null || currentQuestion.quiz_type !== "word") {
+            return false;
+        }
+        ;
+        var audio = $(this);
+        var src = audio.attr("src");
+        console.log("Error with wordAudio element! Trying again after 3 secs.", src);
+        bugMessage(e);
+        setTimeout(function () {
+            audio.attr("src", src);
+        }, 3000);
     });
     var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
     jqxhr.fail(function (e) {

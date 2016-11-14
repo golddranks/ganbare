@@ -3,10 +3,11 @@
 
 .answerMark {
 	position: absolute;
-	left: calc(50% - 111px);
-	top: calc(60% - 111px);
+	left: calc(50%);
+	top: calc(55%);
     transition: all 200ms linear;
-
+    margin-top: -111px;
+    margin-left: -111px;
 }
 
 .answerMark.hidden {
