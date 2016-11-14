@@ -53,6 +53,7 @@ function accentuate(word) {
 $(function () {
     /* init the static machinery */
     var main = $("#main");
+    var errorSection = $("#errorSection");
     var errorStatus = $("#errorStatus");
     /* question-related things */
     var prototypeAnswer = $(".answer").remove();
@@ -85,20 +86,6 @@ $(function () {
     var wordExplanation = $("#wordExplanation");
     var soundIcon = $(".soundicon");
     var wordOkButton = $("#wordOkButton");
-    wordOkButton.click(function () {
-        semaphore = 2;
-        nextQuestion();
-        var jqxhr = $.post("/api/next_quiz", {
-            type: "word",
-            word_id: currentQuestion.id,
-            times_audio_played: timesAudioPlayed,
-            time: Date.now() - timeUsedForAnswering
-        }, function (result) {
-            currentQuestion = result;
-            nextQuestion();
-        });
-        jqxhr.fail(function (e) { bugMessage(e); });
-    });
     var wordAudio = document.getElementById('wordAudio');
     wordShow.click(function () {
         timesAudioPlayed++;
@@ -107,9 +94,13 @@ $(function () {
     });
     function bugMessage(e) {
         console.log("Bug?", e);
-        cleanState();
+        errorSection.show();
         errorStatus.text("Server is down or there is a bug :(");
-        errorStatus.show();
+        main.addClass("errorOn");
+    }
+    function clearError() {
+        errorSection.hide();
+        main.removeClass("errorOn");
     }
     $(wordAudio).bind('ended', function () {
         soundIcon.prop("src", "/static/images/speaker_teal.png");
@@ -154,14 +145,41 @@ $(function () {
     /* menu */
     var settingsArea = $("#settings");
     var menuButton = $("#menuButton");
-    function toggleMenu() {
+    function toggleMenu(event) {
         settingsArea.toggle();
+        main.toggleClass("menuOn");
+        event.stopPropagation();
+    }
+    function cancelMenu(event) {
+        settingsArea.hide();
+        main.removeClass("menuOn");
+        event.stopPropagation();
     }
     settingsArea.hide();
-    settingsArea.click(toggleMenu);
+    settingsArea.click(cancelMenu);
+    $("body").click(cancelMenu);
     menuButton.click(toggleMenu);
     $("#settingsMenu").click(function (event) { event.stopPropagation(); });
     /* dynamics */
+    function answerWord() {
+        semaphore = 2;
+        nextQuestion();
+        var jqxhr = $.post("/api/next_quiz", {
+            type: "word",
+            word_id: currentQuestion.id,
+            times_audio_played: timesAudioPlayed,
+            time: Date.now() - timeUsedForAnswering
+        }, function (result) {
+            currentQuestion = result;
+            nextQuestion();
+        });
+        jqxhr.fail(function (e) {
+            bugMessage(e);
+            setTimeout(answerWord, 3000);
+        });
+    }
+    ;
+    wordOkButton.click(answerWord);
     function nextQuestion() {
         semaphore--;
         if (semaphore > 0) {
@@ -198,19 +216,27 @@ $(function () {
         questionStatus.show();
         questionExplanation.hide();
         semaphore = 2;
-        var jqxhr = $.post("/api/next_quiz", {
-            type: "question",
-            answered_id: ansId,
-            right_a_id: question.right_a,
-            question_id: question.question_id,
-            q_audio_id: question.question[1],
-            time: time,
-            due_delay: question.due_delay
-        }, function (result) {
-            currentQuestion = result;
-            nextQuestion();
-        });
-        jqxhr.fail(function (e) { bugMessage(e); });
+        function postQuestionAnswer() {
+            var jqxhr = $.post("/api/next_quiz", {
+                type: "question",
+                answered_id: ansId,
+                right_a_id: question.right_a,
+                question_id: question.question_id,
+                q_audio_id: question.question[1],
+                time: time,
+                due_delay: question.due_delay
+            }, function (result) {
+                console.log("postQuestionAnswer: got result");
+                currentQuestion = result;
+                nextQuestion();
+            });
+            jqxhr.fail(function (e) {
+                bugMessage(e);
+                setTimeout(postQuestionAnswer, 3000);
+            });
+        }
+        ;
+        postQuestionAnswer();
         if (button === null) {
             mark.css("top", "55%;");
         }
@@ -307,6 +333,7 @@ $(function () {
         qAudio.setAttribute('src', "/api/get_line/" + question.question[1]);
     }
     function showWord(word) {
+        console.log("showWord!");
         var word_html = word.word;
         if (word.show_accents) {
             word_html = accentuate(word.word);
@@ -321,6 +348,7 @@ $(function () {
         wordSection.show();
     }
     function showQuiz(question) {
+        console.log("showQuiz!");
         cleanState();
         if (question === null) {
             console.log("No cards!");
@@ -362,6 +390,7 @@ $(function () {
         bugMessage(e);
         setTimeout(function () {
             audio.attr("src", src);
+            clearError();
         }, 3000);
     });
     $("#wordAudio").on("error", function (e) {
@@ -375,11 +404,18 @@ $(function () {
         bugMessage(e);
         setTimeout(function () {
             audio.attr("src", src);
+            clearError();
         }, 3000);
     });
-    var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
-    jqxhr.fail(function (e) {
-        console.log("Connection fails with getJSON. (/api/new_quiz)");
-        bugMessage(e);
-    });
+    function start() {
+        clearError();
+        var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
+        jqxhr.fail(function (e) {
+            console.log("Connection fails with getJSON. (/api/new_quiz)");
+            bugMessage(e);
+            setTimeout(start, 3000);
+        });
+    }
+    ;
+    start();
 });

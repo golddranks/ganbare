@@ -568,6 +568,86 @@ button,
     -ms-transition: opacity 0.05s ease-out, -ms-transform 0.05s ease-out;
     transition: opacity 0.05s ease-out, transform 0.05s ease-out; }
 
+#main.menuOn #quiz {
+  -webkit-filter: blur(1px);
+  /* Safari */
+  filter: blur(1px); }
+
+#main.errorOn #quiz {
+  -webkit-filter: blur(1px);
+  /* Safari */
+  filter: blur(1px); }
+
+#main .error {
+  color: red; }
+#main .uiButton {
+  z-index: 200;
+  opacity: 0.2;
+  border: none;
+  padding: 0;
+  width: 2.5em;
+  position: absolute; }
+  #main .uiButton img {
+    max-width: 100%;
+    height: auto; }
+#main #menuButton {
+  top: 0;
+  right: 0.4em; }
+#main #backButton {
+  top: 0;
+  left: 0.4em; }
+#main #errorSection {
+  z-index: 300;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(225, 223, 232, 0.6);
+  border-radius: 4px; }
+  #main #errorSection #errorStatus {
+    position: absolute;
+    top: 3em;
+    width: 100%;
+    text-align: center; }
+#main #settings {
+  z-index: 100;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(225, 223, 232, 0.6);
+  border-radius: 4px;
+  font-size: 0.8rem; }
+  #main #settings button.linklike {
+    height: auto;
+    line-height: 2em;
+    font-size: 0.8rem; }
+  #main #settings ul {
+    text-align: left;
+    position: absolute;
+    top: 3.5em;
+    right: 0;
+    background: #ffffff;
+    border-radius: 4px;
+    box-shadow: -2px 3px 6px -1px #c8cccf;
+    padding: 1em 4em 1em 1em;
+    margin: 0; }
+    #main #settings ul li {
+      margin: 0;
+      list-style-type: none; }
+#main #topmessage {
+  line-height: 2em;
+  font-size: 0.8rem;
+  position: absolute;
+  top: 0;
+  left: 0.4em; }
+#main hr {
+  position: relative;
+  left: -2em;
+  width: calc(100% + 4em); }
+
 /* AnswerMark */
 .answerMark {
   position: absolute;
@@ -677,61 +757,6 @@ span.accent {
   -webkit-transition: opacity 1s ease, -webkit-transform 1s ease;
   -ms-transition: opacity 1s ease, -ms-transform 1s ease;
   transition: opacity 1s ease, transform 1s ease; }
-  #main .error {
-    color: red; }
-  #main .uiButton {
-    z-index: 200;
-    opacity: 0.2;
-    border: none;
-    padding: 0;
-    width: 2.5em;
-    position: absolute; }
-    #main .uiButton img {
-      max-width: 100%;
-      height: auto; }
-  #main #menuButton {
-    top: 0;
-    right: 0.4em; }
-  #main #backButton {
-    top: 0;
-    left: 0.4em; }
-  #main #settings {
-    z-index: 100;
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background-color: rgba(225, 223, 232, 0.6);
-    border-radius: 4px;
-    font-size: 0.8rem; }
-    #main #settings button.linklike {
-      height: auto;
-      line-height: 2em;
-      font-size: 0.8rem; }
-    #main #settings ul {
-      text-align: left;
-      position: absolute;
-      top: 3.5em;
-      right: 0;
-      background: #ffffff;
-      border-radius: 4px;
-      box-shadow: -2px 3px 6px -1px #c8cccf;
-      padding: 1em 4em 1em 1em;
-      margin: 0; }
-      #main #settings ul li {
-        margin: 0;
-        list-style-type: none; }
-  #main #topmessage {
-    line-height: 2em;
-    font-size: 0.8rem;
-    position: absolute;
-    top: 0;
-    left: 0.4em; }
-  #main hr {
-    position: relative;
-    left: -2em;
-    width: calc(100% + 4em); }
   #main .avatar {
     position: relative;
     display: block;
