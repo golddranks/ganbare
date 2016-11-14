@@ -398,6 +398,32 @@ fn save_audio_file(path: &mut std::path::PathBuf, orig_filename: &str) -> Result
     Ok(())
 }
 
+fn get_create_narrator(conn : &PgConnection, mut name: &str) -> Result<Narrator> {
+    use schema::narrators;
+
+    let narrator : Option<Narrator> = if name == "" {
+        name = "anonymous";
+        None
+    } else {
+         narrators::table
+            .filter(narrators::name.eq(name))
+            .get_result(&*conn)
+            .optional()
+            .chain_err(|| "Database error with narrators!")?
+    };
+
+
+    Ok(match narrator {
+        Some(narrator) => narrator,
+        None => {
+            diesel::insert(&NewNarrator{ name })
+                .into(narrators::table)
+                .get_result(&*conn)
+                .chain_err(|| "Database error!")?
+        }
+    })
+}
+
 fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>) -> Result<i32> {
     use schema::narrators;
 
@@ -427,6 +453,26 @@ fn new_audio_bundle(conn : &PgConnection, name: &str) -> Result<AudioBundle> {
         println!("{:?}", bundle);
 
         Ok(bundle)
+}
+
+fn get_create_audio_bundle(conn : &PgConnection, listname: &str) -> Result<AudioBundle> {
+    use schema::audio_bundles;
+
+    let audio_bundle : Option<AudioBundle> = audio_bundles::table
+        .filter(audio_bundles::listname.eq(listname))
+        .get_result(&*conn)
+        .optional()
+        .chain_err(|| "Database error with audio bundles!")?;
+
+    Ok(match audio_bundle {
+        Some(audio_bundle) => audio_bundle,
+        None => {
+            diesel::insert(&NewAudioBundle{ listname })
+                .into(audio_bundles::table)
+                .get_result(&*conn)
+                .chain_err(|| "Database error!")?
+        }
+    })
 }
 
 
@@ -874,6 +920,7 @@ pub struct NewWordFromStrings {
     pub word: String,
     pub explanation: String,
     pub nugget: String,
+    pub narrator: String,
     pub files: Vec<(PathBuf, Option<String>, mime::Mime)>,
 }
 
@@ -882,7 +929,7 @@ pub fn create_word(conn : &PgConnection, w: NewWordFromStrings) -> Result<Word> 
 
     let nugget = get_create_skill_nugget_by_name(&*conn, &w.nugget)?;
 
-    let mut narrator = None;
+    let mut narrator = Some(get_create_narrator(&*conn, &w.narrator)?);
     let mut bundle = Some(new_audio_bundle(&*conn, &w.word)?);
     for mut file in w.files {
         save_audio(&*conn, &mut narrator, &mut file, &mut bundle)?;

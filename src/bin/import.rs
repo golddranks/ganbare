@@ -1,3 +1,5 @@
+#![feature(field_init_shorthand)]
+
 extern crate ganbare;
 
 #[macro_use]
@@ -24,18 +26,19 @@ fn import_batch(path: &str) {
         use std::str::FromStr;
         let mime = mime::Mime::from_str("audio/mpeg").unwrap();
 
-        let nugget = word.replace("*", "");
+        let nugget = word.replace("*", "").replace("・", "");
 
         let w = NewWordFromStrings {
             word: word.clone(),
             explanation: "".into(),
-            nugget: nugget,
+            nugget,
+            narrator: "".into(),
             files: vec![(path, Some(word), mime)],
         };
         
         println!("{:?}", w);
 
-        // create_word(&conn, w).unwrap();
+        create_word(&conn, w).unwrap();
     }
 
 }

@@ -26,7 +26,8 @@ CREATE TABLE quiz_questions (
 	skill_id SERIAL REFERENCES skill_nuggets,
 	q_name VARCHAR NOT NULL,
 	q_explanation VARCHAR NOT NULL,
-	question_text VARCHAR NOT NULL
+	question_text VARCHAR NOT NULL/*,
+	published BOOLEAN BOOLEAN DEFAULT false*/
 );
 
 CREATE TABLE question_answers (
@@ -42,5 +43,6 @@ CREATE TABLE words (
 	word VARCHAR NOT NULL,
 	explanation VARCHAR NOT NULL,
 	audio_bundle SERIAL REFERENCES audio_bundles,
-	skill_nugget SERIAL REFERENCES skill_nuggets
+	skill_nugget SERIAL REFERENCES skill_nuggets/*,
+	published BOOLEAN DEFAULT false*/
 );

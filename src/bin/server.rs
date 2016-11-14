@@ -348,7 +348,7 @@ fn add_word_post(req: &mut Request) -> PencilResult  {
             }
         }
 
-        Ok(ganbare::NewWordFromStrings{word, explanation, nugget, files})
+        Ok(ganbare::NewWordFromStrings{word, explanation, narrator: "".into(), nugget, files})
     }
 
     let conn = ganbare::db_connect()
