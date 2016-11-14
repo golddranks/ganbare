@@ -411,6 +411,18 @@ $("#wordAudio").on("error", function (e) {
 	}, 3000);
 });
 
+$(".soundEffect").on("error", function (e) {
+	if (currentQuestion === null || currentQuestion.quiz_type !== "question") { return false; };
+	var audio = $(this);
+	var src = audio.attr("src");
+    console.log("Error with soundEffect element! Trying again after 3 secs.", src);
+	bugMessage(e);
+	setTimeout(function() {
+		audio.attr("src", src);
+		clearError();
+	}, 3000);
+});
+
 function start() {
 	clearError();
 	var jqxhr = $.getJSON("/api/new_quiz", showQuiz);

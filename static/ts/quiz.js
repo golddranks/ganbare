@@ -162,6 +162,7 @@ $(function () {
     $("#settingsMenu").click(function (event) { event.stopPropagation(); });
     /* dynamics */
     function answerWord() {
+        clearError();
         semaphore = 2;
         nextQuestion();
         var jqxhr = $.post("/api/next_quiz", {
@@ -217,6 +218,7 @@ $(function () {
         questionExplanation.hide();
         semaphore = 2;
         function postQuestionAnswer() {
+            clearError();
             var jqxhr = $.post("/api/next_quiz", {
                 type: "question",
                 answered_id: ansId,
@@ -376,7 +378,7 @@ $(function () {
             showWord(question);
         }
         else {
-            bugMessage(null);
+            bugMessage(question);
         }
     }
     $("#questionAudio").on("error", function (e) {
@@ -401,6 +403,20 @@ $(function () {
         var audio = $(this);
         var src = audio.attr("src");
         console.log("Error with wordAudio element! Trying again after 3 secs.", src);
+        bugMessage(e);
+        setTimeout(function () {
+            audio.attr("src", src);
+            clearError();
+        }, 3000);
+    });
+    $(".soundEffect").on("error", function (e) {
+        if (currentQuestion === null || currentQuestion.quiz_type !== "question") {
+            return false;
+        }
+        ;
+        var audio = $(this);
+        var src = audio.attr("src");
+        console.log("Error with soundEffect element! Trying again after 3 secs.", src);
         bugMessage(e);
         setTimeout(function () {
             audio.attr("src", src);
