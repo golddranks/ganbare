@@ -471,13 +471,39 @@ fn load_audio_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<Vec<Au
     Ok(q_audio_files)
 }
 
+fn get_create_skill_nugget_by_name(conn : &PgConnection, skill_summary: &str) -> Result<SkillNugget> {
+    use schema::skill_nuggets;
 
-pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, Vec<Fieldset>)) -> Result<QuizQuestion> {
+    let skill_nugget : Option<SkillNugget> = skill_nuggets::table
+        .filter(skill_nuggets::skill_summary.eq(skill_summary))
+        .get_result(&*conn)
+        .optional()
+        .chain_err(|| "Database error with skill_nuggets!")?;
+
+    Ok(match skill_nugget {
+        Some(nugget) => nugget,
+        None => {
+            diesel::insert(&NewSkillNugget{ skill_summary })
+                .into(skill_nuggets::table)
+                .get_result(&*conn)
+                .chain_err(|| "Database error!")?
+        }
+    })
+}
+
+pub struct NewQuestion {
+    pub q_name: String,
+    pub q_explanation: String,
+    pub question_text: String,
+    pub skill_nugget: String,
+}
+
+pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fieldset>) -> Result<QuizQuestion> {
     use schema::{quiz_questions, question_answers};
 
     println!("Creating quiz!");
 
-    let mut answers = data.4;
+    // Sanity check
     if answers.len() == 0 {
         return Err(ErrorKind::FormParseError.into());
     }
@@ -487,7 +513,14 @@ pub fn create_quiz(conn : &PgConnection, data: (String, String, String, String, 
         }
     }
 
-    let new_quiz = NewQuizQuestion { skill_id: None, q_name: &data.0, q_explanation: &data.1, question_text: &data.2 };
+    let nugget = get_create_skill_nugget_by_name(&*conn, &new_q.skill_nugget)?;
+
+    let new_quiz = NewQuizQuestion {
+        q_name: &new_q.q_name,
+        q_explanation: &new_q.q_explanation,
+        question_text: &new_q.question_text,
+        skill_id: nugget.id
+    };
 
     let quiz : QuizQuestion = diesel::insert(&new_quiz)
         .into(quiz_questions::table)
@@ -825,7 +858,7 @@ pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mim
 pub fn create_word(conn : &PgConnection, data: (String, String, String, Vec<(PathBuf, Option<String>, mime::Mime)>)) -> Result<Word> {
     use schema::{words};
 
-    let skill_nugget = data.2; // FIXME
+    let nugget = get_create_skill_nugget_by_name(&*conn, &data.2)?;
 
     let mut narrator = None;
     let mut bundle = Some(new_audio_bundle(&*conn, data.0.as_str())?);
@@ -838,7 +871,7 @@ pub fn create_word(conn : &PgConnection, data: (String, String, String, Vec<(Pat
         word: data.0.as_str(),
         explanation: data.1.as_str(),
         audio_bundle: bundle.id,
-        skill_nugget: None,
+        skill_nugget: nugget.id,
     };
 
     let word = diesel::insert(&new_word)

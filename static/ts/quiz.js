@@ -96,6 +96,7 @@ $(function () {
         console.log("Bug?", e);
         errorSection.show();
         errorStatus.text("Server is down or there is a bug :(");
+        setTimeout(function () { errorStatus.html("Server is down or there is a bug :(<br>Trying to connect again..."); }, 2000);
         main.addClass("errorOn");
     }
     function clearError() {

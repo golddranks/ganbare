@@ -574,9 +574,9 @@ button,
   filter: blur(1px); }
 
 #main.errorOn #quiz {
-  -webkit-filter: blur(1px);
+  -webkit-filter: blur(4px);
   /* Safari */
-  filter: blur(1px); }
+  filter: blur(4px); }
 
 #main .error {
   color: red; }

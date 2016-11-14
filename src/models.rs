@@ -136,7 +136,7 @@ pub struct NewAudioBundle<'a> {
 #[derive(Insertable)]
 #[table_name="quiz_questions"]
 pub struct NewQuizQuestion<'a> {
-    pub skill_id: Option<i32>,
+    pub skill_id: i32,
     pub q_name: &'a str,
     pub q_explanation: &'a str,
     pub question_text: &'a str,
@@ -149,7 +149,7 @@ pub struct NewQuizQuestion<'a> {
 #[table_name="quiz_questions"]
 pub struct QuizQuestion {
     pub id: i32,
-    pub skill_id: Option<i32>,
+    pub skill_id: i32,
     pub q_name: String,
     pub q_explanation: String,
     pub question_text: String,
@@ -182,7 +182,7 @@ pub struct NewWord<'a> {
     pub word: &'a str,
     pub explanation: &'a str,
     pub audio_bundle: i32,
-    pub skill_nugget: Option<i32>,
+    pub skill_nugget: i32,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
@@ -192,7 +192,7 @@ pub struct Word {
     pub word: String,
     pub explanation: String,
     pub audio_bundle: i32,
-    pub skill_nugget: Option<i32>,
+    pub skill_nugget: i32,
 }
 
 #[derive(Insertable)]

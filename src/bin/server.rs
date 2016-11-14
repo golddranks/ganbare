@@ -218,7 +218,7 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
 
 fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
-    fn parse_form(req: &mut Request) -> Result<(String, String, String, String, Vec<ganbare::Fieldset>)> {
+    fn parse_form(req: &mut Request) -> Result<(ganbare::NewQuestion, Vec<ganbare::Fieldset>)> {
 
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
@@ -227,8 +227,8 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         let lowest_fieldset = str::parse::<i32>(&parse!(form.get("lowest_fieldset")))?;
         if lowest_fieldset > 10 { return Err(ErrorKind::FormParseError.to_err()); }
 
-        let question_name = parse!(form.get("name"));
-        let question_explanation = parse!(form.get("explanation"));
+        let q_name = parse!(form.get("name"));
+        let q_explanation = parse!(form.get("explanation"));
         let question_text = parse!(form.get("question_text"));
         let skill_nugget = parse!(form.get("skill_nugget"));
 
@@ -276,7 +276,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
             fieldsets.push(fields);
         }
 
-        Ok((question_name, question_explanation, question_text, skill_nugget, fieldsets))
+        Ok((ganbare::NewQuestion{q_name, q_explanation, question_text, skill_nugget}, fieldsets))
     }
 
     let conn = ganbare::db_connect()
@@ -286,7 +286,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
     let (_, sess) = try_or!{user_session, else return abort(401)};
 
     let form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(400).unwrap_err()})?;
-    let result = ganbare::create_quiz(&conn, form);
+    let result = ganbare::create_quiz(&conn, form.0, form.1);
     result.map_err(|e| match e.kind() {
         &ErrorKind::FormParseError => abort(400).unwrap_err(),
         _ => abort(500).unwrap_err(),
@@ -406,7 +406,6 @@ struct WordJson {
     word: String,
     explanation: String,
     audio_id: i32,
-    skill_nugget: Option<i32>,
     due_delay: i32,
     due_date: Option<String>,
 }
@@ -441,7 +440,7 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
             due_date: due_date.map(|d| d.to_rfc3339()),
         })
     },
-    Word((ganbare::models::Word { id, word, explanation, skill_nugget, .. }, audio_files)) => {
+    Word((ganbare::models::Word { id, word, explanation, .. }, audio_files)) => {
 
         let chosen_audio = rng.choose(&audio_files).expect("Shouldn't be empty!");
 
@@ -452,7 +451,6 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
             word,
             explanation,
             audio_id: chosen_audio.id,
-            skill_nugget,
             due_delay: 30, // FIXME
             due_date: Some(chrono::UTC::now()).map(|d| d.to_rfc3339()), // FIXME
         })

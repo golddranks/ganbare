@@ -1,7 +1,6 @@
 # To Do list
 
 Today
-- Adjust the maru/batsu animation (better contrast & positioning)
 - Skill nuggets
 - Deploy to akusento.ganba.re
 - Design an alternative mode for quizes: traditional/output
