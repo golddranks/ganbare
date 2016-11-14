@@ -363,6 +363,20 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
+pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -> Result<bool> {
+    use schema::{user_groups, group_memberships};
+
+    let exists : Option<(UserGroup, GroupMembership)> = user_groups::table
+        .inner_join(group_memberships::table)
+        .filter(group_memberships::user_id.eq(user.id))
+        .filter(user_groups::group_name.eq(group_name))
+        .get_result(&*conn)
+        .optional()
+        .chain_err(|| "DB error")?;
+
+    Ok(exists.is_some())
+}
+
 #[derive(Debug)]
 pub struct Fieldset {
     pub q_variants: Vec<(PathBuf, Option<String>, mime::Mime)>,

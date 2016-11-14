@@ -61,6 +61,24 @@ pub struct PendingEmailConfirm {
 }
 
 
+#[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset)]
+#[table_name="user_groups"]
+#[has_many(group_memberships, foreign_key = "group_id")]
+pub struct UserGroup {
+    pub id: i32,
+    pub group_name: String,
+}
+
+#[derive(Queryable, Debug, Insertable, Associations, AsChangeset)]
+#[table_name="group_memberships"]
+#[belongs_to(UserGroup, foreign_key = "group_id")]
+#[belongs_to(User, foreign_key = "user_id")]
+pub struct GroupMembership {
+    pub user_id: i32,
+    pub group_id: i32,
+}
+
+
 #[derive(Insertable)]
 #[table_name="pending_email_confirms"]
 pub struct NewPendingEmailConfirm<'a> {

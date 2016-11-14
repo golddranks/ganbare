@@ -206,9 +206,13 @@ fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
 fn add_quiz_form(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let (_, sess) = get_user(&conn, req)
+    let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
 
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
@@ -283,7 +287,11 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
 
-    let (_, sess) = try_or!{user_session, else return abort(401)};
+    let (user, sess) = try_or!{user_session, else return abort(401)};
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
 
     let form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(400).unwrap_err()})?;
     let result = ganbare::create_quiz(&conn, form.0, form.1);
@@ -298,9 +306,13 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
 fn add_word_form(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let (_, sess) = get_user(&conn, req)
+    let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
 
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
@@ -345,7 +357,11 @@ fn add_word_post(req: &mut Request) -> PencilResult  {
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
 
-    let (_, sess) = try_or!{user_session, else return abort(401)};
+    let (user, sess) = try_or!{user_session, else return abort(401)};
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
 
     let (word, explanation, skill_nugget, audio) = parse_form(req)
             .map_err(|_| abort(400).unwrap_err())?;
@@ -588,6 +604,26 @@ fn change_password(req: &mut Request) -> PencilResult {
     redirect("/change_password?password_changed=true", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 }
 
+fn manage(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
+
+    let mut context = BTreeMap::new();
+    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    context.insert("jquery_url".to_string(), JQUERY_URL.to_string());
+
+    req.app.render_template("manage.html", &context)
+                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
 fn main() {
     dotenv().ok();
     let mut app = Pencil::new(".");
@@ -596,6 +632,7 @@ fn main() {
     app.register_template("confirm.html");
     app.register_template("add_quiz.html");
     app.register_template("add_word.html");
+    app.register_template("manage.html");
     app.register_template("change_password.html");
     app.enable_static_file_handling();
 
@@ -612,6 +649,7 @@ fn main() {
     app.post("/add_quiz", "add_quiz_post", add_quiz_post);
     app.get("/add_word", "add_word_form", add_word_form);
     app.post("/add_word", "add_word_post", add_word_post);
+    app.get("/manage", "manage", manage);
     app.post("/confirm", "confirm_final", confirm_final);
     app.get("/change_password", "change_password_form", change_password_form);
     app.post("/change_password", "change_password", change_password);
