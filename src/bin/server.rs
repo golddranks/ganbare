@@ -19,8 +19,6 @@ use std::env;
 use ganbare::errors::*;
 use std::net::IpAddr;
 
-use mime::Mime;
-use std::path::PathBuf;
 use std::collections::BTreeMap;
 use hyper::header::{SetCookie, CookiePair, Cookie};
 use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify};
@@ -321,28 +319,28 @@ fn add_word_form(req: &mut Request) -> PencilResult {
 }
 fn add_word_post(req: &mut Request) -> PencilResult  {
 
-    fn parse_form(req: &mut Request) -> Result<(String, String, String, Vec<(PathBuf, Option<String>, Mime)>)> {
+    fn parse_form(req: &mut Request) -> Result<ganbare::NewWordFromStrings> {
 
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
-        let files = req.files().expect("Form data should be loaded!");
+        let uploaded_files = req.files().expect("Form data should be loaded!");
 
         let num_variants = str::parse::<i32>(&parse!(form.get("audio_variations")))?;
         if num_variants > 20 { return Err(ErrorKind::FormParseError.to_err()); }
 
         let word = parse!(form.get("word"));
         let explanation = parse!(form.get("explanation"));
-        let skill_nugget = parse!(form.get("skill_nugget"));
+        let nugget = parse!(form.get("skill_nugget"));
 
-        let mut audio_variants = Vec::with_capacity(num_variants as usize);
+        let mut files = Vec::with_capacity(num_variants as usize);
         for v in 1...num_variants {
-            if let Some(file) = files.get(&format!("audio_variant_{}", v)) {
+            if let Some(file) = uploaded_files.get(&format!("audio_variant_{}", v)) {
                 if file.size.expect("Size should've been parsed at this phase.") == 0 {
                     continue; // Don't save files with size 0;
                 }
                 let mut file = file.clone();
                 file.do_not_delete_on_drop();
-                audio_variants.push(
+                files.push(
                     (file.path.clone(),
                     file.filename().map_err(|_| ErrorKind::FormParseError.to_err())?,
                     file.content_type().ok_or(ErrorKind::FormParseError.to_err())?)
@@ -350,7 +348,7 @@ fn add_word_post(req: &mut Request) -> PencilResult  {
             }
         }
 
-        Ok((word, explanation, skill_nugget, audio_variants))
+        Ok(ganbare::NewWordFromStrings{word, explanation, nugget, files})
     }
 
     let conn = ganbare::db_connect()
@@ -363,10 +361,10 @@ fn add_word_post(req: &mut Request) -> PencilResult  {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let (word, explanation, skill_nugget, audio) = parse_form(req)
+    let word = parse_form(req)
             .map_err(|_| abort(400).unwrap_err())?;
 
-    ganbare::create_word(&conn, (word, explanation, skill_nugget, audio))
+    ganbare::create_word(&conn, word)
         .map_err(|_| abort(500).unwrap_err())?;
     
     redirect("/add_word", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )

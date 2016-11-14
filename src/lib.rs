@@ -869,21 +869,29 @@ pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mim
     Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
 }
 
-pub fn create_word(conn : &PgConnection, data: (String, String, String, Vec<(PathBuf, Option<String>, mime::Mime)>)) -> Result<Word> {
+#[derive(Debug)]
+pub struct NewWordFromStrings {
+    pub word: String,
+    pub explanation: String,
+    pub nugget: String,
+    pub files: Vec<(PathBuf, Option<String>, mime::Mime)>,
+}
+
+pub fn create_word(conn : &PgConnection, w: NewWordFromStrings) -> Result<Word> {
     use schema::{words};
 
-    let nugget = get_create_skill_nugget_by_name(&*conn, &data.2)?;
+    let nugget = get_create_skill_nugget_by_name(&*conn, &w.nugget)?;
 
     let mut narrator = None;
-    let mut bundle = Some(new_audio_bundle(&*conn, data.0.as_str())?);
-    for mut file in data.3 {
+    let mut bundle = Some(new_audio_bundle(&*conn, &w.word)?);
+    for mut file in w.files {
         save_audio(&*conn, &mut narrator, &mut file, &mut bundle)?;
     } 
     let bundle = bundle.expect("The audio bundle is initialized now.");
 
     let new_word = NewWord {
-        word: data.0.as_str(),
-        explanation: data.1.as_str(),
+        word: &w.word,
+        explanation: &w.explanation,
         audio_bundle: bundle.id,
         skill_nugget: nugget.id,
     };
