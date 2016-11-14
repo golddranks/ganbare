@@ -485,11 +485,9 @@ fn next_quiz(req: &mut Request) -> PencilResult {
             let word_id = str::parse::<i32>(&parse!(form.get("word_id")))?;
             let times_audio_played = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
             let time = str::parse::<i32>(&parse!(form.get("time")))?;
-            let result = Ok(ganbare::Answered::Word(
+            Ok(ganbare::Answered::Word(
                 ganbare::AnsweredWord{word_id, times_audio_played, time}
-            ));
-            println!("{:?}", result);
-            result
+            ))
         } else if answer_type == "question" {
             let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
             let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;

@@ -75,7 +75,6 @@ $(function () {
     var timeUsedForAnswering = null;
     var timesAudioPlayed = 0;
     var qAudio = document.getElementById('questionAudio');
-    var qAudioSource = $("#questionAudio source");
     var correct = document.getElementById('sfxCorrect');
     var wrong = document.getElementById('sfxWrong');
     /* word-related things */
@@ -105,7 +104,8 @@ $(function () {
         wordAudio.play();
         soundIcon.prop("src", "/static/images/speaker_pink.png");
     });
-    function bugMessage() {
+    function bugMessage(e) {
+        console.log("Bug?", e);
         cleanState();
         questionSection.show();
         questionStatus.text("Server is down or there is a bug :(");
@@ -119,9 +119,7 @@ $(function () {
         topmessage.text("Vastausaikaa 8 s");
         topmessage.fadeIn();
         questionText.text(currentQuestion.question[0]);
-        answerList.slideDown(400, function () {
-            //main.css("min-height", main.css("height"));
-        });
+        answerList.slideDown(400);
         var thisQ = currentQuestion; // Let the closures capture a local variable, not global
         window.setTimeout(function () { if (thisQ.answered) {
             return;
@@ -215,7 +213,7 @@ $(function () {
             answerList.slideUp(400, function () {
                 topmessage.fadeOut();
                 questionExplanation.text("Loading...");
-                questionExplanation.show();
+                questionExplanation.slideDown();
                 nextQuestion();
             });
         }, 2200);
@@ -288,8 +286,9 @@ $(function () {
     function askQuestion(question) {
         questionSection.show();
         questionExplanation.text(question.explanation);
-        avatar.fadeIn();
-        questionExplanation.slideDown();
+        avatar.show();
+        avatar.css('opacity', '0');
+        questionExplanation.slideDown(400, function () { avatar.fadeTo(400, 1); });
         play_button.prop("disabled", false);
         question.answers.forEach(function (a, i) {
             var isCorrect = (question.right_a === a[0]) ? true : false;
@@ -339,21 +338,16 @@ $(function () {
             showWord(question);
         }
         else {
-            questionStatus.text("Oops, there seems to be a bug :(");
-            questionStatus.show();
+            bugMessage(null);
         }
     }
     $("audio").on("error", function (e) {
         console.log("Error with audio element!");
-        bugMessage();
-    });
-    $("source").on("error", function (e) {
-        console.log("Error with audio element!");
-        bugMessage();
+        bugMessage(e);
     });
     var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
-    jqxhr.fail(function () {
+    jqxhr.fail(function (e) {
         console.log("Connection fails with getJSON. (/api/new_quiz)");
-        bugMessage();
+        bugMessage(e);
     });
 });

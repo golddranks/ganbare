@@ -99,7 +99,7 @@ wordOkButton.click(function() {
 		currentQuestion = result;
 		nextQuestion();
 	});
-	jqxhr.fail(function() { wordStatus.text("Server is down or there is a bug :("); wordStatus.show(); });
+	jqxhr.fail(function(e) { bugMessage(e); });
 });
 
 var wordAudio = <HTMLAudioElement>document.getElementById('wordAudio');
@@ -109,7 +109,8 @@ wordShow.click(function() {
 	soundIcon.prop("src", "/static/images/speaker_pink.png");
 });
 
-function bugMessage() {
+function bugMessage(e) {
+	console.log("Bug?", e);
 	cleanState();
 	questionSection.show();
 	questionStatus.text("Server is down or there is a bug :(");
@@ -125,9 +126,8 @@ $(qAudio).bind('ended', function() {
 	topmessage.text("Vastausaikaa 8 s");
 	topmessage.fadeIn();
 	questionText.text(currentQuestion.question[0]);
-	answerList.slideDown(400, function() {	
-		//main.css("min-height", main.css("height"));
-	});
+
+	answerList.slideDown(400);
 	var thisQ = currentQuestion; // Let the closures capture a local variable, not global
 	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
 	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
@@ -206,7 +206,7 @@ function answerQuestion(ansId, isCorrect, question) {
 		currentQuestion = result;
 		nextQuestion();
 	});
-	jqxhr.fail(function() { questionStatus.text("Server is down or there is a bug :("); questionStatus.show(); });
+	jqxhr.fail(function(e) { bugMessage(e); });
 	mark.show();
 	mark.removeClass("hidden");
 	window.setTimeout(function() { mark.fadeOut(400); }, 1700);
@@ -288,8 +288,9 @@ function breakTime(question) {
 function askQuestion(question) {
 	questionSection.show();
 	questionExplanation.text(question.explanation);
-	avatar.fadeIn();
-	questionExplanation.slideDown();
+	avatar.show();
+	avatar.css('opacity', '0');
+	questionExplanation.slideDown(400, function() { avatar.fadeTo(400, 1); });
 	play_button.prop("disabled", false);
 
 	question.answers.forEach(function(a, i) {
@@ -345,19 +346,19 @@ function showQuiz(question) {
 	} else if (question.quiz_type === "word") {
 		showWord(question);
 	} else {
-		questionStatus.text("Oops, there seems to be a bug :(");
-		questionStatus.show();
+		bugMessage(null);
 	}
 
 }
+
 $("audio").on("error", function (e) {
         console.log("Error with audio element!");
-	bugMessage();
+		bugMessage(e);
     });
 
 var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
-jqxhr.fail(function() {
+jqxhr.fail(function(e) {
 	console.log("Connection fails with getJSON. (/api/new_quiz)");
-	bugMessage();
+	bugMessage(e);
 	});
 });
