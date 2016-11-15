@@ -168,9 +168,10 @@ $(function () {
     $("#settingsMenu").click(function (event) { event.stopPropagation(); });
     /* dynamics */
     function answerWord() {
+        wordSection.slideUp();
         clearError();
         semaphore = 2;
-        nextQuestion();
+        setTimeout(function () { nextQuestion(); }, 100);
         var jqxhr = $.post("/api/next_quiz", {
             type: "word",
             word_id: currentQuestion.id,
@@ -355,7 +356,7 @@ $(function () {
         timesAudioPlayed++;
         activeAnswerTime = Date.now();
         soundIcon.prop("src", "/static/images/speaker_pink.png");
-        wordSection.show();
+        setTimeout(function () { wordSection.slideDown(); }, 100);
     }
     function showQuiz(question) {
         console.log("showQuiz!");

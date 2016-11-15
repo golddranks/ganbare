@@ -724,6 +724,7 @@ fn log_skill_by_id(conn : &PgConnection, user : &User, skill_id: i32, level_incr
 
 fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQuestion) -> Result<QuestionData> {
     use schema::{answer_data, question_data};
+    use std::cmp::max;
 
     let correct = answer.right_answer_id == answer.answered_id.unwrap_or(-1);
 
@@ -752,7 +753,7 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
     // Update the data for this question (due date, statistics etc.)
     Ok(if let Some(questiondata) = questiondata {
 
-        let due_delay = if correct { questiondata.due_delay * 2 } else { 0 };
+        let due_delay = if correct { max(questiondata.due_delay * 2, 15) } else { 0 };
         let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
 
         diesel::update(
@@ -835,6 +836,7 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
             .inner_join(question_data::table)
             .filter(quiz_questions::id.eq(any(dues)))
             .filter(question_data::user_id.eq(user_id))
+            .filter(quiz_questions::published.eq(true))
             .order(question_data::due_date.asc())
             .get_results(&*conn)
             .chain_err(|| "Can't get due question!")?;
@@ -847,6 +849,7 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
                 dues.filter(question_data::due_date.lt(chrono::UTC::now()))
             )))
             .filter(question_data::user_id.eq(user_id))
+            .filter(quiz_questions::published.eq(true))
             .order(question_data::due_date.asc())
             .get_results(&*conn)
             .chain_err(|| "Can't get due question!")?;
@@ -870,6 +873,7 @@ fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQues
     let new_questions : Vec<QuizQuestion> = quiz_questions::table
         .filter(quiz_questions::id.ne(all(dues)))
         .filter(quiz_questions::skill_id.eq(any(skills)))
+        .filter(quiz_questions::published.eq(true))
         .limit(5)
         .order(quiz_questions::id.asc())
         .get_results(conn)
@@ -888,6 +892,7 @@ fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
 
     let new_words : Vec<Word> = words::table
         .filter(words::id.ne(all(seen)))
+        .filter(words::published.eq(true))
         .limit(5)
         .order(words::id.asc())
         .get_results(conn)
