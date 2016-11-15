@@ -1067,3 +1067,20 @@ pub fn create_word(conn : &PgConnection, w: NewWordFromStrings) -> Result<Word> 
 
     Ok(word)
 }
+#[derive(RustcEncodable)]
+pub struct NuggetToJson {
+    pub skill_summary: String,
+    pub words: Vec<String>,
+}
+
+pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<NuggetToJson>> {
+    use schema::{skill_nuggets, quiz_questions, words};
+    let nuggets: Vec<SkillNugget> = skill_nuggets::table
+                                    .get_results(conn)?;
+    Ok(nuggets.into_iter().map(|n| {
+        NuggetToJson{
+            skill_summary: n.skill_summary,
+            words: vec![],
+        }
+    }).collect())
+}

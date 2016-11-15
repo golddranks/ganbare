@@ -624,6 +624,25 @@ fn manage(req: &mut Request) -> PencilResult {
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
+
+fn get_nuggets(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
+
+    let nuggets = ganbare::get_skill_nuggets(&conn)
+        .map_err(|_| abort(500).unwrap_err())?;
+
+    jsonify(&nuggets).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
+
 fn main() {
     dotenv().ok();
     let mut app = Pencil::new(".");
@@ -653,6 +672,7 @@ fn main() {
     app.post("/confirm", "confirm_final", confirm_final);
     app.get("/change_password", "change_password_form", change_password_form);
     app.post("/change_password", "change_password", change_password);
+    app.get("/api/get_nuggets", "get_nuggets", get_nuggets);
     app.get("/api/new_quiz", "new_quiz", new_quiz);
     app.post("/api/next_quiz", "next_quiz", next_quiz);
     app.get("/api/get_line/<line_id:int>", "get_line", get_line);
