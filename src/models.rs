@@ -169,6 +169,7 @@ pub struct NewQuizQuestion<'a> {
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(question_answers, foreign_key = "question_id")]
 #[has_many(question_data, foreign_key = "question_id")]
+#[has_many(answer_data, foreign_key = "question_id")]
 #[table_name="quiz_questions"]
 pub struct QuizQuestion {
     pub id: i32,
@@ -226,6 +227,7 @@ pub struct Word {
 #[table_name="answer_data"]
 pub struct NewAnswerData {
     pub user_id: i32,
+    pub question_id: i32,
     pub q_audio_id: i32,
     pub correct_qa_id: i32,
     pub answered_qa_id: Option<i32>,
@@ -237,9 +239,11 @@ pub struct NewAnswerData {
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
 #[table_name="answer_data"]
 #[belongs_to(User, foreign_key = "user_id")]
+#[belongs_to(QuizQuestion, foreign_key = "question_id")]
 pub struct AnswerData {
     pub id: i32,
     pub user_id: i32,
+    pub question_id: i32,
     pub q_audio_id: i32,
     pub correct_qa_id: i32,
     pub answered_qa_id: Option<i32>,

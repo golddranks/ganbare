@@ -1,6 +1,7 @@
 CREATE TABLE answer_data (
 	id SERIAL PRIMARY KEY,
 	user_id SERIAL REFERENCES users,
+	question_id SERIAL REFERENCES quiz_questions,
 	q_audio_id SERIAL REFERENCES audio_files,
 	correct_qa_id SERIAL REFERENCES question_answers,
 	answered_qa_id INTEGER REFERENCES question_answers,

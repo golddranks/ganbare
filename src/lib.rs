@@ -723,7 +723,7 @@ fn log_skill_by_id(conn : &PgConnection, user : &User, skill_id: i32, level_incr
 }
 
 fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQuestion) -> Result<QuestionData> {
-    use schema::{answer_data, question_data};
+    use schema::{answer_data, question_data, quiz_questions};
     use std::cmp::max;
 
     let correct = answer.right_answer_id == answer.answered_id.unwrap_or(-1);
@@ -731,6 +731,7 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
     // Insert the specifics of this answer event
     let answerdata = NewAnswerData {
         user_id: user.id,
+        question_id: answer.question_id,
         q_audio_id: answer.q_audio_id,
         correct_qa_id: answer.right_answer_id,
         answered_qa_id: answer.answered_id,
@@ -744,6 +745,10 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
         .execute(conn)
         .chain_err(|| "Couldn't save the answer data to database!")?;
 
+    let q : QuizQuestion = quiz_questions::table
+                    .filter(quiz_questions::id.eq(answer.question_id))
+                    .get_result(conn)?;
+
     let questiondata : Option<QuestionData> = question_data::table
                                         .filter(question_data::user_id.eq(user.id))
                                         .filter(question_data::question_id.eq(answer.question_id))
@@ -755,6 +760,8 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
 
         let due_delay = if correct { max(questiondata.due_delay * 2, 15) } else { 0 };
         let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
+        let streak = if correct {questiondata.correct_streak + 1} else { 0 };
+        if streak > 2 { log_skill_by_id(conn, user, q.skill_id, 1)?; };
 
         diesel::update(
                 question_data::table
@@ -764,7 +771,7 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
             .set((
                 question_data::due_date.eq(next_due_date),
                 question_data::due_delay.eq(due_delay),
-                question_data::correct_streak.eq(questiondata.correct_streak + 1),
+                question_data::correct_streak.eq(streak),
             ))
             .get_result(conn)
             .chain_err(|| "Couldn't save the question tally data to database!")?
@@ -773,6 +780,7 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
 
         let due_delay = if correct { 30 } else { 0 };
         let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
+        log_skill_by_id(conn, user, q.skill_id, 1)?; // First time bonus!
 
         let questiondata = QuestionData {
             user_id: user.id,
