@@ -158,6 +158,7 @@ pub struct NewQuizQuestion<'a> {
     pub q_name: &'a str,
     pub q_explanation: &'a str,
     pub question_text: &'a str,
+    pub skill_level: i32,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
@@ -171,6 +172,8 @@ pub struct QuizQuestion {
     pub q_name: String,
     pub q_explanation: String,
     pub question_text: String,
+    pub published: bool,
+    pub skill_level: i32,
 }
 
 #[derive(Insertable)]
@@ -211,6 +214,7 @@ pub struct Word {
     pub explanation: String,
     pub audio_bundle: i32,
     pub skill_nugget: i32,
+    pub published: bool,
 }
 
 #[derive(Insertable)]

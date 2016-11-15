@@ -167,6 +167,29 @@ pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<U
     Ok(user)
 }
 
+pub fn set_password(conn : &PgConnection, user_email : &str, password: &str) -> Result<User> {
+    use schema::{users, passwords};
+
+    let (u, p) : (User, Option<Password>) = users::table
+        .left_outer_join(passwords::table)
+        .filter(users::email.eq(user_email))
+        .first(&*conn)
+        .map_err(|e| e.caused_err(|| "Error when trying to retrieve user!"))?;
+    if p.is_none() {
+
+        let pw = password::set_password(password).chain_err(|| "Setting password didn't succeed!")?;
+
+        diesel::insert(&pw.into_db(u.id))
+            .into(passwords::table)
+            .execute(conn)
+            .chain_err(|| "Couldn't insert the new password into database!")?;
+
+        Ok(u)
+    } else {
+        Err("Password already set!".into())
+    }
+}
+
 pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<User> {
     use schema::users::dsl::*;
     use diesel::result::Error::NotFound;
@@ -579,7 +602,8 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
         q_name: &new_q.q_name,
         q_explanation: &new_q.q_explanation,
         question_text: &new_q.question_text,
-        skill_id: nugget.id
+        skill_id: nugget.id,
+        skill_level: 1, // FIXME
     };
 
     let quiz : QuizQuestion = diesel::insert(&new_quiz)

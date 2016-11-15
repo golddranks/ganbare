@@ -26,3 +26,19 @@ CREATE TABLE sessions (
 	last_seen TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	last_ip BYTEA NOT NULL
 );
+
+CREATE TABLE user_groups (
+	id SERIAL PRIMARY KEY,
+	group_name VARCHAR NOT NULL
+);
+
+CREATE TABLE group_memberships (
+	user_id SERIAL REFERENCES users,
+	group_id SERIAL REFERENCES user_groups,
+	PRIMARY KEY(user_id, group_id)
+	);
+
+INSERT INTO users VALUES (1, 'admin');
+INSERT INTO user_groups VALUES (1, 'admins'), (2, 'editors'), (3, 'testers'), (4, 'input_group'), (5, 'output_group');
+INSERT INTO group_memberships VALUES (1, 1), (1, 2); /* First user is the admin and editor by default. */
+

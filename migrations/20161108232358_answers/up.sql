@@ -6,6 +6,7 @@ CREATE TABLE answer_data (
 	answered_qa_id INTEGER REFERENCES question_answers,
 	answered_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	answer_time_ms INTEGER NOT NULL,
+	listen_answer_time_ms INTEGER NOT NULL,
 	correct BOOLEAN
 );
 
@@ -32,17 +33,13 @@ CREATE TABLE skill_data (
 	PRIMARY KEY(user_id, skill_nugget)
 );
 
-CREATE TABLE user_groups (
-	id SERIAL PRIMARY KEY,
-	group_name VARCHAR NOT NULL
+CREATE TABLE user_metrics (
+	user_id SERIAL PRIMARY KEY REFERENCES users,
+	new_words_since_break INTEGER NOT NULL,
+	new_sentences_since_break INTEGER NOT NULL,
+	new_words_today INTEGER NOT NULL,
+	new_sentences_today INTEGER NOT NULL,
+	last_break_started TIMESTAMPTZ,
+	break_until TIMESTAMPTZ,
+	today TIMESTAMPTZ
 );
-
-CREATE TABLE group_memberships (
-	user_id SERIAL REFERENCES users,
-	group_id SERIAL REFERENCES user_groups,
-	PRIMARY KEY(user_id, group_id)
-);
-
-INSERT INTO user_groups VALUES (1, 'admins'), (2, 'editors'), (3, 'testers'), (4, 'input_group'), (5, 'output_group');
-INSERT INTO group_memberships VALUES (1, 1), (1, 2); /* First user is the admin and editor by default. */
-

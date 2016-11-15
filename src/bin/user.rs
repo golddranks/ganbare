@@ -76,6 +76,7 @@ fn main() {
     let matches = App::new("ganba.re user control")
         .setting(AppSettings::SubcommandRequired)
         .version(crate_version!())
+        .subcommand(SubCommand::with_name("passwd").about("Set passwords").arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("ls").about("List all users"))
         .subcommand(SubCommand::with_name("rm").about("Remove user").arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("add").about("Add a new user").arg(Arg::with_name("email").required(true)))
@@ -84,6 +85,19 @@ fn main() {
         .get_matches();
     let conn = db_connect().unwrap();
     match matches.subcommand() {
+        ("passwd", Some(args)) => {
+            let email = args.value_of("email").unwrap();
+            println!("Setting user {} password.", email);
+            println!("Enter a password:");
+            let password = match rpassword::read_password() {
+                Err(_) => { println!("Error: couldn't read the password from keyboard."); return; },
+                Ok(pw) => pw,
+            };
+            match set_password(&conn, email, &password) {
+                Ok(user) => { println!("Success! Password set for user {:?}", user); },
+                Err(e) => { println!("Error: {}", e); return; },
+            };
+        },
         ("ls", Some(_)) => {
             let users = list_users(&conn).unwrap();
             println!("{} users found:", users.len());
