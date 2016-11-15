@@ -824,17 +824,25 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
 
 fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQuestion>> {
     use diesel::expression::dsl::*;
-    use schema::{quiz_questions, question_data};
+    use schema::{quiz_questions, question_data, skill_data};
     let dues = question_data::table
         .select(question_data::question_id)
         .filter(question_data::user_id.eq(user_id));
 
+    let skills = skill_data::table
+        .select(skill_data::skill_nugget)
+        .filter(skill_data::skill_level.gt(0)) // Take only skills that have been trained (=words introduced) before
+        .filter(skill_data::user_id.eq(user_id));
+
     let new_questions : Vec<QuizQuestion> = quiz_questions::table
         .filter(quiz_questions::id.ne(all(dues)))
+        .filter(quiz_questions::skill_id.eq(any(skills)))
         .limit(5)
         .order(quiz_questions::id.asc())
         .get_results(conn)
         .chain_err(|| "Can't get new question!")?;
+
+    println!("Tsekitaut: {:?}", new_questions);
 
     Ok(new_questions)
 }
@@ -875,37 +883,56 @@ pub struct Quiz {
 
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> {
     use rand::Rng;
+    use schema::user_metrics;
 
-    let mut words = get_new_words(&*conn, user.id)?;
-    if words.len() > 0 {
-        let the_word = words.swap_remove(0);
-        let audio_files = load_audio_from_bundle(&*conn, the_word.audio_bundle)?;
-        Ok(Some(Card::Word((the_word, audio_files))))
-    } else {
-        let (question_id, due_delay, due_date);
-        if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
-            question_id = q.id;
-            due_delay = -1;
-            due_date = None;
-        } else {
-            if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, true)?.get(0) {
-                question_id = q.id;
-                due_delay = qdata.due_delay;
-                due_date = Some(qdata.due_date);
-            } else {
-                return Ok(None);
-            }
-        }
-    
+    // Checking due questions first
+
+    let question_data =
+    if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, false)?.get(0) {
+        Some((q.id, qdata.due_delay, Some(qdata.due_date)))
+    } else if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
+        Some((q.id, 0, None))
+    } else { None };
+
+    if let Some((question_id, due_delay, due_date)) = question_data {
         let (question, answers, mut qqs) = try_or!{ load_quiz(conn, question_id)?, else return Ok(None) };
-    
+        
         let mut rng = rand::thread_rng();
         let random_answer_index = rng.gen_range(0, answers.len());
         let right_answer_id = answers[random_answer_index].id;
         let question_audio = qqs.remove(random_answer_index);
-    
-        Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date})))
+        
+        return Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date})))
+
     }
+
+    // No questions available ATM, checking words
+
+    let metrics : UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user.id)).get_result(&*conn)?;
+    
+    if metrics.new_words_today <= 18 || metrics.new_words_since_break <= 6 {
+        let mut words = get_new_words(&*conn, user.id)?;
+        if words.len() > 0 {
+            let the_word = words.swap_remove(0);
+            let audio_files = load_audio_from_bundle(&*conn, the_word.audio_bundle)?;
+
+            return Ok(Some(Card::Word((the_word, audio_files))));
+        }
+    }
+
+    // Peeking for the future
+
+    if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, true)?.get(0) {
+        let (question, answers, mut qqs) = try_or!{ load_quiz(conn, q.id)?, else return Ok(None) };
+        
+        let mut rng = rand::thread_rng();
+        let random_answer_index = rng.gen_range(0, answers.len());
+        let right_answer_id = answers[random_answer_index].id;
+        let question_audio = qqs.remove(random_answer_index);
+        
+        return Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay: qdata.due_delay, due_date: Some(qdata.due_date)})));
+    }
+    Ok(None)
 }
 
 

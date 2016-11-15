@@ -12,6 +12,7 @@ pub struct NewUser<'a> {
 #[has_many(passwords, foreign_key = "id")] // actually, the relationship is one-to-1..0
 #[has_many(sessions, foreign_key = "user_id")]
 #[has_many(user_metrics, foreign_key = "id")]
+#[has_many(skill_data, foreign_key = "user_id")]
 #[derive(Identifiable, Queryable, Debug, Associations)]
 pub struct User {
     pub id: i32,
@@ -97,6 +98,8 @@ pub struct NewSkillNugget<'a> {
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="skill_nuggets"]
 #[has_many(quiz_questions, foreign_key = "skill_id")]
+#[has_many(skill_data, foreign_key = "skill_nugget")]
+#[has_many(words, foreign_key = "skill_nugget")]
 pub struct SkillNugget {
     pub id: i32,
     pub skill_summary: String,
@@ -209,6 +212,7 @@ pub struct NewWord<'a> {
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
 #[table_name="words"]
+#[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
 pub struct Word {
     pub id: i32,
     pub word: String,
@@ -267,6 +271,16 @@ pub struct NewWordData {
 #[derive(Insertable)]
 #[table_name="skill_data"]
 pub struct NewSkillData {
+    pub user_id: i32,
+    pub skill_nugget: i32,
+    pub skill_level: i32,
+}
+
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[table_name="skill_data"]
+#[belongs_to(User, foreign_key = "user_id")]
+#[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
+pub struct SkillData {
     pub user_id: i32,
     pub skill_nugget: i32,
     pub skill_level: i32,
