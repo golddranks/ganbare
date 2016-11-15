@@ -693,7 +693,33 @@ pub struct AnsweredQuestion {
     pub right_answer_id: i32,
     pub answered_id: Option<i32>,
     pub q_audio_id: i32,
-    pub time: i32,
+    pub active_answer_time: i32,
+    pub full_answer_time: i32,
+}
+
+fn log_skill_by_id(conn : &PgConnection, user : &User, skill_id: i32, level_increment: i32) -> Result<SkillData> {
+    use schema::{skill_data};
+
+    let skill_data : Option<SkillData> = skill_data::table
+                                        .filter(skill_data::user_id.eq(user.id))
+                                        .filter(skill_data::skill_nugget.eq(skill_id))
+                                        .get_result(conn)
+                                        .optional()?;
+    Ok(if let Some(skill_data) = skill_data {
+        diesel::update(skill_data::table
+                            .filter(skill_data::user_id.eq(user.id))
+                            .filter(skill_data::skill_nugget.eq(skill_id)))
+                .set(skill_data::skill_level.eq(skill_data.skill_level + level_increment))
+                .get_result(conn)?
+    } else {
+        diesel::insert(&SkillData {
+            user_id: user.id,
+            skill_nugget: skill_id,
+            skill_level: level_increment,
+        }).into(skill_data::table)
+        .get_result(conn)?
+    })
+
 }
 
 fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQuestion) -> Result<QuestionData> {
@@ -707,9 +733,11 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
         q_audio_id: answer.q_audio_id,
         correct_qa_id: answer.right_answer_id,
         answered_qa_id: answer.answered_id,
-        answer_time_ms: answer.time,
+        active_answer_time_ms: answer.active_answer_time,
+        full_answer_time_ms: answer.full_answer_time,
         correct: correct,
     };
+
     diesel::insert(&answerdata)
         .into(answer_data::table)
         .execute(conn)
@@ -760,7 +788,10 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
 }
 
 fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) -> Result<()> {
-    use schema::{word_data, user_metrics};
+    use schema::{word_data, user_metrics, words};
+
+
+    let word: Word = words::table.filter(words::id.eq(answer.word_id)).get_result(conn)?;
 
     // Insert the specifics of this answer event
     let answerdata = NewWordData {
@@ -781,6 +812,8 @@ fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) ->
     metrics.new_words_today += 1;
     metrics.new_words_since_break += 1;
     let _ : UserMetrics = metrics.save_changes(&*conn)?;
+
+    log_skill_by_id(conn, user, word.skill_nugget, 1)?;
 
     Ok(())
 }
@@ -831,7 +864,7 @@ fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQues
 
     let skills = skill_data::table
         .select(skill_data::skill_nugget)
-        .filter(skill_data::skill_level.gt(0)) // Take only skills that have been trained (=words introduced) before
+        .filter(skill_data::skill_level.gt(1)) // Take only skills with level >= 2 (=both words introduced) before
         .filter(skill_data::user_id.eq(user_id));
 
     let new_questions : Vec<QuizQuestion> = quiz_questions::table
@@ -841,8 +874,6 @@ fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQues
         .order(quiz_questions::id.asc())
         .get_results(conn)
         .chain_err(|| "Can't get new question!")?;
-
-    println!("Tsekitaut: {:?}", new_questions);
 
     Ok(new_questions)
 }
@@ -890,8 +921,10 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> 
     let question_data =
     if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, false)?.get(0) {
         Some((q.id, qdata.due_delay, Some(qdata.due_date)))
+
     } else if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
         Some((q.id, 0, None))
+
     } else { None };
 
     if let Some((question_id, due_delay, due_date)) = question_data {

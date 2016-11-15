@@ -222,14 +222,15 @@ pub struct Word {
     pub published: bool,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[table_name="answer_data"]
 pub struct NewAnswerData {
     pub user_id: i32,
     pub q_audio_id: i32,
     pub correct_qa_id: i32,
     pub answered_qa_id: Option<i32>,
-    pub answer_time_ms: i32,
+    pub active_answer_time_ms: i32,
+    pub full_answer_time_ms: i32,
     pub correct: bool,
 }
 
@@ -243,7 +244,8 @@ pub struct AnswerData {
     pub correct_qa_id: i32,
     pub answered_qa_id: Option<i32>,
     pub answered_date: DateTime<UTC>,
-    pub answer_time_ms: i32,
+    pub active_answer_time_ms: i32,
+    pub full_answer_time_ms: i32,
     pub correct: bool,
 }
 

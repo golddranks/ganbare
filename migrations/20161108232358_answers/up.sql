@@ -5,8 +5,8 @@ CREATE TABLE answer_data (
 	correct_qa_id SERIAL REFERENCES question_answers,
 	answered_qa_id INTEGER REFERENCES question_answers,
 	answered_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
-	answer_time_ms INTEGER NOT NULL,
-	listen_answer_time_ms INTEGER NOT NULL,
+	active_answer_time_ms INTEGER NOT NULL,
+	full_answer_time_ms INTEGER NOT NULL,
 	correct BOOLEAN
 );
 
@@ -30,7 +30,7 @@ CREATE TABLE word_data (
 CREATE TABLE skill_data (
 	user_id SERIAL REFERENCES users,
 	skill_nugget SERIAL REFERENCES skill_nuggets,
-	skill_level INTEGER,
+	skill_level INTEGER NOT NULL DEFAULT 0,
 	PRIMARY KEY(user_id, skill_nugget)
 );
 

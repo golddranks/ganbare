@@ -78,7 +78,8 @@ $(function () {
     var breakTimeWaitHandle = null;
     var aAudio = [];
     var currentQuestion = null;
-    var timeUsedForAnswering = null;
+    var activeAnswerTime = null;
+    var fullAnswerTime = null;
     var timesAudioPlayed = 0;
     var qAudio = document.getElementById('questionAudio');
     var correct = document.getElementById('sfxCorrect');
@@ -111,7 +112,7 @@ $(function () {
         soundIcon.prop("src", "/static/images/speaker_teal.png");
     });
     $(qAudio).bind('ended', function () {
-        timeUsedForAnswering = Date.now();
+        activeAnswerTime = Date.now();
         topmessage.text("Vastausaikaa 8 s");
         topmessage.fadeIn();
         questionText.text(currentQuestion.question[0]);
@@ -174,7 +175,7 @@ $(function () {
             type: "word",
             word_id: currentQuestion.id,
             times_audio_played: timesAudioPlayed,
-            time: Date.now() - timeUsedForAnswering
+            time: Date.now() - activeAnswerTime
         }, function (result) {
             currentQuestion = result;
             nextQuestion();
@@ -203,7 +204,8 @@ $(function () {
         question.answered = true;
         $(this).addClass("buttonHilight");
         var mark = null;
-        var time = Date.now() - timeUsedForAnswering;
+        var activeATime = Date.now() - activeAnswerTime;
+        var fullATime = Date.now() - fullAnswerTime;
         if (isCorrect) {
             mark = maru;
             questionStatus.text("Oikein! Seuraava kysymys.");
@@ -230,7 +232,8 @@ $(function () {
                 right_a_id: question.right_a,
                 question_id: question.question_id,
                 q_audio_id: question.question[1],
-                time: time
+                active_answer_time: activeATime,
+                full_answer_time: fullATime
             }, function (result) {
                 console.log("postQuestionAnswer: got result");
                 currentQuestion = result;
@@ -337,6 +340,7 @@ $(function () {
             spawnAnswerButton(a[0], a[1], a[2], isCorrect, question);
         });
         qAudio.setAttribute('src', "/api/get_line/" + question.question[1]);
+        fullAnswerTime = Date.now();
     }
     function showWord(word) {
         console.log("showWord!");
@@ -349,7 +353,7 @@ $(function () {
         wordAudio.setAttribute('src', "/api/get_line/" + word.audio_id);
         wordAudio.play();
         timesAudioPlayed++;
-        timeUsedForAnswering = Date.now();
+        activeAnswerTime = Date.now();
         soundIcon.prop("src", "/static/images/speaker_pink.png");
         wordSection.show();
     }
