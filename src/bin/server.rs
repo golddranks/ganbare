@@ -13,7 +13,9 @@ extern crate time;
 extern crate rustc_serialize;
 extern crate rand;
 extern crate chrono;
+extern crate unicode_normalization;
 
+use unicode_normalization::UnicodeNormalization;
 use dotenv::dotenv;
 use std::env;
 use ganbare::errors::*;
@@ -462,7 +464,7 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
             show_accents: true, // FIXME
             quiz_type: "word".into(),
             id,
-            word,
+            word: word.nfc().collect::<String>(), // Unicode normalization, because "word" is going to be accented kana-by-kana.
             explanation,
             audio_id: chosen_audio.id,
             due_delay: 30, // FIXME

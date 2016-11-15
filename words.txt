@@ -1,41 +1,5 @@
-はし
-あめ
-いま
-かう
-かし
-かち
-きみ
-きり
-きる
-こと
-した
-しろ
-すき
-せき
-たけ
-とし
-なみ
-ねる
-はな
-はる
-ばん
-ふり
-ふる
-へん
-ほう
-みち
-むし
-もる
-やむ
-よく
-わん
-あたり
-いけん
-いぜん
+銭湯	戦闘
 
+飽きが来る	秋が来る
 
-0. Neuvoittele sanojen järkevyydestä
-1. Nauhoita sanat yksittäin
-2. Neuvoittele carrier sentecejen järkevyydestä
-3. Nauhoita carrier sentencejen kanssa
-4. Nauhoita lisäkertoja
+生きのいい	

@@ -6,8 +6,9 @@ extern crate ganbare;
 extern crate clap;
 extern crate dotenv;
 extern crate mime;
+extern crate unicode_normalization;
 
-
+use unicode_normalization::UnicodeNormalization;
 use ganbare::*;
 
 fn import_batch(path: &str) {
@@ -19,7 +20,11 @@ fn import_batch(path: &str) {
         let f = f.unwrap();
         let path = f.path();
         let extension = if let Some(Some(e)) = path.extension().map(|s|s.to_str()) { e } else { continue }.to_string();
-        let word = path.file_stem().unwrap().to_str().unwrap().to_string();
+        let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+        let word = path.file_stem().unwrap().to_str().unwrap().nfc().collect::<String>();
+        let containing_dir = path.parent().unwrap().strip_prefix(
+                                                                    path.parent().unwrap().parent().unwrap()
+                                                                ).unwrap().to_str().unwrap().to_string();
 
         if extension != "mp3" { continue };
 
@@ -29,11 +34,11 @@ fn import_batch(path: &str) {
         let nugget = word.replace("*", "").replace("・", "");
 
         let w = NewWordFromStrings {
-            word: word.clone(),
+            word,
             explanation: "".into(),
             nugget,
-            narrator: "".into(),
-            files: vec![(path, Some(word), mime)],
+            narrator: containing_dir,
+            files: vec![(path, Some(file_name), mime)],
         };
         
         println!("{:?}", w);

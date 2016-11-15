@@ -27,6 +27,7 @@ lettre = "0.6"
 handlebars = "*"
 mime = { path = "../mime.rs"}
 mime_multipart = "*"
+unicode-normalization = "*"
 
 [replace]
 "mime:0.2.2" = { path = "../mime.rs"}
