@@ -515,9 +515,8 @@ fn next_quiz(req: &mut Request) -> PencilResult {
             let answered_id = if answered_id > 0 { Some(answered_id) } else { None }; // Negatives mean that question was unanswered (due to time limit)
             let q_audio_id = str::parse::<i32>(&parse!(form.get("q_audio_id")))?;
             let time = str::parse::<i32>(&parse!(form.get("time")))?;
-            let due_delay = str::parse::<i32>(&parse!(form.get("due_delay")))?;
             Ok(ganbare::Answered::Question(
-                ganbare::AnsweredQuestion{question_id, right_answer_id, answered_id, q_audio_id, due_delay, time}
+                ganbare::AnsweredQuestion{question_id, right_answer_id, answered_id, q_audio_id, time}
             ))
         } else {
             Err(ErrorKind::FormParseError.into())

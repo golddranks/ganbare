@@ -13,6 +13,7 @@ CREATE TABLE answer_data (
 CREATE TABLE question_data (
 	user_id SERIAL REFERENCES users,
 	question_id SERIAL REFERENCES quiz_questions,
+	correct_streak INTEGER NOT NULL DEFAULT 0,
 	due_date TIMESTAMPTZ NOT NULL,
 	due_delay INTEGER NOT NULL,
 	PRIMARY KEY(user_id, question_id)
@@ -34,12 +35,13 @@ CREATE TABLE skill_data (
 );
 
 CREATE TABLE user_metrics (
-	user_id SERIAL PRIMARY KEY REFERENCES users,
-	new_words_since_break INTEGER NOT NULL,
-	new_sentences_since_break INTEGER NOT NULL,
-	new_words_today INTEGER NOT NULL,
-	new_sentences_today INTEGER NOT NULL,
-	last_break_started TIMESTAMPTZ,
-	break_until TIMESTAMPTZ,
-	today TIMESTAMPTZ
+	id SERIAL PRIMARY KEY REFERENCES users,
+	new_words_since_break INTEGER NOT NULL DEFAULT 0,
+	new_sentences_since_break INTEGER NOT NULL DEFAULT 0,
+	new_words_today INTEGER NOT NULL DEFAULT 0,
+	new_sentences_today INTEGER NOT NULL DEFAULT 0,
+	break_until TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	today TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 );
+
+INSERT INTO user_metrics (id) SELECT id FROM users;

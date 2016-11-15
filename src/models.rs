@@ -11,6 +11,7 @@ pub struct NewUser<'a> {
 
 #[has_many(passwords, foreign_key = "id")] // actually, the relationship is one-to-1..0
 #[has_many(sessions, foreign_key = "user_id")]
+#[has_many(user_metrics, foreign_key = "id")]
 #[derive(Identifiable, Queryable, Debug, Associations)]
 pub struct User {
     pub id: i32,
@@ -228,7 +229,7 @@ pub struct NewAnswerData {
     pub correct: bool,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
 #[table_name="answer_data"]
 #[belongs_to(User, foreign_key = "user_id")]
 pub struct AnswerData {
@@ -242,13 +243,14 @@ pub struct AnswerData {
     pub correct: bool,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug)]
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
 #[table_name="question_data"]
 #[belongs_to(User, foreign_key = "user_id")]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
 pub struct QuestionData {
     pub user_id: i32,
     pub question_id: i32,
+    pub correct_streak: i32,
     pub due_date: DateTime<UTC>,
     pub due_delay: i32,
 }
@@ -270,4 +272,22 @@ pub struct NewSkillData {
     pub skill_level: i32,
 }
 
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable)]
+#[belongs_to(User, foreign_key = "id")]
+#[table_name="user_metrics"]
+pub struct UserMetrics {
+    pub id: i32,
+    pub new_words_since_break: i32,
+    pub new_sentences_since_break: i32,
+    pub new_words_today: i32,
+    pub new_sentences_today: i32,
+    pub break_until:  DateTime<UTC>,
+    pub today:  DateTime<UTC>,
+}
 
+
+#[derive(Insertable)]
+#[table_name="user_metrics"]
+pub struct NewUserMetrics {
+    pub id: i32,
+}

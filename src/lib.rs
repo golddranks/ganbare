@@ -143,7 +143,7 @@ fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(Us
 }
 
 pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<User> {
-    use schema::{users, passwords};
+    use schema::{users, passwords, user_metrics};
 
     if email.len() > 254 { return Err(ErrorKind::EmailAddressTooLong.into()) };
     if !email.contains("@") { return Err(ErrorKind::EmailAddressNotValid.into()) };
@@ -163,6 +163,11 @@ pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<U
         .into(passwords::table)
         .execute(conn)
         .chain_err(|| "Couldn't insert the new password into database!")?;
+
+    diesel::insert(&NewUserMetrics{ id: user.id })
+        .into(user_metrics::table)
+        .execute(conn)
+        .chain_err(|| "Couldn't insert the new password into user metrics!")?;
 
     Ok(user)
 }
@@ -689,11 +694,12 @@ pub struct AnsweredQuestion {
     pub answered_id: Option<i32>,
     pub q_audio_id: i32,
     pub time: i32,
-    pub due_delay: i32,
 }
 
-fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQuestion, new: bool) -> Result<()> {
+fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQuestion) -> Result<QuestionData> {
     use schema::{answer_data, question_data};
+
+    let correct = answer.right_answer_id == answer.answered_id.unwrap_or(-1);
 
     // Insert the specifics of this answer event
     let answerdata = NewAnswerData {
@@ -702,42 +708,59 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
         correct_qa_id: answer.right_answer_id,
         answered_qa_id: answer.answered_id,
         answer_time_ms: answer.time,
-        correct: answer.right_answer_id == answer.answered_id.unwrap_or(-1),
+        correct: correct,
     };
     diesel::insert(&answerdata)
         .into(answer_data::table)
         .execute(conn)
         .chain_err(|| "Couldn't save the answer data to database!")?;
 
-    let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(answer.due_delay as i64);
+    let questiondata : Option<QuestionData> = question_data::table
+                                        .filter(question_data::user_id.eq(user.id))
+                                        .filter(question_data::question_id.eq(answer.question_id))
+                                        .get_result(&*conn)
+                                        .optional()?;
 
     // Update the data for this question (due date, statistics etc.)
-    if new {
+    Ok(if let Some(questiondata) = questiondata {
+
+        let due_delay = if correct { questiondata.due_delay * 2 } else { 0 };
+        let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
+
+        diesel::update(
+                question_data::table
+                    .filter(question_data::user_id.eq(user.id))
+                    .filter(question_data::question_id.eq(answer.question_id))
+            )
+            .set((
+                question_data::due_date.eq(next_due_date),
+                question_data::due_delay.eq(due_delay),
+                question_data::correct_streak.eq(questiondata.correct_streak + 1),
+            ))
+            .get_result(conn)
+            .chain_err(|| "Couldn't save the question tally data to database!")?
+
+    } else { // New!
+
+        let due_delay = if correct { 30 } else { 0 };
+        let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
+
         let questiondata = QuestionData {
             user_id: user.id,
             question_id: answer.question_id,
+            correct_streak: if correct { 1 } else { 0 },
             due_date: next_due_date,
-            due_delay: answer.due_delay,
+            due_delay: due_delay,
         };
         diesel::insert(&questiondata)
             .into(question_data::table)
-            .execute(conn)
-            .chain_err(|| "Couldn't save the question tally data to database!")?;
-    } else {
-        let rows_updated = diesel::update( question_data::table.filter(question_data::user_id.eq(user.id)).filter(question_data::question_id.eq(answer.question_id)))
-            .set(( question_data::due_date.eq(next_due_date), question_data::due_delay.eq(answer.due_delay) ))
-            .execute(conn)
-            .chain_err(|| "Couldn't save the question tally data to database!")?;
-
-        if rows_updated != 1 {
-            return Err("It seems that the rows that should've been updated, are not in the database!".into());
-        }
-    }
-    Ok(())
+            .get_result(conn)
+            .chain_err(|| "Couldn't save the question tally data to database!")?
+    })
 }
 
 fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) -> Result<()> {
-    use schema::{word_data};
+    use schema::{word_data, user_metrics};
 
     // Insert the specifics of this answer event
     let answerdata = NewWordData {
@@ -750,6 +773,14 @@ fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) ->
         .into(word_data::table)
         .execute(conn)
         .chain_err(|| "Couldn't save the answer data to database!")?;
+
+    let mut metrics : UserMetrics = user_metrics::table
+        .filter(user_metrics::id.eq(user.id))
+        .get_result(&*conn)?;
+
+    metrics.new_words_today += 1;
+    metrics.new_words_since_break += 1;
+    let _ : UserMetrics = metrics.save_changes(&*conn)?;
 
     Ok(())
 }
@@ -886,24 +917,13 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
             log_answer_word(&*conn, user, &answer_word)?;
             return get_new_quiz(conn, user);
         },
-        Answered::Question(mut answer) => {
-            let prev_answer_correct = answer.right_answer_id == answer.answered_id.unwrap_or(-1);
-            let prev_answer_new = answer.due_delay == -1;
-
-            if !prev_answer_correct {
-                answer.due_delay = 0;
-            } else if answer.due_delay <= 0 {
-                answer.due_delay = 30;
-            } else {
-                answer.due_delay *= 2;
-            }
+        Answered::Question(answer) => {
+            let q_data = log_answer_question(&*conn, user, &answer)?;
         
-            log_answer_question(&*conn, user, &answer, prev_answer_new)?;
-        
-            if prev_answer_correct {
+            if q_data.correct_streak > 0 { // RIGHT. Get a new question/word.
                 return get_new_quiz(conn, user);
         
-            } else { // Ask the same question again.
+            } else {            // WROOONG. Ask the same question again.
         
                 let (question, answers, mut q_audio_files ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
 
@@ -916,7 +936,7 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
                 let question_audio : Vec<AudioFile> = q_audio_files.remove(i);
         
                 return Ok(Some(Card::Quiz(
-                    Quiz{question, question_audio, right_answer_id, answers, due_delay: answer.due_delay, due_date: None}
+                    Quiz{question, question_audio, right_answer_id, answers, due_delay: q_data.due_delay, due_date: Some(q_data.due_date)}
                     )))
             }
         },

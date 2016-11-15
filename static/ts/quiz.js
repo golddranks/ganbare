@@ -230,8 +230,7 @@ $(function () {
                 right_a_id: question.right_a,
                 question_id: question.question_id,
                 q_audio_id: question.question[1],
-                time: time,
-                due_delay: question.due_delay
+                time: time
             }, function (result) {
                 console.log("postQuestionAnswer: got result");
                 currentQuestion = result;
