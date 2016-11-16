@@ -625,7 +625,7 @@ fn manage(req: &mut Request) -> PencilResult {
 }
 
 
-fn get_nuggets(req: &mut Request) -> PencilResult {
+fn get_item(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
@@ -636,10 +636,101 @@ fn get_nuggets(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let nuggets = ganbare::get_skill_nuggets(&conn)
-        .map_err(|_| abort(500).unwrap_err())?;
+    let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let id = id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+    let json = match endpoint.as_ref() {
+        "get_word" => {
+            let item = ganbare::get_word(&conn, id)
+                .map_err(|_| abort(500).unwrap_err())?
+                .ok_or_else(|| abort(404).unwrap_err())?;
+            jsonify(&item)
+                },
+        "get_question" => {
+            let item = ganbare::get_question(&conn, id)
+                .map_err(|_| abort(500).unwrap_err())?
+                .ok_or_else(|| abort(404).unwrap_err())?;
+            jsonify(&item)
+        },
+        _ => {
+            return abort(500)
+        },
+    };
 
-    jsonify(&nuggets).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    json.map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
+
+fn get_all(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
+
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+    let json = match endpoint.as_ref() {
+        "get_nuggets" => {
+            let items = ganbare::get_skill_nuggets(&conn)
+                .map_err(|_| abort(500).unwrap_err())?;
+            jsonify(&items)
+        },
+        "get_bundles" => {
+            let items = ganbare::get_audio_bundles(&conn)
+                .map_err(|_| abort(500).unwrap_err())?;
+            jsonify(&items)
+        },
+        _ => {
+            return abort(500)
+        },
+    };
+
+    json.map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
+fn set_published(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
+
+    let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let id = id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+
+    match endpoint.as_ref() {
+        "publish_words" => {
+            ganbare::publish_word(&conn, id, true)
+                .map_err(|_| abort(500).unwrap_err())?;
+        },
+        "publish_questions" => {
+            ganbare::publish_question(&conn, id, true)
+                .map_err(|_| abort(500).unwrap_err())?;
+        },
+        "unpublish_words" => {
+            ganbare::publish_word(&conn, id, false)
+                .map_err(|_| abort(500).unwrap_err())?;
+        },
+        "unpublish_questions" => {
+            ganbare::publish_question(&conn, id, false)
+                .map_err(|_| abort(500).unwrap_err())?;
+        },
+        _ => {
+            return abort(500)
+        },
+    };
+    let mut resp = Response::new_empty();
+    resp.status_code = 204;
+    Ok(resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 
@@ -672,10 +763,17 @@ fn main() {
     app.post("/confirm", "confirm_final", confirm_final);
     app.get("/change_password", "change_password_form", change_password_form);
     app.post("/change_password", "change_password", change_password);
-    app.get("/api/get_nuggets", "get_nuggets", get_nuggets);
+    app.get("/api/nuggets", "get_nuggets", get_all);
+    app.get("/api/bundles", "get_bundles", get_all);
+    app.get("/api/questions/<id:int>", "get_question", get_item);
+    app.get("/api/words/<id:int>", "get_word", get_item);
+    app.put("/api/questions/<id:int>?publish", "publish_questions", set_published);
+    app.put("/api/words/<id:int>?publish", "publish_words", set_published);
+    app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", set_published);
+    app.put("/api/words/<id:int>?unpublish", "unpublish_words", set_published);
     app.get("/api/new_quiz", "new_quiz", new_quiz);
     app.post("/api/next_quiz", "next_quiz", next_quiz);
-    app.get("/api/get_line/<line_id:int>", "get_line", get_line);
+    app.get("/api/audio/<line_id:int>", "get_line", get_line);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {
         Err(_) => {

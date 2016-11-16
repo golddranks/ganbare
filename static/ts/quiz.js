@@ -276,7 +276,7 @@ $(function () {
         if (ansAudioId !== null) {
             var audio = document.createElement('audio');
             audio.setAttribute("preload", "auto");
-            audio.setAttribute('src', "/api/get_line/" + ansAudioId);
+            audio.setAttribute('src', "/api/audio/" + ansAudioId);
             aAudio[ansId] = audio;
         }
         answerList.append(newAnswerButton);
@@ -340,7 +340,7 @@ $(function () {
             var isCorrect = (question.right_a === a[0]) ? true : false;
             spawnAnswerButton(a[0], a[1], a[2], isCorrect, question);
         });
-        qAudio.setAttribute('src', "/api/get_line/" + question.question[1]);
+        qAudio.setAttribute('src', "/api/audio/" + question.question[1]);
         fullAnswerTime = Date.now();
     }
     function showWord(word) {
@@ -351,7 +351,7 @@ $(function () {
         }
         wordShowKana.html(word_html);
         wordExplanation.html(word.explanation);
-        wordAudio.setAttribute('src', "/api/get_line/" + word.audio_id);
+        wordAudio.setAttribute('src', "/api/audio/" + word.audio_id);
         wordAudio.play();
         timesAudioPlayed++;
         activeAnswerTime = Date.now();

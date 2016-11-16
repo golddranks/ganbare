@@ -649,16 +649,12 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
 
 fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<Vec<AudioFile>>)>> {
     use schema::{quiz_questions, question_answers, audio_bundles};
-    use diesel::result::Error::NotFound;
 
     let qq : Option<QuizQuestion> = quiz_questions::table
         .filter(quiz_questions::id.eq(id))
         .get_result(&*conn)
-        .map(|r| Some(r))
-        .or_else(|e| match e {
-            NotFound => Ok(None),
-            e => Err(e.caused_err(|| "Can't load quiz!")),
-        })?;
+        .optional()
+        .chain_err(|| "Can't load quiz!")?;
 
     let qq = try_or!{ qq, else return Ok(None) };
 
@@ -1067,20 +1063,58 @@ pub fn create_word(conn : &PgConnection, w: NewWordFromStrings) -> Result<Word> 
 
     Ok(word)
 }
-#[derive(RustcEncodable)]
-pub struct NuggetToJson {
-    pub skill_summary: String,
-    pub words: Vec<String>,
+
+pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<Word>, Vec<(QuizQuestion, Vec<Answer>)>))>> {
+    use schema::{skill_nuggets};
+    let nuggets: Vec<SkillNugget> = skill_nuggets::table.get_results(conn)?;
+    let qs = QuizQuestion::belonging_to(&nuggets).load::<QuizQuestion>(conn)?;
+    let aas = Answer::belonging_to(&qs).load::<Answer>(conn)?.grouped_by(&qs);
+
+    let qs_and_as = qs.into_iter().zip(aas.into_iter()).collect::<Vec<_>>().grouped_by(&nuggets);
+
+    let ws = Word::belonging_to(&nuggets).load::<Word>(conn)?.grouped_by(&nuggets);
+
+    let cards = ws.into_iter().zip(qs_and_as.into_iter());
+    let all = nuggets.into_iter().zip(cards).collect();
+    Ok(all)
 }
 
-pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<NuggetToJson>> {
-    use schema::{skill_nuggets, quiz_questions, words};
-    let nuggets: Vec<SkillNugget> = skill_nuggets::table
-                                    .get_results(conn)?;
-    Ok(nuggets.into_iter().map(|n| {
-        NuggetToJson{
-            skill_summary: n.skill_summary,
-            words: vec![],
-        }
-    }).collect())
+pub fn get_audio_bundles(conn : &PgConnection) -> Result<Vec<(AudioBundle, Vec<AudioFile>)>> {
+    use schema::{audio_bundles};
+    let bundles: Vec<AudioBundle> = audio_bundles::table.get_results(conn)?;
+    let audio_files = AudioFile::belonging_to(&bundles).load::<AudioFile>(conn)?.grouped_by(&bundles);
+    let all = bundles.into_iter().zip(audio_files).collect();
+    Ok(all)
 }
+
+pub fn get_question(conn : &PgConnection, id : i32) -> Result<Option<(QuizQuestion, Vec<Answer>)>> {
+    if let Some((qq, aas, _)) = load_quiz(conn, id)? {
+        Ok(Some((qq, aas)))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn publish_question(conn : &PgConnection, id: i32, published: bool) -> Result<()> {
+    use schema::quiz_questions;
+    diesel::update(quiz_questions::table
+        .filter(quiz_questions::id.eq(id)))
+        .set(quiz_questions::published.eq(published))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn publish_word(conn : &PgConnection, id: i32, published: bool) -> Result<()> {
+    use schema::words;
+    diesel::update(words::table
+        .filter(words::id.eq(id)))
+        .set(words::published.eq(published))
+        .execute(conn)?;
+    Ok(())
+}
+
+
+pub fn get_word(conn : &PgConnection, id : i32) -> Result<Option<Word>> {
+    Ok(schema::words::table.filter(schema::words::id.eq(id)).get_result(conn).optional()?)
+}
+

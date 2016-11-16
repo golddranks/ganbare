@@ -610,6 +610,14 @@ button,
     top: 3em;
     width: 100%;
     text-align: center; }
+#main input[type="button"].linklike,
+#main button.linklike {
+  height: auto;
+  line-height: 2em;
+  font-size: 0.8rem; }
+#main input[type="button"].compact,
+#main button.compact {
+  padding: 0 0.2em 0 0.2em; }
 #main #settings {
   z-index: 100;
   position: absolute;
@@ -620,10 +628,6 @@ button,
   background-color: rgba(225, 223, 232, 0.6);
   border-radius: 4px;
   font-size: 0.8rem; }
-  #main #settings button.linklike {
-    height: auto;
-    line-height: 2em;
-    font-size: 0.8rem; }
   #main #settings ul {
     text-align: left;
     position: absolute;
@@ -661,15 +665,32 @@ button,
   opacity: 0;
   transform: scale(3); }
 
+.bordered {
+  border-radius: 4px;
+  border: solid 1px #c8cccf;
+  padding: 0.2em; }
+
 .answerList {
-  position: relative;
-  margin-bottom: -3em; }
-  .answerList button {
+  position: relative; }
+  .answerList button,
+  .answerList .answerButton {
+    background-color: transparent;
+    border-radius: 4px;
+    border: solid 1px #c8cccf;
+    color: #414f57 !important;
+    display: inline-block;
     height: auto;
     padding: 0.5em 0 0.5em 0; }
-    .answerList button img {
+    .answerList button img,
+    .answerList .answerButton img {
       max-width: 23em;
       max-height: 12em; }
+
+.weak {
+  border-color: #f0f0f0; }
+
+.compactAnswerList {
+  margin-bottom: -3em; }
 
 /* stylized file upload button added by Pyry */
 .fileUpload {
@@ -700,19 +721,32 @@ button,
   border-color: #FF6666 !important; }
 
 #wordSection {
-  max-width: 40em; }
+  max-width: 30em; }
 
-#wordExplanation img {
+#wordExplanation img,
+.wordExplanation img {
   max-width: 100%;
   height: auto;
   max-height: 20em; }
 
-#wordShow {
+#wordShow,
+.wordShow {
   vertical-align: 13%; }
 
-#wordShowKana {
+#wordShowKana,
+.wordShowKana {
   font-size: 2em;
   letter-spacing: 0.1em; }
+
+#main ul.manage, ul.manage ul {
+  width: 38em;
+  text-align: left;
+  list-style: none;
+  padding-left: 0; }
+  #main ul.manage h3, ul.manage ul h3 {
+    margin-top: 2em; }
+  #main ul.manage li, ul.manage ul li {
+    padding-left: 0; }
 
 span.accent {
   position: relative; }

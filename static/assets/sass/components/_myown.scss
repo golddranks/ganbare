@@ -57,6 +57,18 @@
 			border-radius: _size(border-radius);
 		}
 
+		input[type="button"].linklike,
+		button.linklike {
+			height: auto;
+			line-height: 2em;
+			font-size: 0.8rem;
+		}
+
+		input[type="button"].compact,
+		button.compact {
+			padding: 0 0.2em 0 0.2em;
+		}
+
 		#settings {
 			z-index: 100;
 			position: absolute;
@@ -68,11 +80,6 @@
 			background-color: rgba(225, 223, 232, 0.6);
 			border-radius: _size(border-radius);
 
-			button.linklike {
-				height: auto;
-				line-height: 2em;
-				font-size: 0.8rem;
-			}
 			ul {
 				text-align: left;
 				position: absolute;
@@ -124,9 +131,24 @@
 	transform: scale(3);
 }
 
+.bordered {
+		border-radius: _size(border-radius);
+		border: solid 1px _palette(border);
+		padding: 0.2em;
+}
+
+
 .answerList {
 	position: relative;
-	button {
+	button,
+	.answerButton {
+		
+		background-color: transparent;
+		border-radius: _size(border-radius);
+		border: solid 1px _palette(border);
+		color: _palette(fg) !important;
+		display: inline-block;
+
 		height: auto;
 		padding: 0.5em 0 0.5em 0;
 		img {
@@ -134,6 +156,13 @@
 			max-height: 12em;
 		}
 	}
+}
+
+.weak {
+	 border-color: #f0f0f0;
+}
+
+.compactAnswerList {
 	margin-bottom: -3em;
 }
 
@@ -171,10 +200,11 @@
 }
 
 #wordSection {
-	max-width: 40em;
+	max-width: 30em;
 }
 
-#wordExplanation {
+#wordExplanation,
+.wordExplanation {
 	img {
 		max-width: 100%;
 		height: auto;
@@ -182,13 +212,29 @@
 	}
 }
 
-#wordShow {
+#wordShow,
+.wordShow {
 	vertical-align: 13%;
 }
 
-#wordShowKana {
+#wordShowKana,
+.wordShowKana {
 	font-size: 2em;
 	letter-spacing: 0.1em;
+}
+
+#main ul.manage, ul.manage ul {
+	width: 38em;
+	h3 {
+		margin-top: 2em;
+	}
+
+	text-align: left;
+	list-style: none;
+	padding-left: 0;
+	li {
+		padding-left: 0;
+	}
 }
 
 span.accent {

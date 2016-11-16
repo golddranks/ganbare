@@ -95,7 +95,7 @@ pub struct NewSkillNugget<'a> {
     pub skill_summary: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[table_name="skill_nuggets"]
 #[has_many(quiz_questions, foreign_key = "skill_id")]
 #[has_many(skill_data, foreign_key = "skill_nugget")]
@@ -111,7 +111,7 @@ pub struct NewNarrator<'a> {
     pub name: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[table_name="narrators"]
 #[has_many(audio_files, foreign_key = "narrators_id")]
 pub struct Narrator {
@@ -128,7 +128,7 @@ pub struct NewAudioFile<'a> {
     pub mime: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[table_name="audio_files"]
 #[belongs_to(Narrator, foreign_key = "narrators_id")]
 #[belongs_to(AudioBundle, foreign_key = "bundle_id")]
@@ -140,7 +140,7 @@ pub struct AudioFile {
     pub mime: String,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[table_name="audio_bundles"]
 #[has_many(audio_files, foreign_key = "bundle_id")]
 #[has_many(question_answers, foreign_key = "q_audio_bundle")]
@@ -165,7 +165,7 @@ pub struct NewQuizQuestion<'a> {
     pub skill_level: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(question_answers, foreign_key = "question_id")]
 #[has_many(question_data, foreign_key = "question_id")]
@@ -190,7 +190,7 @@ pub struct NewAnswer<'a> {
     pub answer_text: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
 #[belongs_to(AudioBundle, foreign_key = "q_audio_bundle")]
 #[table_name="question_answers"]
@@ -211,7 +211,7 @@ pub struct NewWord<'a> {
     pub skill_nugget: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[table_name="words"]
 #[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
 pub struct Word {

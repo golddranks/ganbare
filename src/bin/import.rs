@@ -7,6 +7,7 @@ extern crate clap;
 extern crate dotenv;
 extern crate mime;
 extern crate unicode_normalization;
+extern crate tempdir;
 
 use unicode_normalization::UnicodeNormalization;
 use ganbare::*;
@@ -16,6 +17,7 @@ fn import_batch(path: &str) {
 
     let files = std::fs::read_dir(path).unwrap();
 
+    let tmp_dir = tempdir::TempDir::new("ganbare_import_tool").expect("create temp dir");
     for f in files {
         let f = f.unwrap();
         let path = f.path();
@@ -25,6 +27,10 @@ fn import_batch(path: &str) {
         let containing_dir = path.parent().unwrap().strip_prefix(
                                                                     path.parent().unwrap().parent().unwrap()
                                                                 ).unwrap().to_str().unwrap().to_string();
+
+        let temp_file_path = tmp_dir.path().join(f.file_name());
+
+        std::fs::copy(path, &temp_file_path).expect("copying files");
 
         if extension != "mp3" { continue };
 
@@ -38,7 +44,7 @@ fn import_batch(path: &str) {
             explanation: "".into(),
             nugget,
             narrator: containing_dir,
-            files: vec![(path, Some(file_name), mime)],
+            files: vec![(temp_file_path, Some(file_name), mime)],
         };
         
         println!("{:?}", w);
