@@ -33,18 +33,18 @@ function accentuate_kana(word) {
         else if (i === 1 && !ended && i === len - 1) {
             accentuated.push(start_end_flat);
         }
-        else if (i === 1 && !ended && isAccentMark(i + 1)) {
+        else if (i === 1 && !ended) {
             accentuated.push(start);
         }
         else if (i > 1 && !ended && i === len - 1) {
             accentuated.push(flat_end);
         }
         else if (i > 1 && !ended && isAccentMark(i + 1)) {
-            accentuated.push(middle);
-        }
-        else if (i > 1 && !ended && isAccentMark(i + 1)) {
             accentuated.push(end);
             ended = true;
+        }
+        else if (i > 1 && !ended && !isAccentMark(i + 1)) {
+            accentuated.push(middle);
         }
         else {
             accentuated.push(empty);

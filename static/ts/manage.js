@@ -33,18 +33,18 @@ function accentuate_kana(word) {
         else if (i === 1 && !ended && i === len - 1) {
             accentuated.push(start_end_flat);
         }
-        else if (i === 1 && !ended && isAccentMark(i + 1)) {
+        else if (i === 1 && !ended) {
             accentuated.push(start);
         }
         else if (i > 1 && !ended && i === len - 1) {
             accentuated.push(flat_end);
         }
         else if (i > 1 && !ended && isAccentMark(i + 1)) {
-            accentuated.push(middle);
-        }
-        else if (i > 1 && !ended && isAccentMark(i + 1)) {
             accentuated.push(end);
             ended = true;
+        }
+        else if (i > 1 && !ended && !isAccentMark(i + 1)) {
+            accentuated.push(middle);
         }
         else {
             accentuated.push(empty);
@@ -55,6 +55,10 @@ function accentuate_kana(word) {
     return accentuated.join("");
 }
 $(function () {
+    $("body").click(function () {
+        var closeEditEvent = new Event('closeEdit');
+        this.dispatchEvent(closeEditEvent);
+    });
     var main = $("#main");
     var n_list = $("#main ul");
     var audioPlayer = $("#audioPlayer");
@@ -87,7 +91,7 @@ $(function () {
             var questions = tuple[1][1];
             words.forEach(function (word, index) {
                 var c_item = $("<li></li>").appendTo(c_list);
-                var c_header = $('<h3>Word: ' + accentuate_kana(word.word) + ' (ID ' + word.id + ')</h3>').appendTo(c_item);
+                var c_header = $('<h3></h3>').html('Word: ' + accentuate_kana(word.word)).appendTo(c_item);
                 var id = "n" + nugget_index + "w" + index;
                 var c_info = $('<div><label for="' + id + '">public</label></div>').appendTo(c_item);
                 var checkbox = $('<input type="checkbox" id="' + id + '">').prependTo(c_info);
@@ -108,9 +112,41 @@ $(function () {
                 });
                 var c_edit = $('<input type="button" value="show" class="linklike">').appendTo(c_info);
                 createBundle(word.audio_bundle, c_info);
-                var c_body = $('<section class="bordered" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
+                var c_body = $('<section class="bordered cardBody" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
                 var w_word = $('<p class="wordShowKana"></p>').appendTo(c_body).html(accentuate_kana(word.word));
-                var w_explanation = $('<div class="wordExplanation"></div>').appendTo(c_body).html(word.explanation);
+                w_word.click(function w_wordStartEdit(ev) {
+                    ev.stopPropagation();
+                    var w_word_edit = $('<p></p>');
+                    var wordEdit = $('<input class="wordShowKana" type="text" value="' + word.word + '">').appendTo(w_word_edit);
+                    w_word.replaceWith(w_word_edit);
+                    $("body").one('click', function (ev) {
+                        w_word.html(accentuate_kana(word.word));
+                        w_word_edit.replaceWith(w_word);
+                        w_word.click(w_wordStartEdit);
+                    });
+                    w_word_edit.click(function (ev) { ev.stopPropagation(); });
+                    wordEdit.on('input', function () {
+                        word.word = wordEdit.val();
+                        c_header.html('Word: ' + accentuate_kana(word.word));
+                        var request = {
+                            type: 'PUT',
+                            url: "/api/words/" + word.id,
+                            contentType: "application/json",
+                            data: JSON.stringify({ word: word.word })
+                        };
+                        $.ajax(request);
+                    });
+                });
+                var w_explanation = $('<div class="wordExplanation" contenteditable="true"></div>').appendTo(c_body).html(word.explanation);
+                w_explanation.on('input', function () {
+                    var request = {
+                        type: 'PUT',
+                        url: "/api/words/" + word.id,
+                        contentType: "application/json",
+                        data: JSON.stringify({ explanation: w_explanation.html() })
+                    };
+                    $.ajax(request);
+                });
                 function showBody() {
                     c_edit.val("Hide").click(function () { c_body.hide(); c_edit.val("Show"); c_edit.click(showBody); });
                     c_body.show();
@@ -145,15 +181,42 @@ $(function () {
                     createBundle(ans.q_audio_bundle, c_info);
                 });
                 var c_body = $('<section class="bordered" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
-                var q_explanation = $('<p class="questionExplanation"></p>').appendTo(c_body).text(question.q_explanation);
-                var q_text = $('<p class="questionText"></p>').appendTo(c_body).text(question.question_text);
+                var q_explanation = $('<p class="questionExplanation" contenteditable="true"></p>').appendTo(c_body).text(question.q_explanation);
+                q_explanation.on('input', function () {
+                    var request = {
+                        type: 'PUT',
+                        url: "/api/questions/" + question.id,
+                        contentType: "application/json",
+                        data: JSON.stringify({ q_explanation: q_explanation.html() })
+                    };
+                    $.ajax(request);
+                });
+                var q_text = $('<p class="questionText" contenteditable="true"></p>').appendTo(c_body).text(question.question_text);
+                q_text.on('input', function () {
+                    var request = {
+                        type: 'PUT',
+                        url: "/api/questions/" + question.id,
+                        contentType: "application/json",
+                        data: JSON.stringify({ question_text: q_text.html() })
+                    };
+                    $.ajax(request);
+                });
                 var a_list = $('<div class="answerList"></div>').appendTo(c_body);
                 answers.forEach(function (ans) {
                     var q_answer = $('<div class="answer bordered weak"></div>').appendTo(a_list);
                     var q_bundle = $('<p></p>').appendTo(q_answer);
                     createBundle(ans.q_audio_bundle, q_bundle);
-                    var qa_button = $('<div class="answerButton"></div>').appendTo(q_answer);
+                    var qa_button = $('<div class="answerButton" contenteditable="true"></div>').appendTo(q_answer);
                     qa_button.html(ans.answer_text);
+                    qa_button.on('input', function () {
+                        var request = {
+                            type: 'PUT',
+                            url: "/api/questions/answers/" + ans.id,
+                            contentType: "application/json",
+                            data: JSON.stringify({ answer_text: qa_button.html() })
+                        };
+                        $.ajax(request);
+                    });
                 });
                 function showBody() {
                     c_edit.val("Hide").click(function () { c_body.hide(); c_edit.val("Show"); c_edit.click(showBody); });

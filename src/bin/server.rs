@@ -733,6 +733,62 @@ fn set_published(req: &mut Request) -> PencilResult {
     Ok(resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
+fn update_item(req: &mut Request) -> PencilResult {
+
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
+
+    let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.")
+                .parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+
+    use std::io::Read;
+    let mut text = String::new();
+    req.read_to_string(&mut text)
+        .map_err(|_| abort(500).unwrap_err())?;
+
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+
+    match endpoint.as_str() {
+        "update_word" => {
+
+            let item = rustc_serialize::json::decode(&text)
+                            .map_err(|_| abort(400).unwrap_err())?;
+        
+            try_or!(ganbare::update_word(&conn, id, item)
+                .map_err(|_| abort(500).unwrap_err())?, else return abort(404));
+
+        },
+        "update_question" => {
+
+            let item = rustc_serialize::json::decode(&text)
+                            .map_err(|_| abort(400).unwrap_err())?;
+        
+            try_or!(ganbare::update_question(&conn, id, item)
+                .map_err(|_| abort(500).unwrap_err())?, else return abort(404));
+        },
+        "update_answer" => {
+
+            let item = rustc_serialize::json::decode(&text)
+                            .map_err(|_| abort(400).unwrap_err())?;
+        
+            try_or!(ganbare::update_answer(&conn, id, item)
+                .map_err(|_| abort(500).unwrap_err())?, else return abort(404));
+        },
+        _ => return abort(500),
+    }
+
+    let mut resp = Response::new_empty();
+    resp.status_code = 204;
+    Ok(resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
 
 fn main() {
     dotenv().ok();
@@ -771,6 +827,9 @@ fn main() {
     app.put("/api/words/<id:int>?publish", "publish_words", set_published);
     app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", set_published);
     app.put("/api/words/<id:int>?unpublish", "unpublish_words", set_published);
+    app.put("/api/words/<id:int>", "update_word", update_item);
+    app.put("/api/questions/<id:int>", "update_question", update_item);
+    app.put("/api/questions/answers/<id:int>", "update_answer", update_item);
     app.get("/api/new_quiz", "new_quiz", new_quiz);
     app.post("/api/next_quiz", "next_quiz", next_quiz);
     app.get("/api/audio/<line_id:int>", "get_line", get_line);

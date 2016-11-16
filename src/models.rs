@@ -181,6 +181,17 @@ pub struct QuizQuestion {
     pub skill_level: i32,
 }
 
+#[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[table_name="quiz_questions"]
+pub struct UpdateQuestion {
+    pub skill_id: Option<i32>,
+    pub q_name: Option<String>,
+    pub q_explanation: Option<String>,
+    pub question_text: Option<String>,
+    pub published: Option<bool>,
+    pub skill_level: Option<i32>,
+}
+
 #[derive(Insertable)]
 #[table_name="question_answers"]
 pub struct NewAnswer<'a> {
@@ -202,6 +213,16 @@ pub struct Answer {
     pub answer_text: String,
 }
 
+
+#[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[table_name="question_answers"]
+pub struct UpdateAnswer {
+    pub question_id: Option<i32>,
+    pub a_audio_bundle: Option<Option<i32>>,
+    pub q_audio_bundle: Option<i32>,
+    pub answer_text: Option<String>,
+}
+
 #[derive(Insertable)]
 #[table_name="words"]
 pub struct NewWord<'a> {
@@ -221,6 +242,16 @@ pub struct Word {
     pub audio_bundle: i32,
     pub skill_nugget: i32,
     pub published: bool,
+}
+
+#[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[table_name="words"]
+pub struct UpdateWord {
+    pub word: Option<String>,
+    pub explanation: Option<String>,
+    pub audio_bundle: Option<i32>,
+    pub skill_nugget: Option<i32>,
+    pub published: Option<bool>,
 }
 
 #[derive(Insertable, Debug)]

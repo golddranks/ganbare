@@ -1065,14 +1065,14 @@ pub fn create_word(conn : &PgConnection, w: NewWordFromStrings) -> Result<Word> 
 }
 
 pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<Word>, Vec<(QuizQuestion, Vec<Answer>)>))>> {
-    use schema::{skill_nuggets};
+    use schema::{skill_nuggets, quiz_questions, question_answers, words};
     let nuggets: Vec<SkillNugget> = skill_nuggets::table.get_results(conn)?;
-    let qs = QuizQuestion::belonging_to(&nuggets).load::<QuizQuestion>(conn)?;
-    let aas = Answer::belonging_to(&qs).load::<Answer>(conn)?.grouped_by(&qs);
+    let qs = QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?;
+    let aas = Answer::belonging_to(&qs).order(question_answers::id.asc()).load::<Answer>(conn)?.grouped_by(&qs);
 
     let qs_and_as = qs.into_iter().zip(aas.into_iter()).collect::<Vec<_>>().grouped_by(&nuggets);
 
-    let ws = Word::belonging_to(&nuggets).load::<Word>(conn)?.grouped_by(&nuggets);
+    let ws = Word::belonging_to(&nuggets).order(words::id.asc()).load::<Word>(conn)?.grouped_by(&nuggets);
 
     let cards = ws.into_iter().zip(qs_and_as.into_iter());
     let all = nuggets.into_iter().zip(cards).collect();
@@ -1095,6 +1095,10 @@ pub fn get_question(conn : &PgConnection, id : i32) -> Result<Option<(QuizQuesti
     }
 }
 
+pub fn get_word(conn : &PgConnection, id : i32) -> Result<Option<Word>> {
+    Ok(schema::words::table.filter(schema::words::id.eq(id)).get_result(conn).optional()?)
+}
+
 pub fn publish_question(conn : &PgConnection, id: i32, published: bool) -> Result<()> {
     use schema::quiz_questions;
     diesel::update(quiz_questions::table
@@ -1113,8 +1117,34 @@ pub fn publish_word(conn : &PgConnection, id: i32, published: bool) -> Result<()
     Ok(())
 }
 
+pub fn update_word(conn : &PgConnection, id: i32, item: UpdateWord) -> Result<Option<Word>> {
+    use schema::words;
+    let item = diesel::update(words::table
+        .filter(words::id.eq(id)))
+        .set(&item)
+        .get_result(conn)
+        .optional()?;
+    Ok(item)
+}
 
-pub fn get_word(conn : &PgConnection, id : i32) -> Result<Option<Word>> {
-    Ok(schema::words::table.filter(schema::words::id.eq(id)).get_result(conn).optional()?)
+pub fn update_question(conn : &PgConnection, id: i32, item: UpdateQuestion) -> Result<Option<QuizQuestion>> {
+    use schema::quiz_questions;
+    let item = diesel::update(quiz_questions::table
+        .filter(quiz_questions::id.eq(id)))
+        .set(&item)
+        .get_result(conn)
+        .optional()?;
+    Ok(item)
+}
+
+
+pub fn update_answer(conn : &PgConnection, id: i32, item: UpdateAnswer) -> Result<Option<Answer>> {
+    use schema::question_answers;
+    let item = diesel::update(question_answers::table
+        .filter(question_answers::id.eq(id)))
+        .set(&item)
+        .get_result(conn)
+        .optional()?;
+    Ok(item)
 }
 

@@ -223,6 +223,21 @@
 	letter-spacing: 0.1em;
 }
 
+.cardBody .wordShowKana {
+	margin-bottom: 1em;
+	height: 2em;
+}
+
+*[contenteditable="true"]
+{
+	display: inline-block;
+	width: 100%;
+}
+
+input.wordShowKana {
+	padding: 0;
+}
+
 #main ul.manage, ul.manage ul {
 	width: 38em;
 	h3 {
