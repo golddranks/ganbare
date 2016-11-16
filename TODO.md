@@ -10,4 +10,8 @@ Tomorrow
 
 Stretch goals:
 - Test with different browsers
-- Fix the bug with multiple overlapping sessions getting stale
+- FIX: multiple overlapping sessions getting stale
+- FIX: contenteditable adds <br> at the end
+- FEATURE: download images server-side and replace the outbound links with links to the own static folder
+- FEATURE: add answers in the manager screen
+- FIX: contenteditable error handling

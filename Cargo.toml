@@ -29,6 +29,7 @@ mime = { path = "../mime.rs"}
 mime_multipart = "*"
 unicode-normalization = "*"
 tempdir = "0.3"
+regex = "0.1"
 
 [replace]
 "mime:0.2.2" = { path = "../mime.rs"}

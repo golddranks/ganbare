@@ -14,6 +14,7 @@ extern crate rustc_serialize;
 extern crate rand;
 extern crate chrono;
 extern crate unicode_normalization;
+extern crate regex;
 
 use unicode_normalization::UnicodeNormalization;
 use dotenv::dotenv;
@@ -754,15 +755,23 @@ fn update_item(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?;
 
     let endpoint = req.endpoint().expect("Pencil guarantees this");
+    lazy_static! {
+        // Taking JSON encoding into account: " is escaped as \"
+        static ref RE: regex::Regex = regex::Regex::new(r###"<img ([^>]* )?src=\\"(?P<src>[^"]*)\\"( [^>]*)?>"###).unwrap();
+    }
+    let text = RE.replace_all(&text, r###"<img src=\"$src\">"###);
 
+    let json;
     match endpoint.as_str() {
         "update_word" => {
 
             let item = rustc_serialize::json::decode(&text)
                             .map_err(|_| abort(400).unwrap_err())?;
         
-            try_or!(ganbare::update_word(&conn, id, item)
+            let updated_item = try_or!(ganbare::update_word(&conn, id, item)
                 .map_err(|_| abort(500).unwrap_err())?, else return abort(404));
+
+            json = jsonify(&updated_item);
 
         },
         "update_question" => {
@@ -770,23 +779,25 @@ fn update_item(req: &mut Request) -> PencilResult {
             let item = rustc_serialize::json::decode(&text)
                             .map_err(|_| abort(400).unwrap_err())?;
         
-            try_or!(ganbare::update_question(&conn, id, item)
+            let updated_item = try_or!(ganbare::update_question(&conn, id, item)
                 .map_err(|_| abort(500).unwrap_err())?, else return abort(404));
+
+            json = jsonify(&updated_item);
         },
         "update_answer" => {
 
             let item = rustc_serialize::json::decode(&text)
                             .map_err(|_| abort(400).unwrap_err())?;
         
-            try_or!(ganbare::update_answer(&conn, id, item)
+            let updated_item = try_or!(ganbare::update_answer(&conn, id, item)
                 .map_err(|_| abort(500).unwrap_err())?, else return abort(404));
+
+            json = jsonify(&updated_item);
         },
         _ => return abort(500),
     }
-
-    let mut resp = Response::new_empty();
-    resp.status_code = 204;
-    Ok(resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    
+    json.map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 

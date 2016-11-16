@@ -121,15 +121,22 @@ function drawList(nugget_resp, bundle_resp) {
 
 			createBundle(word.audio_bundle, c_info);
 
+			var wordLatestResp = word;
+
+			var w_word_okayToUpdate = false;
 			var c_body = $('<section class="bordered cardBody" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
 			var w_word = $('<p class="wordShowKana"></p>').appendTo(c_body).html(accentuate_kana(word.word));
 			w_word.click(function w_wordStartEdit(ev){
 				ev.stopPropagation();
+				w_word_okayToUpdate = false;
 				var w_word_edit = $('<p></p>');
 				var wordEdit = $('<input class="wordShowKana" type="text" value="'+word.word+'">').appendTo(w_word_edit);
 				w_word.replaceWith(w_word_edit);
 				$("body").one('click', function(ev){
+					word.word = wordLatestResp.word;
+					w_word_okayToUpdate = true;
 					w_word.html(accentuate_kana(word.word));
+
 					w_word_edit.replaceWith(w_word);
 					w_word.click(w_wordStartEdit);
 				});
@@ -142,17 +149,39 @@ function drawList(nugget_resp, bundle_resp) {
 						url: "/api/words/"+word.id,
 						contentType: "application/json",
 						data: JSON.stringify({word: word.word}),
+						success: function(resp) {
+							wordLatestResp = resp;
+							if (w_word_okayToUpdate) {
+								word.word = wordLatestResp.word;
+								w_word.html(accentuate_kana(word.word));
+							}
+						},
 					};
 					$.ajax(request);
 				});
 			});
 			var w_explanation = $('<div class="wordExplanation" contenteditable="true"></div>').appendTo(c_body).html(word.explanation);
+
+			var w_explanation_okayToUpdate = false;
+			w_explanation.on('blur', function() {
+				word.explanation = wordLatestResp.explanation;
+				w_explanation_okayToUpdate = true;
+				w_explanation.html(word.explanation);
+			});
 			w_explanation.on('input', function() {
+				w_explanation_okayToUpdate = false;
 				var request = {
 					type: 'PUT',
 					url: "/api/words/"+word.id,
 					contentType: "application/json",
 					data: JSON.stringify({explanation: w_explanation.html()}),
+					success: function(resp) {
+						wordLatestResp = resp;
+						if (w_explanation_okayToUpdate) {
+							word.explanation = wordLatestResp.explanation;
+							w_explanation.html(word.explanation);
+						}
+					},
 				};
 				$.ajax(request);
 			});
@@ -197,22 +226,51 @@ function drawList(nugget_resp, bundle_resp) {
 
 			var c_body = $('<section class="bordered" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
 			var q_explanation = $('<p class="questionExplanation" contenteditable="true"></p>').appendTo(c_body).text(question.q_explanation);
+			var question_latestResp = question;
+			var q_explanation_okayToUpdate = false;
+			q_explanation.on('blur', function() {
+				question.q_explanation = question_latestResp.q_explanation;
+				q_explanation_okayToUpdate = true;
+				q_explanation.html(question.q_explanation);
+			});
 			q_explanation.on('input', function() {
+				q_explanation_okayToUpdate = false;
 				var request = {
 					type: 'PUT',
 					url: "/api/questions/"+question.id,
 					contentType: "application/json",
 					data: JSON.stringify({q_explanation: q_explanation.html()}),
+					success: function(resp) {
+						question_latestResp = resp;
+						if (q_explanation_okayToUpdate) {
+							question.q_explanation = question_latestResp.q_explanation;
+							q_explanation.html(question.q_explanation);
+						}
+					},
 				};
 				$.ajax(request);
 			});
-			var q_text = $('<p class="questionText" contenteditable="true"></p>').appendTo(c_body).text(question.question_text);
-			q_text.on('input', function() {
+			var question_text = $('<p class="questionText" contenteditable="true"></p>').appendTo(c_body).text(question.question_text);
+			var question_text_okayToUpdate = false;
+			question_text.on('blur', function() {
+				question.question_text = question_latestResp.question_text;
+				question_text_okayToUpdate = true;
+				question_text.html(question.question_text);
+			});
+			question_text.on('input', function() {
+				question_text_okayToUpdate = false;
 				var request = {
 					type: 'PUT',
 					url: "/api/questions/"+question.id,
 					contentType: "application/json",
-					data: JSON.stringify({question_text: q_text.html()}),
+					data: JSON.stringify({question_text: question_text.html()}),
+					success: function(resp) {
+						question_latestResp = resp;
+						if (question_text_okayToUpdate) {
+							question.question_text = question_latestResp.question_text;
+							question_text.html(question.question_text);
+						}
+					},
 				};
 				$.ajax(request);
 			});
@@ -225,12 +283,27 @@ function drawList(nugget_resp, bundle_resp) {
 				createBundle(ans.q_audio_bundle, q_bundle);
 				var qa_button = $('<div class="answerButton" contenteditable="true"></div>').appendTo(q_answer);
 				qa_button.html(ans.answer_text);
+				var answer_latestResp;
+				var answer_text_okayToUpdate = false;
+				qa_button.on('blur', function() {
+					ans.answer_text = answer_latestResp.answer_text;
+					answer_text_okayToUpdate = true;
+					qa_button.html(ans.answer_text);
+				});
 				qa_button.on('input', function() {
+					answer_text_okayToUpdate = false;
 				var request = {
 					type: 'PUT',
 					url: "/api/questions/answers/"+ans.id,
 					contentType: "application/json",
 					data: JSON.stringify({answer_text: qa_button.html()}),
+					success: function(resp) {
+						answer_latestResp = resp;
+						if (answer_text_okayToUpdate) {
+							ans.answer_text = answer_latestResp.answer_text;
+							qa_button.html(ans.answer_text);
+						}
+					},
 				};
 				$.ajax(request);
 			});
