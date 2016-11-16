@@ -317,10 +317,41 @@ function drawList(nugget_resp, bundle_resp) {
 			c_edit.click(showBody);
 		});
 
-		if (words.length >= 2 && questions.length === 0) {
+		if (words.length == 2 && questions.length === 0) {
 			var c_item = $("<li><h3>(No questions)</h3></li>").appendTo(c_list);
-			var c_body = $('<div><input type="button" value="autocreate" class="linklike"></div>');
+			var c_body = $('<div></div>');
 			c_body.appendTo(c_item);
+			var c_button = $('<input type="button" value="autocreate" class="linklike">');
+			c_button.appendTo(c_body);
+			var data = [{
+						name: nugget.skill_summary,
+						explanation: "Kuuntele ja vastaa kysymykseen",
+						question_text: "Mistä asiasta on kyse?",
+						skill_nugget: nugget.id,
+						},
+						[{
+							question_id: 0,
+							a_audio_bundle: null,
+							q_audio_bundle: words[0].audio_bundle,
+							answer_text: words[0].explanation,
+						},
+						{
+							question_id: 0,
+							a_audio_bundle: null,
+							q_audio_bundle: words[1].audio_bundle,
+							answer_text: words[1].explanation,
+						}]];
+			c_button.click(function() {
+				$.ajax({
+					url: "/api/question",
+					type: "POST",
+					data: data,
+					success: function(resp) {
+						alert("success!");
+						console.log(resp);
+					},
+				});
+			});
 
 		}
 		

@@ -801,6 +801,37 @@ fn update_item(req: &mut Request) -> PencilResult {
 }
 
 
+fn post_question(req: &mut Request) -> PencilResult {
+
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "editors")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
+
+    use std::io::Read;
+    let mut text = String::new();
+    req.read_to_string(&mut text)
+        .map_err(|_| abort(500).unwrap_err())?;
+
+    use ganbare::models::{NewQuizQuestion, NewAnswer};
+
+    let item : (NewQuizQuestion, Vec<NewAnswer>) = rustc_serialize::json::decode(&text)
+            .map_err(|_| abort(400).unwrap_err())?;
+
+    println!("{:?}", item);
+
+    let id = 3;
+        
+    let new_url = String::from("/api/questions/") + id;
+
+    redirect(new_url, 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
+}
+
 fn main() {
     dotenv().ok();
     let mut app = Pencil::new(".");
@@ -835,6 +866,7 @@ fn main() {
     app.get("/api/questions/<id:int>", "get_question", get_item);
     app.get("/api/words/<id:int>", "get_word", get_item);
     app.put("/api/questions/<id:int>?publish", "publish_questions", set_published);
+    app.post("/api/question", "post_question", post_question);
     app.put("/api/words/<id:int>?publish", "publish_words", set_published);
     app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", set_published);
     app.put("/api/words/<id:int>?unpublish", "unpublish_words", set_published);
