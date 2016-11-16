@@ -2,10 +2,9 @@
 
 Today
 - Deploy to akusento.ganba.re
+- Does HTTP work?
+- Does emailing work?
 - Design an alternative mode for quizes: traditional/output
-
-Tomorrow
-- Design a list and edit functionality for questions
 - Design a welcome screen and an accept/survey screen
 
 Stretch goals:
