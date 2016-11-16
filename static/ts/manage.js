@@ -180,7 +180,7 @@ $(function () {
                 ;
                 c_edit.click(showBody);
             });
-            questions.forEach(function (tuple, index) {
+            function createQuestionEntry(tuple, index) {
                 var question = tuple[0];
                 var answers = tuple[1];
                 var c_item = $("<li><h3>Question: " + question.q_name + "</h3></li>").appendTo(c_list);
@@ -294,18 +294,23 @@ $(function () {
                 }
                 ;
                 c_edit.click(showBody);
-            });
+            }
+            ;
+            questions.forEach(createQuestionEntry);
             if (words.length == 2 && questions.length === 0) {
-                var c_item = $("<li><h3>(No questions)</h3></li>").appendTo(c_list);
+                var c_item = $("<li></li>").appendTo(c_list);
+                var c_header = $('<h3>(No questions)</h3>').appendTo(c_item);
                 var c_body = $('<div></div>');
                 c_body.appendTo(c_item);
                 var c_button = $('<input type="button" value="autocreate" class="linklike">');
                 c_button.appendTo(c_body);
                 var data = [{
-                        name: nugget.skill_summary,
-                        explanation: "Kuuntele ja vastaa kysymykseen",
+                        q_name: nugget.skill_summary,
+                        q_explanation: "Kuuntele ja vastaa kysymykseen",
                         question_text: "Mistä asiasta on kyse?",
-                        skill_nugget: nugget.id
+                        skill_id: nugget.id,
+                        published: false,
+                        skill_level: 2
                     },
                     [{
                             question_id: 0,
@@ -322,11 +327,13 @@ $(function () {
                 c_button.click(function () {
                     $.ajax({
                         url: "/api/question",
+                        contentType: "application/json",
                         type: "POST",
-                        data: data,
+                        data: JSON.stringify(data),
                         success: function (resp) {
-                            alert("success!");
                             console.log(resp);
+                            c_item.remove();
+                            createQuestionEntry(resp);
                         }
                     });
                 });

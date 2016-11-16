@@ -608,7 +608,7 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
         q_explanation: &new_q.q_explanation,
         question_text: &new_q.question_text,
         skill_id: nugget.id,
-        skill_level: 1, // FIXME
+        skill_level: 2, // FIXME
     };
 
     let quiz : QuizQuestion = diesel::insert(&new_quiz)
@@ -1146,5 +1146,21 @@ pub fn update_answer(conn : &PgConnection, id: i32, item: UpdateAnswer) -> Resul
         .get_result(conn)
         .optional()?;
     Ok(item)
+}
+
+pub fn post_question(conn : &PgConnection, question: NewQuizQuestion, mut answers: Vec<NewAnswer>) -> Result<i32> {
+    use schema::{question_answers, quiz_questions};
+
+    let q: QuizQuestion = diesel::insert(&question)
+                .into(quiz_questions::table)
+                .get_result(conn)?;
+
+    for aa in &mut answers {
+        aa.question_id = q.id;
+        diesel::insert(aa)
+            .into(question_answers::table)
+            .execute(conn)?;
+    }
+    Ok(q.id)
 }
 

@@ -155,7 +155,7 @@ pub struct NewAudioBundle<'a> {
     pub listname: &'a str,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[table_name="quiz_questions"]
 pub struct NewQuizQuestion<'a> {
     pub skill_id: i32,
@@ -192,7 +192,7 @@ pub struct UpdateQuestion {
     pub skill_level: Option<i32>,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[table_name="question_answers"]
 pub struct NewAnswer<'a> {
     pub question_id: i32,

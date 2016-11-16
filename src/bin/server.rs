@@ -818,18 +818,48 @@ fn post_question(req: &mut Request) -> PencilResult {
     req.read_to_string(&mut text)
         .map_err(|_| abort(500).unwrap_err())?;
 
-    use ganbare::models::{NewQuizQuestion, NewAnswer};
+    use ganbare::models::{UpdateQuestion, UpdateAnswer, NewQuizQuestion, NewAnswer};
 
-    let item : (NewQuizQuestion, Vec<NewAnswer>) = rustc_serialize::json::decode(&text)
+    let (qq, aas) : (UpdateQuestion, Vec<UpdateAnswer>) = rustc_serialize::json::decode(&text)
             .map_err(|_| abort(400).unwrap_err())?;
 
-    println!("{:?}", item);
+    fn parse_qq(qq: &UpdateQuestion) -> Result<NewQuizQuestion> {
+        let qq = NewQuizQuestion {
+            skill_id: qq.skill_id.ok_or(ErrorKind::FormParseError.to_err())?,
+            q_name: qq.q_name.as_ref().ok_or(ErrorKind::FormParseError.to_err())?.as_str(),
+            q_explanation: qq.q_explanation.as_ref().ok_or(ErrorKind::FormParseError.to_err())?.as_str(),
+            question_text: qq.question_text.as_ref().ok_or(ErrorKind::FormParseError.to_err())?.as_str(),
+            skill_level: qq.skill_level.ok_or(ErrorKind::FormParseError.to_err())?,
+        };
+        Ok(qq)
+    }
 
-    let id = 3;
+    fn parse_aa(aa: &UpdateAnswer) -> Result<NewAnswer> {
+        let aa = NewAnswer {
+            question_id: aa.question_id.ok_or(ErrorKind::FormParseError.to_err())?,
+            a_audio_bundle: aa.a_audio_bundle.unwrap_or(None),
+            q_audio_bundle: aa.q_audio_bundle.ok_or(ErrorKind::FormParseError.to_err())?,
+            answer_text: aa.answer_text.as_ref().ok_or(ErrorKind::FormParseError.to_err())?.as_str(),
+        };
+        Ok(aa)
+    }
+
+    let new_qq = parse_qq(&qq)
+            .map_err(|_| abort(400).unwrap_err())?;
+
+    let mut new_aas = vec![];
+    for aa in &aas {
+        let new_aa = parse_aa(aa)
+            .map_err(|_| abort(400).unwrap_err())?;
+        new_aas.push(new_aa);
+    }
+
+    let id = ganbare::post_question(&conn, new_qq, new_aas)
+            .map_err(|_| abort(500).unwrap_err())?;
         
-    let new_url = String::from("/api/questions/") + id;
+    let new_url = format!("/api/questions/{}", id);
 
-    redirect(new_url, 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
+    redirect(&new_url, 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 }
 
 fn main() {
