@@ -864,6 +864,9 @@ fn post_question(req: &mut Request) -> PencilResult {
 
 fn main() {
     dotenv().ok();
+
+    ganbare::run_db_migrations().expect("Migration error! Check the database!");
+
     let mut app = Pencil::new(".");
     app.register_template("hello.html");
     app.register_template("main.html");

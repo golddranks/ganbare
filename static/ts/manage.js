@@ -331,9 +331,8 @@ $(function () {
                         type: "POST",
                         data: JSON.stringify(data),
                         success: function (resp) {
-                            console.log(resp);
                             c_item.remove();
-                            createQuestionEntry(resp);
+                            createQuestionEntry(resp, 2);
                         }
                     });
                 });

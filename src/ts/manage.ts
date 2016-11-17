@@ -353,7 +353,7 @@ function drawList(nugget_resp, bundle_resp) {
 					data: JSON.stringify(data),
 					success: function(resp) {
 						c_item.remove();
-						createQuestionEntry(resp);
+						createQuestionEntry(resp, 2);
 					},
 				});
 			});

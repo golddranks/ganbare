@@ -9,7 +9,7 @@ diesel_codegen = {version = "0.8", default-features = false, features = ["postgr
 dotenv = "0.8"
 dotenv_macros = "0.9"
 rust-crypto = "0.2"
-error-chain = { path = "../error-chain" }
+error-chain = { git = "https://github.com/golddranks/error-chain.git", branch = "tweaks_for_ganbare"}
 clap = "2"
 chrono = { version = "0.2", features = ["rustc-serialize"]}
 rpassword = "0.2"
@@ -17,7 +17,7 @@ rand = "0.3"
 rustc-serialize = "0.3"
 binary_macros = "0.1"
 data-encoding = "1.1"
-pencil = { path = "../pencil" }
+pencil = { git = "https://github.com/golddranks/pencil", branch = "modifications_for_ganbare" }
 hyper = "0.9"
 env_logger = "0.3"
 log = "*"
@@ -25,11 +25,9 @@ lazy_static = "*"
 time = "*"
 lettre = "0.6"
 handlebars = "*"
-mime = { path = "../mime.rs"}
+mime = "*"
 mime_multipart = "*"
 unicode-normalization = "*"
 tempdir = "0.3"
 regex = "0.1"
 
-[replace]
-"mime:0.2.2" = { path = "../mime.rs"}

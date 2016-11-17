@@ -48,6 +48,7 @@ pub mod errors {
             ::std::num::ParseFloatError, ParseFloatError;
             ::std::io::Error, StdIoError;
             ::diesel::result::Error, DieselError;
+            ::diesel::migrations::RunMigrationsError, DieselMigrationError;
             ::pencil::PencilError, PencilError;
         }
         errors {
@@ -105,6 +106,12 @@ pub mod errors {
 
 
 use errors::*;
+
+pub fn run_db_migrations() -> Result<()> {
+    let conn = db_connect()?;
+    diesel::migrations::run_pending_migrations(&conn)?;
+    Ok(())
+}
 
 pub fn db_connect() -> Result<PgConnection> {
     dotenv().ok();
