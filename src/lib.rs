@@ -104,12 +104,13 @@ pub mod errors {
     }
 }
 
+embed_migrations!();
 
 use errors::*;
 
 pub fn run_db_migrations() -> Result<()> {
     let conn = db_connect()?;
-    diesel::migrations::run_pending_migrations(&conn)?;
+    embedded_migrations::run(&conn)?;
     Ok(())
 }
 

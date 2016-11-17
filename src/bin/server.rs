@@ -863,9 +863,11 @@ fn post_question(req: &mut Request) -> PencilResult {
 }
 
 fn main() {
+    println!("Starting.");
     dotenv().ok();
 
-    ganbare::run_db_migrations().expect("Migration error! Check the database!");
+    ganbare::run_db_migrations().expect("Couldn't do the DB migration!");
+    println!("Database OK.");
 
     let mut app = Pencil::new(".");
     app.register_template("hello.html");
@@ -876,11 +878,11 @@ fn main() {
     app.register_template("manage.html");
     app.register_template("change_password.html");
     app.enable_static_file_handling();
+    println!("Templates loaded.");
 
  //   app.set_debug(true);
  //   app.set_log_level();
  //   env_logger::init().unwrap();
-    debug!("* Running on http://localhost:5000/, serving at {:?}", *SITE_DOMAIN);
 
     app.get("/", "hello", hello);
     app.post("/logout", "logout", logout);
@@ -917,6 +919,6 @@ fn main() {
         },
         Ok(ok) => ok,
     };
-    println!("Ready to run at {}", binding);
+    println!("Ready. Running on {}, serving at {}", env::var("GANBARE_SERVER_BINDING").expect("Env var GANBARE_SERVER_BINDING is missing?"), *SITE_DOMAIN);
     app.run(binding.as_str());
 }
