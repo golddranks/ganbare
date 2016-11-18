@@ -862,6 +862,16 @@ fn post_question(req: &mut Request) -> PencilResult {
     redirect(&new_url, 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 }
 
+macro_rules! include_templates(
+    ($app:ident, $temp_dir:expr, $($file:expr),*) => { {
+        let mut reg = $app.handlebars_registry.write().expect("This is supposed to fail fast and hard.");
+        $(
+        reg.register_template_string($file, include_str!(concat!(env!("PWD"), "/", $temp_dir, "/", $file)).to_string())
+        .expect("This is supposed to fail fast and hard.");
+        )*
+    } }
+);
+
 fn main() {
     println!("Starting.");
     dotenv().ok();
@@ -870,6 +880,10 @@ fn main() {
     println!("Database OK.");
 
     let mut app = Pencil::new(".");
+   
+    include_templates!(app, "templates", "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "manage.html", "change_password.html");
+    
+    /*
     app.register_template("hello.html");
     app.register_template("main.html");
     app.register_template("confirm.html");
@@ -877,12 +891,16 @@ fn main() {
     app.register_template("add_word.html");
     app.register_template("manage.html");
     app.register_template("change_password.html");
-    app.enable_static_file_handling();
     println!("Templates loaded.");
+    */
 
- //   app.set_debug(true);
- //   app.set_log_level();
- //   env_logger::init().unwrap();
+    app.enable_static_file_handling();
+
+    /*
+    app.set_debug(true);
+    app.set_log_level();
+    env_logger::init().unwrap();
+    */
 
     app.get("/", "hello", hello);
     app.post("/logout", "logout", logout);
