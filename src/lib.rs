@@ -27,7 +27,6 @@ use dotenv::dotenv;
 use std::env;
 use std::net::IpAddr;
 use std::path::PathBuf;
-use error_chain::{ResultExt, ChainedError};
 
 pub use diesel::pg::PgConnection;
 
