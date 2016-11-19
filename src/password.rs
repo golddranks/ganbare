@@ -1,8 +1,9 @@
 
 use dotenv::dotenv;
 use std::env;
-
+use error_chain::{ChainedError, ResultExt};
 use errors::*;
+
 use models::{Password};
 
 #[derive(Clone, Copy)]

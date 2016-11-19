@@ -9,7 +9,7 @@ diesel_codegen = {version = "0.8", default-features = false, features = ["postgr
 dotenv = "0.8"
 dotenv_macros = "0.9"
 rust-crypto = "0.2"
-error-chain = { git = "https://github.com/golddranks/error-chain.git", branch = "tweaks_for_ganbare"}
+error-chain = { git = "https://github.com/brson/error-chain.git", rev = "0bf2ff6743f757a5009871cc3776b84318ffadfb"}
 clap = "2"
 chrono = { version = "0.2", features = ["rustc-serialize"]}
 rpassword = "0.2"

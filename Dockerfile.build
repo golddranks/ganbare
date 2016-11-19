@@ -1,0 +1,68 @@
+FROM debian:jessie
+MAINTAINER Pyry Kontio <pyry.kontio@drasa.eu>
+
+USER root
+
+RUN apt-get update && apt-get install -y \
+  bzip2 \
+  make \
+  curl \
+  git \
+  xutils-dev \
+  musl-tools \
+  libpq-dev \
+  sqlite3 \
+  ca-certificates \
+  g++ \
+  file \
+  postgresql \ 
+  postgresql-client \
+  --no-install-recommends && \
+  rm -rf /var/lib/apt/lists/*
+
+RUN ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr/lib/x86_64-linux-gnu/libsqlite3.so
+
+ENV DATABASE_URL=postgres://postgres@%2Fvar%2Frun%2Fpostgresql/ganbare_build \
+    GANBARE_DATABASE_URL=postgres://postgres@%2Fvar%2Frun%2Fpostgresql/ganbare_build \
+    SSL_VER=1.0.2j \
+    POSTGRES_VER=9.6.1 \
+    CC=musl-gcc \
+    PREFIX=/usr/local/musl \
+    PATH=/usr/local/musl/bin:$PATH \
+    PKG_CONFIG_PATH=/usr/local/musl/lib/pkgconfig
+
+RUN git clone git://git.musl-libc.org/musl && cd musl && \
+    ./configure --prefix=$PREFIX && make && make install && \
+    cd .. && rm -rf musl
+
+RUN curl -sL http://www.openssl.org/source/openssl-$SSL_VER.tar.gz | tar xz && \
+    cd openssl-$SSL_VER && \
+    ./Configure no-shared --prefix=$PREFIX --openssldir=$PREFIX/ssl no-zlib linux-x86_64 && \
+    make depend 2> /dev/null && make -j$(nproc) && make install && \
+    cd .. && rm -rf openssl-$SSL_VER
+
+RUN curl -sL https://ftp.postgresql.org/pub/source/v${POSTGRES_VER}/postgresql-${POSTGRES_VER}.tar.gz | tar xz && \
+    cd postgresql-${POSTGRES_VER} && \
+    ./configure --prefix=$PREFIX --host=x86_64-unknown-linux-musl --without-readline --without-zlib && \
+    make && make install && \
+    cd .. && rm -rf postgresql-${POSTGRES_VER}
+
+RUN mkdir /ganbare && chown postgres ganbare
+
+USER postgres
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2016-11-06 && \
+    /var/lib/postgresql/.cargo/bin/rustup target add x86_64-unknown-linux-musl && \
+    CC=gcc /var/lib/postgresql/.cargo/bin/cargo install diesel_cli
+
+WORKDIR /ganbare
+
+CMD git clone https://github.com/golddranks/ganbare.git . && \
+  /etc/init.d/postgresql start && \
+  /var/lib/postgresql/.cargo/bin/diesel database setup && \
+  LDFLAGS="-static -L/usr/local/musl/lib" \
+  LD_LIBRARY_PATH=/usr/local/musl/lib:$LD_LIBRARY_PATH \
+  PKG_CONFIG_PATH=/usr/local/musl/lib/pkgconfig \
+  CC=gcc \
+  CFLAGS="-I/usr/local/musl/include" \
+  GANBARE_BUILDTIME_PEPPER=`cat /dev/urandom | head -c 32 | base64` \
+  /var/lib/postgresql/.cargo/bin/cargo build --release --target=x86_64-unknown-linux-musl

@@ -27,6 +27,7 @@ use dotenv::dotenv;
 use std::env;
 use std::net::IpAddr;
 use std::path::PathBuf;
+use error_chain::{ResultExt, ChainedError};
 
 pub use diesel::pg::PgConnection;
 
@@ -44,6 +45,7 @@ pub mod errors {
 
     error_chain! {
         foreign_links {
+            ::std::env::VarError, VarError;
             ::std::num::ParseIntError, ParseIntError;
             ::std::num::ParseFloatError, ParseFloatError;
             ::std::io::Error, StdIoError;
