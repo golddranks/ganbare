@@ -8,12 +8,20 @@ extern crate dotenv;
 extern crate mime;
 extern crate unicode_normalization;
 extern crate tempdir;
+#[macro_use]  extern crate lazy_static;
 
 use unicode_normalization::UnicodeNormalization;
 use ganbare::*;
 
+lazy_static! {
+
+    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_DATABASE_URL")
+        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
+
+}
+
 fn import_batch(path: &str) {
-    let conn = db_connect().unwrap();
+    let conn = db_connect(&*DATABASE_URL).unwrap();
 
     let files = std::fs::read_dir(path).unwrap();
 

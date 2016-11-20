@@ -17,7 +17,6 @@ extern crate unicode_normalization;
 extern crate regex;
 
 use unicode_normalization::UnicodeNormalization;
-use dotenv::dotenv;
 use std::env;
 use ganbare::errors::*;
 use std::net::IpAddr;
@@ -27,19 +26,54 @@ use hyper::header::{SetCookie, CookiePair, Cookie};
 use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify};
 use pencil::helpers::{send_file, send_from_directory};
 use ganbare::models::{User, Session};
-
-
-//const JQUERY_URL: &'static str = "https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js";
-const JQUERY_URL: &'static str = "/static/js/jquery.min.js";
+use rustc_serialize::base64::FromBase64;
+use std::net::{SocketAddr, ToSocketAddrs};
 
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
 }
 
-
 lazy_static! {
-    static ref SITE_DOMAIN : String = { dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
-    .unwrap_or_else(|_| "".into()) };
+
+    static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
+        .unwrap_or_else(|_| "".into()) };
+
+    static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_EMAIL_DOMAIN")
+        .unwrap_or_else(|_| *SITE_DOMAIN.clone()) };
+
+    static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
+        let binding = std::env::var("GANBARE_EMAIL_SERVER")
+        .expect("Specify an outbound email server, like this: mail.yourisp.com:25");
+        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
+
+    static ref SERVER_BINDING : SocketAddr = { dotenv::dotenv().ok();
+        let binding = env::var("GANBARE_SERVER_BINDING")
+        .unwrap_or_else(|_| "localhost:8080".into());
+        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
+
+    static ref JQUERY_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_JQUERY")
+        .unwrap_or_else(|_| "/static/js/jquery.min.js".into()) };
+
+    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
+        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
+
+    static ref AUDIO_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_AUDIO_DIR")
+        .unwrap_or_else(|_| "audio".into()) };
+
+    static ref IMAGES_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_IMAGES_DIR")
+        .unwrap_or_else(|_| "images".into()) };
+
+    static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
+        let pepper = std::env::var("GANBARE_RUNTIME_PEPPER")
+        .expect("Environmental variable GANBARE_RUNTIME_PEPPER must be set! (format: 256-bit random value encoded as base64)")
+        .from_base64().expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
+        if pepper.len() != 32 { panic!("The value must be 256-bit, that is, 32 bytes long!") }; pepper
+    };
+
+}
+
+fn db_connect() -> Result<ganbare::PgConnection> {
+    ganbare::db_connect(&*DATABASE_URL)
 }
 
 
@@ -95,7 +129,7 @@ fn expire_cookie(mut self) -> Self {
 }
 
 fn hello(request: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user(&conn, &*request).map_err(|_| abort(500).unwrap_err())?;
 
@@ -132,10 +166,10 @@ fn login(request: &mut Request) -> PencilResult {
 }
 
 fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> PencilResult {
-    let conn = ganbare::db_connect().map_err(|_| abort(500).unwrap_err())?;
+    let conn = db_connect().map_err(|_| abort(500).unwrap_err())?;
     let user;
     {
-        user = ganbare::auth_user(&conn, email, plaintext_pw)
+        user = ganbare::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER)
             .map_err(|e| match e.kind() {
                     &ErrorKind::AuthError => abort(401).unwrap_err(),
                     _ => abort(500).unwrap_err(),
@@ -150,7 +184,7 @@ fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> PencilResult {
 
 
 fn logout(request: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect().map_err(|_| abort(500).unwrap_err())?;
+    let conn = db_connect().map_err(|_| abort(500).unwrap_err())?;
     if let Some(session_id) = request.cookies().and_then(get_cookie) {
         ganbare::end_session(&conn, &session_id)
             .map_err(|_| abort(500).unwrap_err())?;
@@ -169,7 +203,7 @@ fn confirm(request: &mut Request) -> PencilResult {
 
     let secret = request.args().get("secret")
         .ok_or_else(|| error("Can't get argument secret from URL!") )?;
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| error("Can't connect to database!") )?;
     let email = ganbare::check_pending_email_confirm(&conn, &secret)
         .map_err(|_| error("Check pending email confirms failed!"))?;
@@ -184,13 +218,13 @@ fn confirm(request: &mut Request) -> PencilResult {
 
 fn confirm_final(request: &mut Request) -> PencilResult {
     let ip = request.request.remote_addr.ip();
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let secret = request.args().get("secret")
             .ok_or_else(|| abort(500).unwrap_err() )?.clone();
     let password = request.form_mut().get("password")
         .ok_or_else(|| abort(500).unwrap_err() )?;
-    let user = ganbare::complete_pending_email_confirm(&conn, password, &secret).map_err(|_| abort(500).unwrap_err())?;
+    let user = ganbare::complete_pending_email_confirm(&conn, password, &secret, &*RUNTIME_PEPPER).map_err(|_| abort(500).unwrap_err())?;
 
     do_login(&user.email, &password, ip)
 }
@@ -205,7 +239,7 @@ fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
 }
 
 fn add_quiz_form(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -284,7 +318,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         Ok((ganbare::NewQuestion{q_name, q_explanation, question_text, skill_nugget}, fieldsets))
     }
 
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
 
@@ -305,7 +339,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
 }
 
 fn add_word_form(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -354,7 +388,7 @@ fn add_word_post(req: &mut Request) -> PencilResult  {
         Ok(ganbare::NewWordFromStrings{word, explanation, narrator: "".into(), nugget, files})
     }
 
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user(&conn, &*req).map_err(|_| abort(500).unwrap_err())?;
 
@@ -375,7 +409,7 @@ fn add_word_post(req: &mut Request) -> PencilResult  {
 
 
 fn get_line(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (_, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -393,7 +427,7 @@ fn get_line(req: &mut Request) -> PencilResult {
 
     use pencil::{PencilError, HTTPError};
 
-    send_file(&file_path, mime_type, false)
+    send_file(&(AUDIO_DIR.to_string() + "/" + &file_path), mime_type, false)
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { println!("The audio file database/folder is borked?"); internal_error(e) },
@@ -402,7 +436,7 @@ fn get_line(req: &mut Request) -> PencilResult {
 }
 
 fn get_image(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (_, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -412,7 +446,7 @@ fn get_image(req: &mut Request) -> PencilResult {
 
     use pencil::{PencilError, HTTPError};
 
-    send_from_directory("images", &file_name, false)
+    send_from_directory(&*IMAGES_DIR, &file_name, false)
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { println!("Image file not found! {}", file_name); e },
@@ -493,7 +527,7 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
 }
 
 fn new_quiz(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -508,7 +542,7 @@ fn new_quiz(req: &mut Request) -> PencilResult {
 }
 
 fn next_quiz(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -553,7 +587,7 @@ fn next_quiz(req: &mut Request) -> PencilResult {
 }
 
 fn change_password_form(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (_, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -588,7 +622,7 @@ fn change_password(req: &mut Request) -> PencilResult {
         Ok((old_password, new_password))
     }
 
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
 
     let (user, sess) = get_user(&conn, req)
@@ -598,7 +632,7 @@ fn change_password(req: &mut Request) -> PencilResult {
     let (old_password, new_password) = parse_form(req)
         .map_err(|_| abort(400).unwrap_err())?;
 
-    match ganbare::auth_user(&conn, &user.email, &old_password) {
+    match ganbare::auth_user(&conn, &user.email, &old_password, &*RUNTIME_PEPPER) {
         Err(e) => return match e.kind() {
             &ErrorKind::AuthError => {
                 let mut context = BTreeMap::new();
@@ -611,7 +645,7 @@ fn change_password(req: &mut Request) -> PencilResult {
             _ => abort(500),
         },
         Ok(_) => {
-            ganbare::change_password(&conn, user.id, &new_password)
+            ganbare::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER)
                 .map_err(|e| match e.kind() {
                     &ErrorKind::PasswordTooShort => abort(400).unwrap_err(),
                     _ => internal_error(e),
@@ -623,7 +657,7 @@ fn change_password(req: &mut Request) -> PencilResult {
 }
 
 fn manage(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
 
     let (user, sess) = get_user(&conn, req)
@@ -644,7 +678,7 @@ fn manage(req: &mut Request) -> PencilResult {
 
 
 fn get_item(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -680,7 +714,7 @@ fn get_item(req: &mut Request) -> PencilResult {
 
 
 fn get_all(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -711,7 +745,7 @@ fn get_all(req: &mut Request) -> PencilResult {
 }
 
 fn set_published(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -753,7 +787,7 @@ fn set_published(req: &mut Request) -> PencilResult {
 
 fn update_item(req: &mut Request) -> PencilResult {
 
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -820,7 +854,7 @@ fn update_item(req: &mut Request) -> PencilResult {
 
 fn post_question(req: &mut Request) -> PencilResult {
 
-    let conn = ganbare::db_connect()
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
     let (user, sess) = get_user(&conn, req)
         .map_err(|_| abort(500).unwrap_err())?
@@ -879,6 +913,18 @@ fn post_question(req: &mut Request) -> PencilResult {
     redirect(&new_url, 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 }
 
+#[cfg(debug_assertions)]
+macro_rules! include_templates(
+    ($app:ident, $temp_dir:expr, $($file:expr),*) => { {
+        $app.template_folder = $temp_dir.to_string();
+        $(
+            $app.register_template($file);
+        )*
+        println!("Templates loaded.");
+    } }
+);
+
+#[cfg(not(debug_assertions))]
 macro_rules! include_templates(
     ($app:ident, $temp_dir:expr, $($file:expr),*) => { {
         let mut reg = $app.handlebars_registry.write().expect("This is supposed to fail fast and hard.");
@@ -891,26 +937,15 @@ macro_rules! include_templates(
 
 fn main() {
     println!("Starting.");
-    dotenv().ok();
 
-    ganbare::run_db_migrations().expect("Couldn't do the DB migration!");
+    let conn = ganbare::db_connect(&*DATABASE_URL).expect("Can't connect to database!");
+    ganbare::run_db_migrations(&conn).expect("Couldn't do the DB migration!");
     println!("Database OK.");
 
     let mut app = Pencil::new(".");
    
     include_templates!(app, "templates", "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "manage.html", "change_password.html");
     
-    /*
-    app.register_template("hello.html");
-    app.register_template("main.html");
-    app.register_template("confirm.html");
-    app.register_template("add_quiz.html");
-    app.register_template("add_word.html");
-    app.register_template("manage.html");
-    app.register_template("change_password.html");
-    println!("Templates loaded.");
-    */
-
     app.enable_static_file_handling();
 
     /*
@@ -948,13 +983,6 @@ fn main() {
     app.get("/api/audio/<line_id:int>", "get_line", get_line);
     app.get("/api/images/<filename:string>", "get_image", get_image);
 
-    let binding = match env::var("GANBARE_SERVER_BINDING") {
-        Err(_) => {
-            println!("Specify the ip address and port to listen (e.g. 0.0.0.0:80) in envvar GANBARE_SERVER_BINDING!");
-            return;
-        },
-        Ok(ok) => ok,
-    };
-    println!("Ready. Running on {}, serving at {}", env::var("GANBARE_SERVER_BINDING").expect("Env var GANBARE_SERVER_BINDING is missing?"), *SITE_DOMAIN);
-    app.run(binding.as_str());
+    println!("Ready. Running on {}, serving at {}", *SERVER_BINDING, *SITE_DOMAIN);
+    app.run(*SERVER_BINDING);
 }

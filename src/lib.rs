@@ -2,7 +2,7 @@
 #![feature(proc_macro)]
 #![feature(field_init_shorthand)]
 #![feature(custom_derive, custom_attribute, plugin)]
-#![plugin(diesel_codegen, dotenv_macros, binary_macros)]
+#![plugin(diesel_codegen, binary_macros, dotenv_macros)]
 
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate diesel_codegen;
@@ -11,7 +11,6 @@
 #[macro_use] extern crate mime;
 
 extern crate time;
-extern crate dotenv;
 extern crate crypto;
 extern crate chrono;
 extern crate rand;
@@ -23,8 +22,6 @@ extern crate pencil;
 
 use rand::thread_rng;
 use diesel::prelude::*;
-use dotenv::dotenv;
-use std::env;
 use std::net::IpAddr;
 use std::path::PathBuf;
 
@@ -105,21 +102,26 @@ pub mod errors {
     }
 }
 
-embed_migrations!();
-
 use errors::*;
 
-pub fn run_db_migrations() -> Result<()> {
-    let conn = db_connect()?;
-    embedded_migrations::run(&conn)?;
+#[cfg(not(debug_assertions))]
+embed_migrations!();
+
+#[cfg(not(debug_assertions))]
+pub fn run_db_migrations(conn: &PgConnection) -> Result<()> {
+    embedded_migrations::run(conn)?;
     Ok(())
 }
 
-pub fn db_connect() -> Result<PgConnection> {
-    dotenv().ok();
-    let database_url = env::var("GANBARE_DATABASE_URL")
-        .chain_err(|| "GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")?;
-    PgConnection::establish(&database_url)
+#[cfg(debug_assertions)]
+pub fn run_db_migrations(conn: &PgConnection) -> Result<()> {
+    diesel::migrations::run_pending_migrations(conn)?;
+    println!("Migrations checked.");
+    Ok(())
+}
+
+pub fn db_connect(database_url: &str) -> Result<PgConnection> {
+    PgConnection::establish(database_url)
         .chain_err(|| "Error connecting to database!")
 }
 
@@ -151,13 +153,13 @@ fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(Us
         })
 }
 
-pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<User> {
+pub fn add_user(conn : &PgConnection, email : &str, password : &str, pepper: &[u8]) -> Result<User> {
     use schema::{users, passwords, user_metrics};
 
     if email.len() > 254 { return Err(ErrorKind::EmailAddressTooLong.into()) };
     if !email.contains("@") { return Err(ErrorKind::EmailAddressNotValid.into()) };
 
-    let pw = password::set_password(password).chain_err(|| "Setting password didn't succeed!")?;
+    let pw = password::set_password(password, pepper).chain_err(|| "Setting password didn't succeed!")?;
 
     let new_user = NewUser {
         email : email,
@@ -181,7 +183,7 @@ pub fn add_user(conn : &PgConnection, email : &str, password : &str) -> Result<U
     Ok(user)
 }
 
-pub fn set_password(conn : &PgConnection, user_email : &str, password: &str) -> Result<User> {
+pub fn set_password(conn : &PgConnection, user_email : &str, password: &str, pepper: &[u8]) -> Result<User> {
     use schema::{users, passwords};
 
     let (u, p) : (User, Option<Password>) = users::table
@@ -191,7 +193,7 @@ pub fn set_password(conn : &PgConnection, user_email : &str, password: &str) -> 
         .map_err(|e| e.caused_err(|| "Error when trying to retrieve user!"))?;
     if p.is_none() {
 
-        let pw = password::set_password(password).chain_err(|| "Setting password didn't succeed!")?;
+        let pw = password::set_password(password, pepper).chain_err(|| "Setting password didn't succeed!")?;
 
         diesel::insert(&pw.into_db(u.id))
             .into(passwords::table)
@@ -216,7 +218,7 @@ pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<User> {
         })
 }
 
-pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Result<User> {
+pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str, pepper: &[u8]) -> Result<User> {
     let (user, hashed_pw_from_db) = get_user_pass_by_email(conn, email)
                                 .map_err(|err| {
                                     if let &ErrorKind::NoSuchUser(_) = err.kind() {
@@ -224,7 +226,7 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Res
                                     };
                                     err
                                 })?;
-    let _ = password::check_password(plaintext_pw, hashed_pw_from_db.into())
+    let _ = password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper)
                                 .map_err(|err| {
                                     if let &ErrorKind::PasswordDoesntMatch = err.kind() {
                                         return ErrorKind::AuthError.to_err();
@@ -234,9 +236,9 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str) -> Res
     Ok(user)
 }
 
-pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str) -> Result<()> {
+pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str, pepper: &[u8]) -> Result<()> {
 
-    let pw = password::set_password(new_password).chain_err(|| "Setting password didn't succeed!")?;
+    let pw = password::set_password(new_password, pepper).chain_err(|| "Setting password didn't succeed!")?;
 
     let _ : models::Password = pw.into_db(user_id).save_changes(conn)?;
 
@@ -386,11 +388,11 @@ pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Resul
     Ok(confirm.email)
 }
 
-pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, secret : &str) -> Result<User> {
+pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, secret : &str, pepper: &[u8]) -> Result<User> {
     use schema::pending_email_confirms;
 
     let email = check_pending_email_confirm(&*conn, secret)?;
-    let user = add_user(&*conn, &email, password)?;
+    let user = add_user(&*conn, &email, password, pepper)?;
 
     diesel::delete(pending_email_confirms::table
         .filter(pending_email_confirms::secret.eq(secret)))

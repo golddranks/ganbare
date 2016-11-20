@@ -10,19 +10,31 @@ An "admin" account is created automatically. You have to set the password for th
 
     $ cargo run --bin user -- passwd admin
 
-The server is configured using environmental variables, or an `.env` file in the project directory:
+The server is configured using environmental variables, or an `.env` file in the project directory. The following are required:
 
     GANBARE_DATABASE_URL=postgres://drasa@localhost/ganbare_dev
     GANBARE_RUNTIME_PEPPER=some 32-byte random value encoded with Base64 (usually 44 ASCII characters) for peppering the password hashes.
-    GANBARE_SERVER_BINDING=0.0.0.0:8080
     GANBARE_SITE_DOMAIN=testing.ganba.re
-    GANBARE_EMAIL_DOMAIN=testing.ganba.re
+    GANBARE_EMAIL_SERVER=mail.yourisp.net:25
+
+The following have defaults, and you can omit them:
+
+    GANBARE_EMAIL_DOMAIN defaults to $GANBARE_SITE_DOMAIN
+    GANBARE_SERVER_BINDING defaults to localhost:8080
+    GANBARE_JQUERY defaults to /static/js/jquery.min.js. For production, try https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
+    GANBARE_AUDIO_DIR defaults to audio You shouldn't need to change this, but it's possible.
+    GANBARE_IMAGES_DIR defaults to images You shouldn't need to change this, but it's possible.
+
+During build, you need the following: 
+
+    GANBARE_BUILDTIME_PEPPER=some 32-byte random value encoded with Base64 (usually 44 ASCII characters) for peppering the password hashes.
 
 After creating an `.env` file, start the server:
 
     $ cargo run --bin server
 
-Navigate to localhost:8080 with your browser.
+Navigate to localhost:8080 with your browser. For debug builds, directories `static`, `migrations` and `templates` are used runtime.
+For release builds, only `static` is used, as `migrations` and `templates` are compiled statically inside the binary.
 
 
 ## How to build a distributable binary
@@ -47,7 +59,6 @@ Mount the volume using docker `-v` flag. Everthing else you shall configure usin
 ## Notes
 
     (future additions for conf)
-    GANBARE_JQUERY for specifying jquery URL
     GANBARE_MOUNT_DIR for specifying the mounted volume dir for user-uploaded stuff
     GANBARE_EMAIL_SERVER for outbound email
     GANBARE_ASSET_DIR if not set, SQL migrations, HTML templates and assets are compiled into the binary

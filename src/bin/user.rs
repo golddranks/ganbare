@@ -1,28 +1,52 @@
 extern crate ganbare;
 extern crate diesel;
 
-#[macro_use]
-extern crate clap;
+#[macro_use] extern crate clap;
 extern crate rpassword;
 extern crate lettre;
 extern crate dotenv;
 extern crate handlebars;
 extern crate rustc_serialize;
+#[macro_use]  extern crate lazy_static;
 
 use rustc_serialize::json::{ToJson, Json};
 use handlebars::Handlebars;
-use dotenv::dotenv;
-use std::env;
 use std::collections::BTreeMap;
 use std::io::Read;
 use ganbare::*;
 use ganbare::models::User;
 use diesel::prelude::*;
 use ganbare::errors::*;
+use rustc_serialize::base64::FromBase64;
+use std::net::{SocketAddr, ToSocketAddrs};
 
 use lettre::transport::smtp::response::Response as EmailResponse;
 use lettre::transport::smtp::SmtpTransportBuilder;
 use lettre::transport::EmailTransport;
+
+
+lazy_static! {
+
+    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_DATABASE_URL")
+        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
+
+    static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
+        let pepper = std::env::var("GANBARE_RUNTIME_PEPPER")
+        .expect("Environmental variable GANBARE_RUNTIME_PEPPER must be set! (format: 256-bit random value encoded as base64)")
+        .from_base64().expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
+        if pepper.len() != 32 { panic!("The value must be 256-bit, that is, 32 bytes long!") }; pepper
+    };
+
+    static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_EMAIL_DOMAIN")
+        .unwrap_or_else(|_| "".into()) };
+
+    static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
+        let binding = std::env::var("GANBARE_EMAIL_SERVER")
+        .expect("Specify an outbound email server, like this: mail.yourisp.com:25");
+        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
+
+}
+
 
 pub fn list_users(conn : &PgConnection) -> Result<Vec<User>> {
     use ganbare::schema::users::dsl::*;
@@ -34,8 +58,6 @@ pub fn list_users(conn : &PgConnection) -> Result<Vec<User>> {
 fn send_email_confirmation(email : &str, secret : &str) -> Result<EmailResponse> {
     use lettre::email::EmailBuilder;
 
-    dotenv().ok();
-    let site_domain = env::var("GANBARE_EMAIL_DOMAIN").unwrap_or_else(|_| "".into());
     let mut email_template = String::new();
     std::fs::File::open("templates/email_confirm_email.html")
         .chain_err(|| "Can't find templates/email_confirm_email.txt!")?
@@ -56,14 +78,14 @@ fn send_email_confirmation(email : &str, secret : &str) -> Result<EmailResponse>
 
     let email = EmailBuilder::new()
         .to(email)
-        .from(format!("noreply@{}", site_domain).as_ref())
+        .from(format!("noreply@{}", &*EMAIL_DOMAIN).as_ref())
         .subject("[akusento.ganba.re] Vahvista osoitteesi")
         .html(handlebars.template_render(email_template.as_ref(), &data)
             .chain_err(|| "Handlebars template render error!")?
             .as_ref())
         .build().expect("Building email shouldn't fail.");
 
-    let mut mailer = SmtpTransportBuilder::new(("mail.inet.fi", 25))
+    let mut mailer = SmtpTransportBuilder::new(*EMAIL_SERVER)
         .chain_err(|| "Couldn't setup the email transport!")?
         .build();
     mailer.send(email)
@@ -83,7 +105,7 @@ fn main() {
         .subcommand(SubCommand::with_name("force_add").about("Add a new user without email confirmation").arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("login").about("Login").arg(Arg::with_name("email").required(true)))
         .get_matches();
-    let conn = db_connect().unwrap();
+    let conn = db_connect(&*DATABASE_URL).unwrap();
     match matches.subcommand() {
         ("passwd", Some(args)) => {
             let email = args.value_of("email").unwrap();
@@ -93,7 +115,7 @@ fn main() {
                 Err(_) => { println!("Error: couldn't read the password from keyboard."); return; },
                 Ok(pw) => pw,
             };
-            match set_password(&conn, email, &password) {
+            match set_password(&conn, email, &password, &*RUNTIME_PEPPER) {
                 Ok(user) => { println!("Success! Password set for user {:?}", user); },
                 Err(e) => { println!("Error: {}", e); return; },
             };
@@ -147,7 +169,7 @@ fn main() {
                 Err(_) => { println!("Error: couldn't read the password from keyboard."); return; },
                 Ok(pw) => pw,
             };
-            match add_user(&conn, email, &password) {
+            match add_user(&conn, email, &password, &*RUNTIME_PEPPER) {
                 Ok(u) => println!("Added user successfully: {:?}", u),
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}", err) },
             }
@@ -159,7 +181,7 @@ fn main() {
                 Err(_) => { println!("Error: couldn't read the password from keyboard."); return; },
                 Ok(pw) => pw,
             };
-            match auth_user(&conn, email, &password) {
+            match auth_user(&conn, email, &password, &*RUNTIME_PEPPER) {
                 Ok(u) => println!("Logged in successfully: {:?}", u),
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}", err) },
             }

@@ -1,6 +1,5 @@
+extern crate dotenv;
 
-use dotenv::dotenv;
-use std::env;
 use errors::*;
 
 use models::{Password};
@@ -41,21 +40,17 @@ impl HashedPassword {
     }
 }
 
-fn pepper_salt_pw_hash(plaintext_pw : &str, salt : [u8; 16], initial_rounds : i16) -> Result<HashedPassword> {
+fn pepper_salt_pw_hash(plaintext_pw : &str, salt : [u8; 16], initial_rounds : i16, runtime_pepper: &[u8]) -> Result<HashedPassword> {
     use crypto::bcrypt::bcrypt;
     use crypto::sha2;
     use crypto::digest::Digest;
-    use rustc_serialize::base64::FromBase64;
 
-    dotenv().ok();
     let build_pepper = base64!(dotenv!("GANBARE_BUILDTIME_PEPPER"));
-    let run_pepper = env::var("GANBARE_RUNTIME_PEPPER").chain_err(|| "Environmental variable GANBARE_RUNTIME_PEPPER must be set!")?
-        .from_base64().chain_err(|| "Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!")?;
 
     let mut hasher = sha2::Sha512::new();
     hasher.input_str(plaintext_pw);
     hasher.input(build_pepper);
-    hasher.input(&run_pepper);
+    hasher.input(&runtime_pepper);
     let mut peppered_pw = [0_u8; 64];
     hasher.result(&mut peppered_pw);
     let peppered_pw = peppered_pw;
@@ -65,7 +60,7 @@ fn pepper_salt_pw_hash(plaintext_pw : &str, salt : [u8; 16], initial_rounds : i1
     Ok(HashedPassword{hash: output_hash, salt: salt, initial_rounds: initial_rounds, extra_rounds: 0})
 }
 
-pub fn set_password(plaintext_pw : &str) -> Result<HashedPassword> {
+pub fn set_password(plaintext_pw: &str, pepper: &[u8]) -> Result<HashedPassword> {
     use rand::{OsRng, Rng};
 
     if plaintext_pw.len() < 8 { return Err(ErrorKind::PasswordTooShort.into()) };
@@ -74,7 +69,7 @@ pub fn set_password(plaintext_pw : &str) -> Result<HashedPassword> {
     let mut salt = [0_u8; 16];
     OsRng::new().chain_err(|| "Unable to connect to the system random number generator!")?.fill_bytes(&mut salt);
 
-    Ok(pepper_salt_pw_hash(plaintext_pw, salt, 10)?)
+    Ok(pepper_salt_pw_hash(plaintext_pw, salt, 10, pepper)?)
 }
 
 pub fn stretch_password(strength_goal : i16, hashed_pw : HashedPassword)
@@ -92,10 +87,10 @@ pub fn stretch_password(strength_goal : i16, hashed_pw : HashedPassword)
     HashedPassword{hash: output_hash, salt: hashed_pw.salt, initial_rounds: hashed_pw.initial_rounds, extra_rounds: extra_rounds}
 }
 
-pub fn check_password( plaintext_pw : &str, pw_from_db : HashedPassword)
+pub fn check_password( plaintext_pw : &str, pw_from_db : HashedPassword, pepper: &[u8])
         -> Result<()> {
     use crypto::util::fixed_time_eq;
-    let init_hash = pepper_salt_pw_hash(plaintext_pw, pw_from_db.salt, pw_from_db.initial_rounds)?;
+    let init_hash = pepper_salt_pw_hash(plaintext_pw, pw_from_db.salt, pw_from_db.initial_rounds, pepper)?;
     let strected_pw = stretch_password(pw_from_db.initial_rounds + pw_from_db.extra_rounds, init_hash);
 
     if fixed_time_eq(&strected_pw.hash, &pw_from_db.hash) {
@@ -108,21 +103,28 @@ pub fn check_password( plaintext_pw : &str, pw_from_db : HashedPassword)
 
 #[test]
 fn test_set_check_password1() {
-    let pw = set_password("password").unwrap();
-    check_password("password", pw).expect("Passwords should match!");
+    let pepper = [0_u8; 32];
+    rand::StdRng.fill_bytes(&mut pepper);
+    let pw = set_password("password", &pepper).unwrap();
+    check_password("password", pw, &pepper).expect("Passwords should match!");
 }
 
 #[test]
 fn test_set_check_password2() {
-    let pw = set_password("password1").unwrap();
-    if let Ok(()) = check_password("password2", pw) {
+    let pepper = [0_u8; 32];
+    rand::StdRng.fill_bytes(&mut pepper);
+    let pw = set_password("password1", &pepper).unwrap();
+    if let Ok(()) = check_password("password2", pw, &pepper) {
         panic!("Passwords shouldn't match!");
     }
 }
 
 #[test]
 fn test_set_stretch_password1() {
-    let init_pw = set_password("daggerfish").unwrap();
+    let pepper = [0_u8; 32];
+    rand::StdRng.fill_bytes(&mut pepper);
+
+    let init_pw = set_password("daggerfish", &pepper).unwrap();
     println!("hashed init_hash.");
     let stretched_pw_0 = stretch_password(11, init_pw);
     println!("stretched 10 → 11.");
@@ -140,7 +142,10 @@ fn test_set_stretch_password1() {
 
 #[test]
 fn test_set_stretch_password2() {
-    let init_pw_1 = set_password("swordfish").unwrap();
+    let pepper = [0_u8; 32];
+    rand::StdRng.fill_bytes(&mut pepper);
+    
+    let init_pw_1 = set_password("swordfish", &pepper).unwrap();
     println!("hashed init_hash.");
     let init_pw_2 = stretch_password(10, init_pw_1);
     println!("stretched 10 → 10.");
@@ -152,7 +157,10 @@ fn test_set_stretch_password2() {
 
 #[test]
 fn test_set_stretch_password3() {
-    let init_pw = set_password("schwertfisch").unwrap();
+    let pepper = [0_u8; 32];
+    rand::StdRng.fill_bytes(&mut pepper);
+    
+    let init_pw = set_password("schwertfisch", &pepper).unwrap();
     println!("hashed init_hash.");
     let stretched_pw_0 = stretch_password(11, init_pw);
     println!("stretched 10 → 11.");
@@ -168,22 +176,28 @@ fn test_set_stretch_password3() {
 
 #[test]
 fn test_set_stretch_check_password1() {
-    let init_pw = set_password("miekkakala").unwrap();
+    let pepper = [0_u8; 32];
+    rand::StdRng.fill_bytes(&mut pepper);
+    
+    let init_pw = set_password("miekkakala", &pepper).unwrap();
     println!("hashed init_hash.");
     let stretched_pw = stretch_password(11, init_pw);
     println!("stretched 10 → 11.");
 
-    check_password("miekkakala", stretched_pw).expect("Passwords should match!");
+    check_password("miekkakala", stretched_pw, &pepper).expect("Passwords should match!");
 }
 
 #[test]
 fn test_set_stretch_check_password2() {
-    let init_pw = set_password("miekkakala").unwrap();
+    let pepper = [0_u8; 32];
+    rand::StdRng.fill_bytes(&mut pepper);
+    
+    let init_pw = set_password("miekkakala", &pepper).unwrap();
     println!("hashed init_hash.");
     let stretched_pw = stretch_password(11, init_pw);
     println!("stretched 10 → 11.");
 
-    if let Ok(()) = check_password("tikarikala", stretched_pw) {
+    if let Ok(()) = check_password("tikarikala", stretched_pw, &pepper) {
         panic!("Passwords shouldn't match!");
     }
 }

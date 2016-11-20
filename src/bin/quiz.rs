@@ -14,7 +14,15 @@ use ganbare::*;
 use diesel::prelude::*;
 use ganbare::errors::*;
 use ganbare::models::*;
+#[macro_use]  extern crate lazy_static;
 
+
+lazy_static! {
+
+    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_DATABASE_URL")
+        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
+
+}
 
 
 pub fn list_skillnuggets(conn : &PgConnection) -> Result<Vec<SkillNugget>> {
@@ -41,7 +49,7 @@ fn main() {
         .subcommand(SubCommand::with_name("lsq").about("List all questions"))
         .subcommand(SubCommand::with_name("addq").about("Add a question"))
         .get_matches();
-    let conn = db_connect().unwrap();
+    let conn = db_connect(&*DATABASE_URL).unwrap();
     match matches.subcommand() {
         ("lss", Some(_)) => {
             let items = list_skillnuggets(&conn).unwrap();
