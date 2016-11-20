@@ -38,7 +38,7 @@ lazy_static! {
     };
 
     static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_EMAIL_DOMAIN")
-        .unwrap_or_else(|_| "".into()) };
+        .unwrap_or_else(|_|  std::env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
 
     static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
         let binding = std::env::var("GANBARE_EMAIL_SERVER")

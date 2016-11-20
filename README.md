@@ -14,13 +14,13 @@ The server is configured using environmental variables, or an `.env` file in the
 
     GANBARE_DATABASE_URL=postgres://drasa@localhost/ganbare_dev
     GANBARE_RUNTIME_PEPPER=some 32-byte random value encoded with Base64 (usually 44 ASCII characters) for peppering the password hashes.
-    GANBARE_SITE_DOMAIN=testing.ganba.re
     GANBARE_EMAIL_SERVER=mail.yourisp.net:25
 
-The following have defaults, and you can omit them:
+The following have defaults, and you may omit them:
 
+    GANBARE_SITE_DOMAIN defaults to empty string, which is fine for testing, but for set this right for production for cookies etc.
     GANBARE_EMAIL_DOMAIN defaults to $GANBARE_SITE_DOMAIN
-    GANBARE_SERVER_BINDING defaults to localhost:8080
+    GANBARE_SERVER_BINDING defaults to localhost:8080. When running inside a container, change this to 0.0.0.0:8080 for the site to be accessible from host.
     GANBARE_JQUERY defaults to /static/js/jquery.min.js. For production, try https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
     GANBARE_AUDIO_DIR defaults to audio You shouldn't need to change this, but it's possible.
     GANBARE_IMAGES_DIR defaults to images You shouldn't need to change this, but it's possible.
@@ -33,8 +33,8 @@ After creating an `.env` file, start the server:
 
     $ cargo run --bin server
 
-Navigate to localhost:8080 with your browser. For debug builds, directories `static`, `migrations` and `templates` are used runtime.
-For release builds, only `static` is used, as `migrations` and `templates` are compiled statically inside the binary.
+Navigate to localhost:8080 with your browser. For debug builds, directories `static`, `migrations` and `templates`, `audio` and `images` are used runtime.
+For release builds, only `static`, `audio` and `images` are used, as `migrations` and `templates` are compiled statically inside the binary.
 
 
 ## How to build a distributable binary
@@ -51,14 +51,7 @@ There you go, a readymade binary in your target folder.
 `Dockerfile.run` is for that.
 
     $ docker build -f Dockerfile.run -t golddranks/ganbare_run .
-    $ docker run -d --name ganbare_runner -p 8080:8080 golddranks/ganbare_run
+    $ docker run -d --name ganbare_runner -p 8080:8080 -e "GANBARE_RUNTIME_PEPPER=${GANBARE_RUNTIME_PEPPER}" -v $PWD/audio:/ganbare/audio -v $PWD/images:/ganbare/images golddranks/ganbare_run
 
 Notes about running: Ganbare needs a PostgreSQL database connection, and mounted volume for user-uploaded images and audio.
 Mount the volume using docker `-v` flag. Everthing else you shall configure using environmental variables.
-
-## Notes
-
-    (future additions for conf)
-    GANBARE_MOUNT_DIR for specifying the mounted volume dir for user-uploaded stuff
-    GANBARE_EMAIL_SERVER for outbound email
-    GANBARE_ASSET_DIR if not set, SQL migrations, HTML templates and assets are compiled into the binary

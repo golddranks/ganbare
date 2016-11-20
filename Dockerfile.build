@@ -90,6 +90,9 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-201
 
 WORKDIR /ganbare
 
+
+# MAKE AND INSTALL NATIVE DEPENDENCIES
+
 # All of these libs will be built with the musl prefix so that they won't interfere with the system glibc!
 # musl must be as an .a (for static linking to produce the binary) and as an .so (for dynamic linking for the compiler plugins)
 RUN git clone git://git.musl-libc.org/musl && cd musl && \
@@ -108,6 +111,19 @@ RUN curl -sL https://ftp.postgresql.org/pub/source/v${POSTGRES_VER}/postgresql-$
     make && make install && \
     cd .. && rm -rf postgresql-${POSTGRES_VER}
 
+
+# COMPILE THE RUST PROJECT ONCE TO FILL CARGO'S DEPENCENDY CACHE
+# The compiled target will be deleted, but the dependencies remain in /root/.cargo/ directory.
+
+ADD . /ganbare
+
+RUN /etc/init.d/postgresql start && \
+    psql -c '\q' -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
+    do sleep 1; psql -c '\q' -h /var/run/postgresql -d postgres; done && \
+    diesel database setup && \
+    cargo build --release --target=x86_64-unknown-linux-musl && \
+    rm -rf *
+
 # THE IMAGE IS READY
 # All the commands thus far are executed during BUILD-TIME. The following command will be executed when the image is run in a container.
 # You must rebuild the package when updating Rust or some of the native libraries, but updating your own code or rust deps needs just a re-run.
@@ -119,8 +135,7 @@ VOLUME /ganbare
 CMD /etc/init.d/postgresql start && \
     psql -c '\q' -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
     do sleep 1; psql -c '\q' -h /var/run/postgresql -d postgres; done && \
-    diesel database setup && \
-    GANBARE_BUILDTIME_PEPPER=`cat /dev/urandom | head -c 32 | base64` \
+    diesel migration run && \
     cargo build --release --target=x86_64-unknown-linux-musl
 
 

@@ -3,11 +3,12 @@ FROM scratch
 ADD target/x86_64-unknown-linux-musl/release/server /ganbare/server
 ADD static /ganbare/static
 VOLUME /ganbare/audio /ganbare/images
-ENV GANBARE_DATABASE_URL=postgres://drasa@172.17.0.2/ganbare_testing
-ENV GANBARE_RUNTIME_PEPPER=4Y23isyrgd9ML/jJonemXNL0PnbMyerqnejHPBnDLaY=
-ENV GANBARE_SERVER_BINDING=0.0.0.0:8080
-ENV GANBARE_SITE_DOMAIN=localhost
-ENV GANBARE_EMAIL_DOMAIN=akusento.ganba.re
+ENV GANBARE_DATABASE_URL=postgres://drasa@172.17.0.2/ganbare_testing \
+	GANBARE_RUNTIME_PEPPER= \
+	GANBARE_SITE_DOMAIN=localhost \
+	GANBARE_EMAIL_SERVER=mail.inet.fi:25 \
+	GANBARE_SERVER_BINDING=0.0.0.0:8080 \
+	GANBARE_JQUERY=https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
 WORKDIR /ganbare
 EXPOSE 8080
 ENTRYPOINT ["/ganbare/server"]

@@ -36,13 +36,13 @@ macro_rules! try_or {
 lazy_static! {
 
     static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
-        .unwrap_or_else(|_| "".into()) };
+        .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
 
-    static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_EMAIL_DOMAIN")
-        .unwrap_or_else(|_| *SITE_DOMAIN.clone()) };
+    static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_DOMAIN")
+        .unwrap_or_else(|_|  env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
 
     static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
-        let binding = std::env::var("GANBARE_EMAIL_SERVER")
+        let binding = env::var("GANBARE_EMAIL_SERVER")
         .expect("Specify an outbound email server, like this: mail.yourisp.com:25");
         binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
 
@@ -64,7 +64,7 @@ lazy_static! {
         .unwrap_or_else(|_| "images".into()) };
 
     static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
-        let pepper = std::env::var("GANBARE_RUNTIME_PEPPER")
+        let pepper = env::var("GANBARE_RUNTIME_PEPPER")
         .expect("Environmental variable GANBARE_RUNTIME_PEPPER must be set! (format: 256-bit random value encoded as base64)")
         .from_base64().expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
         if pepper.len() != 32 { panic!("The value must be 256-bit, that is, 32 bytes long!") }; pepper
@@ -131,7 +131,7 @@ fn expire_cookie(mut self) -> Self {
 fn hello(request: &mut Request) -> PencilResult {
     let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let user_session = get_user(&conn, &*request).map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user(&conn, &*request).map_err(|_| { println!("Couldn't get user. DB error?"); abort(500).unwrap_err() })?;
 
     let mut context = BTreeMap::new();
     context.insert("title".to_string(), "akusento.ganba.re".to_string());
@@ -144,7 +144,7 @@ fn hello(request: &mut Request) -> PencilResult {
     }
 }
 
-fn login(request: &mut Request) -> PencilResult {
+fn login_form(request: &mut Request) -> PencilResult {
     let app = request.app;
     let ip = request.request.remote_addr.ip();
     let login_form = request.form_mut();
@@ -158,6 +158,7 @@ fn login(request: &mut Request) -> PencilResult {
     do_login(&email, &plaintext_pw, ip)
         .or_else(|e| match e {
             pencil::PencilError::PenHTTPError(pencil::HTTPError::Unauthorized) => {
+                println!("Failed login.");
                 let result = app.render_template("hello.html", &context);
                 result.map(|mut resp| {resp.status_code = 401; resp})
             },
@@ -193,8 +194,14 @@ fn logout(request: &mut Request) -> PencilResult {
     redirect("/", 303).map(ResponseExt::expire_cookie)
 }
 
+// FIXME: merge these
 fn error(err_msg : &str) -> pencil::PencilError {
     println!("Error: {}", err_msg);
+    abort(500).unwrap_err()
+}
+
+fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
+    println!("{:?}", err);
     abort(500).unwrap_err()
 }
 
@@ -231,11 +238,6 @@ fn confirm_final(request: &mut Request) -> PencilResult {
 
 macro_rules! parse {
     ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
-}
-
-fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
-    println!("{:?}", err);
-    abort(500).unwrap_err()
 }
 
 fn add_quiz_form(req: &mut Request) -> PencilResult {
@@ -417,7 +419,7 @@ fn get_line(req: &mut Request) -> PencilResult {
 
     let line_id = req.view_args.get("line_id").expect("Pencil guarantees that Line ID should exist as an arg.");
     let line_id = line_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
-    let (file_path, mime_type) = ganbare::get_line_file(&conn, line_id)
+    let (file_name, mime_type) = ganbare::get_line_file(&conn, line_id)
         .map_err(|e| {
             match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),
@@ -427,10 +429,12 @@ fn get_line(req: &mut Request) -> PencilResult {
 
     use pencil::{PencilError, HTTPError};
 
-    send_file(&(AUDIO_DIR.to_string() + "/" + &file_path), mime_type, false)
+    let file_path = AUDIO_DIR.to_string() + "/" + &file_name;
+
+    send_file(&file_path, mime_type, false)
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
         .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => { println!("The audio file database/folder is borked?"); internal_error(e) },
+            PencilError::PenHTTPError(HTTPError::NotFound) => { println!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
             _ => { internal_error(e) }
         })
 }
@@ -956,7 +960,7 @@ fn main() {
 
     app.get("/", "hello", hello);
     app.post("/logout", "logout", logout);
-    app.post("/login", "login", login);
+    app.post("/login", "login_form", login_form);
     app.get("/confirm", "confirm", confirm);
     app.get("/add_quiz", "add_quiz_form", add_quiz_form);
     app.post("/add_quiz", "add_quiz_post", add_quiz_post);
