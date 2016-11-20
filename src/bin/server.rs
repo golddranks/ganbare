@@ -30,7 +30,7 @@ use ganbare::models::{User, Session};
 
 
 //const JQUERY_URL: &'static str = "https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js";
-const JQUERY_URL: &'static str = "/static/assets/js/jquery.min.js";
+const JQUERY_URL: &'static str = "/static/js/jquery.min.js";
 
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
