@@ -664,7 +664,7 @@ dependencies = [
 [[package]]
 name = "pq-sys"
 version = "0.2.3"
-source = "git+https://github.com/golddranks/pq-sys.git#b1dc96c128065438da82e1f89eeeca43e4e8479d"
+source = "git+https://github.com/golddranks/pq-sys.git?rev=b1dc96c128065438da82e1f89eeeca43e4e8479d#b1dc96c128065438da82e1f89eeeca43e4e8479d"
 dependencies = [
  "libc 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -673,7 +673,7 @@ dependencies = [
 name = "pq-sys"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-replace = "pq-sys 0.2.3 (git+https://github.com/golddranks/pq-sys.git)"
+replace = "pq-sys 0.2.3 (git+https://github.com/golddranks/pq-sys.git?rev=b1dc96c128065438da82e1f89eeeca43e4e8479d)"
 
 [[package]]
 name = "quick-error"
@@ -1028,7 +1028,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum phf_shared 0.7.19 (registry+https://github.com/rust-lang/crates.io-index)" = "9f3d84458c4040eb4b9e626cb551a2dc46d92ea96b1c30331aa9fce9abd2c438"
 "checksum pkg-config 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "8cee804ecc7eaf201a4a207241472cc870e825206f6c031e3ee2a72fa425f2fa"
 "checksum pnacl-build-helper 1.4.10 (registry+https://github.com/rust-lang/crates.io-index)" = "61c9231d31aea845007443d62fcbb58bb6949ab9c18081ee1e09920e0cf1118b"
-"checksum pq-sys 0.2.3 (git+https://github.com/golddranks/pq-sys.git)" = "<none>"
+"checksum pq-sys 0.2.3 (git+https://github.com/golddranks/pq-sys.git?rev=b1dc96c128065438da82e1f89eeeca43e4e8479d)" = "<none>"
 "checksum pq-sys 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d50c9cdaa6f0e09c7ddc29cfcf573ba18e00bb29bbfd7c2d49e4196d9851436b"
 "checksum quick-error 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0aad603e8d7fb67da22dbdf1f4b826ce8829e406124109e73cf1b2454b93a71c"
 "checksum quote 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4c5cf478fe1006dbcc72567121d23dbdae5f1632386068c5c86ff4f645628504"

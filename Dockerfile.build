@@ -114,11 +114,12 @@ RUN curl -sL https://ftp.postgresql.org/pub/source/v${POSTGRES_VER}/postgresql-$
 # The database takes a while to start up, so looping and waiting (and git cloning) meanwhile.
 # The crate pq-sys doesn't provide static linking at the moment, so we have to replace it with an alternative that does.
 
+VOLUME /ganbare
+
 CMD /etc/init.d/postgresql start && \
-    git clone https://github.com/golddranks/ganbare.git . && \
-    bash -l -c "until [ $(diesel database setup >/dev/null; echo $?) -eq 0 ]; do echo \"Trying again\"; sleep 1; done" && \
-    echo "[replace]" >> Cargo.toml && \
-    echo '"pq-sys:0.2.3" = {git = "https://github.com/golddranks/pq-sys.git", rev = "b1dc96c128065438da82e1f89eeeca43e4e8479d"}' >> Cargo.toml && \
+    psql -c '\q' -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
+    do sleep 1; psql -c '\q' -h /var/run/postgresql -d postgres; done && \
+    diesel database setup && \
     GANBARE_BUILDTIME_PEPPER=`cat /dev/urandom | head -c 32 | base64` \
     cargo build --release --target=x86_64-unknown-linux-musl
 

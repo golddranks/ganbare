@@ -1,0 +1,7 @@
+.git
+audio
+backups
+cards
+images
+target/debug
+target/release

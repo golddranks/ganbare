@@ -1,4 +1,4 @@
-FROM alpine
+FROM scratch
 
 ADD target/x86_64-unknown-linux-musl/release/server /ganbare/server
 ADD static /ganbare/static
