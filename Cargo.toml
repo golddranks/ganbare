@@ -30,4 +30,3 @@ mime_multipart = "*"
 unicode-normalization = "*"
 tempdir = "0.3"
 regex = "0.1"
-
