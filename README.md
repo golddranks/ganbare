@@ -1,5 +1,5 @@
 # Ganbare
-A web service that helps me to do what I do. (Protip: Something related to Japanese language and language learning. And science.)
+A web service that helps me to do what I do. (Protip: Something related to Japanese language and language learning. And science.) I license the server code itself as copyleft open source for now, but the contents of the app (example sentences, audio, images etc.) are not licensed, and they are not in this repository.
 
 ## How to start (1. setup a database 2. set an admin account 3. create an .env file 4. start the server)
 

@@ -7,15 +7,14 @@ USER root
 # This image is building my web app project Ganbare, written in Rust. It uses, among others, the Hyper and Diesel libraries. 
 
 # I build this file with "docker build -f Dockerfile.build -t <username>/ganbare_build ."
-# While building, it assembles the build environment for compiling static musl binaries of one of my projects.
+# While building, it assembles the build environment for compiling static musl binaries.
 # The PITA part of static compiling is the native dependencies, but I managed to sort it out. You need to
-# download them, build the sources with appropriate settings, and check from the appropriate rust-crates
+# download them, build the sources with appropriate settings, and check from the appropriate Rust crates
 # (usually named something-sys) how they are going to present the linking flags to Cargo. Read the build.rs files.
 # Note: if build.rs doesn't provide options for static linking, forking the crate, and cargo-replacing it,
 # and adding that functionality is a thing. (println!("cargo:rustc-link-lib=static={}", lib);, where lib is the libname
 # as passed to linker [pq, ssl, crypto etc.].) But remember to contribute to upstream too!
-# When run, this image git clones my project, and compiles it. After that, I can "docker cp" my binary from the
-# container and distribute it.
+# When run, this image compiles my project from a mounted volume.
 
 # WHY THESE PACKAGES?
 # optional utilities for debugging and stuff: file, nano
@@ -25,10 +24,10 @@ USER root
 # not sure if needed, because of the source installs: libpq-dev, musl-tools
 
 # WHAT THEN?
-# after installing everything, start postgres and create a DB user for root & grant the right to create DBs
+# After installing everything, start postgres and create a DB user for root & grant the right to create DBs
 # note that because each Dockerfile command "reboots" the system, we must later start postgres again.
-# symlink libsqlite to libsqlite3.so because it's not there by default, for some reason, and it's needed by diesel_cli
-# workdir for our code: /ganbare prefix dir for musl-based libs, includes etc.: /musl
+# Symlink libsqlite to libsqlite3.so because it's not there by default, for some reason, and it's needed by diesel_cli.
+# Workdir for our code: /ganbare. Prefix dir for musl-based libs and includes: /musl
 RUN apt-get update && apt-get install -y \
   bzip2 \
   make \
@@ -110,9 +109,10 @@ RUN curl -sL https://ftp.postgresql.org/pub/source/v${POSTGRES_VER}/postgresql-$
     cd .. && rm -rf postgresql-${POSTGRES_VER}
 
 # THE IMAGE IS READY
-# All the commands thus far are executed during BUILD-TIME. The following command will be executed when the image is run in a container
-# The database takes a while to start up, so looping and waiting (and git cloning) meanwhile.
-# The crate pq-sys doesn't provide static linking at the moment, so we have to replace it with an alternative that does.
+# All the commands thus far are executed during BUILD-TIME. The following command will be executed when the image is run in a container.
+# You must rebuild the package when updating Rust or some of the native libraries, but updating your own code or rust deps needs just a re-run.
+# The database takes a while to start up, so looping and waiting meanwhile.
+# The crate pq-sys doesn't provide static linking at the moment in the upstream, so we have to replace it with an alternative that does.
 
 VOLUME /ganbare
 
@@ -131,8 +131,9 @@ CMD /etc/init.d/postgresql start && \
 
 
 # AFTER RUNNING?
-# Do this: docker cp <CONTAINERNAME>:/ganbare/target/x86_64-unknown-linux-musl/release/server ./target/x86_64-unknown-linux-musl/release/server
-# You'll have a readymade statically linked musl-binary! You should be able to run that anywhere with a Linux userspace, even without a distro.
+# You now have a readymade statically linked musl-binary in ./target/x86_64-unknown-linux-musl/release/server!
+# You should be able to run that anywhere provided you have a Linux userspace. That works even without a distro,
+# so you can make a docker container "FROM scratch"!
 
 
 

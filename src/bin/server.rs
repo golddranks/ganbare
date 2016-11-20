@@ -25,7 +25,7 @@ use std::net::IpAddr;
 use std::collections::BTreeMap;
 use hyper::header::{SetCookie, CookiePair, Cookie};
 use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify};
-use pencil::helpers::send_file;
+use pencil::helpers::{send_file, send_from_directory};
 use ganbare::models::{User, Session};
 
 
@@ -396,12 +396,29 @@ fn get_line(req: &mut Request) -> PencilResult {
     send_file(&file_path, mime_type, false)
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
         .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => { println!("The file database is borked?"); internal_error(e) },
+            PencilError::PenHTTPError(HTTPError::NotFound) => { println!("The audio file database/folder is borked?"); internal_error(e) },
             _ => { internal_error(e) }
         })
 }
 
+fn get_image(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (_, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
+    let file_name = req.view_args.get("filename").expect("Pencil guarantees that filename should exist as an arg.");
+
+    use pencil::{PencilError, HTTPError};
+
+    send_from_directory("images", &file_name, false)
+        .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+        .map_err(|e| match e {
+            PencilError::PenHTTPError(HTTPError::NotFound) => { println!("Image file not found! {}", file_name); e },
+            _ => { internal_error(e) }
+        })
+}
 
 #[derive(RustcEncodable)]
 struct QuizJson {
@@ -436,7 +453,7 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
 
         let mut answers_json = Vec::with_capacity(answers.len());
 
-        let chosen_q_audio = rng.choose(&question_audio).expect("Shouldn't be empty!");
+        let chosen_q_audio = rng.choose(&question_audio).expect("Audio for a Question: Shouldn't be empty! Borked database?");
         
 
         for a in answers {
@@ -459,7 +476,7 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
     },
     Word((ganbare::models::Word { id, word, explanation, .. }, audio_files)) => {
 
-        let chosen_audio = rng.choose(&audio_files).expect("Shouldn't be empty!");
+        let chosen_audio = rng.choose(&audio_files).expect("Audio for a Word: Shouldn't be empty! Borked database?");
 
         jsonify(&WordJson {
             show_accents: true, // FIXME
@@ -929,6 +946,7 @@ fn main() {
     app.get("/api/new_quiz", "new_quiz", new_quiz);
     app.post("/api/next_quiz", "next_quiz", next_quiz);
     app.get("/api/audio/<line_id:int>", "get_line", get_line);
+    app.get("/api/images/<filename:string>", "get_image", get_image);
 
     let binding = match env::var("GANBARE_SERVER_BINDING") {
         Err(_) => {

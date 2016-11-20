@@ -1,8 +1,7 @@
 .env
 /target/
-Cargo.lock
-cards
+dev_assets
 .sass-cache
 audio
+images
 backups
-static/images/words
