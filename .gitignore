@@ -1,7 +1,9 @@
 .env
-/target/
-dev_assets
 .sass-cache
-audio
-images
-backups
+*.css.map
+.DS_Store
+/target/
+/dev_assets/
+/audio/
+/images/
+/backups/

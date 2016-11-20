@@ -1,7 +1,7 @@
 .git
 audio
-backups
-cards
 images
+backups
+dev_assets
 target/debug
 target/release
