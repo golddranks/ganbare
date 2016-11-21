@@ -18,7 +18,7 @@ The server is configured using environmental variables, or an `.env` file in the
 
 The following have defaults, and you may omit them:
 
-    GANBARE_SITE_DOMAIN defaults to empty string, which is fine for testing, but for set this right for production for cookies etc.
+    GANBARE_SITE_DOMAIN defaults to empty string, which may work for testing, but for set this right for production for cookies etc. to work.
     GANBARE_EMAIL_DOMAIN defaults to $GANBARE_SITE_DOMAIN
     GANBARE_SERVER_BINDING defaults to localhost:8080. When running inside a container, change this to 0.0.0.0:8080 for the site to be accessible from host.
     GANBARE_JQUERY defaults to /static/js/jquery.min.js. For production, try https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
