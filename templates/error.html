@@ -1,54 +1,13 @@
-<!DOCTYPE HTML>
-<!--
-	Identity by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
-<html>
-	<head>
-		<title>{{ title }}</title>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<!--[if lte IE 8]><script src="static/js/html5shiv.js"></script><![endif]-->
-		<link rel="stylesheet" href="static/css/main.css" />
-		<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300" rel='stylesheet' type='text/css'>
-		<!--[if lte IE 9]><link rel="stylesheet" href="static/css/ie9.css" /><![endif]-->
-		<!--[if lte IE 8]><link rel="stylesheet" href="static/css/ie8.css" /><![endif]-->
-		<noscript><link rel="stylesheet" href="static/css/noscript.css" /></noscript>
-	</head>
-	<body class="is-loading">
+{{#partial main_section}}
 
-		<!-- Wrapper -->
-			<div id="wrapper">
+	<header>
+		<h1>{{ title }}</h1>
+		<p>Tieteellinen koe japanin ääntämyksestä</p>
+	</header>
+	<hr />
+	
+	<h2>{{ errorName }}</h2>
 
-				<!-- Main -->
-					<section id="main">
-						<header>
-							<h1>{{ title }}</h1>
-							<p>Tieteellinen koe japanin ääntämyksestä</p>
-						</header>
-						<hr />
+{{/partial}}
 
-						<h2>{{ errorName }}</h2>
-					</section>
-
-				<!-- Footer -->
-					<footer id="footer">
-						<ul class="copyright">
-							<li>&copy; Pyry Kontio</li><li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
-						</ul>
-					</footer>
-
-			</div>
-
-		<!-- Scripts -->
-			<!--[if lte IE 8]><script src="static/js/respond.min.js"></script><![endif]-->
-			<script>
-				if ('addEventListener' in window) {
-					window.addEventListener('load', function() { document.body.className = document.body.className.replace(/\bis-loading\b/, ''); });
-					document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
-				}
-			</script>
-
-	</body>
-</html>
+{{~> base.html ~}}

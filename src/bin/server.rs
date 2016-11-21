@@ -86,6 +86,13 @@ pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
     None
 }
 
+fn new_handlebars_context() -> BTreeMap<String, String> {
+    let mut ctx = BTreeMap::new();
+    ctx.insert("title".to_string(), "akusento.ganba.re".to_string());
+    ctx.insert("jquery_url".to_string(), JQUERY_URL.to_string());
+    ctx
+}
+
 fn get_user(conn : &ganbare::PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
     if let Some(session_id) = req.cookies().and_then(get_cookie) {
         ganbare::check_session(&conn, session_id)
@@ -133,9 +140,7 @@ fn hello(request: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?;
     let user_session = get_user(&conn, &*request).map_err(|_| { println!("Couldn't get user. DB error?"); abort(500).unwrap_err() })?;
 
-    let mut context = BTreeMap::new();
-    context.insert("title".to_string(), "akusento.ganba.re".to_string());
-    context.insert("jquery_url".to_string(), JQUERY_URL.to_string());
+    let context = new_handlebars_context();
 
     match user_session {
         Some((_, sess)) => request.app.render_template("main.html", &context)
@@ -151,8 +156,7 @@ fn login_form(request: &mut Request) -> PencilResult {
     let email = login_form.take("email").unwrap_or_default();
     let plaintext_pw = login_form.take("password").unwrap_or_default();
 
-    let mut context = BTreeMap::new();
-    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    let mut context = new_handlebars_context();
     context.insert("authError".to_string(), "true".to_string());
 
     do_login(&email, &plaintext_pw, ip)
@@ -215,8 +219,7 @@ fn confirm(request: &mut Request) -> PencilResult {
     let email = ganbare::check_pending_email_confirm(&conn, &secret)
         .map_err(|_| error("Check pending email confirms failed!"))?;
 
-    let mut context = BTreeMap::new();
-    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    let mut context = new_handlebars_context();
     context.insert("email".to_string(), email);
     context.insert("secret".to_string(), secret.clone());
 
@@ -251,8 +254,8 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let mut context = BTreeMap::new();
-    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    let context = new_handlebars_context();
+
     req.app.render_template("add_quiz.html", &context)
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
@@ -351,8 +354,8 @@ fn add_word_form(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let mut context = BTreeMap::new();
-    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+    let context = new_handlebars_context();
+
     req.app.render_template("add_word.html", &context)
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
@@ -597,14 +600,14 @@ fn change_password_form(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
-    let mut context = BTreeMap::new();
+    let mut context = new_handlebars_context();
 
     let password_changed = req.args_mut().take("password_changed")
         .and_then(|a| if a == "true" { Some(a) } else { None })
         .unwrap_or_else(|| "false".to_string());
 
     context.insert("password_changed".to_string(), password_changed);
-    context.insert("title".to_string(), "akusento.ganba.re".to_string());
+
     req.app.render_template("change_password.html", &context)
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
@@ -639,8 +642,7 @@ fn change_password(req: &mut Request) -> PencilResult {
     match ganbare::auth_user(&conn, &user.email, &old_password, &*RUNTIME_PEPPER) {
         Err(e) => return match e.kind() {
             &ErrorKind::AuthError => {
-                let mut context = BTreeMap::new();
-                context.insert("title".to_string(), "akusento.ganba.re".to_string());
+                let mut context = new_handlebars_context();
                 context.insert("authError".to_string(), "true".to_string());
 
                 req.app.render_template("change_password.html", &context)
@@ -672,9 +674,7 @@ fn manage(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let mut context = BTreeMap::new();
-    context.insert("title".to_string(), "akusento.ganba.re".to_string());
-    context.insert("jquery_url".to_string(), JQUERY_URL.to_string());
+    let context = new_handlebars_context();
 
     req.app.render_template("manage.html", &context)
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
@@ -939,6 +939,7 @@ macro_rules! include_templates(
     } }
 );
 
+
 fn main() {
     println!("Starting.");
 
@@ -948,7 +949,7 @@ fn main() {
 
     let mut app = Pencil::new(".");
    
-    include_templates!(app, "templates", "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "manage.html", "change_password.html");
+    include_templates!(app, "templates", "base.html", "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "manage.html", "change_password.html");
     
     app.enable_static_file_handling();
 

@@ -1,75 +1,26 @@
-<!DOCTYPE HTML>
-<!--
-	Identity by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
-<html>
-	<head>
-		<title>{{ title }}</title>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<!--[if lte IE 8]><script src="static/js/html5shiv.js"></script><![endif]-->
-		<link rel="stylesheet" href="static/css/main.css" />
-		<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300" rel='stylesheet' type='text/css'>
-		<!--[if lte IE 9]><link rel="stylesheet" href="static/css/ie9.css" /><![endif]-->
-		<!--[if lte IE 8]><link rel="stylesheet" href="static/css/ie8.css" /><![endif]-->
-		<noscript><link rel="stylesheet" href="static/css/noscript.css" /></noscript>
-	</head>
-	<body class="is-loading">
+{{#partial main_section}}
 
-		<!-- Wrapper -->
-			<div id="wrapper">
+	<header>
+		<span class="avatar"><img src="static/images/avatar.jpg" alt="" /></span>
+		<h1>{{ title }}</h1>
+		<p>Tieteellinen koe japanin ääntämyksestä</p>
+	</header>
+	<hr />
+	{{#if authError}}<strong class="error">Käyttäjänimi tai salasana oli väärin!</strong>{{/if}}
+	<h2>{{#if authError}}Kokeile uudelleen{{/if}}{{#unless authError}}Koehenkilö, kirjaudu sisään{{/unless}}</h2>
+	<form method="post" action="/login">
+		<div class="field">
+			<input type="email" name="email" id="email" placeholder="Sähköposti" />
+		</div>
+		<div class="field">
+			<input type="password" name="password" id="password" placeholder="Salasana" />
+		</div>
+		<div class="field">
+			<input type="submit" class="button" value="Sisään">
+		</div>
+	</form>
+	<hr />
 
-				<!-- Main -->
-					<section id="main">
-						<header>
-							<span class="avatar"><img src="static/images/avatar.jpg" alt="" /></span>
-							<h1>{{ title }}</h1>
-							<p>Tieteellinen koe japanin ääntämyksestä</p>
-						</header>
-						<hr />
-						{{#if authError}}<strong class="error">Käyttäjänimi tai salasana oli väärin!</strong>{{/if}}
-						<h2>{{#if authError}}Kokeile uudelleen{{/if}}{{#unless authError}}Koehenkilö, kirjaudu sisään{{/unless}}</h2>
-						<form method="post" action="/login">
-							<div class="field">
-								<input type="email" name="email" id="email" placeholder="Sähköposti" />
-							</div>
-							<div class="field">
-								<input type="password" name="password" id="password" placeholder="Salasana" />
-							</div>
-							<div class="field">
-								<input type="submit" class="button" value="Sisään">
-							</div>
-						</form>
-						<hr />
-					</section>
+{{/partial}}
 
-				<!-- Footer -->
-					<footer id="footer">
-						<ul class="copyright">
-							<li>&copy; Pyry Kontio</li>
-							<li>
-							Design: <a href="http://html5up.net">HTML5 UP</a>
-							(<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>)</li>
-							<li>
-							Icons: <a href="http://www.flaticon.com/authors/appzgear" title="Appzgear">Appzgear</a> and <a href="https://www.iconfinder.com/iconsets/wirecons-free-vector-icons">Wirecons </a>
-							(<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>)</li>
-							<li>SFX: <a href="https://www.freesound.org/people/SgtPepperArc360/sounds/341732/#">SgtPepperArc360</a>
-							(<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>)</li>
-						</ul>
-					</footer>
-
-			</div>
-
-		<!-- Scripts -->
-			<!--[if lte IE 8]><script src="static/js/respond.min.js"></script><![endif]-->
-			<script>
-				if ('addEventListener' in window) {
-					window.addEventListener('load', function() { document.body.className = document.body.className.replace(/\bis-loading\b/, ''); });
-					document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
-				}
-			</script>
-
-	</body>
-</html>
+{{~> base.html ~}}
