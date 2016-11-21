@@ -9,7 +9,9 @@
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate mime;
+#[macro_use] extern crate log;
 
+extern crate env_logger;
 extern crate time;
 extern crate crypto;
 extern crate chrono;
@@ -104,19 +106,29 @@ pub mod errors {
 
 use errors::*;
 
+
+pub fn check_db(conn: &PgConnection) -> Result<bool> {
+    run_db_migrations(conn).chain_err(|| "Couldn't run the migrations.")?;
+    let first_user: Option<User> = schema::users::table
+        .first(conn)
+        .optional()
+        .chain_err(|| "Couldn't query for the admin user.")?;
+    Ok(first_user.is_some())
+}
+
 #[cfg(not(debug_assertions))]
 embed_migrations!();
 
 #[cfg(not(debug_assertions))]
-pub fn run_db_migrations(conn: &PgConnection) -> Result<()> {
+fn run_db_migrations(conn: &PgConnection) -> Result<()> {
     embedded_migrations::run(conn)?;
     Ok(())
 }
 
 #[cfg(debug_assertions)]
-pub fn run_db_migrations(conn: &PgConnection) -> Result<()> {
+fn run_db_migrations(conn: &PgConnection) -> Result<()> {
     diesel::migrations::run_pending_migrations(conn)?;
-    println!("Migrations checked.");
+    info!("Migrations checked.");
     Ok(())
 }
 
@@ -180,6 +192,7 @@ pub fn add_user(conn : &PgConnection, email : &str, password : &str, pepper: &[u
         .execute(conn)
         .chain_err(|| "Couldn't insert the new password into user metrics!")?;
 
+    info!("Created a new user, with email {:?}.", email);
     Ok(user)
 }
 
@@ -475,7 +488,7 @@ fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>)
             .get_result(conn)
             .chain_err(|| "Couldn't create a new narrator!")?;
 
-        println!("{:?}", &new_narrator);
+        info!("{:?}", &new_narrator);
         let narr_id = new_narrator.id;
         *opt_narrator = Some(new_narrator);
         Ok(narr_id)
@@ -489,7 +502,7 @@ fn new_audio_bundle(conn : &PgConnection, name: &str) -> Result<AudioBundle> {
             .get_result(&*conn)
             .chain_err(|| "Can't insert a new audio bundle!")?;
         
-        println!("{:?}", bundle);
+        info!("{:?}", bundle);
 
         Ok(bundle)
 }
@@ -539,7 +552,7 @@ fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &
         .get_result(&*conn)
         .chain_err(|| "Couldn't create a new audio file!")?;
 
-    println!("{:?}", &audio_file);
+    info!("{:?}", &audio_file);
 
     
 
@@ -600,7 +613,7 @@ pub struct NewQuestion {
 pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fieldset>) -> Result<QuizQuestion> {
     use schema::{quiz_questions, question_answers};
 
-    println!("Creating quiz!");
+    info!("Creating quiz!");
 
     // Sanity check
     if answers.len() == 0 {
@@ -627,7 +640,7 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
         .get_result(&*conn)
         .chain_err(|| "Couldn't create a new question!")?;
 
-    println!("{:?}", &quiz);
+    info!("{:?}", &quiz);
 
     let mut narrator = None;
 

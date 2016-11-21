@@ -28,12 +28,16 @@ use pencil::helpers::{send_file, send_from_directory};
 use ganbare::models::{User, Session};
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::RwLock;
+
 
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
 }
 
 lazy_static! {
+
+    static ref APP_INSTALLED : RwLock<bool> = RwLock::new(false);
 
     static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
         .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
@@ -86,7 +90,7 @@ pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
     None
 }
 
-fn new_handlebars_context() -> BTreeMap<String, String> {
+fn new_template_context() -> BTreeMap<String, String> {
     let mut ctx = BTreeMap::new();
     ctx.insert("title".to_string(), "akusento.ganba.re".to_string());
     ctx.insert("jquery_url".to_string(), JQUERY_URL.to_string());
@@ -136,11 +140,12 @@ fn expire_cookie(mut self) -> Self {
 }
 
 fn hello(request: &mut Request) -> PencilResult {
+    if *APP_INSTALLED.read().expect("Won't fail.") == false { return redirect("/fresh_install", 303) }
     let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let user_session = get_user(&conn, &*request).map_err(|_| { println!("Couldn't get user. DB error?"); abort(500).unwrap_err() })?;
+    let user_session = get_user(&conn, &*request).map_err(|e| { internal_error(e); abort(500).unwrap_err() })?;
 
-    let context = new_handlebars_context();
+    let context = new_template_context();
 
     match user_session {
         Some((_, sess)) => request.app.render_template("main.html", &context)
@@ -156,13 +161,13 @@ fn login_form(request: &mut Request) -> PencilResult {
     let email = login_form.take("email").unwrap_or_default();
     let plaintext_pw = login_form.take("password").unwrap_or_default();
 
-    let mut context = new_handlebars_context();
+    let mut context = new_template_context();
     context.insert("authError".to_string(), "true".to_string());
 
     do_login(&email, &plaintext_pw, ip)
         .or_else(|e| match e {
             pencil::PencilError::PenHTTPError(pencil::HTTPError::Unauthorized) => {
-                println!("Failed login.");
+                warn!("Failed login.");
                 let result = app.render_template("hello.html", &context);
                 result.map(|mut resp| {resp.status_code = 401; resp})
             },
@@ -198,28 +203,22 @@ fn logout(request: &mut Request) -> PencilResult {
     redirect("/", 303).map(ResponseExt::expire_cookie)
 }
 
-// FIXME: merge these
-fn error(err_msg : &str) -> pencil::PencilError {
-    println!("Error: {}", err_msg);
-    abort(500).unwrap_err()
-}
 
 fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
-    println!("{:?}", err);
+    error!("{:?}", err);
     abort(500).unwrap_err()
 }
 
 
 fn confirm(request: &mut Request) -> PencilResult {
 
-    let secret = request.args().get("secret")
-        .ok_or_else(|| error("Can't get argument secret from URL!") )?;
+    let secret = try_or!(request.args().get("secret"), else return abort(400));
     let conn = db_connect()
-        .map_err(|_| error("Can't connect to database!") )?;
+        .map_err(|e| internal_error(e) )?;
     let email = ganbare::check_pending_email_confirm(&conn, &secret)
-        .map_err(|_| error("Check pending email confirms failed!"))?;
+        .map_err(|e| internal_error(e))?;
 
-    let mut context = new_handlebars_context();
+    let mut context = new_template_context();
     context.insert("email".to_string(), email);
     context.insert("secret".to_string(), secret.clone());
 
@@ -254,7 +253,7 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let context = new_handlebars_context();
+    let context = new_template_context();
 
     req.app.render_template("add_quiz.html", &context)
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
@@ -333,7 +332,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let form = parse_form(&mut *req).map_err(|ee| { println!("Error: {:?}", ee); abort(400).unwrap_err()})?;
+    let form = parse_form(&mut *req).map_err(|ee| { error!("{:?}", ee); abort(400).unwrap_err()})?;
     let result = ganbare::create_quiz(&conn, form.0, form.1);
     result.map_err(|e| match e.kind() {
         &ErrorKind::FormParseError => abort(400).unwrap_err(),
@@ -354,7 +353,7 @@ fn add_word_form(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let context = new_handlebars_context();
+    let context = new_template_context();
 
     req.app.render_template("add_word.html", &context)
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
@@ -437,7 +436,7 @@ fn get_line(req: &mut Request) -> PencilResult {
     send_file(&file_path, mime_type, false)
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
         .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => { println!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
+            PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
             _ => { internal_error(e) }
         })
 }
@@ -456,7 +455,7 @@ fn get_image(req: &mut Request) -> PencilResult {
     send_from_directory(&*IMAGES_DIR, &file_name, false)
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
         .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => { println!("Image file not found! {}", file_name); e },
+            PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Image file not found! {}", file_name); e },
             _ => { internal_error(e) }
         })
 }
@@ -600,7 +599,7 @@ fn change_password_form(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
-    let mut context = new_handlebars_context();
+    let mut context = new_template_context();
 
     let password_changed = req.args_mut().take("password_changed")
         .and_then(|a| if a == "true" { Some(a) } else { None })
@@ -642,7 +641,7 @@ fn change_password(req: &mut Request) -> PencilResult {
     match ganbare::auth_user(&conn, &user.email, &old_password, &*RUNTIME_PEPPER) {
         Err(e) => return match e.kind() {
             &ErrorKind::AuthError => {
-                let mut context = new_handlebars_context();
+                let mut context = new_template_context();
                 context.insert("authError".to_string(), "true".to_string());
 
                 req.app.render_template("change_password.html", &context)
@@ -674,7 +673,7 @@ fn manage(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         { return abort(401); }
 
-    let context = new_handlebars_context();
+    let context = new_template_context();
 
     req.app.render_template("manage.html", &context)
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
@@ -924,7 +923,7 @@ macro_rules! include_templates(
         $(
             $app.register_template($file);
         )*
-        println!("Templates loaded.");
+        info!("Templates loaded.");
     } }
 );
 
@@ -939,27 +938,50 @@ macro_rules! include_templates(
     } }
 );
 
+fn fresh_install_form(req: &mut Request) -> PencilResult {
+    let context = new_template_context();
+    req.app.render_template("fresh_install.html", &context)
+}
+
+fn fresh_install_post(req: &mut Request) -> PencilResult {
+    let form = req.form_mut();
+    let email = try_or!(form.take("email"), else return abort(400));
+    let new_password = try_or!(form.take("new_password"), else return abort(400));
+    let new_password_check = try_or!(form.take("new_password_check"), else return abort(400));
+    if new_password != new_password_check { return abort(400) };
+
+    let conn = ganbare::db_connect(&*DATABASE_URL).map_err(|e| internal_error(e))?;
+    let _ = ganbare::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).map_err(|e| internal_error(e))?;
+
+    { *APP_INSTALLED.write().expect("Can't fail") = true; }
+
+    let mut context = new_template_context();
+    context.insert("install_success".into(), "success".into());
+    req.app.render_template("fresh_install.html", &context)
+}
+
 
 fn main() {
-    println!("Starting.");
+    env_logger::init().unwrap();
+    info!("Starting.");
 
     let conn = ganbare::db_connect(&*DATABASE_URL).expect("Can't connect to database!");
-    ganbare::run_db_migrations(&conn).expect("Couldn't do the DB migration!");
-    println!("Database OK.");
+    let initialized = ganbare::check_db(&conn).expect("Something funny with the DB!");
+    info!("Database OK.");
+
+    { *APP_INSTALLED.write().expect("Can't fail") = initialized; }
 
     let mut app = Pencil::new(".");
    
-    include_templates!(app, "templates", "base.html", "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "manage.html", "change_password.html");
+    include_templates!(app, "templates", "base.html", "fresh_install.html",
+        "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html",
+        "manage.html", "change_password.html");
     
     app.enable_static_file_handling();
 
-    /*
-    app.set_debug(true);
-    app.set_log_level();
-    env_logger::init().unwrap();
-    */
-
     app.get("/", "hello", hello);
+    app.get("/fresh_install", "fresh_install_form", fresh_install_form);
+    app.post("/fresh_install", "fresh_install_post", fresh_install_post);
     app.post("/logout", "logout", logout);
     app.post("/login", "login_form", login_form);
     app.get("/confirm", "confirm", confirm);
@@ -988,6 +1010,6 @@ fn main() {
     app.get("/api/audio/<line_id:int>", "get_line", get_line);
     app.get("/api/images/<filename:string>", "get_image", get_image);
 
-    println!("Ready. Running on {}, serving at {}", *SERVER_BINDING, *SITE_DOMAIN);
+    info!("Ready. Running on {}, serving at {}", *SERVER_BINDING, *SITE_DOMAIN);
     app.run(*SERVER_BINDING);
 }

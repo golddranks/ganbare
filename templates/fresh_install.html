@@ -1,0 +1,55 @@
+{{#partial main_section}}
+
+	<header>
+		<h1>{{ title }}</h1>
+		<p>Asennus</p>
+	</header>
+	<hr />
+	<div id="message" style="display: none;"></div>
+	<form action="/fresh_install" method="post" id="pwchanger">
+		<h2>Luo ylläpitäjän tunnus</h2>
+		<label>Sähköpostiosoite: <strong class="error" id="email_error"></strong>
+		<input type="email" name="email" id="email"></label>
+		<label>Uusi salasana: <strong class="error" id="new_password_error"></strong>
+		<input type="password" name="new_password" id="new_password"></label>
+		<label>Uusi salasana (varmistus):
+		<input type="password" name="new_password_check" id="new_password_check"></label>
+		<div class="field">
+			<input type="submit" class="button" value="Vaihda">
+		</div>
+	</form>
+	<hr />
+
+{{/partial}}
+
+{{#partial page_script_inline}}
+
+	if ({{#if install_success}}true{{else}}false{{/if}}) {
+		$("#pwchanger").hide();
+		$("#message").html('<h2>Asennettu!</h2><form action="/"><button>Etusivulle</button></form>').show();
+	}
+	
+	var email = $("#email");
+	var new_password = $("#new_password");
+	var new_password_check = $("#new_password_check");
+	$("#pwchanger").submit(function( event ) {
+		if (email.val().indexOf("@") === -1) {
+	 		event.preventDefault();
+	 		$("#email_error").html("@-merkki puuttuu?");
+			email.addClass("buttonHilight");
+		}
+		if (new_password.val().length < 8) {
+	 		event.preventDefault();
+	 		$("#new_password_error").text("Vähintään 8 merkkiä!");
+			new_password.addClass("buttonHilight");
+		}
+		if (new_password.val() !== new_password_check.val()) {
+	 		event.preventDefault();
+	 		new_password_check.prop("placeholder", "Ei täsmää!");
+			new_password_check.addClass("buttonHilight");
+		}
+	});
+
+{{/partial}}
+
+{{~> base.html ~}}
