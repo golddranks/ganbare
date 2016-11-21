@@ -344,7 +344,7 @@ pub struct NewUserMetrics {
     pub id: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable)]
 #[has_many(event_experiences, foreign_key = "event_id")]
 #[table_name="events"]
 pub struct Event {
@@ -359,12 +359,19 @@ pub struct NewEvent<'a> {
     pub name: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
 #[table_name="event_experiences"]
-#[belongs_to(Event, foreign_key = "id")]
-#[belongs_to(User, foreign_key = "id")]
+#[belongs_to(Event, foreign_key = "event_id")]
+#[belongs_to(User, foreign_key = "user_id")]
 pub struct EventExperience {
     pub user_id: i32,
     pub event_id: i32,
     pub event_time: DateTime<UTC>,
+}
+
+#[derive(Insertable, Associations, Debug, AsChangeset)]
+#[table_name="event_experiences"]
+pub struct NewEventExperience {
+    pub user_id: i32,
+    pub event_id: i32,
 }

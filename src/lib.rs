@@ -1229,3 +1229,33 @@ pub fn post_question(conn : &PgConnection, question: NewQuizQuestion, mut answer
     Ok(q.id)
 }
 
+pub fn is_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<EventExperience>> {
+    use schema::{event_experiences, events};
+
+    let ok: Option<EventExperience> = event_experiences::table
+        .inner_join(events::table)
+        .filter(event_experiences::user_id.eq(user.id))
+        .filter(events::name.eq(event_name))
+        .select((event_experiences::user_id, event_experiences::event_id, event_experiences::event_time))
+        .get_result(conn)
+        .optional()?;
+
+    Ok(ok)
+}
+
+
+pub fn set_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+    use schema::{event_experiences, events};
+
+    let ev: Event = try_or!(events::table
+        .filter(events::name.eq(event_name))
+        .filter(events::published.eq(true))
+        .get_result(conn)
+        .optional()?, else return Ok(None));
+
+    let exp: EventExperience = diesel::insert(&NewEventExperience {user_id: user.id, event_id: ev.id})
+        .into(event_experiences::table)
+        .get_result(conn)?;
+
+    Ok(Some((ev, exp)))
+}

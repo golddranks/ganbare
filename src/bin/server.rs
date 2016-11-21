@@ -119,39 +119,70 @@ trait ResponseExt {
 
 impl ResponseExt for Response {
 
-fn refresh_cookie(mut self, conn: &ganbare::PgConnection, old_sess : &Session, ip: IpAddr) -> Self {
-    let sess = ganbare::refresh_session(&conn, &old_sess, ip).expect("Session should already checked to be valid");
-
-    let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::sess_to_hex(&sess));
-    cookie.path = Some("/".to_owned());
-    cookie.domain = Some(SITE_DOMAIN.to_owned());
-    cookie.expires = Some(time::now_utc() + time::Duration::weeks(2));
-    self.set_cookie(SetCookie(vec![cookie]));
-    self
+    fn refresh_cookie(mut self, conn: &ganbare::PgConnection, old_sess : &Session, ip: IpAddr) -> Self {
+        let sess = ganbare::refresh_session(&conn, &old_sess, ip).expect("Session should already checked to be valid");
+    
+        let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::sess_to_hex(&sess));
+        cookie.path = Some("/".to_owned());
+        cookie.domain = Some(SITE_DOMAIN.to_owned());
+        cookie.expires = Some(time::now_utc() + time::Duration::weeks(2));
+        self.set_cookie(SetCookie(vec![cookie]));
+        self
+    }
+    
+    fn expire_cookie(mut self) -> Self {
+        let mut cookie = CookiePair::new("session_id".to_owned(), "".to_owned());
+        cookie.path = Some("/".to_owned());
+        cookie.domain = Some(SITE_DOMAIN.to_owned());
+        cookie.expires = Some(time::at_utc(time::Timespec::new(0, 0)));
+        self.set_cookie(SetCookie(vec![cookie]));
+        self
+    }
 }
 
-fn expire_cookie(mut self) -> Self {
-    let mut cookie = CookiePair::new("session_id".to_owned(), "".to_owned());
-    cookie.path = Some("/".to_owned());
-    cookie.domain = Some(SITE_DOMAIN.to_owned());
-    cookie.expires = Some(time::at_utc(time::Timespec::new(0, 0)));
-    self.set_cookie(SetCookie(vec![cookie]));
-    self
-}
-}
+fn ok(req: &mut Request) -> PencilResult {
 
-fn hello(request: &mut Request) -> PencilResult {
-    if *APP_INSTALLED.read().expect("Won't fail.") == false { return redirect("/fresh_install", 303) }
     let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let user_session = get_user(&conn, &*request).map_err(|e| { internal_error(e); abort(500).unwrap_err() })?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    let event_name = try_or!(req.form_mut().take("event_ok"), else return abort(400));
+    let _ = try_or!(ganbare::set_event_done(&conn, &event_name, &user).map_err(|e| internal_error(e))?, else return abort(400));
+
+
+    redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
+}
+
+fn dispatch_events(req: &mut Request, conn: &ganbare::PgConnection, user: User, _: &Session) -> PencilResult {
+    let mut context = new_template_context();
+
+    if ganbare::is_event_done(conn, "startup_screen", &user).map_err(|e| internal_error(e))?.is_none() {
+
+        context.insert("event_name".into(), "startup_screen".into());
+        req.app.render_template("welcome.html", &context)
+
+    } else {
+        req.app.render_template("main.html", &context)
+    }
+}
+
+
+
+fn hello(req: &mut Request) -> PencilResult {
+    if *APP_INSTALLED.read().expect("Won't fail.") == false { return redirect("/fresh_install", 303) }
+
+    let conn = db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let user_session = get_user(&conn, &*req).map_err(|e| { internal_error(e); abort(500).unwrap_err() })?;
 
     let context = new_template_context();
 
     match user_session {
-        Some((_, sess)) => request.app.render_template("main.html", &context)
-                            .map(|resp| resp.refresh_cookie(&conn, &sess, request.remote_addr().ip())),
-        None => request.app.render_template("hello.html", &context),
+        Some((user, sess)) => dispatch_events(req, &conn, user, &sess)
+            .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip())),
+        None => req.app.render_template("hello.html", &context),
     }
 }
 
@@ -1032,13 +1063,14 @@ fn main() {
 
     let mut app = Pencil::new(".");
    
-    include_templates!(app, "templates", "base.html", "fresh_install.html",
+    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html",
         "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html");
     
     app.enable_static_file_handling();
 
     app.get("/", "hello", hello);
+    app.post("/", "ok", ok);
     app.get("/fresh_install", "fresh_install_form", fresh_install_form);
     app.post("/fresh_install", "fresh_install_post", fresh_install_post);
     app.post("/logout", "logout", logout);
