@@ -6,10 +6,11 @@
 	</header>
 	<hr />
 	<form method="post" id="createuser" action="/confirm?secret={{ secret }}">
-		<p>Käyttäjätunnuksi on<br />
+		<p>Käyttäjätunnuksesi on<br />
 		<b style="font-size: 1.2em">{{ email }}</b></p>
 		<p>Valitse itsellesi salasana:</p>
 		<p id="password_error" class="error" style="display: none;"></p>
+		<input type="email" name="email" id="email" value="{{ email }}" style="display: none;">
 		<div class="field">
 			<input type="password" name="password" id="password" placeholder="Salasana" />
 		</div>

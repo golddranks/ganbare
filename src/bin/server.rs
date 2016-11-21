@@ -984,7 +984,8 @@ fn add_users(req: &mut Request) -> PencilResult {
         }
         let secret = ganbare::add_pending_email_confirm(&conn, email, groups.as_ref())
             .map_err(|e| internal_error(e))?;
-        ganbare::email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN)
+        ganbare::email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &**req.app.handlebars_registry.read()
+                .expect("The registry is basically read-only after startup."))
             .map_err(|e| internal_error(e))?;
     }
 
@@ -1033,7 +1034,7 @@ fn main() {
    
     include_templates!(app, "templates", "base.html", "fresh_install.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html",
-        "manage.html", "change_password.html", "add_users.html");
+        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html");
     
     app.enable_static_file_handling();
 

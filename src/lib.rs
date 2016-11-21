@@ -554,26 +554,6 @@ fn new_audio_bundle(conn : &PgConnection, name: &str) -> Result<AudioBundle> {
         Ok(bundle)
 }
 
-fn get_create_audio_bundle(conn : &PgConnection, listname: &str) -> Result<AudioBundle> {
-    use schema::audio_bundles;
-
-    let audio_bundle : Option<AudioBundle> = audio_bundles::table
-        .filter(audio_bundles::listname.eq(listname))
-        .get_result(&*conn)
-        .optional()
-        .chain_err(|| "Database error with audio bundles!")?;
-
-    Ok(match audio_bundle {
-        Some(audio_bundle) => audio_bundle,
-        None => {
-            diesel::insert(&NewAudioBundle{ listname })
-                .into(audio_bundles::table)
-                .get_result(&*conn)
-                .chain_err(|| "Database error!")?
-        }
-    })
-}
-
 
 fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &mut (PathBuf, Option<String>, mime::Mime), bundle: &mut Option<AudioBundle>) -> Result<AudioFile> {
     use schema::{audio_files};

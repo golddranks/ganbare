@@ -135,7 +135,7 @@ VOLUME /ganbare
 CMD /etc/init.d/postgresql start && \
     psql -c '\q' -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
     do sleep 1; psql -c '\q' -h /var/run/postgresql -d postgres; done && \
-    diesel migration run && \
+    diesel database reset && \
     cargo build --release --target=x86_64-unknown-linux-musl
 
 

@@ -1,5 +1,6 @@
 extern crate ganbare;
 extern crate diesel;
+extern crate handlebars;
 
 #[macro_use] extern crate clap;
 extern crate rpassword;
@@ -7,12 +8,10 @@ extern crate dotenv;
 extern crate rustc_serialize;
 #[macro_use]  extern crate lazy_static;
 
-use rustc_serialize::json::{ToJson, Json};
-use std::collections::BTreeMap;
-use std::io::Read;
 use ganbare::*;
 use ganbare::models::User;
 use diesel::prelude::*;
+use handlebars::Handlebars;
 use ganbare::errors::*;
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -30,7 +29,7 @@ lazy_static! {
         if pepper.len() != 32 { panic!("The value must be 256-bit, that is, 32 bytes long!") }; pepper
     };
 
-    static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
+    static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_SITE_DOMAIN")
         .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
 
     static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_EMAIL_DOMAIN")
@@ -53,6 +52,9 @@ pub fn list_users(conn : &PgConnection) -> Result<Vec<User>> {
 
 fn main() {
     use clap::*;
+    let mut handlebars = Handlebars::new();
+    handlebars.register_template_file("email_confirm_email.html", std::path::Path::new("templates/email_confirm_email.html"))
+        .expect("Can't register templates/email_confirm_email.html?");
 
     let matches = App::new("ganba.re user control")
         .setting(AppSettings::SubcommandRequired)
@@ -104,11 +106,11 @@ fn main() {
                 },
                 Ok(_) => { println!("Error: User already exists!"); return; },
             }
-            let secret = match ganbare::add_pending_email_confirm(&conn, email) {
+            let secret = match ganbare::add_pending_email_confirm(&conn, email, &[]) {
                 Ok(secret) => secret,
                 Err(e) => { println!("Error: {:?}", e); return; }
             };
-            match ganbare::email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN) {
+            match ganbare::email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &handlebars) {
                 Ok(u) => println!("Sent an email confirmation! {:?}", u),
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}\nCause: {:?}", err, err.cause ()) },
             }
