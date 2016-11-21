@@ -39,27 +39,28 @@ lazy_static! {
 
     static ref APP_INSTALLED : RwLock<bool> = RwLock::new(false);
 
+    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
+        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
+
     static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
         .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
+
+    static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
+        let binding = env::var("GANBARE_EMAIL_SERVER")
+        .expect("GANBARE_EMAIL_SERVER: Specify an outbound email server, like this: mail.yourisp.com:25");
+        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
 
     static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_DOMAIN")
         .unwrap_or_else(|_|  env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
 
-    static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
-        let binding = env::var("GANBARE_EMAIL_SERVER")
-        .expect("Specify an outbound email server, like this: mail.yourisp.com:25");
-        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
-
     static ref SERVER_BINDING : SocketAddr = { dotenv::dotenv().ok();
         let binding = env::var("GANBARE_SERVER_BINDING")
         .unwrap_or_else(|_| "localhost:8080".into());
-        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
+        binding.to_socket_addrs().expect("GANBARE_SERVER_BINDING: Format: domain:port").next()
+        .expect("GANBARE_SERVER_BINDING: Format: domain:port") };
 
     static ref JQUERY_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_JQUERY")
         .unwrap_or_else(|_| "/static/js/jquery.min.js".into()) };
-
-    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
-        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
 
     static ref AUDIO_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_AUDIO_DIR")
         .unwrap_or_else(|_| "audio".into()) };
@@ -210,12 +211,12 @@ fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
 }
 
 
-fn confirm(request: &mut Request) -> PencilResult {
+fn confirm_form(request: &mut Request) -> PencilResult {
 
     let secret = try_or!(request.args().get("secret"), else return abort(400));
     let conn = db_connect()
         .map_err(|e| internal_error(e) )?;
-    let email = ganbare::check_pending_email_confirm(&conn, &secret)
+    let (email, _) = ganbare::check_pending_email_confirm(&conn, &secret)
         .map_err(|e| internal_error(e))?;
 
     let mut context = new_template_context();
@@ -225,15 +226,19 @@ fn confirm(request: &mut Request) -> PencilResult {
     request.app.render_template("confirm.html", &context)
 }
 
-fn confirm_final(request: &mut Request) -> PencilResult {
-    let ip = request.request.remote_addr.ip();
+fn confirm_final(req: &mut Request) -> PencilResult {
+    req.load_form_data();
+    let ip = req.request.remote_addr.ip();
     let conn = db_connect()
-        .map_err(|_| abort(500).unwrap_err())?;
-    let secret = request.args().get("secret")
-            .ok_or_else(|| abort(500).unwrap_err() )?.clone();
-    let password = request.form_mut().get("password")
-        .ok_or_else(|| abort(500).unwrap_err() )?;
-    let user = ganbare::complete_pending_email_confirm(&conn, password, &secret, &*RUNTIME_PEPPER).map_err(|_| abort(500).unwrap_err())?;
+        .map_err(|e| internal_error(e))?;
+    let secret = try_or!(req.args().get("secret"), else return abort(400)).clone();
+    let password = try_or!(req.form().expect("form data loaded.").get("password"), else return abort(400));
+    let user = ganbare::complete_pending_email_confirm(&conn, &password, &secret, &*RUNTIME_PEPPER)
+        .map_err(|e| match e.kind() {
+            &ganbare::errors::ErrorKind::PasswordTooShort => abort(400).unwrap_err(),
+            &ganbare::errors::ErrorKind::PasswordTooLong => abort(400).unwrap_err(),
+            _ =>  internal_error(e)
+        })?;
 
     do_login(&user.email, &password, ip)
 }
@@ -938,6 +943,56 @@ macro_rules! include_templates(
     } }
 );
 
+fn add_users_form(req: &mut Request) -> PencilResult {
+    let conn = db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "admins")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
+
+    let context = new_template_context();
+    req.app.render_template("add_users.html", &context)
+                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
+fn add_users(req: &mut Request) -> PencilResult {
+    let conn = db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    let (user, sess) = get_user(&conn, req)
+        .map_err(|_| abort(500).unwrap_err())?
+        .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
+
+    if ! ganbare::check_user_group(&conn, &user, "admins")
+        .map_err(|_| abort(500).unwrap_err())?
+        { return abort(401); }
+
+    let conn = ganbare::db_connect(&*DATABASE_URL).map_err(|e| internal_error(e))?;
+    req.load_form_data();
+    let form = req.form().expect("The form data is loaded.");
+    let emails = try_or!(form.get("emailList"), else return abort(400));
+    for row in emails.split("\n") {
+        let mut fields = row.split_whitespace();
+        let email = try_or!(fields.next(), else return abort(400));
+        let mut groups = vec![];
+        for field in fields {
+            groups.push(try_or!(ganbare::get_group(&conn, field)
+                .map_err(|e| internal_error(e))?, else return abort(400)).id);
+        }
+        let secret = ganbare::add_pending_email_confirm(&conn, email, groups.as_ref())
+            .map_err(|e| internal_error(e))?;
+        ganbare::email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN)
+            .map_err(|e| internal_error(e))?;
+    }
+
+    let context = new_template_context();
+    req.app.render_template("add_users.html", &context)
+                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+}
+
 fn fresh_install_form(req: &mut Request) -> PencilResult {
     let context = new_template_context();
     req.app.render_template("fresh_install.html", &context)
@@ -951,7 +1006,9 @@ fn fresh_install_post(req: &mut Request) -> PencilResult {
     if new_password != new_password_check { return abort(400) };
 
     let conn = ganbare::db_connect(&*DATABASE_URL).map_err(|e| internal_error(e))?;
-    let _ = ganbare::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).map_err(|e| internal_error(e))?;
+    let user = ganbare::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).map_err(|e| internal_error(e))?;
+    ganbare::join_user_group_by_name(&conn, &user, "admins").map_err(|e| internal_error(e))?;
+    ganbare::join_user_group_by_name(&conn, &user, "editors").map_err(|e| internal_error(e))?;
 
     { *APP_INSTALLED.write().expect("Can't fail") = true; }
 
@@ -960,11 +1017,12 @@ fn fresh_install_post(req: &mut Request) -> PencilResult {
     req.app.render_template("fresh_install.html", &context)
 }
 
+fn check_env_vars() { &*DATABASE_URL; &*EMAIL_SERVER; &*SITE_DOMAIN; }
 
 fn main() {
     env_logger::init().unwrap();
     info!("Starting.");
-
+    check_env_vars();
     let conn = ganbare::db_connect(&*DATABASE_URL).expect("Can't connect to database!");
     let initialized = ganbare::check_db(&conn).expect("Something funny with the DB!");
     info!("Database OK.");
@@ -975,7 +1033,7 @@ fn main() {
    
     include_templates!(app, "templates", "base.html", "fresh_install.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html",
-        "manage.html", "change_password.html");
+        "manage.html", "change_password.html", "add_users.html");
     
     app.enable_static_file_handling();
 
@@ -984,9 +1042,11 @@ fn main() {
     app.post("/fresh_install", "fresh_install_post", fresh_install_post);
     app.post("/logout", "logout", logout);
     app.post("/login", "login_form", login_form);
-    app.get("/confirm", "confirm", confirm);
+    app.get("/confirm", "confirm_form", confirm_form);
     app.get("/add_quiz", "add_quiz_form", add_quiz_form);
     app.post("/add_quiz", "add_quiz_post", add_quiz_post);
+    app.get("/add_users", "add_users_form", add_users_form);
+    app.post("/add_users", "add_users", add_users);
     app.get("/add_word", "add_word_form", add_word_form);
     app.post("/add_word", "add_word_post", add_word_post);
     app.get("/manage", "manage", manage);

@@ -37,6 +37,7 @@ macro_rules! try_or {
 
 pub mod schema;
 pub mod models;
+pub mod email;
 use models::*;
 pub mod password;
 pub mod errors {
@@ -52,6 +53,10 @@ pub mod errors {
             ::pencil::PencilError, PencilError;
         }
         errors {
+            InvalidInput {
+                description("Provided input is invalid.")
+                display("Provided input is invalid.")
+            }
             NoSuchUser(email: String) {
                 description("No such user exists")
                 display("No user with e-mail address {} exists.", email)
@@ -171,7 +176,7 @@ pub fn add_user(conn : &PgConnection, email : &str, password : &str, pepper: &[u
     if email.len() > 254 { return Err(ErrorKind::EmailAddressTooLong.into()) };
     if !email.contains("@") { return Err(ErrorKind::EmailAddressNotValid.into()) };
 
-    let pw = password::set_password(password, pepper).chain_err(|| "Setting password didn't succeed!")?;
+    let pw = password::set_password(password, pepper)?;
 
     let new_user = NewUser {
         email : email,
@@ -376,13 +381,14 @@ pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<
         .chain_err(|| "Couldn't start a session!") // TODO if the session id already exists, this is going to fail? (A few-in-a 2^128 change, though...)
 }
 
-pub fn add_pending_email_confirm(conn : &PgConnection, email : &str) -> Result<String> {
+pub fn add_pending_email_confirm(conn : &PgConnection, email : &str, groups: &[i32]) -> Result<String> {
     use schema::pending_email_confirms;
     let secret = data_encoding::base64url::encode(&fresh_sessid()?[..]);
     {
         let confirm = NewPendingEmailConfirm {
-            email: email,
+            email,
             secret: secret.as_ref(),
+            groups
         };
         diesel::insert(&confirm)
             .into(pending_email_confirms::table)
@@ -392,20 +398,24 @@ pub fn add_pending_email_confirm(conn : &PgConnection, email : &str) -> Result<S
     Ok(secret)
 }
 
-pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Result<String> {
+pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Result<(String, Vec<i32>)> {
     use schema::pending_email_confirms;
     let confirm : PendingEmailConfirm = pending_email_confirms::table
         .filter(pending_email_confirms::secret.eq(secret))
         .first(conn)
         .chain_err(|| "No such secret/email found :(")?;
-    Ok(confirm.email)
+    Ok((confirm.email, confirm.groups))
 }
 
 pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, secret : &str, pepper: &[u8]) -> Result<User> {
-    use schema::pending_email_confirms;
+    use schema::{pending_email_confirms};
 
-    let email = check_pending_email_confirm(&*conn, secret)?;
+    let (email, group_ids) = check_pending_email_confirm(&*conn, secret)?;
     let user = add_user(&*conn, &email, password, pepper)?;
+
+    for g in group_ids {
+        join_user_group_by_id(&*conn, &user, g)?
+    }
 
     diesel::delete(pending_email_confirms::table
         .filter(pending_email_confirms::secret.eq(secret)))
@@ -413,6 +423,32 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
         .chain_err(|| "Couldn't delete the pending request.")?;
 
     Ok(user)
+}
+
+pub fn join_user_group_by_id(conn: &PgConnection, user: &User, group_id: i32) -> Result<()> {
+    use schema::{user_groups, group_memberships};
+
+    let group: UserGroup = user_groups::table
+        .filter(user_groups::id.eq(group_id))
+        .first(conn)?;
+
+    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id})
+                .into(group_memberships::table)
+                .execute(conn)?;
+    Ok(())
+}
+
+pub fn join_user_group_by_name(conn: &PgConnection, user: &User, group_name: &str) -> Result<()> {
+    use schema::{user_groups, group_memberships};
+
+    let group: UserGroup = user_groups::table
+        .filter(user_groups::group_name.eq(group_name))
+        .first(conn)?;
+
+    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id})
+                .into(group_memberships::table)
+                .execute(conn)?;
+    Ok(())
 }
 
 pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -> Result<bool> {
@@ -427,6 +463,17 @@ pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -
         .chain_err(|| "DB error")?;
 
     Ok(exists.is_some())
+}
+
+pub fn get_group(conn : &PgConnection, group_name: &str )  -> Result<Option<UserGroup>> {
+    use schema::user_groups;
+
+    let group : Option<(UserGroup)> = user_groups::table
+        .filter(user_groups::group_name.eq(group_name))
+        .get_result(&*conn)
+        .optional()?;
+
+    Ok(group)
 }
 
 #[derive(Debug)]
@@ -560,6 +607,7 @@ fn save_audio(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &
 }
 
 fn load_audio_from_bundles(conn : &PgConnection, bundles: &[AudioBundle]) -> Result<Vec<Vec<AudioFile>>> {
+
     let q_audio_files : Vec<Vec<AudioFile>> = AudioFile::belonging_to(&*bundles)
         .load(&*conn)
         .chain_err(|| "Can't load quiz!")?
@@ -664,7 +712,7 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
             .get_result(&*conn)
             .chain_err(|| "Couldn't create a new answer!")?;
 
-        println!("{:?}", &answer);
+        info!("{:?}", &answer);
 
         
     }
@@ -1091,12 +1139,21 @@ pub fn create_word(conn : &PgConnection, w: NewWordFromStrings) -> Result<Word> 
 pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<Word>, Vec<(QuizQuestion, Vec<Answer>)>))>> {
     use schema::{skill_nuggets, quiz_questions, question_answers, words};
     let nuggets: Vec<SkillNugget> = skill_nuggets::table.get_results(conn)?;
-    let qs = QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?;
-    let aas = Answer::belonging_to(&qs).order(question_answers::id.asc()).load::<Answer>(conn)?.grouped_by(&qs);
+    let qs = if nuggets.len() > 0 {
+        QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?
+    } else { vec![] };
+
+    // FIXME checking this special case until the panicking bug in Diesel is fixed
+    let aas = if qs.len() > 0 {
+        Answer::belonging_to(&qs).order(question_answers::id.asc()).load::<Answer>(conn)?.grouped_by(&qs)
+    } else { vec![] };
 
     let qs_and_as = qs.into_iter().zip(aas.into_iter()).collect::<Vec<_>>().grouped_by(&nuggets);
 
-    let ws = Word::belonging_to(&nuggets).order(words::id.asc()).load::<Word>(conn)?.grouped_by(&nuggets);
+    // FIXME checking this special case until the panicking bug in Diesel is fixed
+    let ws = if nuggets.len() > 0 {
+        Word::belonging_to(&nuggets).order(words::id.asc()).load::<Word>(conn)?.grouped_by(&nuggets)
+    } else { vec![] };
 
     let cards = ws.into_iter().zip(qs_and_as.into_iter());
     let all = nuggets.into_iter().zip(cards).collect();
@@ -1106,7 +1163,11 @@ pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<
 pub fn get_audio_bundles(conn : &PgConnection) -> Result<Vec<(AudioBundle, Vec<AudioFile>)>> {
     use schema::{audio_bundles};
     let bundles: Vec<AudioBundle> = audio_bundles::table.get_results(conn)?;
-    let audio_files = AudioFile::belonging_to(&bundles).load::<AudioFile>(conn)?.grouped_by(&bundles);
+
+    // FIXME checking this special case until the panicking bug in Diesel is fixed
+    let audio_files = if bundles.len() > 0 {
+        AudioFile::belonging_to(&bundles).load::<AudioFile>(conn)?.grouped_by(&bundles)
+    } else { vec![] };
     let all = bundles.into_iter().zip(audio_files).collect();
     Ok(all)
 }

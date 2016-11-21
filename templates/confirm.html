@@ -1,24 +1,44 @@
 {{#partial main_section}}
 
 	<header>
-		<span class="avatar"><img src="static/images/avatar.jpg" alt="" /></span>
 		<h1>{{ title }}</h1>
 		<p>Tieteellinen koe japanin ääntämyksestä</p>
 	</header>
 	<hr />
-	<form method="post" action="/confirm?secret={{ secret }}">
-		<p>Käyttäjätunnuksenasi toimii</p>
-		<p><b>{{ email }}</b></p>
-		<br />
+	<form method="post" id="createuser" action="/confirm?secret={{ secret }}">
+		<p>Käyttäjätunnuksi on<br />
+		<b style="font-size: 1.2em">{{ email }}</b></p>
 		<p>Valitse itsellesi salasana:</p>
+		<p id="password_error" class="error" style="display: none;"></p>
 		<div class="field">
 			<input type="password" name="password" id="password" placeholder="Salasana" />
+		</div>
+		<div class="field">
+			<input type="password" name="password_check" id="password_check" placeholder="Salasanan varmistus" />
 		</div>
 		<div class="field">
 			<input type="submit" class="button" value="Vahvista">
 		</div>
 	</form>
-	<hr />
+
+{{/partial}}
+
+{{#partial page_script_inline}}
+	
+	var new_password = $("#password");
+	var new_password_check = $("#password_check");
+	$("#createuser").submit(function( event ) {
+		if (new_password.val().length < 8) {
+	 		event.preventDefault();
+	 		$("#password_error").text("Vähintään 8 merkkiä!").show();
+			new_password.addClass("buttonHilight");
+		}
+		if (new_password.val() !== new_password_check.val()) {
+	 		event.preventDefault();
+	 		new_password_check.prop("placeholder", "Ei täsmää!");
+			new_password_check.addClass("buttonHilight");
+		}
+	});
 
 {{/partial}}
 

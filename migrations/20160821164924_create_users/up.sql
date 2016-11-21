@@ -7,6 +7,7 @@ CREATE TABLE users (
 CREATE TABLE pending_email_confirms (
 	secret VARCHAR PRIMARY KEY,
 	email VARCHAR NOT NULL,
+	groups INTEGER[] NOT NULL,
 	added TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 );
 

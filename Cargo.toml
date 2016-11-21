@@ -30,6 +30,7 @@ mime_multipart = "*"
 unicode-normalization = "*"
 tempdir = "0.3"
 regex = "0.1"
+email = "*"
 
 [replace]
 "pq-sys:0.2.3" = { git = "https://github.com/golddranks/pq-sys.git", rev = "b1dc96c128065438da82e1f89eeeca43e4e8479d"}

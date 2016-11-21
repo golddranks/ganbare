@@ -59,9 +59,17 @@ pub struct Session {
 pub struct PendingEmailConfirm {
     pub secret: String,
     pub email: String,
+    pub groups: Vec<i32>,
     pub added: DateTime<UTC>,
 }
 
+#[derive(Insertable)]
+#[table_name="pending_email_confirms"]
+pub struct NewPendingEmailConfirm<'a> {
+    pub secret: &'a str,
+    pub email: &'a str,
+    pub groups: &'a [i32],
+}
 
 #[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset)]
 #[table_name="user_groups"]
@@ -78,14 +86,6 @@ pub struct UserGroup {
 pub struct GroupMembership {
     pub user_id: i32,
     pub group_id: i32,
-}
-
-
-#[derive(Insertable)]
-#[table_name="pending_email_confirms"]
-pub struct NewPendingEmailConfirm<'a> {
-    pub secret: &'a str,
-    pub email: &'a str,
 }
 
 

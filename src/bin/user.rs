@@ -3,14 +3,11 @@ extern crate diesel;
 
 #[macro_use] extern crate clap;
 extern crate rpassword;
-extern crate lettre;
 extern crate dotenv;
-extern crate handlebars;
 extern crate rustc_serialize;
 #[macro_use]  extern crate lazy_static;
 
 use rustc_serialize::json::{ToJson, Json};
-use handlebars::Handlebars;
 use std::collections::BTreeMap;
 use std::io::Read;
 use ganbare::*;
@@ -19,10 +16,6 @@ use diesel::prelude::*;
 use ganbare::errors::*;
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
-
-use lettre::transport::smtp::response::Response as EmailResponse;
-use lettre::transport::smtp::SmtpTransportBuilder;
-use lettre::transport::EmailTransport;
 
 
 lazy_static! {
@@ -36,6 +29,9 @@ lazy_static! {
         .from_base64().expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
         if pepper.len() != 32 { panic!("The value must be 256-bit, that is, 32 bytes long!") }; pepper
     };
+
+    static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
+        .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
 
     static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_EMAIL_DOMAIN")
         .unwrap_or_else(|_|  std::env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
@@ -54,43 +50,6 @@ pub fn list_users(conn : &PgConnection) -> Result<Vec<User>> {
     users.load::<User>(conn).chain_err(|| "Can't load users")
 }
 
-
-fn send_email_confirmation(email : &str, secret : &str) -> Result<EmailResponse> {
-    use lettre::email::EmailBuilder;
-
-    let mut email_template = String::new();
-    std::fs::File::open("templates/email_confirm_email.html")
-        .chain_err(|| "Can't find templates/email_confirm_email.txt!")?
-        .read_to_string(&mut email_template)?;
-    let handlebars = Handlebars::new();
-
-    struct EmailData<'a> { secret: &'a str };
-
-    impl<'a> ToJson for EmailData<'a> {
-        fn to_json(&self) -> Json {
-            let mut m: BTreeMap<String, Json> = BTreeMap::new();
-            m.insert("secret".to_string(), self.secret.to_json());
-            m.to_json()
-        }
-    }
-
-    let data = EmailData { secret: secret };
-
-    let email = EmailBuilder::new()
-        .to(email)
-        .from(format!("noreply@{}", &*EMAIL_DOMAIN).as_ref())
-        .subject("[akusento.ganba.re] Vahvista osoitteesi")
-        .html(handlebars.template_render(email_template.as_ref(), &data)
-            .chain_err(|| "Handlebars template render error!")?
-            .as_ref())
-        .build().expect("Building email shouldn't fail.");
-
-    let mut mailer = SmtpTransportBuilder::new(*EMAIL_SERVER)
-        .chain_err(|| "Couldn't setup the email transport!")?
-        .build();
-    mailer.send(email)
-        .chain_err(|| "Couldn't send email!")
-}
 
 fn main() {
     use clap::*;
@@ -149,7 +108,7 @@ fn main() {
                 Ok(secret) => secret,
                 Err(e) => { println!("Error: {:?}", e); return; }
             };
-            match send_email_confirmation(email, secret.as_ref()) {
+            match ganbare::email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN) {
                 Ok(u) => println!("Sent an email confirmation! {:?}", u),
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}\nCause: {:?}", err, err.cause ()) },
             }

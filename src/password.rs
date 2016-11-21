@@ -67,7 +67,7 @@ pub fn set_password(plaintext_pw: &str, pepper: &[u8]) -> Result<HashedPassword>
     if plaintext_pw.len() > 1024 { return Err(ErrorKind::PasswordTooLong.into()) };
 
     let mut salt = [0_u8; 16];
-    OsRng::new().chain_err(|| "Unable to connect to the system random number generator!")?.fill_bytes(&mut salt);
+    OsRng::new()?.fill_bytes(&mut salt);
 
     Ok(pepper_salt_pw_hash(plaintext_pw, salt, 10, pepper)?)
 }

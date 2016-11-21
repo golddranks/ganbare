@@ -1,0 +1,21 @@
+{{#partial main_section}}
+
+	<header>
+		<h1>Lisää käyttäjiä</h1>
+	</header>
+	<hr />
+	<div id="message" style="display: none;"></div>
+	<form action="/add_users" method="post" id="pwchanger">
+		<p style="max-width: 30em;">Listaa alle sähköpostiosoitteita, mihin lähetetään kutsut.
+		Voit lisätä perään välilyönnillä erotettuna käyttäjäryhmät,
+		mihin haluat liittää käyttäjän.</p>
+		<textarea name="emailList"></textarea>
+		<div class="field">
+			<input type="submit" class="button" value="Vaihda">
+		</div>
+	</form>
+	<hr />
+
+{{/partial}}
+
+{{~> base.html ~}}
