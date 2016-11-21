@@ -280,6 +280,8 @@ function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
 };
 
 function cleanState() {
+	correct.load();
+	wrong.load();
 	timesAudioPlayed = 0;
 	wordSection.hide();
 	questionSection.hide();

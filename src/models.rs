@@ -10,10 +10,11 @@ pub struct NewUser<'a> {
 }
 
 #[has_many(passwords, foreign_key = "id")] // actually, the relationship is one-to-1..0
+#[has_many(user_metrics, foreign_key = "id")] // the same
 #[has_many(sessions, foreign_key = "user_id")]
-#[has_many(user_metrics, foreign_key = "id")]
 #[has_many(skill_data, foreign_key = "user_id")]
-#[derive(Identifiable, Queryable, Debug, Associations)]
+#[has_many(event_experiences, foreign_key = "user_id")]
+#[derive(Identifiable, Queryable, Debug, Associations, AsChangeset, RustcEncodable)]
 pub struct User {
     pub id: i32,
     pub email: String,
@@ -341,4 +342,29 @@ pub struct UserMetrics {
 #[table_name="user_metrics"]
 pub struct NewUserMetrics {
     pub id: i32,
+}
+
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable, RustcEncodable)]
+#[has_many(event_experiences, foreign_key = "event_id")]
+#[table_name="events"]
+pub struct Event {
+    pub id: i32,
+    pub name: String,
+    pub published: bool,
+}
+
+#[derive(Insertable)]
+#[table_name="events"]
+pub struct NewEvent<'a> {
+    pub name: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Debug, RustcEncodable)]
+#[table_name="event_experiences"]
+#[belongs_to(Event, foreign_key = "id")]
+#[belongs_to(User, foreign_key = "id")]
+pub struct EventExperience {
+    pub user_id: i32,
+    pub event_id: i32,
+    pub event_time: DateTime<UTC>,
 }

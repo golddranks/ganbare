@@ -25,6 +25,7 @@ CREATE TABLE word_data (
 	word_id SERIAL REFERENCES words,
 	answer_time_ms INTEGER NOT NULL,
 	audio_times INTEGER NOT NULL,
+	checked_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	PRIMARY KEY(user_id, word_id)
 );
 
@@ -46,3 +47,10 @@ CREATE TABLE user_metrics (
 );
 
 INSERT INTO user_metrics (id) SELECT id FROM users;
+
+CREATE TABLE event_experiences (
+	user_id SERIAL REFERENCES users,
+	event_id SERIAL REFERENCES events,
+	event_time TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	PRIMARY KEY(user_id, event_id)
+);

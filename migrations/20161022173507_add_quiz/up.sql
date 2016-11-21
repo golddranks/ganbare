@@ -47,3 +47,9 @@ CREATE TABLE words (
 	skill_nugget SERIAL REFERENCES skill_nuggets,
 	published BOOLEAN NOT NULL DEFAULT false
 );
+
+CREATE TABLE events (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR NOT NULL,
+	published BOOLEAN NOT NULL DEFAULT false
+);

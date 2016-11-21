@@ -979,7 +979,7 @@ fn add_users(req: &mut Request) -> PencilResult {
         let email = try_or!(fields.next(), else return abort(400));
         let mut groups = vec![];
         for field in fields {
-            groups.push(try_or!(ganbare::get_group(&conn, field)
+            groups.push(try_or!(ganbare::get_group(&conn, &field.to_lowercase())
                 .map_err(|e| internal_error(e))?, else return abort(400)).id);
         }
         let secret = ganbare::add_pending_email_confirm(&conn, email, groups.as_ref())

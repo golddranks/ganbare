@@ -30,7 +30,7 @@ CREATE TABLE sessions (
 
 CREATE TABLE user_groups (
 	id SERIAL PRIMARY KEY,
-	group_name VARCHAR NOT NULL
+	group_name VARCHAR NOT NULL UNIQUE
 );
 
 CREATE TABLE group_memberships (
@@ -39,4 +39,4 @@ CREATE TABLE group_memberships (
 	PRIMARY KEY(user_id, group_id)
 	);
 
-INSERT INTO user_groups VALUES (1, 'admins'), (2, 'editors'), (3, 'testers'), (4, 'input_group'), (5, 'output_group');
+INSERT INTO user_groups VALUES (1, 'admins'), (2, 'editors'), (3, 'betatesters'), (4, 'subjects'), (5, 'input_group'), (6, 'output_group');

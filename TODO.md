@@ -1,15 +1,19 @@
 # To Do list
 
 Today
-- Set admin password in case of empty database
-- Add users web-UI
-- Think a way to migrate the questions and words to a new database (de-/serialization?)
-- Email confirmations
-- Design an alternative mode for quizes: traditional/output
+- Design a welcome screen and an accept/survey screen
 
 Tomorrow
-- Design a welcome screen and an accept/survey screen
+- Design an alternative mode for quizes: traditional/output
 - Refine the timing algorithms, especially w.r.t breaks and higher-level questions
+
+
+Plan:
+- Assign the group test_subjecs to the subects
+- Impl a tool that then splits the group into half and assigns them to different groups
+- Check the group when giving new quizes
+- Impl the test tool (asks questions from both groups)
+
 
 Stretch goals:
 - Test with different browsers
@@ -17,3 +21,4 @@ Stretch goals:
 - FIX: contenteditable adds <br> at the end
 - FEATURE: download images server-side and replace the outbound links with links to the own static folder
 - FEATURE: add answers in the manager screen
+

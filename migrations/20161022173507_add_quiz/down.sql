@@ -5,3 +5,4 @@ DROP TABLE skill_nuggets;
 DROP TABLE audio_files;
 DROP TABLE narrators;
 DROP TABLE audio_bundles;
+DROP TABLE events;
