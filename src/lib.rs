@@ -24,6 +24,7 @@ extern crate pencil;
 
 use rand::thread_rng;
 use diesel::prelude::*;
+use diesel::expression::dsl::{any, all};
 use std::net::IpAddr;
 use std::path::PathBuf;
 
@@ -118,6 +119,7 @@ pub fn check_db(conn: &PgConnection) -> Result<bool> {
         .first(conn)
         .optional()
         .chain_err(|| "Couldn't query for the admin user.")?;
+
     Ok(first_user.is_some())
 }
 
@@ -455,6 +457,8 @@ pub fn join_user_group_by_name(conn: &PgConnection, user: &User, group_name: &st
 
 pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -> Result<bool> {
     use schema::{user_groups, group_memberships};
+
+    if group_name == "" { return Ok(true) };
 
     let exists : Option<(UserGroup, GroupMembership)> = user_groups::table
         .inner_join(group_memberships::table)
@@ -878,7 +882,6 @@ fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) ->
 }
 
 fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(QuizQuestion, QuestionData)>> {
-    use diesel::expression::dsl::*;
     use schema::{quiz_questions, question_data};
 
     let dues = question_data::table
@@ -917,7 +920,6 @@ fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -
 }
 
 fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQuestion>> {
-    use diesel::expression::dsl::*;
     use schema::{quiz_questions, question_data, skill_data};
     let dues = question_data::table
         .select(question_data::question_id)
@@ -1231,22 +1233,32 @@ pub fn post_question(conn : &PgConnection, question: NewQuizQuestion, mut answer
     Ok(q.id)
 }
 
-pub fn is_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<EventExperience>> {
+pub fn event_state(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences, events};
 
-    let ok: Option<EventExperience> = event_experiences::table
-        .inner_join(events::table)
+    let ok = events::table
+        .inner_join(event_experiences::table)
         .filter(event_experiences::user_id.eq(user.id))
         .filter(events::name.eq(event_name))
-        .select((event_experiences::user_id, event_experiences::event_id, event_experiences::event_time))
         .get_result(conn)
         .optional()?;
-
     Ok(ok)
 }
 
 
-pub fn set_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+pub fn is_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<bool> {
+    let state = event_state(conn, event_name, user)?;
+    Ok(match state {
+        Some(e) => match e.1.event_time {
+            Some(_) => true,
+            None => false,
+        },
+        None => false,
+    })
+}
+
+
+pub fn initiate_event(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences, events};
 
     let ev: Event = try_or!(events::table
@@ -1255,9 +1267,28 @@ pub fn set_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Res
         .get_result(conn)
         .optional()?, else return Ok(None));
 
-    let exp: EventExperience = diesel::insert(&NewEventExperience {user_id: user.id, event_id: ev.id})
+    let exp: EventExperience = diesel::insert(&EventExperience {user_id: user.id, event_id: ev.id, event_time: None})
         .into(event_experiences::table)
         .get_result(conn)?;
 
     Ok(Some((ev, exp)))
+}
+
+
+pub fn set_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+    use schema::{event_experiences};
+
+    if let Some((ev, mut exp)) = event_state(conn, event_name, user)? {
+        exp.event_time = Some(chrono::UTC::now());
+        diesel::update(
+                event_experiences::table
+                    .filter(event_experiences::event_id.eq(ev.id))
+                    .filter(event_experiences::user_id.eq(user.id))
+                )
+            .set(&exp)
+            .execute(conn)?;
+        Ok(Some((ev, exp)))
+    } else {
+        Ok(None)
+    }
 }

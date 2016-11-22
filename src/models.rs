@@ -361,17 +361,11 @@ pub struct NewEvent<'a> {
 
 #[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
 #[table_name="event_experiences"]
+#[changeset_options(treat_none_as_null = "true")]
 #[belongs_to(Event, foreign_key = "event_id")]
 #[belongs_to(User, foreign_key = "user_id")]
 pub struct EventExperience {
     pub user_id: i32,
     pub event_id: i32,
-    pub event_time: DateTime<UTC>,
-}
-
-#[derive(Insertable, Associations, Debug, AsChangeset)]
-#[table_name="event_experiences"]
-pub struct NewEventExperience {
-    pub user_id: i32,
-    pub event_id: i32,
+    pub event_time: Option<DateTime<UTC>>,
 }

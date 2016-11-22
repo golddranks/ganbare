@@ -1,59 +1,14 @@
-<!DOCTYPE HTML>
-<!--
-	Identity by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
-<html>
-	<head>
-		<script src="{{jquery_url}}"></script>
-		<script src="static/ts/manage.js"></script>
-		<title>{{ title }}</title>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<!--[if lte IE 8]><script src="static/js/html5shiv.js"></script><![endif]-->
-		<link rel="stylesheet" href="static/css/main.css" />
-		<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300" rel='stylesheet' type='text/css'>
-		<!--[if lte IE 9]><link rel="stylesheet" href="static/css/ie9.css" /><![endif]-->
-		<!--[if lte IE 8]><link rel="stylesheet" href="static/css/ie8.css" /><![endif]-->
-		<noscript><link rel="stylesheet" href="static/css/noscript.css" /></noscript>
-	</head>
-	<body class="is-loading">
+{{#partial page_script_link}}
+	<script src="static/ts/manage.js"></script>
+{{/partial}}
 
-		<!-- Wrapper -->
-			<div id="wrapper">
+{{#partial main_section}}
 
-				<!-- Main -->
-					<section id="main">
-						<h1>Manager</h1>
-						<ul class="manage">
-						</ul>
-						<audio id="audioPlayer">
-					</section>
+	<h1>Manager</h1>
+	<ul class="manage">
+	</ul>
+	<audio id="audioPlayer">
 
-				<!-- Footer -->
-					<footer id="footer">
-						<ul class="copyright">
-							<li>&copy; Pyry Kontio</li>
-							<li>
-							Design: <a href="http://html5up.net">HTML5 UP</a>
-							(<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>)</li>
-							<li>
-							Icons: <a href="http://www.flaticon.com/authors/appzgear" title="Appzgear">Appzgear</a> from <a href="http://www.flaticon.com" title="Flaticon">www.flaticon.com</a>
-							(<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a>)</li>
-						</ul>
-					</footer>
+{{/partial}}
 
-			</div>
-
-		<!-- Scripts -->
-			<!--[if lte IE 8]><script src="static/js/respond.min.js"></script><![endif]-->
-			<script>
-				$(function() {
-					document.body.className = document.body.className.replace(/\bis-loading\b/, '');
-				});
-				document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
-			</script>
-
-	</body>
-</html>
+{{~> base.html main_class=fullwidth ~}}

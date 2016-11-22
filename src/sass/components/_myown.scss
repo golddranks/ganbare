@@ -10,6 +10,11 @@
 }
 
 #main {
+		max-width: 40em;
+		&.fullwidth {
+			max-width: 100%;
+		}
+
 		.error {
 			color: red;
 		}

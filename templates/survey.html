@@ -2,7 +2,7 @@
 
 	<p>Kysymme alkuun lyhyesti siitä, millä tavalla olet yleensä tekemisissä japanin kielen kanssa.</p>
 	<p class="error">FIXME: Kysely ei ole vielä toteutettu.</p>
-	<form action="/ok">
+	<form action="/ok" method="post">
 		Puhun japania livenä japanilaisten tuttavien kanssa
 		Juttelen japaniksi verkossa, esimerkiksi Facebookissa, Twitterissä tai Linessä.
 		Luen japanilaisia blogeja.
@@ -20,7 +20,7 @@
 		Tämänkaltaisissa kyselyissä on usein kohtia, joissa tekisi mieli vastata "kyllä, mutta" tai "ei aivan, mutta toisaalta". Jos haluat tarkentaa vastauksiasi, se onnistuu alla:
 		Miten sijoittaisit itsesi taidoiltasi alla olevaan nelikenttään. (kuullunymmärtäminen, luetunymmärtäminen, puhuminen, kirjoittaminen)
 		Mitä kieliä osaat äidinkielisesti tai lähes-äidinkielisesti? (esim. äidinkielestä poikkeava koulukieli, tai ns. peritty kieli)
-		<input type="hidden" value="{{ event_name }}" name="event_ok">
+	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
 	</form>
 
 {{/partial}}

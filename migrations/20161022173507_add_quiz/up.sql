@@ -53,3 +53,5 @@ CREATE TABLE events (
 	name VARCHAR NOT NULL,
 	published BOOLEAN NOT NULL DEFAULT false
 );
+
+INSERT INTO events VALUES (1, 'welcome', true), (2, 'survey', true), (3, 'initial_test', false), (4, 'final_test', false);
