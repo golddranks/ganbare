@@ -1069,7 +1069,7 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
 
 }
 
-pub fn get_line_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {
+pub fn get_audio_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {
     use schema::audio_files::dsl::*;
     use diesel::result::Error::NotFound;
 
