@@ -236,22 +236,24 @@ pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<User> {
         })
 }
 
-pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str, pepper: &[u8]) -> Result<User> {
-    let (user, hashed_pw_from_db) = get_user_pass_by_email(conn, email)
-                                .map_err(|err| {
-                                    if let &ErrorKind::NoSuchUser(_) = err.kind() {
-                                        return ErrorKind::AuthError.to_err();
-                                    };
-                                    err
-                                })?;
-    let _ = password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper)
-                                .map_err(|err| {
-                                    if let &ErrorKind::PasswordDoesntMatch = err.kind() {
-                                        return ErrorKind::AuthError.to_err();
-                                    };
-                                    err
-                                })?;
-    Ok(user)
+pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str, pepper: &[u8]) -> Result<Option<User>> {
+    let (user, hashed_pw_from_db) = match get_user_pass_by_email(conn, email) {
+        Err(err) => match err.kind() {
+            &ErrorKind::NoSuchUser(_) => return Ok(None),
+            _ => Err(err),
+        },
+        ok => ok,
+    }?;
+
+    match password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper) {
+        Err(err) => match err.kind() {
+            &ErrorKind::PasswordDoesntMatch => return Ok(None),
+            _ => Err(err),
+        },
+        ok => ok,
+    }?;
+    
+    Ok(Some(user))
 }
 
 pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str, pepper: &[u8]) -> Result<()> {

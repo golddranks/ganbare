@@ -29,11 +29,9 @@ use ganbare::models::{User, Session};
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::RwLock;
+use ganbare::errors::ErrorKind::Msg as ErrMsg;
 
 
-macro_rules! try_or {
-    ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
-}
 
 lazy_static! {
 
@@ -140,6 +138,33 @@ impl ResponseExt for Response {
     }
 }
 
+
+macro_rules! try_or {
+    ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
+}
+
+fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
+    error!("{:?}", err);
+    pencil::PencilError::PenHTTPError(pencil::http_errors::HTTPError::InternalServerError)
+}
+
+trait ResultExt<T> {
+    fn err_500(self) -> std::result::Result<T, pencil::PencilError>;
+}
+
+impl<T> ResultExt<T> for ganbare::errors::Result<T> {
+    fn err_500(self) -> std::result::Result<T, pencil::PencilError> {
+        self.map_err(|e| internal_error(e))
+    }
+}
+
+macro_rules! err_400 {
+    ($t:expr , $e:expr ) => {  match $t {
+        Some(x) => x,
+        None => { return Ok({ let mut resp = pencil::Response::new(String::from("HTTP 400 Bad Request: ") + $e); resp.status_code = 400; resp}) }
+    };  }
+}
+
 fn ok(req: &mut Request) -> PencilResult {
 
     let conn = db_connect()
@@ -148,8 +173,8 @@ fn ok(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(500).unwrap_err())?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
-    let event_name = try_or!(req.form_mut().take("event_ok"), else return abort(400));
-    let _ = try_or!(ganbare::set_event_done(&conn, &event_name, &user).map_err(|e| internal_error(e))?, else return abort(400));
+    let event_name = err_400!(req.form_mut().take("event_ok"), "Field event_ok is missing!");
+    let _ = err_400!(ganbare::set_event_done(&conn, &event_name, &user).err_500()?, "No such event!");
 
 
     redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
@@ -158,7 +183,12 @@ fn ok(req: &mut Request) -> PencilResult {
 fn dispatch_events(req: &mut Request, conn: &ganbare::PgConnection, user: User, _: &Session) -> PencilResult {
     let mut context = new_template_context();
 
-    if ganbare::is_event_done(conn, "startup_screen", &user).map_err(|e| internal_error(e))?.is_none() {
+    if ganbare::is_event_done(conn, "startup_screen", &user).err_500()?.is_none() {
+
+        context.insert("event_name".into(), "startup_screen".into());
+        req.app.render_template("welcome.html", &context)
+
+    } else if ganbare::is_event_done(conn, "startup_screen", &user).map_err(|e| internal_error(e))?.is_none() {
 
         context.insert("event_name".into(), "startup_screen".into());
         req.app.render_template("welcome.html", &context)
@@ -169,59 +199,67 @@ fn dispatch_events(req: &mut Request, conn: &ganbare::PgConnection, user: User, 
 }
 
 
-
 fn hello(req: &mut Request) -> PencilResult {
     if *APP_INSTALLED.read().expect("Won't fail.") == false { return redirect("/fresh_install", 303) }
 
     let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
-    let user_session = get_user(&conn, &*req).map_err(|e| { internal_error(e); abort(500).unwrap_err() })?;
 
-    let context = new_template_context();
+    if let Some((user, sess)) = get_user(&conn, &*req).map_err(|e| { internal_error(e); abort(500).unwrap_err() })? {
 
-    match user_session {
-        Some((user, sess)) => dispatch_events(req, &conn, user, &sess)
-            .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip())),
-        None => req.app.render_template("hello.html", &context),
+        dispatch_events(req, &conn, user, &sess)
+            .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+
+    } else {
+        return redirect("/login", 303)
     }
 }
 
-fn login_form(request: &mut Request) -> PencilResult {
+fn login_form(req: &mut Request) -> PencilResult {
+    let conn = db_connect()
+        .map_err(|_| abort(500).unwrap_err())?;
+    if let Some(_) = get_user(&conn, req).map_err(|_| abort(500).unwrap_err())? {
+        return redirect("/", 303)
+    }
+
+    let mut context = new_template_context();
+    context.insert("authError".to_string(), "false".to_string());
+
+    req.app.render_template("hello.html", &context)
+}
+
+fn login_post(request: &mut Request) -> PencilResult {
     let app = request.app;
     let ip = request.request.remote_addr.ip();
     let login_form = request.form_mut();
     let email = login_form.take("email").unwrap_or_default();
     let plaintext_pw = login_form.take("password").unwrap_or_default();
 
-    let mut context = new_template_context();
-    context.insert("authError".to_string(), "true".to_string());
-
-    do_login(&email, &plaintext_pw, ip)
-        .or_else(|e| match e {
-            pencil::PencilError::PenHTTPError(pencil::HTTPError::Unauthorized) => {
-                warn!("Failed login.");
-                let result = app.render_template("hello.html", &context);
-                result.map(|mut resp| {resp.status_code = 401; resp})
-            },
-            _ => Err(e),
-        })
-}
-
-fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> PencilResult {
-    let conn = db_connect().map_err(|_| abort(500).unwrap_err())?;
-    let user;
-    {
-        user = ganbare::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER)
-            .map_err(|e| match e.kind() {
-                    &ErrorKind::AuthError => abort(401).unwrap_err(),
-                    _ => abort(500).unwrap_err(),
-                })?;
-    };
-
-    let session = ganbare::start_session(&conn, &user, ip)
+    let conn = db_connect()
         .map_err(|_| abort(500).unwrap_err())?;
 
-    redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &session, ip) )
+    match do_login(&email, &plaintext_pw, ip).map_err(|e| internal_error(e))? {
+        Some((_, sess)) => {
+            redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, ip) )
+        },
+        None => {
+            warn!("Failed login.");
+            let mut context = new_template_context();
+            context.insert("authError".to_string(), "true".to_string());
+            let result = app.render_template("hello.html", &context);
+            result.map(|mut resp| {resp.status_code = 401; resp})
+        },
+    }
+}
+
+fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> Result<Option<(User, Session)>> {
+    let conn = db_connect().map_err(|_| abort(500).unwrap_err())?;
+    let user = try_or!(ganbare::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
+            else return Ok(None));
+
+    let sess = ganbare::start_session(&conn, &user, ip).err_500()?;
+
+    Ok(Some((user, sess)))
 }
 
 
@@ -233,12 +271,6 @@ fn logout(request: &mut Request) -> PencilResult {
     };
 
     redirect("/", 303).map(ResponseExt::expire_cookie)
-}
-
-
-fn internal_error<T: std::error::Error>(err: T) -> pencil::PencilError {
-    error!("{:?}", err);
-    abort(500).unwrap_err()
 }
 
 
@@ -271,7 +303,12 @@ fn confirm_final(req: &mut Request) -> PencilResult {
             _ =>  internal_error(e)
         })?;
 
-    do_login(&user.email, &password, ip)
+    match do_login(&user.email, &password, ip).err_500()? {
+        Some((_, sess)) => {
+            redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, ip) )
+        },
+        None => { Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login them in. A bug?".to_string())))) },
+    }
 }
 
 macro_rules! parse {
@@ -1070,11 +1107,12 @@ fn main() {
     app.enable_static_file_handling();
 
     app.get("/", "hello", hello);
-    app.post("/", "ok", ok);
+    app.post("/ok", "ok", ok);
     app.get("/fresh_install", "fresh_install_form", fresh_install_form);
     app.post("/fresh_install", "fresh_install_post", fresh_install_post);
     app.post("/logout", "logout", logout);
-    app.post("/login", "login_form", login_form);
+    app.get("/login", "login_form", login_form);
+    app.post("/login", "login_post", login_post);
     app.get("/confirm", "confirm_form", confirm_form);
     app.get("/add_quiz", "add_quiz_form", add_quiz_form);
     app.post("/add_quiz", "add_quiz_post", add_quiz_post);

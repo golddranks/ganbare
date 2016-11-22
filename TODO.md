@@ -1,10 +1,8 @@
 # To Do list
 
 Today
-- Design a welcome screen and an accept/survey screen
-
-Tomorrow
 - Design an alternative mode for quizes: traditional/output
+- Do a group view, add anonymous groups and anonymous aliases
 - Refine the timing algorithms, especially w.r.t breaks and higher-level questions
 
 
@@ -13,9 +11,13 @@ Plan:
 - Impl a tool that then splits the group into half and assigns them to different groups
 - Check the group when giving new quizes
 - Impl the test tool (asks questions from both groups)
+- Desgin a survey
 
 
 Stretch goals:
+- Improve the HTTP API: / redirects to subpages, accepting things will be a POST /ok call following by redirect, each subpage has it's own URL, / is reserved for the main quiz. /login too. 
+- Modularize the project: (server.rs: api module, manage module?)
+- Do something for the copyright footer when using with small-screened devices
 - Test with different browsers
 - FIX: multiple overlapping sessions getting stale
 - FIX: contenteditable adds <br> at the end

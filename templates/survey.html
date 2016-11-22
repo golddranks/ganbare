@@ -1,0 +1,28 @@
+{{#partial main_section}}
+
+	<p>Kysymme alkuun lyhyesti siitä, millä tavalla olet yleensä tekemisissä japanin kielen kanssa.</p>
+	<p class="error">FIXME: Kysely ei ole vielä toteutettu.</p>
+	<form action="/ok">
+		Puhun japania livenä japanilaisten tuttavien kanssa
+		Juttelen japaniksi verkossa, esimerkiksi Facebookissa, Twitterissä tai Linessä.
+		Luen japanilaisia blogeja.
+		Kuuntelen japanilaisia radio-ohjelmia tai podcasteja.
+		Kuuntelen japanilaista musiikkia niin intensiivisesti, että kuuntelen tai selvitän, mitä sanat tarkoittavat.
+		Katson animea.
+		Katson japanilaisia draamasarjoja tai näytelmäelokuvia.
+		Katson japanilaisia ajankohtaisohjelmia, komediaa ym. TV-ohjelmia.
+		Luen mangaa.
+		Luen japanilaisia romaaneja, nuortenkirjoja ym. proosaa.
+		Matkustan usein Japaniin.
+		Seurustelen japanilaisen kanssa.
+		Opiskelen japania käymällä kursseilla.
+		Opiskelen japania jollain muulla tavalla, millä?
+		Tämänkaltaisissa kyselyissä on usein kohtia, joissa tekisi mieli vastata "kyllä, mutta" tai "ei aivan, mutta toisaalta". Jos haluat tarkentaa vastauksiasi, se onnistuu alla:
+		Miten sijoittaisit itsesi taidoiltasi alla olevaan nelikenttään. (kuullunymmärtäminen, luetunymmärtäminen, puhuminen, kirjoittaminen)
+		Mitä kieliä osaat äidinkielisesti tai lähes-äidinkielisesti? (esim. äidinkielestä poikkeava koulukieli, tai ns. peritty kieli)
+		<input type="hidden" value="{{ event_name }}" name="event_ok">
+	</form>
+
+{{/partial}}
+
+{{~> base.html ~}}
