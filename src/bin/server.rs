@@ -29,7 +29,6 @@ use pencil::helpers::{send_file, send_from_directory};
 use ganbare::models::{User, Session};
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::sync::RwLock;
 use ganbare::errors::ErrorKind::Msg as ErrMsg;
 use pencil::PencilError;
 use std::result::Result as StdResult;
@@ -38,8 +37,6 @@ use ganbare::errors::Result as Result;
 
 
 lazy_static! {
-
-    static ref APP_INSTALLED : RwLock<bool> = RwLock::new(false);
 
     static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
         .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
@@ -213,7 +210,6 @@ fn auth_user(req: &mut Request, required_group: &str)
         },
     }
 
-        
 }
 
 fn try_auth_user(req: &mut Request)
@@ -276,11 +272,8 @@ macro_rules! parse {
 
 
 fn hello(req: &mut Request) -> PencilResult {
-    if *APP_INSTALLED.read().expect("Won't fail.") == false { return redirect("/fresh_install", 303) } //FIXME move this to events
 
-    let conn = db_connect().err_500()?;
-
-    if let Some((user, sess)) = get_user(&conn, &*req).err_500()? {
+    if let Some((conn, user, sess)) = try_auth_user(req).err_500()? {
 
         if let Some(event_redirect) = dispatch_events(req, &conn, &user, &sess)? {
             event_redirect
@@ -346,6 +339,9 @@ fn login_form(req: &mut Request) -> PencilResult {
     if let Some(_) = get_user(&conn, req).err_500()? {
         return redirect("/", 303)
     }
+    if ! ganbare::is_installed(&conn).err_500()? {
+        return redirect("/fresh_install", 303)
+    }
 
     let context = new_template_context();
 
@@ -361,7 +357,7 @@ fn login_post(request: &mut Request) -> PencilResult {
 
     let conn = db_connect().err_500()?;
 
-    match do_login(&email, &plaintext_pw, ip).map_err(|e| internal_error(e))? {
+    match do_login(&email, &plaintext_pw, ip).err_500()? {
         Some((_, sess)) => {
             redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, ip) )
         },
@@ -391,7 +387,7 @@ fn confirm_form(request: &mut Request) -> PencilResult {
     let conn = db_connect()
         .map_err(|e| internal_error(e) )?;
     let (email, _) = ganbare::check_pending_email_confirm(&conn, &secret)
-        .map_err(|e| internal_error(e))?;
+        .err_500()?;
 
     let mut context = new_template_context();
     context.insert("email".to_string(), email);
@@ -404,7 +400,7 @@ fn confirm_post(req: &mut Request) -> PencilResult {
     req.load_form_data();
     let ip = req.request.remote_addr.ip();
     let conn = db_connect()
-        .map_err(|e| internal_error(e))?;
+        .err_500()?;
     let secret = try_or!(req.args().get("secret"), else return abort(400)).clone();
     let password = try_or!(req.form().expect("form data loaded.").get("password"), else return abort(400));
     let user = ganbare::complete_pending_email_confirm(&conn, &password, &secret, &*RUNTIME_PEPPER)
@@ -526,6 +522,8 @@ fn change_password(req: &mut Request) -> PencilResult {
 
 
 fn fresh_install_form(req: &mut Request) -> PencilResult {
+    let conn = ganbare::db_connect(&*DATABASE_URL).err_500()?;
+    if ganbare::is_installed(&conn).err_500()? { return abort(401) };
     let context = new_template_context();
     req.app.render_template("fresh_install.html", &context)
 }
@@ -537,12 +535,12 @@ fn fresh_install_post(req: &mut Request) -> PencilResult {
     let new_password_check = try_or!(form.take("new_password_check"), else return abort(400));
     if new_password != new_password_check { return abort(400) };
 
-    let conn = ganbare::db_connect(&*DATABASE_URL).map_err(|e| internal_error(e))?;
-    let user = ganbare::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).map_err(|e| internal_error(e))?;
-    ganbare::join_user_group_by_name(&conn, &user, "admins").map_err(|e| internal_error(e))?;
-    ganbare::join_user_group_by_name(&conn, &user, "editors").map_err(|e| internal_error(e))?;
+    let conn = ganbare::db_connect(&*DATABASE_URL).err_500()?;
+    if ganbare::is_installed(&conn).err_500()? { return abort(401) };
 
-    { *APP_INSTALLED.write().expect("Can't fail") = true; }
+    let user = ganbare::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).err_500()?;
+    ganbare::join_user_group_by_name(&conn, &user, "admins").err_500()?;
+    ganbare::join_user_group_by_name(&conn, &user, "editors").err_500()?;
 
     let mut context = new_template_context();
     context.insert("install_success".into(), "success".into());
@@ -723,13 +721,13 @@ fn add_users(req: &mut Request) -> PencilResult {
         let mut groups = vec![];
         for field in fields {
             groups.push(try_or!(ganbare::get_group(&conn, &field.to_lowercase())
-                .map_err(|e| internal_error(e))?, else return abort(400)).id);
+                .err_500()?, else return abort(400)).id);
         }
         let secret = ganbare::add_pending_email_confirm(&conn, email, groups.as_ref())
-            .map_err(|e| internal_error(e))?;
+            .err_500()?;
         ganbare::email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &**req.app.handlebars_registry.read()
                 .expect("The registry is basically read-only after startup."))
-            .map_err(|e| internal_error(e))?;
+            .err_500()?;
     }
 
     let context = new_template_context();
@@ -930,7 +928,7 @@ fn next_quiz(req: &mut Request) -> PencilResult {
         .map_err(|_| abort(400).unwrap_err())?;
 
     let new_quiz = ganbare::get_next_quiz(&conn, &user, answer)
-        .map_err(|e| internal_error(e))?;
+        .err_500()?;
 
     let card = try_or!{new_quiz, else return jsonify(&())}; 
     card_to_json(card).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
@@ -1157,10 +1155,8 @@ fn main() {
     info!("Starting.");
     check_env_vars();
     let conn = ganbare::db_connect(&*DATABASE_URL).expect("Can't connect to database!");
-    let initialized = ganbare::check_db(&conn).expect("Something funny with the DB!");
+    ganbare::check_db(&conn).expect("Something funny with the DB!");
     info!("Database OK.");
-
-    { *APP_INSTALLED.write().expect("Can't fail") = initialized; }
 
     let mut app = Pencil::new(".");
    
@@ -1211,7 +1207,7 @@ fn main() {
     app.post("/api/next_quiz", "next_quiz", next_quiz);
     app.get("/api/audio/<line_id:int>", "get_audio", get_audio);
     app.get("/api/images/<filename:string>", "get_image", get_image);
-    
+
 
     info!("Ready. Running on {}, serving at {}", *SERVER_BINDING, *SITE_DOMAIN);
     app.run(*SERVER_BINDING);

@@ -139,6 +139,15 @@ fn run_db_migrations(conn: &PgConnection) -> Result<()> {
     Ok(())
 }
 
+pub fn is_installed(conn: &PgConnection) -> Result<bool> {
+
+    let count: i64 = schema::users::table
+        .count()
+        .get_result(conn)?;
+
+    Ok(count > 0)
+}
+
 pub fn db_connect(database_url: &str) -> Result<PgConnection> {
     PgConnection::establish(database_url)
         .chain_err(|| "Error connecting to database!")
