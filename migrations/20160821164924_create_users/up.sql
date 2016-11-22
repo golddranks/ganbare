@@ -30,13 +30,21 @@ CREATE TABLE sessions (
 
 CREATE TABLE user_groups (
 	id SERIAL PRIMARY KEY,
-	group_name VARCHAR NOT NULL UNIQUE
+	group_name VARCHAR NOT NULL UNIQUE,
+	anonymous BOOLEAN NOT NULL default false
 );
 
 CREATE TABLE group_memberships (
 	user_id SERIAL REFERENCES users,
 	group_id SERIAL REFERENCES user_groups,
 	PRIMARY KEY(user_id, group_id)
-	);
+);
+
+CREATE TABLE anon_aliases (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR NOT NULL,
+	user_id INTEGER REFERENCES users,
+	group_id INTEGER REFERENCES user_groups
+);
 
 INSERT INTO user_groups VALUES (1, 'admins'), (2, 'editors'), (3, 'betatesters'), (4, 'subjects'), (5, 'input_group'), (6, 'output_group');

@@ -78,6 +78,7 @@ pub struct NewPendingEmailConfirm<'a> {
 pub struct UserGroup {
     pub id: i32,
     pub group_name: String,
+    pub anonymous: bool,
 }
 
 #[derive(Queryable, Debug, Insertable, Associations, AsChangeset)]
