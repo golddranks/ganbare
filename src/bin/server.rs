@@ -1,8 +1,9 @@
 #![feature(inclusive_range_syntax)]
 #![feature(field_init_shorthand)]
 
-extern crate ganbare;
-extern crate pencil;
+pub extern crate ganbare;
+pub extern crate pencil;
+
 extern crate dotenv;
 #[macro_use] extern crate log;
 extern crate env_logger;
@@ -16,58 +17,63 @@ extern crate chrono;
 extern crate unicode_normalization;
 extern crate regex;
 
-use unicode_normalization::UnicodeNormalization;
-use std::env;
-use ganbare::errors::{Error, ErrorKind};
-use std::net::IpAddr;
-use ganbare::PgConnection;
+use pencil::{Pencil};
 
-use std::collections::BTreeMap;
-use hyper::header::{SetCookie, CookiePair, Cookie};
-use pencil::{Pencil, Request, Response, PencilResult, redirect, abort, jsonify};
-use pencil::helpers::{send_file, send_from_directory};
-use ganbare::models::{User, Session};
-use rustc_serialize::base64::FromBase64;
+
+#[macro_use]
+mod helpers {
+
+use std;
+use std::env;
+use dotenv;
 use std::net::{SocketAddr, ToSocketAddrs};
-use ganbare::errors::ErrorKind::Msg as ErrMsg;
+use ganbare;
+use ganbare::PgConnection;
+use hyper::header::{SetCookie, CookiePair, Cookie};
+use std::collections::BTreeMap;
+use pencil::{Request, Response, abort};
+use ganbare::models::{User, Session};
+use ganbare::errors::{ErrorKind};
+use std::net::IpAddr;
+use time;
 use pencil::PencilError;
+use pencil;
 use std::result::Result as StdResult;
 use ganbare::errors::Result as Result;
-
-
+use rustc_serialize::base64::FromBase64;
 
 lazy_static! {
  
-    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
+    pub static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
         .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
 
-    static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
+    pub static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
         .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
 
-    static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
+    pub static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
         let binding = env::var("GANBARE_EMAIL_SERVER")
         .expect("GANBARE_EMAIL_SERVER: Specify an outbound email server, like this: mail.yourisp.com:25");
         binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
 
-    static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_DOMAIN")
+    pub static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_DOMAIN")
         .unwrap_or_else(|_|  env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
 
-    static ref SERVER_BINDING : SocketAddr = { dotenv::dotenv().ok();
+    pub static ref SERVER_BINDING : SocketAddr = { dotenv::dotenv().ok();
         let binding = env::var("GANBARE_SERVER_BINDING")
         .unwrap_or_else(|_| "localhost:8080".into());
         binding.to_socket_addrs().expect("GANBARE_SERVER_BINDING: Format: domain:port").next()
         .expect("GANBARE_SERVER_BINDING: Format: domain:port") };
 
-    static ref JQUERY_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_JQUERY")
+    pub static ref JQUERY_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_JQUERY")
         .unwrap_or_else(|_| "/static/js/jquery.min.js".into()) };
 
-    static ref AUDIO_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_AUDIO_DIR")
+    pub static ref AUDIO_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_AUDIO_DIR")
         .unwrap_or_else(|_| "audio".into()) };
 
-    static ref IMAGES_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_IMAGES_DIR")
+    pub static ref IMAGES_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_IMAGES_DIR")
         .unwrap_or_else(|_| "images".into()) };
 
-    static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
+    pub static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
         let pepper = env::var("GANBARE_RUNTIME_PEPPER")
         .expect("Environmental variable GANBARE_RUNTIME_PEPPER must be set! (format: 256-bit random value encoded as base64)")
         .from_base64().expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
@@ -76,7 +82,7 @@ lazy_static! {
 
 }
 
-fn db_connect() -> Result<PgConnection> {
+pub fn db_connect() -> Result<PgConnection> {
     ganbare::db_connect(&*DATABASE_URL)
 }
 
@@ -90,14 +96,14 @@ pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
     None
 }
 
-fn new_template_context() -> BTreeMap<String, String> {
+pub fn new_template_context() -> BTreeMap<String, String> {
     let mut ctx = BTreeMap::new();
     ctx.insert("title".to_string(), "akusento.ganba.re".to_string());
     ctx.insert("jquery_url".to_string(), JQUERY_URL.to_string());
     ctx
 }
 
-fn get_user(conn : &PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
+pub fn get_user(conn : &PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
     if let Some(session_id) = req.cookies().and_then(get_cookie) {
         ganbare::check_session(&conn, session_id)
             .map(|user_sess| Some(user_sess))
@@ -111,7 +117,7 @@ fn get_user(conn : &PgConnection, req : &Request) -> Result<Option<(User, Sessio
     }
 }
 
-trait ResponseExt {
+pub trait ResponseExt {
     fn refresh_cookie(self, &PgConnection, &Session, IpAddr) -> Self;
     fn expire_cookie(self) -> Self;
 }
@@ -144,31 +150,58 @@ macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
 }
 
-fn internal_error<T: std::error::Error>(err: T) -> PencilError {
+pub fn internal_error<T: std::fmt::Debug>(err: T) -> PencilError {
     error!("{:?}", err);
     PencilError::PenHTTPError(pencil::http_errors::HTTPError::InternalServerError)
 }
 
-trait ResultExt<T> {
+pub fn bad_request<T: ToString>(err_msg: T) -> Response {
+        let body = err_msg.to_string();
+        let mut resp = pencil::Response::new(body);
+        resp.status_code = 400;
+        resp
+}
+
+pub trait ResultExt<T> {
     fn err_500(self) -> StdResult<T, PencilError>;
 }
 
-impl<T, E: std::error::Error> ResultExt<T> for StdResult<T, E> {
+impl<T, E: std::fmt::Debug> ResultExt<T> for StdResult<T, E> {
     fn err_500(self) -> StdResult<T, PencilError> {
         self.map_err(|e| internal_error(e))
     }
 }
 
-macro_rules! err_400 {
-    ($t:expr , $format_string:expr $(, $param:expr)* ) => {  match $t {
-        Some(x) => x,
-        None => { return Ok({
-            let body = format!(concat!("<h1>HTTP 400 Bad Request: ", $format_string, "</h1>") $(, $param)*);
-            let mut resp = pencil::Response::new(body);
-            resp.status_code = 400;
-            resp})
+pub trait CarrierInternal<T, E> where E: std::fmt::Debug {
+    fn ok_or(self) -> std::result::Result<T, E>;
+}
+
+impl<T> CarrierInternal<T, ()> for Option<T> {
+    fn ok_or(self) -> std::result::Result<T, ()> {
+        match self {
+            Some(a) => Ok(a),
+            None => Err(()),
         }
-    }}
+    }
+}
+impl<T, E> CarrierInternal<T, E> for std::result::Result<T, E> where E: std::fmt::Debug {
+    fn ok_or(self) -> std::result::Result<T, E> {
+        match self {
+            Ok(a) => Ok(a),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+macro_rules! err_400 {
+    ($t:expr , $format_string:expr $(, $param:expr)* ) => { match CarrierInternal::ok_or($t) {
+        Ok(a) => { a },
+        Err(e) => {
+            return Ok(bad_request(
+                format!(concat!("<h1>HTTP 400 Bad Request {:?}: ", $format_string, "</h1>"), e $(, $param)*)
+            ))
+        },
+    } }
 }
 
 #[cfg(debug_assertions)]
@@ -194,7 +227,7 @@ macro_rules! include_templates(
 );
 
 
-fn auth_user(req: &mut Request, required_group: &str)
+pub fn auth_user(req: &mut Request, required_group: &str)
     -> StdResult<(PgConnection, User, Session), PencilError>
 {
     match try_auth_user(req)? {
@@ -212,7 +245,7 @@ fn auth_user(req: &mut Request, required_group: &str)
 
 }
 
-fn try_auth_user(req: &mut Request)
+pub fn try_auth_user(req: &mut Request)
     -> StdResult<Option<(PgConnection, User, Session)>, PencilError> {
 
     let conn = db_connect().err_500()?;
@@ -228,9 +261,9 @@ fn try_auth_user(req: &mut Request)
 
 }
 
-fn check_env_vars() { &*DATABASE_URL; &*EMAIL_SERVER; &*SITE_DOMAIN; }
+pub fn check_env_vars() { &*DATABASE_URL; &*EMAIL_SERVER; &*SITE_DOMAIN; }
 
-fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> Result<Option<(User, Session)>> {
+pub fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> Result<Option<(User, Session)>> {
     let conn = db_connect().err_500()?;
     let user = try_or!(ganbare::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
             else return Ok(None));
@@ -246,6 +279,18 @@ macro_rules! parse {
 }
 
 
+}
+
+pub use helpers::*;
+
+pub use std::result::Result as StdResult;
+pub use pencil::{Request, PencilResult, PencilError};
+
+pub use ganbare::PgConnection;
+pub use ganbare::models::{User, Session};
+pub use ganbare::errors::ErrorKind::Msg as ErrMsg;
+pub use ganbare::errors::Result as Result;
+pub use ganbare::errors::{Error, ErrorKind};
 
 
 
@@ -263,15 +308,12 @@ macro_rules! parse {
 
 
 
+mod app_pages {
 
+use super::*;
+use pencil::redirect;
 
-
-
-
-
-
-
-fn hello(req: &mut Request) -> PencilResult {
+pub fn hello(req: &mut Request) -> PencilResult {
 
     if let Some((conn, user, sess)) = try_auth_user(req).err_500()? {
 
@@ -286,7 +328,7 @@ fn hello(req: &mut Request) -> PencilResult {
     }
 }
 
-fn ok(req: &mut Request) -> PencilResult {
+pub fn ok(req: &mut Request) -> PencilResult {
 
     let (conn, user, sess) = auth_user(req, "")?;
 
@@ -297,7 +339,7 @@ fn ok(req: &mut Request) -> PencilResult {
     redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 }
 
-fn dispatch_events(req: &mut Request, conn: &PgConnection, user: &User, sess: &Session)
+pub fn dispatch_events(req: &mut Request, conn: &PgConnection, user: &User, sess: &Session)
     -> StdResult<Option<PencilResult>, PencilError> {
 
     let event_redirect = if ! ganbare::is_event_done(conn, "welcome", &user).err_500()? {
@@ -313,12 +355,12 @@ fn dispatch_events(req: &mut Request, conn: &PgConnection, user: &User, sess: &S
     Ok(event_redirect.map(|redirect| redirect.map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))))
 }
 
-fn main_quiz(req: &mut Request, _: &PgConnection, _: &User) -> PencilResult { 
+pub fn main_quiz(req: &mut Request, _: &PgConnection, _: &User) -> PencilResult { 
     let context = new_template_context();
     req.app.render_template("main.html", &context)
 }
 
-fn survey(req: &mut Request) -> PencilResult {
+pub fn survey(req: &mut Request) -> PencilResult {
     let (conn, user, _) = auth_user(req, "")?;
     ganbare::initiate_event(&conn, "survey", &user).err_500()?;
     let mut context = new_template_context();
@@ -326,7 +368,7 @@ fn survey(req: &mut Request) -> PencilResult {
     req.app.render_template("survey.html", &context)
 }
 
-fn welcome(req: &mut Request) -> PencilResult { 
+pub fn welcome(req: &mut Request) -> PencilResult { 
     let (conn, user, _) = auth_user(req, "")?;
     ganbare::initiate_event(&conn, "welcome", &user).err_500()?;
     let mut context = new_template_context();
@@ -334,7 +376,7 @@ fn welcome(req: &mut Request) -> PencilResult {
     req.app.render_template("welcome.html", &context)
 }
 
-fn login_form(req: &mut Request) -> PencilResult {
+pub fn login_form(req: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
     if let Some(_) = get_user(&conn, req).err_500()? {
         return redirect("/", 303)
@@ -348,7 +390,7 @@ fn login_form(req: &mut Request) -> PencilResult {
     req.app.render_template("hello.html", &context)
 }
 
-fn login_post(request: &mut Request) -> PencilResult {
+pub fn login_post(request: &mut Request) -> PencilResult {
     let app = request.app;
     let ip = request.request.remote_addr.ip();
     let login_form = request.form_mut();
@@ -371,7 +413,7 @@ fn login_post(request: &mut Request) -> PencilResult {
     }
 }
 
-fn logout(request: &mut Request) -> PencilResult {
+pub fn logout(request: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
     if let Some(session_id) = request.cookies().and_then(get_cookie) {
         ganbare::end_session(&conn, &session_id).err_500()?;
@@ -381,9 +423,9 @@ fn logout(request: &mut Request) -> PencilResult {
 }
 
 
-fn confirm_form(request: &mut Request) -> PencilResult {
+pub fn confirm_form(request: &mut Request) -> PencilResult {
 
-    let secret = try_or!(request.args().get("secret"), else return abort(400));
+    let secret = err_400!(request.args().get("secret"), "secret");
     let conn = db_connect()
         .map_err(|e| internal_error(e) )?;
     let (email, _) = ganbare::check_pending_email_confirm(&conn, &secret)
@@ -396,19 +438,21 @@ fn confirm_form(request: &mut Request) -> PencilResult {
     request.app.render_template("confirm.html", &context)
 }
 
-fn confirm_post(req: &mut Request) -> PencilResult {
+pub fn confirm_post(req: &mut Request) -> PencilResult {
     req.load_form_data();
     let ip = req.request.remote_addr.ip();
     let conn = db_connect()
         .err_500()?;
-    let secret = try_or!(req.args().get("secret"), else return abort(400)).clone();
-    let password = try_or!(req.form().expect("form data loaded.").get("password"), else return abort(400));
-    let user = ganbare::complete_pending_email_confirm(&conn, &password, &secret, &*RUNTIME_PEPPER)
-        .map_err(|e| match e.kind() {
-            &ganbare::errors::ErrorKind::PasswordTooShort => abort(400).unwrap_err(),
-            &ganbare::errors::ErrorKind::PasswordTooLong => abort(400).unwrap_err(),
-            _ =>  internal_error(e)
-        })?;
+    let secret = err_400!(req.args().get("secret"), "secret missing").clone();
+    let password = err_400!(req.form().expect("form data loaded.").get("password"), "password missing");
+    let user = match ganbare::complete_pending_email_confirm(&conn, &password, &secret, &*RUNTIME_PEPPER) {
+        Ok(u) => u,
+        Err(e) => match e.kind() {
+            &ganbare::errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
+            &ganbare::errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
+            _ => return Err(internal_error(e)),
+        }
+    };
 
     match do_login(&user.email, &password, ip).err_500()? {
         Some((_, sess)) => {
@@ -419,7 +463,7 @@ fn confirm_post(req: &mut Request) -> PencilResult {
 }
 
 
-fn change_password_form(req: &mut Request) -> PencilResult {
+pub fn change_password_form(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "")?;
 
@@ -435,7 +479,7 @@ fn change_password_form(req: &mut Request) -> PencilResult {
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
-fn change_password(req: &mut Request) -> PencilResult {
+pub fn change_password(req: &mut Request) -> PencilResult {
 
     fn parse_form(req: &mut Request) -> Result<(String, String)> {
 
@@ -453,8 +497,7 @@ fn change_password(req: &mut Request) -> PencilResult {
 
     let (conn, user, sess) = auth_user(req, "")?;
 
-    let (old_password, new_password) = parse_form(req)
-        .map_err(|_| abort(400).unwrap_err())?;
+    let (old_password, new_password) = err_400!(parse_form(req), "invalid form data");
 
     match ganbare::auth_user(&conn, &user.email, &old_password, &*RUNTIME_PEPPER) {
         Err(e) => return match e.kind() {
@@ -465,14 +508,17 @@ fn change_password(req: &mut Request) -> PencilResult {
                 req.app.render_template("change_password.html", &context)
                     .map(|mut resp| {resp.status_code = 401; resp})
             },
-            _ => abort(500),
+            _ => Err(internal_error(e)),
         },
         Ok(_) => {
-            ganbare::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER)
-                .map_err(|e| match e.kind() {
-                    &ErrorKind::PasswordTooShort => abort(400).unwrap_err(),
-                    _ => internal_error(e),
-                })?;
+            match ganbare::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER) {
+                Err(e) => match e.kind() {
+                    &ganbare::errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
+                    &ganbare::errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
+                    _ => return Err(internal_error(e)),
+                },
+                _ => (),
+            };
         },
     };
 
@@ -480,6 +526,7 @@ fn change_password(req: &mut Request) -> PencilResult {
 }
 
 
+}
 
 
 
@@ -520,20 +567,26 @@ fn change_password(req: &mut Request) -> PencilResult {
 
 
 
+mod manager_pages {
 
-fn fresh_install_form(req: &mut Request) -> PencilResult {
+use super::*;
+use pencil::redirect;
+use pencil::abort;
+
+
+pub fn fresh_install_form(req: &mut Request) -> PencilResult {
     let conn = ganbare::db_connect(&*DATABASE_URL).err_500()?;
     if ganbare::is_installed(&conn).err_500()? { return abort(401) };
     let context = new_template_context();
     req.app.render_template("fresh_install.html", &context)
 }
 
-fn fresh_install_post(req: &mut Request) -> PencilResult {
+pub fn fresh_install_post(req: &mut Request) -> PencilResult {
     let form = req.form_mut();
-    let email = try_or!(form.take("email"), else return abort(400));
-    let new_password = try_or!(form.take("new_password"), else return abort(400));
-    let new_password_check = try_or!(form.take("new_password_check"), else return abort(400));
-    if new_password != new_password_check { return abort(400) };
+    let email = err_400!(form.take("email"), "email missing");
+    let new_password = err_400!(form.take("new_password"), "new_password missing");
+    let new_password_check = err_400!(form.take("new_password_check"), "new_password_check missing");
+    if new_password != new_password_check { return Ok(bad_request("passwords don't match")) };
 
     let conn = ganbare::db_connect(&*DATABASE_URL).err_500()?;
     if ganbare::is_installed(&conn).err_500()? { return abort(401) };
@@ -547,7 +600,7 @@ fn fresh_install_post(req: &mut Request) -> PencilResult {
     req.app.render_template("fresh_install.html", &context)
 }
 
-fn manage(req: &mut Request) -> PencilResult {
+pub fn manage(req: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
 
     let (user, sess) = get_user(&conn, req).err_500()?
@@ -562,7 +615,7 @@ fn manage(req: &mut Request) -> PencilResult {
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
-fn add_quiz_form(req: &mut Request) -> PencilResult {
+pub fn add_quiz_form(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "editors")?;
 
@@ -572,7 +625,7 @@ fn add_quiz_form(req: &mut Request) -> PencilResult {
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
-fn add_quiz_post(req: &mut Request) -> PencilResult  {
+pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
     fn parse_form(req: &mut Request) -> Result<(ganbare::NewQuestion, Vec<ganbare::Fieldset>)> {
 
@@ -647,7 +700,7 @@ fn add_quiz_post(req: &mut Request) -> PencilResult  {
     redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 }
 
-fn add_word_form(req: &mut Request) -> PencilResult {
+pub fn add_word_form(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "editors")?;
 
     let context = new_template_context();
@@ -656,7 +709,7 @@ fn add_word_form(req: &mut Request) -> PencilResult {
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
-fn add_word_post(req: &mut Request) -> PencilResult  {
+pub fn add_word_post(req: &mut Request) -> PencilResult  {
 
     fn parse_form(req: &mut Request) -> Result<ganbare::NewWordFromStrings> {
 
@@ -700,7 +753,7 @@ fn add_word_post(req: &mut Request) -> PencilResult  {
     redirect("/add_word", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
 }
 
-fn add_users_form(req: &mut Request) -> PencilResult {
+pub fn add_users_form(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "admins")?;
 
@@ -709,7 +762,7 @@ fn add_users_form(req: &mut Request) -> PencilResult {
                     .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
-fn add_users(req: &mut Request) -> PencilResult {
+pub fn add_users(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "admins")?;
 
     req.load_form_data();
@@ -736,6 +789,7 @@ fn add_users(req: &mut Request) -> PencilResult {
 }
 
 
+}
 
 
 
@@ -765,11 +819,18 @@ fn add_users(req: &mut Request) -> PencilResult {
 
 
 
+mod http_api {
 
+use super::*;
+use pencil::{abort, jsonify, Response, redirect};
+use chrono;
+use rand;
+use pencil::helpers::{send_file, send_from_directory};
+use rustc_serialize;
+use regex;
+use unicode_normalization::UnicodeNormalization;
 
-
-
-fn get_audio(req: &mut Request) -> PencilResult {
+pub fn get_audio(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "")?;
 
@@ -795,7 +856,7 @@ fn get_audio(req: &mut Request) -> PencilResult {
         })
 }
 
-fn get_image(req: &mut Request) -> PencilResult {
+pub fn get_image(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "")?;
 
@@ -835,7 +896,7 @@ struct WordJson {
     due_date: Option<String>,
 }
 
-fn card_to_json(card: ganbare::Card) -> PencilResult {
+pub fn card_to_json(card: ganbare::Card) -> PencilResult {
     use rand::Rng;
     use ganbare::Card::*;
     let mut rng = rand::thread_rng();
@@ -883,7 +944,7 @@ fn card_to_json(card: ganbare::Card) -> PencilResult {
     }
 }
 
-fn new_quiz(req: &mut Request) -> PencilResult {
+pub fn new_quiz(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
 
     let new_quiz = ganbare::get_new_quiz(&conn, &user).err_500()?;
@@ -893,7 +954,7 @@ fn new_quiz(req: &mut Request) -> PencilResult {
     card_to_json(card).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
-fn next_quiz(req: &mut Request) -> PencilResult {
+pub fn next_quiz(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
 
     fn parse_answer(req : &mut Request) -> Result<ganbare::Answered> {
@@ -935,7 +996,7 @@ fn next_quiz(req: &mut Request) -> PencilResult {
 }
 
 
-fn get_item(req: &mut Request) -> PencilResult {
+pub fn get_item(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "editors")?;
 
     let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
@@ -961,7 +1022,7 @@ fn get_item(req: &mut Request) -> PencilResult {
 }
 
 
-fn get_all(req: &mut Request) -> PencilResult {
+pub fn get_all(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "editors")?;
 
     let endpoint = req.endpoint().expect("Pencil guarantees this");
@@ -982,7 +1043,7 @@ fn get_all(req: &mut Request) -> PencilResult {
     json.map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
-fn set_published(req: &mut Request) -> PencilResult {
+pub fn set_published(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "editors")?;
 
     let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
@@ -1011,7 +1072,7 @@ fn set_published(req: &mut Request) -> PencilResult {
     Ok(resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
-fn update_item(req: &mut Request) -> PencilResult {
+pub fn update_item(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "editors")?;
 
@@ -1066,7 +1127,7 @@ fn update_item(req: &mut Request) -> PencilResult {
 }
 
 
-fn post_question(req: &mut Request) -> PencilResult {
+pub fn post_question(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "editors")?;
 
@@ -1118,6 +1179,7 @@ fn post_question(req: &mut Request) -> PencilResult {
 }
 
 
+}
 
 
 
@@ -1149,8 +1211,7 @@ fn post_question(req: &mut Request) -> PencilResult {
 
 
 
-
-fn main() {
+pub fn main() {
     env_logger::init().unwrap();
     info!("Starting.");
     check_env_vars();
@@ -1167,46 +1228,46 @@ fn main() {
     app.enable_static_file_handling();
 
     // BASIC FUNCTIONALITY
-    app.get("/", "hello", hello);
-    app.get("/welcome", "welcome", welcome);
-    app.get("/survey", "survey", survey);
-    app.post("/ok", "ok", ok);
-    app.get("/login", "login_form", login_form);
-    app.post("/login", "login_post", login_post);
-    app.post("/logout", "logout", logout);
-    app.get("/confirm", "confirm_form", confirm_form);
-    app.post("/confirm", "confirm_post", confirm_post);
-    app.get("/change_password", "change_password_form", change_password_form);
-    app.post("/change_password", "change_password", change_password);
+    app.get("/", "hello", app_pages::hello);
+    app.get("/welcome", "welcome", app_pages::welcome);
+    app.get("/survey", "survey", app_pages::survey);
+    app.post("/ok", "ok", app_pages::ok);
+    app.get("/login", "login_form", app_pages::login_form);
+    app.post("/login", "login_post", app_pages::login_post);
+    app.post("/logout", "logout", app_pages::logout);
+    app.get("/confirm", "confirm_form", app_pages::confirm_form);
+    app.post("/confirm", "confirm_post", app_pages::confirm_post);
+    app.get("/change_password", "change_password_form", app_pages::change_password_form);
+    app.post("/change_password", "change_password", app_pages::change_password);
 
-    // EDITOR PAGES
-    app.get("/fresh_install", "fresh_install_form", fresh_install_form);
-    app.post("/fresh_install", "fresh_install_post", fresh_install_post);
-    app.get("/add_quiz", "add_quiz_form", add_quiz_form);
-    app.post("/add_quiz", "add_quiz_post", add_quiz_post);
-    app.get("/add_users", "add_users_form", add_users_form);
-    app.post("/add_users", "add_users", add_users);
-    app.get("/add_word", "add_word_form", add_word_form);
-    app.post("/add_word", "add_word_post", add_word_post);
-    app.get("/manage", "manage", manage);
+    // MANAGER PAGES
+    app.get("/fresh_install", "fresh_install_form", manager_pages::fresh_install_form);
+    app.post("/fresh_install", "fresh_install_post", manager_pages::fresh_install_post);
+    app.get("/add_quiz", "add_quiz_form", manager_pages::add_quiz_form);
+    app.post("/add_quiz", "add_quiz_post", manager_pages::add_quiz_post);
+    app.get("/add_users", "add_users_form", manager_pages::add_users_form);
+    app.post("/add_users", "add_users", manager_pages::add_users);
+    app.get("/add_word", "add_word_form", manager_pages::add_word_form);
+    app.post("/add_word", "add_word_post", manager_pages::add_word_post);
+    app.get("/manage", "manage", manager_pages::manage);
 
-    // HTML API
-    app.get("/api/nuggets", "get_nuggets", get_all);
-    app.get("/api/bundles", "get_bundles", get_all);
-    app.get("/api/questions/<id:int>", "get_question", get_item);
-    app.get("/api/words/<id:int>", "get_word", get_item);
-    app.put("/api/questions/<id:int>?publish", "publish_questions", set_published);
-    app.post("/api/question", "post_question", post_question);
-    app.put("/api/words/<id:int>?publish", "publish_words", set_published);
-    app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", set_published);
-    app.put("/api/words/<id:int>?unpublish", "unpublish_words", set_published);
-    app.put("/api/words/<id:int>", "update_word", update_item);
-    app.put("/api/questions/<id:int>", "update_question", update_item);
-    app.put("/api/questions/answers/<id:int>", "update_answer", update_item);
-    app.get("/api/new_quiz", "new_quiz", new_quiz);
-    app.post("/api/next_quiz", "next_quiz", next_quiz);
-    app.get("/api/audio/<line_id:int>", "get_audio", get_audio);
-    app.get("/api/images/<filename:string>", "get_image", get_image);
+    // HTTP API
+    app.get("/api/nuggets", "get_nuggets", http_api::get_all);
+    app.get("/api/bundles", "get_bundles", http_api::get_all);
+    app.get("/api/questions/<id:int>", "get_question", http_api::get_item);
+    app.get("/api/words/<id:int>", "get_word", http_api::get_item);
+    app.put("/api/questions/<id:int>?publish", "publish_questions", http_api::set_published);
+    app.post("/api/question", "post_question", http_api::post_question);
+    app.put("/api/words/<id:int>?publish", "publish_words", http_api::set_published);
+    app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", http_api::set_published);
+    app.put("/api/words/<id:int>?unpublish", "unpublish_words", http_api::set_published);
+    app.put("/api/words/<id:int>", "update_word", http_api::update_item);
+    app.put("/api/questions/<id:int>", "update_question", http_api::update_item);
+    app.put("/api/questions/answers/<id:int>", "update_answer", http_api::update_item);
+    app.get("/api/new_quiz", "new_quiz", http_api::new_quiz);
+    app.post("/api/next_quiz", "next_quiz", http_api::next_quiz);
+    app.get("/api/audio/<line_id:int>", "get_audio", http_api::get_audio);
+    app.get("/api/images/<filename:string>", "get_image", http_api::get_image);
 
 
     info!("Ready. Running on {}, serving at {}", *SERVER_BINDING, *SITE_DOMAIN);
