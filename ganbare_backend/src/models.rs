@@ -330,7 +330,7 @@ pub struct EAnswerData {
     pub correct: bool,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Insertable, Identifiable, Queryable, Associations, Debug, AsChangeset)]
 #[table_name="due_items"]
 #[belongs_to(User, foreign_key = "user_id")]
 #[has_many(question_data, foreign_key = "due")]
@@ -338,9 +338,9 @@ pub struct EAnswerData {
 pub struct DueItem {
     pub id: i32,
     pub user_id: i32,
-    pub correct_streak: i32,
     pub due_date: DateTime<UTC>,
     pub due_delay: i32,
+    pub correct_streak: i32,
     pub item_type: String,
 }
 
@@ -348,9 +348,9 @@ pub struct DueItem {
 #[table_name="due_items"]
 pub struct NewDueItem {
     pub user_id: i32,
-    pub correct_streak: i32,
     pub due_date: DateTime<UTC>,
     pub due_delay: i32,
+    pub correct_streak: i32,
     pub item_type: String,
 }
 

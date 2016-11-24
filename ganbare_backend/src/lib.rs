@@ -24,7 +24,7 @@ extern crate unicode_normalization;
 
 use rand::thread_rng;
 use diesel::prelude::*;
-use diesel::expression::dsl::{any, all};
+use diesel::expression::dsl::{all, any};
 use std::net::IpAddr;
 use std::path::PathBuf;
 
@@ -976,7 +976,7 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
                     .filter(quiz_questions::id.eq(answer.question_id))
                     .get_result(conn)?;
 
-    let mut questiondata : Option<(QuestionData, DueItem)> = question_data::table
+    let questiondata : Option<(QuestionData, DueItem)> = question_data::table
                                         .inner_join(due_items::table)
                                         .filter(due_items::user_id.eq(user.id))
                                         .filter(question_data::question_id.eq(answer.question_id))
@@ -984,17 +984,17 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
                                         .optional()?;
 
     // Update the data for this question (due date, statistics etc.)
-    Ok(if let Some(questiondata, mut due_item) = questiondata {
+    Ok(if let Some((questiondata, mut due_item)) = questiondata {
 
-        let due_delay = if correct { max(questiondata.due_delay * 2, 15) } else { 0 };
+        let due_delay = if correct { max(due_item.due_delay * 2, 15) } else { 0 };
         let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
-        let streak = if correct {questiondata.correct_streak + 1} else { 0 };
+        let streak = if correct {due_item.correct_streak + 1} else { 0 };
         if streak > 2 { log_skill_by_id(conn, user, question.skill_id, 1)?; };
 
         due_item.due_date = next_due_date;
         due_item.due_delay = due_delay;
         due_item.correct_streak = streak;
-        let due_item = due_item.save_changes(conn);
+        let due_item = due_item.save_changes(conn)?;
         (questiondata, due_item)
 
     } else { // New!
@@ -1024,7 +1024,7 @@ fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQues
     })
 }
 
-fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExercise) -> Result<ExerciseData> {
+fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExercise) -> Result<(ExerciseData, DueItem)> {
     use schema::{e_answer_data, due_items, exercise_data, words};
     use std::cmp::max;
 
@@ -1049,7 +1049,7 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExerci
                     .filter(words::id.eq(answer.word_id))
                     .get_result(conn)?;
 
-    let mut exercisedata : Option<(ExerciseData, DueItem)> = exercise_data::table
+    let exercisedata : Option<(ExerciseData, DueItem)> = exercise_data::table
                                         .inner_join(due_items::table)
                                         .filter(due_items::user_id.eq(user.id))
                                         .filter(exercise_data::word_id.eq(answer.word_id))
@@ -1057,17 +1057,17 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExerci
                                         .optional()?;
 
     // Update the data for this word exercise (due date, statistics etc.)
-    Ok(if let Some(exercisedata, mut due_item) = exercisedata {
+    Ok(if let Some((exercisedata, mut due_item)) = exercisedata {
 
-        let due_delay = if correct { max(exercisedata.due_delay * 2, 15) } else { 0 };
+        let due_delay = if correct { max(due_item.due_delay * 2, 15) } else { 0 };
         let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
-        let streak = if correct {exercisedata.correct_streak + 1} else { 0 };
+        let streak = if correct {due_item.correct_streak + 1} else { 0 };
         if streak > 2 { log_skill_by_id(conn, user, w.skill_nugget, 1)?; };
 
         due_item.due_date = next_due_date;
         due_item.due_delay = due_delay;
         due_item.correct_streak = streak;
-        let due_item = due_item.save_changes(conn);
+        let due_item = due_item.save_changes(conn)?;
         (exercisedata, due_item)
 
     } else { // New!
@@ -1090,10 +1090,10 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExerci
             due: due_item.id,
             word_id: answer.word_id,
         };
-        diesel::insert(&exercisedata)
+        let exercisedata = diesel::insert(&exercisedata)
             .into(exercise_data::table)
             .get_result(conn)
-            .chain_err(|| "Couldn't save the question tally data to database!")?
+            .chain_err(|| "Couldn't save the question tally data to database!")?;
         (exercisedata, due_item)
     })
 }
@@ -1104,16 +1104,14 @@ fn load_question(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion,
     let qq : Option<QuizQuestion> = quiz_questions::table
         .filter(quiz_questions::id.eq(id))
         .get_result(&*conn)
-        .optional()
-        .chain_err(|| "Can't load quiz!")?;
+        .optional()?;
 
     let qq = try_or!{ qq, else return Ok(None) };
 
     let (aas, q_bundles) : (Vec<Answer>, Vec<AudioBundle>) = question_answers::table
         .inner_join(audio_bundles::table)
         .filter(question_answers::question_id.eq(qq.id))
-        .load(&*conn)
-        .chain_err(|| "Can't load quiz!")?
+        .load(&*conn)?
         .into_iter().unzip();
 
     let q_audio_files = load_audio_from_bundles(&*conn, &q_bundles)?;
@@ -1121,55 +1119,74 @@ fn load_question(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion,
     Ok(Some((qq, aas, q_audio_files)))
 }
 
-fn get_due_items(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(DueItem, Option<QuestionData>, Option<ExerciseData>)>> {
+fn load_word(conn : &PgConnection, id: i32 ) -> Result<Option<(Word, Vec<AudioFile>)>> {
+    use schema::{words};
+
+    let ww : Option<Word> = words::table
+        .filter(words::id.eq(id))
+        .get_result(&*conn)
+        .optional()?;
+
+    let ww = try_or!{ ww, else return Ok(None) };
+
+    let w_audio_files = load_audio_from_bundle(conn, ww.audio_bundle)?;
+    
+    Ok(Some((ww, w_audio_files)))
+}
+
+enum QuizType {
+    Question(i32),
+    Exercise(i32),
+}
+
+fn get_due_items(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(DueItem, QuizType)>> {
     use schema::{due_items, question_data, exercise_data};
-/*
-    let dues = due_items::table
-        .select(due_items::id)
-        .filter(due_items::user_id.eq(user_id))
-        .order(due_items::due_date.asc())
-        .limit(5);
-*/
-    let due_items : Vec<(DueItem, Option<QuestionData>, Option<ExerciseData>)>;
+
+    let due_questions: Vec<(DueItem, Option<QuestionData>)>;
+    let due_exercises: Vec<(DueItem, Option<ExerciseData>)>;
     if allow_peeking { 
 
-        let dues: Vec<DueItem> = due_items::table
-            .filter(due_items::user_id.eq(user_id))
-            .order(due_items::due_date.asc())
-            .limit(5)
-            .get_results(&*conn)?;
-
-        let due_questions: Vec<Option<QuestionData>> = due_items::table
+        due_questions = due_items::table
             .left_outer_join(question_data::table)
-            .select(question_data::table)
             .filter(due_items::user_id.eq(user_id))
             .order(due_items::due_date.asc())
             .limit(5)
             .get_results(&*conn)?;
 
-        let due_exercises: Vec<Option<ExerciseData>> = due_items::table
+        due_exercises = due_items::table
             .left_outer_join(exercise_data::table)
-            .select(exercise_data::table)
             .filter(due_items::user_id.eq(user_id))
             .order(due_items::due_date.asc())
             .limit(5)
             .get_results(&*conn)?;
 
-        due_items = dues.into_iter().zip(due_questions.into_iter().zip(due_exercises.into_iter())).map(|(i, (q, e))| (i, q, e));
+    } else {
 
-    }/* else { // FIXME uncomment this
+        due_questions = due_items::table
+            .left_outer_join(question_data::table)
+            .filter(due_items::user_id.eq(user_id))
+            .filter(due_items::due_date.lt(chrono::UTC::now()))
+            .order(due_items::due_date.asc())
+            .limit(5)
+            .get_results(&*conn)?;
 
-        due_questions = quiz_questions::table
-            .inner_join(question_data::table)
-            .filter(quiz_questions::id.eq(any(
-                dues.filter(question_data::due_date.lt(chrono::UTC::now()))
-            )))
-            .filter(question_data::user_id.eq(user_id))
-            .filter(quiz_questions::published.eq(true))
-            .order(question_data::due_date.asc())
-            .get_results(&*conn)
-            .chain_err(|| "Can't get due question!")?;
-    }*/;
+        due_exercises = due_items::table
+            .left_outer_join(exercise_data::table)
+            .filter(due_items::user_id.eq(user_id))
+            .filter(due_items::due_date.lt(chrono::UTC::now()))
+            .order(due_items::due_date.asc())
+            .limit(5)
+            .get_results(&*conn)?;
+
+    };
+
+    let due_items = due_questions.into_iter().zip(due_exercises.into_iter()).map(
+            |zipped| match zipped {
+                ((di, Some(question)), (_, None)) => (di, QuizType::Question(question.question_id)),
+                ((_, None), (di, Some(exercise))) => (di, QuizType::Exercise(exercise.word_id)),
+                _ => unreachable!(),
+            }
+            ).collect();
 
     Ok(due_items)
 }
@@ -1187,9 +1204,9 @@ fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQues
         .filter(skill_data::user_id.eq(user_id));
 
     let new_questions : Vec<QuizQuestion> = quiz_questions::table
-        .filter(quiz_questions::id.ne(any(dues)))
-   //     .filter(quiz_questions::skill_id.eq(any(skills))) // FIXME
-   //     .filter(quiz_questions::published.eq(true))   //FIXME
+        .filter(quiz_questions::id.ne(all(dues)))
+        .filter(quiz_questions::skill_id.eq(any(skills)))
+        .filter(quiz_questions::published.eq(true))
         .limit(5)
         .order(quiz_questions::id.asc())
         .get_results(conn)?;
@@ -1202,7 +1219,7 @@ fn get_new_exercises(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
     let dues = due_items::table
         .inner_join(exercise_data::table)
         .select(exercise_data::word_id)
-        .filter(exercise_data::user_id.eq(user_id));
+        .filter(due_items::user_id.eq(user_id));
 
     let skills = skill_data::table
         .select(skill_data::skill_nugget)
@@ -1210,10 +1227,9 @@ fn get_new_exercises(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
         .filter(skill_data::user_id.eq(user_id));
 
     let new_questions : Vec<Word> = words::table
-        .left_outer_join(exercise_data::table)
         .filter(words::id.ne(all(dues)))
-     //   .filter(words::skill_nugget.eq(any(skills))) //FIXME
-     //   .filter(words::published.eq(true)) // FIXME
+        .filter(words::skill_nugget.eq(any(skills)))
+        .filter(words::published.eq(true))
         .limit(5)
         .order(words::id.asc())
         .get_results(conn)?;
@@ -1270,26 +1286,42 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
 
     // Checking due questions & exercises first
 
-    let question_data =
-    if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, false)?.get(0) {
-        Some((q.id, qdata.due_delay, Some(qdata.due_date)))
+    let quiz_data =
+    if let Some((due, quiztype)) = get_due_items(conn, user.id, false)?.into_iter().next() {
+        Some((Some(due), quiztype))
 
-    } else if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
-        Some((q.id, 0, None))
+    } else if let Some(q) = get_new_questions(conn, user.id)?.into_iter().next() {
+        Some((None, QuizType::Question(q.id)))
+
+    } else if let Some(e) = get_new_exercises(conn, user.id)?.into_iter().next() {
+        Some((None, QuizType::Exercise(e.id)))
 
     } else { None };
 
-    if let Some((question_id, due_delay, due_date)) = question_data {
-        let (question, answers, mut qqs) = try_or!{ load_question(conn, question_id)?, else return Ok(None) };
-        
-        let mut rng = rand::thread_rng();
-        let random_answer_index = rng.gen_range(0, answers.len());
-        let right_answer_id = answers[random_answer_index].id;
-        let question_audio = qqs.remove(random_answer_index);
-        
-        return Ok(Some(Quiz::Question(Question{question, question_audio, right_answer_id, answers, due_delay, due_date})))
+    match quiz_data {
+        Some((due, QuizType::Question(id))) => {
 
-    }
+            let (due_delay, due_date) = if let Some(d) = due { (d.due_delay, Some(d.due_date)) } else { (0, None) };
+
+            let (question, answers, mut qqs) = try_or!{ load_question(conn, id)?, else return Ok(None) };
+            
+            let mut rng = rand::thread_rng();
+            let random_answer_index = rng.gen_range(0, answers.len());
+            let right_answer_id = answers[random_answer_index].id;
+            let question_audio = qqs.remove(random_answer_index);
+            
+            return Ok(Some(Quiz::Question(Question{question, question_audio, right_answer_id, answers, due_delay, due_date})))
+    
+        },
+        Some((due, QuizType::Exercise(id))) => {
+
+            let (due_delay, due_date) = if let Some(d) = due { (d.due_delay, Some(d.due_date)) } else { (0, None) };
+            let (word, audio_files) = try_or!( load_word(conn, id)?, else return Ok(None));
+
+            return Ok(Some(Quiz::Exercise(Exercise{ word, audio_files, due_delay, due_date })))
+        },
+        None => (),
+    };
 
     // No questions available ATM, checking words
 
@@ -1308,16 +1340,31 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
 
     // Peeking for the future
 
-    if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, true)?.get(0) {
-        let (question, answers, mut qqs) = try_or!{ load_question(conn, q.id)?, else return Ok(None) };
+    if let Some((due, quiztype)) = get_due_items(conn, user.id, true)?.into_iter().next() {
+
+        let (due_delay, due_date) = (due.due_delay, Some(due.due_date));
+
+        match quiztype {
+            QuizType::Question(id) => {
+    
+                let (question, answers, mut qqs) = try_or!{ load_question(conn, id)?, else return Ok(None) };
+                
+                let mut rng = rand::thread_rng();
+                let random_answer_index = rng.gen_range(0, answers.len());
+                let right_answer_id = answers[random_answer_index].id;
+                let question_audio = qqs.remove(random_answer_index);
+                
+                return Ok(Some(Quiz::Question(Question{question, question_audio, right_answer_id, answers, due_delay, due_date})))
         
-        let mut rng = rand::thread_rng();
-        let random_answer_index = rng.gen_range(0, answers.len());
-        let right_answer_id = answers[random_answer_index].id;
-        let question_audio = qqs.remove(random_answer_index);
-        
-        return Ok(Some(Quiz::Question(Question{question, question_audio, right_answer_id, answers, due_delay: qdata.due_delay, due_date: Some(qdata.due_date)})));
-    }
+            },
+            QuizType::Exercise(id) => {
+    
+                let (word, audio_files) = try_or!( load_word(conn, id)?, else return Ok(None));
+    
+                return Ok(Some(Quiz::Exercise(Exercise{ word, audio_files, due_delay, due_date })))
+            },
+        };
+    } 
     Ok(None)
 }
 
@@ -1335,9 +1382,9 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
             return get_new_quiz(conn, user);
         },
         Answered::Question(answer) => {
-            let q_data = log_answer_question(conn, user, &answer)?;
+            let (_, due) = log_answer_question(conn, user, &answer)?;
         
-            if q_data.correct_streak > 0 { // RIGHT. Get a new question/word.
+            if due.correct_streak > 0 { // RIGHT. Get a new question/word.
                 return get_new_quiz(conn, user);
         
             } else {            // WROOONG. Ask the same question again.
@@ -1353,7 +1400,7 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
                 let question_audio : Vec<AudioFile> = q_audio_files.remove(i);
         
                 return Ok(Some(Quiz::Question(
-                    Question{question, question_audio, right_answer_id, answers, due_delay: q_data.due_delay, due_date: Some(q_data.due_date)}
+                    Question{question, question_audio, right_answer_id, answers, due_delay: due.due_delay, due_date: Some(due.due_date)}
                     )))
             }
         },

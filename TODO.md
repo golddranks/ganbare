@@ -1,7 +1,7 @@
 # To Do list
 
 Today
-- Design an alternative mode for quizes: traditional/output
+- Design an UI mode for quizes: traditional/output
 - Do a group view, add anonymous groups and anonymous aliases
 - Refine the timing algorithms, especially w.r.t breaks and higher-level questions
 
@@ -15,8 +15,7 @@ Plan:
 
 
 Stretch goals:
-- Improve the HTTP API: / redirects to subpages, accepting things will be a POST /ok call following by redirect, each subpage has it's own URL, / is reserved for the main quiz. /login too. 
-- Modularize the project: (server.rs: api module, manage module?)
+- FIX: unpublishing doesn't have effect on things showing up on due list. This needs filtering the source query BEFORE left_outer_join (in get_due_items()), but that's impossible with the current Diesel.
 - Do something for the copyright footer when using with small-screened devices
 - Test with different browsers
 - FIX: multiple overlapping sessions getting stale
