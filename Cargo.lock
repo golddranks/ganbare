@@ -6,8 +6,8 @@ dependencies = [
  "chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "data-encoding 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "diesel 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "diesel_codegen 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "diesel 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "diesel_codegen 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv_macros 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "email 0.0.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -153,7 +153,7 @@ dependencies = [
 
 [[package]]
 name = "diesel"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -164,10 +164,10 @@ dependencies = [
 
 [[package]]
 name = "diesel_codegen"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "diesel 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "diesel 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel_codegen_shared 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -178,7 +178,7 @@ name = "diesel_codegen_shared"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "diesel 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "diesel 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -958,8 +958,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum cookie 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "0e3d6405328b6edb412158b3b7710e2634e23f3614b9bb1c412df7952489a626"
 "checksum data-encoding 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f13f03d68d1906eb3222536f5756953e30de4dff4417e5d428414fb8edb26723"
 "checksum dbghelp-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "97590ba53bcb8ac28279161ca943a924d1fd4a8fb3fa63302591647c4fc5b850"
-"checksum diesel 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "932e6e3dead4069e67a4999f98395175b91533cab2901ff471c414101018f9a4"
-"checksum diesel_codegen 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1376be54f782ab94178cf7b14347c3200c8b858285b77b8eeede0ddfb8783019"
+"checksum diesel 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "db28fcebf975cf122aa96563ad67c1f1db43eba60894f3138691efcc7eb97163"
+"checksum diesel_codegen 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f426e9447ca26ff2b6873d50e90377667a4aedb0ced6132bb5fa3bda2eda164d"
 "checksum diesel_codegen_shared 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "09d4c594e4fce9b1dc34bf82220493204fffa323354f44f3c391824423986caf"
 "checksum dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "eea1395d2df3b5344dc577809296d9578303296e8d105c408aa80ed67d598ef1"
 "checksum dotenv_codegen 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4a1fb3200aaf202927cec798d53b33ff692fd96bde2ea392fd3ed20029464fd7"

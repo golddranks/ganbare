@@ -741,10 +741,18 @@ fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec
 pub enum Answered {
     Word(AnsweredWord),
     Question(AnsweredQuestion),
+    AnsweredExercise(AnsweredExercise),
 }
 
 #[derive(Debug)]
 pub struct AnsweredWord {
+    pub word_id: i32,
+    pub time: i32,
+    pub times_audio_played: i32,
+}
+
+#[derive(Debug)]
+pub struct AnsweredExercise {
     pub word_id: i32,
     pub time: i32,
     pub times_audio_played: i32,
@@ -888,6 +896,10 @@ fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) ->
     log_skill_by_id(conn, user, word.skill_nugget, 1)?;
 
     Ok(())
+}
+
+fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExercise) -> Result<()> {
+    unimplemented!(); // FIXME
 }
 
 fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(QuizQuestion, QuestionData)>> {
@@ -1048,11 +1060,15 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
 
     match answer_enum {
         Answered::Word(answer_word) => {
-            log_answer_word(&*conn, user, &answer_word)?;
+            log_answer_word(conn, user, &answer_word)?;
+            return get_new_quiz(conn, user);
+        },
+        Answered::AnsweredExercise(exercise) => {
+            log_answer_exercise(conn, user, &exercise)?;
             return get_new_quiz(conn, user);
         },
         Answered::Question(answer) => {
-            let q_data = log_answer_question(&*conn, user, &answer)?;
+            let q_data = log_answer_question(conn, user, &answer)?;
         
             if q_data.correct_streak > 0 { // RIGHT. Get a new question/word.
                 return get_new_quiz(conn, user);

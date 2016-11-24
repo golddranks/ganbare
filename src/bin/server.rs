@@ -37,7 +37,7 @@ use ganbare::errors::Result as Result;
 
 
 lazy_static! {
-
+ 
     static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
         .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
 
