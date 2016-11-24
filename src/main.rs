@@ -3,7 +3,6 @@
 
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
-#[macro_use] extern crate mime;
 
 
 pub extern crate ganbare_backend;
@@ -16,8 +15,8 @@ extern crate time;
 extern crate rustc_serialize;
 extern crate rand;
 extern crate chrono;
-extern crate unicode_normalization;
 extern crate regex;
+extern crate unicode_normalization;
 
 
 #[macro_use]

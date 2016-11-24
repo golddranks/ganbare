@@ -9,18 +9,16 @@
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate diesel_codegen;
 #[macro_use] extern crate error_chain;
-#[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 #[macro_use] extern crate mime;
 
-
-extern crate env_logger;
 extern crate time;
 extern crate crypto;
 extern crate chrono;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate data_encoding;
+extern crate unicode_normalization;
 
 
 
