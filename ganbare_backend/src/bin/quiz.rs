@@ -1,4 +1,4 @@
-extern crate ganbare;
+extern crate ganbare_backend;
 extern crate diesel;
 
 #[macro_use]
@@ -10,10 +10,10 @@ extern crate handlebars;
 extern crate rustc_serialize;
 
 
-use ganbare::*;
+use ganbare_backend::*;
 use diesel::prelude::*;
-use ganbare::errors::*;
-use ganbare::models::*;
+use ganbare_backend::errors::*;
+use ganbare_backend::models::*;
 #[macro_use]  extern crate lazy_static;
 
 
@@ -26,14 +26,14 @@ lazy_static! {
 
 
 pub fn list_skillnuggets(conn : &PgConnection) -> Result<Vec<SkillNugget>> {
-    use ganbare::schema::skill_nuggets::dsl::*;
+    use ganbare_backend::schema::skill_nuggets::dsl::*;
  
     skill_nuggets.load::<SkillNugget>(conn).chain_err(|| "Can't load")
 
 }
 
 pub fn list_questions(conn : &PgConnection) -> Result<Vec<QuizQuestion>> {
-    use ganbare::schema::quiz_questions::dsl::*;
+    use ganbare_backend::schema::quiz_questions::dsl::*;
 
     quiz_questions.load::<QuizQuestion>(conn).chain_err(|| "Can't load")
 }

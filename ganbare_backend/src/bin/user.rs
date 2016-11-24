@@ -1,4 +1,4 @@
-extern crate ganbare;
+extern crate ganbare_backend;
 extern crate diesel;
 extern crate handlebars;
 
@@ -8,11 +8,11 @@ extern crate dotenv;
 extern crate rustc_serialize;
 #[macro_use]  extern crate lazy_static;
 
-use ganbare::*;
-use ganbare::models::User;
+use ganbare_backend::*;
+use ganbare_backend::models::User;
 use diesel::prelude::*;
 use handlebars::Handlebars;
-use ganbare::errors::*;
+use ganbare_backend::errors::*;
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
 
@@ -44,7 +44,7 @@ lazy_static! {
 
 
 pub fn list_users(conn : &PgConnection) -> Result<Vec<User>> {
-    use ganbare::schema::users::dsl::*;
+    use ganbare_backend::schema::users::dsl::*;
  
     users.load::<User>(conn).chain_err(|| "Can't load users")
 }
@@ -97,7 +97,7 @@ fn main() {
             };
         },
         ("add", Some(args)) => {
-            use ganbare::errors::ErrorKind::NoSuchUser;
+            use ganbare_backend::errors::ErrorKind::NoSuchUser;
             let email = args.value_of("email").unwrap();
             match get_user_by_email(&conn, &email) {
                 Err(Error(kind, _)) => match kind {
@@ -106,17 +106,17 @@ fn main() {
                 },
                 Ok(_) => { println!("Error: User already exists!"); return; },
             }
-            let secret = match ganbare::add_pending_email_confirm(&conn, email, &[]) {
+            let secret = match ganbare_backend::add_pending_email_confirm(&conn, email, &[]) {
                 Ok(secret) => secret,
                 Err(e) => { println!("Error: {:?}", e); return; }
             };
-            match ganbare::email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &handlebars) {
+            match ganbare_backend::email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &handlebars) {
                 Ok(u) => println!("Sent an email confirmation! {:?}", u),
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}\nCause: {:?}", err, err.cause ()) },
             }
         },
         ("force_add", Some(args)) => {
-            use ganbare::errors::ErrorKind::NoSuchUser;
+            use ganbare_backend::errors::ErrorKind::NoSuchUser;
             let email = args.value_of("email").unwrap();
             match get_user_by_email(&conn, &email) {
                 Err(Error(kind, _)) => match kind {

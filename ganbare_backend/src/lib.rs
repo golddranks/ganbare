@@ -1,15 +1,18 @@
 #![recursion_limit = "1024"]
+#![feature(inclusive_range_syntax)]
 #![feature(proc_macro)]
 #![feature(field_init_shorthand)]
 #![feature(custom_derive, custom_attribute, plugin)]
 #![plugin(diesel_codegen, binary_macros, dotenv_macros)]
 
+
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate diesel_codegen;
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate lazy_static;
-#[macro_use] extern crate mime;
 #[macro_use] extern crate log;
+#[macro_use] extern crate mime;
+
 
 extern crate env_logger;
 extern crate time;
@@ -18,7 +21,6 @@ extern crate chrono;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate data_encoding;
-extern crate pencil;
 
 
 
@@ -51,7 +53,6 @@ pub mod errors {
             ::std::io::Error, StdIoError;
             ::diesel::result::Error, DieselError;
             ::diesel::migrations::RunMigrationsError, DieselMigrationError;
-            ::pencil::PencilError, PencilError;
         }
         errors {
             InvalidInput {

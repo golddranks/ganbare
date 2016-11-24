@@ -1,8 +1,7 @@
 extern crate dotenv;
 
-use errors::*;
-
-use models::{Password};
+use super::errors::*;
+use super::models::{Password};
 
 #[derive(Clone, Copy)]
 pub struct HashedPassword {

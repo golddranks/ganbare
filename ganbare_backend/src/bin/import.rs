@@ -1,6 +1,6 @@
 #![feature(field_init_shorthand)]
 
-extern crate ganbare;
+extern crate ganbare_backend;
 
 #[macro_use]
 extern crate clap;
@@ -11,7 +11,7 @@ extern crate tempdir;
 #[macro_use]  extern crate lazy_static;
 
 use unicode_normalization::UnicodeNormalization;
-use ganbare::*;
+use ganbare_backend::*;
 
 lazy_static! {
 
@@ -25,7 +25,7 @@ fn import_batch(path: &str) {
 
     let files = std::fs::read_dir(path).unwrap();
 
-    let tmp_dir = tempdir::TempDir::new("ganbare_import_tool").expect("create temp dir");
+    let tmp_dir = tempdir::TempDir::new("ganbare_backend_import_tool").expect("create temp dir");
     for f in files {
         let f = f.unwrap();
         let path = f.path();

@@ -2,7 +2,7 @@
 .sass-cache
 *.css.map
 .DS_Store
-/target/
+target
 /dev_assets/
 /audio/
 /images/
