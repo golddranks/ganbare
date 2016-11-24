@@ -2,39 +2,44 @@ FROM debian:jessie
 MAINTAINER Pyry Kontio <pyry.kontio@drasa.eu>
 USER root
 
-# NOTES TO MYSELF AND OTHERS TOO, THEY MIGHT BE HELPFUL since this effin' shit took me too long to figure out.
+# NOTES TO MYSELF AND OTHERS TOO, THEY MIGHT BE HELPFUL since this took me too long to figure out.
 
-# This image is building my web app project Ganbare, written in Rust. It uses, among others, the Hyper and Diesel libraries. 
+# This image is building my web app project Ganbare, written in Rust. It uses, among others, the Hyper and Diesel libraries.
+# This Dockerfile is structured so that the first part is quite generic, and be easily reused. 
 
-# I build this file with "docker build -f Dockerfile.build -t <username>/ganbare_build ."
+# I build this file with "docker build -f Dockerfile.build -t <username>/<imagename> ."
 # While building, it assembles the build environment for compiling static musl binaries.
-# The PITA part of static compiling is the native dependencies, but I managed to sort it out. You need to
-# download them, build the sources with appropriate settings, and check from the appropriate Rust crates
-# (usually named something-sys) how they are going to present the linking flags to Cargo. Read the build.rs files.
+# The pain of static compiling is the native dependencies, but but correct configuration, it should be all right. You need to
+# download them, build the sources with appropriate settings (I'm using the prefix /musl), and check from
+# the appropriate Rust crates (usually named something-sys) how they are going to present the linking flags to Cargo.
+# Read the build.rs files.
+
 # Note: if build.rs doesn't provide options for static linking, forking the crate, and cargo-replacing it,
 # and adding that functionality is a thing. (println!("cargo:rustc-link-lib=static={}", lib);, where lib is the libname
 # as passed to linker [pq, ssl, crypto etc.].) But remember to contribute to upstream too!
 # When run, this image compiles my project from a mounted volume.
 
+# Some of the *-sys crates are using pkg-config to provide the linker settings. This is good, since it's easily configurable.
+
+
+ENV PREFIX=/musl
+
 # WHY THESE PACKAGES?
 # optional utilities for debugging and stuff: file, nano
-# needed utilities for installing and building everything: bzip2, curl, git, xutils-dev, g++, make
+# needed utilities for installing and building everything: bzip2, curl, git, xutils-dev, g++, make, pkgconf
 # for openssl: ca-certificates
-# for diesel_cli: postgresql, postgresql-client
-# not sure if needed, because of the source installs: libpq-dev, musl-tools
+# for diesel_cli: postgresql, postgresql-client, libpq-dev
 
 # WHAT THEN?
-# After installing everything, start postgres and create a DB user for root & grant the right to create DBs
-# note that because each Dockerfile command "reboots" the system, we must later start postgres again.
 # Symlink libsqlite to libsqlite3.so because it's not there by default, for some reason, and it's needed by diesel_cli.
-# Workdir for our code: /ganbare. Prefix dir for musl-based libs and includes: /musl
+# Workdir for our code: /workdir. Prefix dir for musl-based libs and includes: /musl
 RUN apt-get update && apt-get install -y \
   bzip2 \
   make \
   curl \
+  pkgconf \
   git \
   xutils-dev \
-  musl-tools \
   libpq-dev \
   sqlite3 \
   ca-certificates \
@@ -45,81 +50,82 @@ RUN apt-get update && apt-get install -y \
   nano \
   --no-install-recommends && \
   rm -rf /var/lib/apt/lists/* && \
-  /etc/init.d/postgresql start && \
-  su - postgres -c "createuser root; psql -c 'alter user root with createdb'" && \
   ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr/lib/x86_64-linux-gnu/libsqlite3.so && \
-  mkdir /ganbare && mkdir /musl
+  mkdir /workdir && mkdir $PREFIX
 
-# WHY THESE ENV VARS?
-# CC Not sure about the need for musl-gcc, it's just a wrapper, and we have set up the environment all good!
-# LD_LIBRARY_PATH is needed for running compiler plugins (they are dynamically linked .so files)
-# (When target is musl, the compiler plugins are built for musl too, so we need dynamically-linked musl-libc for the plugins)
+WORKDIR /workdir
+
+
+# SETTING THE ENV VARS - WHY THESE?
+# PKG_CONFIG_PATH Some of the build.rs script of *-sys crates use pkg-config to probe for libs.
+# PKG_CONFIG_ALLOW_CROSS This tells the rust pkg-config crate to be enabled even when cross-compiling
+# PKG_CONFIG_ALL_STATIC This tells the rust pkg-config crate to statically link the native dependencies
 # PATH .cargo/bin is needed for running cargo, rustup etc,
-# PATH /musl/bin is needed because the build.rs of libpq-sys runs a postgres binary pg_config from there that tells it the lib dir. (Apparently this is just a fallback)
-# OPENSSL_DIR etc. are needed for the OpenSSL crate to tell Cargo the linking options.
-# OPENSSL_INCLUDE_DIR and OPENSSL_LIB_DIR are needed for the older version (that's still used by Hyper)
-# *_STATIC make the build.rs scripts tell Cargo to link the libs statically.
-# PQ_LIB etc. are needed for pqlib dirs
-# DATABASE_URL is the database connection string for diesel_cli.
-# GANBARE_DATABASE_URL is the same for ganbare. The simple user auth works only if connected through a UNIX socket: %2Fvar%2Frun%2Fpostgresql
-# Not sure if PKG_CONFIG_PATH is needed at all? Some of the build.rs will use pkg-config as a fallback though to find libs.
-ENV CC=musl-gcc \
-    LD_LIBRARY_PATH=/musl/lib \
-    PATH=/musl/bin:/root/.cargo/bin:$PATH \
-    PKG_CONFIG_PATH=/musl/lib/pkgconfig \
-    DATABASE_URL=postgres://root@%2Fvar%2Frun%2Fpostgresql/ganbare_build \
-    GANBARE_DATABASE_URL=postgres://root@%2Fvar%2Frun%2Fpostgresql/ganbare_build \
-    SSL_VER=1.0.2j \
-    POSTGRES_VER=9.6.1 \
-    OPENSSL_LIB_DIR=/musl/lib \
-    OPENSSL_INCLUDE_DIR=/musl/include \
-    OPENSSL_DIR=/musl \
-    OPENSSL_STATIC=true \
-    PQ_LIB_DIR=/musl/lib \
-    PQ_LIB_STATIC=true \
-    PREFIX=/musl
-
-# Install Rustup, and a Rust toolchain
-# Why nightly? Because Diesel uses compiler plugins only available on nightly.
-# Why this date? Because the newer nightly builds have been broken. (Diesel doesn't compile)
-# diesel_cli here uses normal glibc, not musl. We'll setup musl later.
-# We need diesel_cli, because diesel infers the database schema when building our crate, and we have to bootstrap the database somehow for that!
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2016-11-06 && \
-    cargo install diesel_cli && \
-    rustup target add x86_64-unknown-linux-musl
-
-WORKDIR /ganbare
+# PATH /musl/bin is needed because the build.rs of pq-sys runs a postgres binary pg_config from there that tells it the lib dir.
+#     (This is just a fallback, though)
+# LD_LIBRARY_PATH is needed for running compiler plugins (they are dynamically linked .so files)
+#     (When target is musl, the compiler plugins are built for musl too, so we need dynamically-linked musl-libc for the plugins)
+ENV PATH=$PREFIX/bin:/root/.cargo/bin:$PATH \
+    PKG_CONFIG_ALLOW_CROSS=true \
+    PKG_CONFIG_ALL_STATIC=true \
+    PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig \
+    LD_LIBRARY_PATH=$PREFIX/lib
 
 
 # MAKE AND INSTALL NATIVE DEPENDENCIES
 
 # All of these libs will be built with the musl prefix so that they won't interfere with the system glibc!
 # musl must be as an .a (for static linking to produce the binary) and as an .so (for dynamic linking for the compiler plugins)
-RUN git clone git://git.musl-libc.org/musl && cd musl && \
-    ./configure --prefix=$PREFIX && make && make install && \
-    cd .. && rm -rf musl
 
-RUN curl -sL http://www.openssl.org/source/openssl-$SSL_VER.tar.gz | tar xz && \
-    cd openssl-$SSL_VER && \
+RUN TARGET="" &&\
+    install_make_project () { \
+      echo "Installing a library from $1" && \
+      curl -sL $1 | tar xz --strip-components=1 && \
+      ./configure --prefix=$PREFIX $TARGET $2 && \
+      make && make install && rm -rf * ; } ; \
+    install_make_project "https://www.musl-libc.org/releases/musl-1.1.15.tar.gz" "" && \
+    TARGET="--host=x86_64-unknown-linux-musl" &&\
+    install_make_project "https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz" "--without-readline --without-zlib" && \
+    install_make_project "https://sqlite.org/2016/sqlite-autoconf-3150100.tar.gz" ""
+
+# OpenSSL have their own build system
+RUN curl -sL http://www.openssl.org/source/openssl-1.0.2j.tar.gz | tar xz --strip-components=1 && \
     ./Configure no-shared --prefix=$PREFIX --openssldir=$PREFIX/ssl no-zlib linux-x86_64 && \
-    make depend 2> /dev/null && make -j$(nproc) && make install && \
-    cd .. && rm -rf openssl-$SSL_VER
-
-RUN curl -sL https://ftp.postgresql.org/pub/source/v${POSTGRES_VER}/postgresql-${POSTGRES_VER}.tar.gz | tar xz && \
-    cd postgresql-${POSTGRES_VER} && \
-    ./configure --prefix=$PREFIX --host=x86_64-unknown-linux-musl --without-readline --without-zlib && \
-    make && make install && \
-    cd .. && rm -rf postgresql-${POSTGRES_VER}
+    make depend 2> /dev/null && make -j$(nproc) && make install && rm -rf *
 
 
-# COMPILE THE RUST PROJECT ONCE TO FILL CARGO'S DEPENCENDY CACHE
+# Install Rustup, and a Rust toolchain
+# Why nightly? Because Diesel uses compiler plugins only available on nightly.
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2016-11-06 && \
+    rustup target add x86_64-unknown-linux-musl
+
+# Install diesel_cli
+# We need diesel_cli, because diesel infers the database schema when building our crate, and we have to bootstrap the database somehow for that!   
+# diesel_cli here uses normal glibc, not musl. We must revert some of the env vars that interfere with cargo install
+# because it doesn't support cross-compiling. These ENV vars will reset as the RUN command ends, as the Docker container
+# "reboots" between every Dockerfile commands.
+RUN unset PKG_CONFIG_PATH && \
+    unset LD_LIBRARY_PATH && \
+    export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && \
+    cargo install diesel_cli
+
+
+# COMPILE THE RUST PROJECT ONCE TO FILL CARGO'S DEPENDENCY CACHE
+
+# Adding the project files from the host platform
+ADD . /workdir
+
+# DATABASE_URL is the database connection string for diesel_cli.
+# GANBARE_DATABASE_URL is the same for ganbare. The simple user auth works only if connected through a UNIX socket: %2Fvar%2Frun%2Fpostgresql
+ENV DATABASE_URL=postgres://root@%2Fvar%2Frun%2Fpostgresql/ganbare_build \
+    GANBARE_DATABASE_URL=postgres://root@%2Fvar%2Frun%2Fpostgresql/ganbare_build
+
+# Start postgres and create a DB user for root & grant the right to create DBs.
 # The compiled target will be deleted, but the dependencies remain in /root/.cargo/ directory.
-
-ADD . /ganbare
-
 RUN /etc/init.d/postgresql start && \
-    psql -c '\q' -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
-    do sleep 1; psql -c '\q' -h /var/run/postgresql -d postgres; done && \
+    su - postgres -c 'psql -c "\q" -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
+    do sleep 1; psql -c "\q" -h /var/run/postgresql -d postgres; done && \
+    createuser root && psql -c "alter user root with createdb"' && \
     diesel database setup && \
     cargo build --release --target=x86_64-unknown-linux-musl && \
     rm -rf *
@@ -127,10 +133,13 @@ RUN /etc/init.d/postgresql start && \
 # THE IMAGE IS READY
 # All the commands thus far are executed during BUILD-TIME. The following command will be executed when the image is run in a container.
 # You must rebuild the package when updating Rust or some of the native libraries, but updating your own code or rust deps needs just a re-run.
-# The database takes a while to start up, so looping and waiting meanwhile.
+# The database takes a while to start up, so it's looping and waiting for that.
+# Remember the mount your project directory as the volume, like this: 
+# docker run -it --rm --name <containername> -v $PWD:/workdir <username>/<imagename>
+
 # The crate pq-sys doesn't provide static linking at the moment in the upstream, so we have to replace it with an alternative that does.
 
-VOLUME /ganbare
+VOLUME /workdir
 
 CMD /etc/init.d/postgresql start && \
     psql -c '\q' -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
@@ -139,14 +148,8 @@ CMD /etc/init.d/postgresql start && \
     cargo build --release --target=x86_64-unknown-linux-musl
 
 
-# IS THERE SOMETHING EXTRA?
-# Not sure about the utility of PKG_CONFIG_PATH and CC envvars.
-# The musl-tools and libpq-dev packages may be unneeded, since we build those ourselves.
-# OPENSSL_INCLUDE_DIR etc. will be legacy when Hyper etc. move to newer versions of SSL crates.
-
-
 # AFTER RUNNING?
-# You now have a readymade statically linked musl-binary in ./target/x86_64-unknown-linux-musl/release/server!
+# You now have a readymade statically linked musl-binary in ./target/x86_64-unknown-linux-musl/release/<binaryname>!
 # You should be able to run that anywhere provided you have a Linux userspace. That works even without a distro,
 # so you can make a docker container "FROM scratch"!
 

@@ -42,7 +42,7 @@ For release builds, only `static`, `audio` and `images` are used, as `migrations
 The `Dockerfile.build` is for that. It assembles the build environment for building a statically-linked MUSL-based Linux binary:
 
     $ docker build -f Dockerfile.build -t golddranks/ganbare_build .
-    $ docker run -it --rm --name ganbare_builder -v $PWD:/ganbare golddranks/ganbare_build
+    $ docker run -it --rm --name ganbare_builder -v $PWD:/workdir golddranks/ganbare_build
 
 There you go, a readymade binary in your target folder.
 

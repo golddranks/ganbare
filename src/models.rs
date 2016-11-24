@@ -14,6 +14,8 @@ pub struct NewUser<'a> {
 #[has_many(sessions, foreign_key = "user_id")]
 #[has_many(skill_data, foreign_key = "user_id")]
 #[has_many(event_experiences, foreign_key = "user_id")]
+#[has_many(group_memberships, foreign_key = "user_id")]
+#[has_many(anon_aliases, foreign_key = "user_id")]
 #[derive(Identifiable, Queryable, Debug, Associations, AsChangeset, RustcEncodable)]
 pub struct User {
     pub id: i32,
@@ -75,6 +77,7 @@ pub struct NewPendingEmailConfirm<'a> {
 #[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset)]
 #[table_name="user_groups"]
 #[has_many(group_memberships, foreign_key = "group_id")]
+#[has_many(anon_aliases, foreign_key = "group_id")]
 pub struct UserGroup {
     pub id: i32,
     pub group_name: String,
@@ -90,6 +93,16 @@ pub struct GroupMembership {
     pub group_id: i32,
 }
 
+#[derive(Queryable, Debug, Insertable, Associations, AsChangeset)]
+#[table_name="anon_aliases"]
+#[belongs_to(UserGroup, foreign_key = "group_id")]
+#[belongs_to(User, foreign_key = "user_id")]
+pub struct AnonAliases {
+    pub id: i32,
+    pub name: String,
+    pub user_id: Option<i32>,
+    pub group_id: Option<i32>,
+}
 
 #[derive(Insertable)]
 #[table_name="skill_nuggets"]
