@@ -1,4 +1,4 @@
-#![recursion_limit = "1024"]
+#![recursion_limit = "512"]
 #![feature(inclusive_range_syntax)]
 #![feature(proc_macro)]
 #![feature(field_init_shorthand)]
@@ -112,6 +112,27 @@ pub mod errors {
 use errors::*;
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 pub fn check_db(conn: &PgConnection) -> Result<bool> {
     run_db_migrations(conn).chain_err(|| "Couldn't run the migrations.")?;
     let first_user: Option<User> = schema::users::table
@@ -152,6 +173,32 @@ pub fn db_connect(database_url: &str) -> Result<PgConnection> {
         .chain_err(|| "Error connecting to database!")
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<User> {
     use schema::users::dsl::*;
     use diesel::result::Error::NotFound;
@@ -179,6 +226,28 @@ fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(Us
                 e => e.caused_err(|| "Error when trying to retrieve user!"),
         })
 }
+
+
+pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str, pepper: &[u8]) -> Result<Option<User>> {
+    let (user, hashed_pw_from_db) = match get_user_pass_by_email(conn, email) {
+        Err(err) => match err.kind() {
+            &ErrorKind::NoSuchUser(_) => return Ok(None),
+            _ => Err(err),
+        },
+        ok => ok,
+    }?;
+
+    match password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper) {
+        Err(err) => match err.kind() {
+            &ErrorKind::PasswordDoesntMatch => return Ok(None),
+            _ => Err(err),
+        },
+        ok => ok,
+    }?;
+    
+    Ok(Some(user))
+}
+
 
 pub fn add_user(conn : &PgConnection, email : &str, password : &str, pepper: &[u8]) -> Result<User> {
     use schema::{users, passwords, user_metrics};
@@ -246,26 +315,6 @@ pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<User> {
         })
 }
 
-pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str, pepper: &[u8]) -> Result<Option<User>> {
-    let (user, hashed_pw_from_db) = match get_user_pass_by_email(conn, email) {
-        Err(err) => match err.kind() {
-            &ErrorKind::NoSuchUser(_) => return Ok(None),
-            _ => Err(err),
-        },
-        ok => ok,
-    }?;
-
-    match password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper) {
-        Err(err) => match err.kind() {
-            &ErrorKind::PasswordDoesntMatch => return Ok(None),
-            _ => Err(err),
-        },
-        ok => ok,
-    }?;
-    
-    Ok(Some(user))
-}
-
 pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str, pepper: &[u8]) -> Result<()> {
 
     let pw = password::set_password(new_password, pepper).chain_err(|| "Setting password didn't succeed!")?;
@@ -274,6 +323,86 @@ pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str,
 
     Ok(())
 }
+
+
+pub fn join_user_group_by_id(conn: &PgConnection, user: &User, group_id: i32) -> Result<()> {
+    use schema::{user_groups, group_memberships};
+
+    let group: UserGroup = user_groups::table
+        .filter(user_groups::id.eq(group_id))
+        .first(conn)?;
+
+    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id})
+                .into(group_memberships::table)
+                .execute(conn)?;
+    Ok(())
+}
+
+pub fn join_user_group_by_name(conn: &PgConnection, user: &User, group_name: &str) -> Result<()> {
+    use schema::{user_groups, group_memberships};
+
+    let group: UserGroup = user_groups::table
+        .filter(user_groups::group_name.eq(group_name))
+        .first(conn)?;
+
+    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id})
+                .into(group_memberships::table)
+                .execute(conn)?;
+    Ok(())
+}
+
+pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -> Result<bool> {
+    use schema::{user_groups, group_memberships};
+
+    if group_name == "" { return Ok(true) };
+
+    let exists : Option<(UserGroup, GroupMembership)> = user_groups::table
+        .inner_join(group_memberships::table)
+        .filter(group_memberships::user_id.eq(user.id))
+        .filter(user_groups::group_name.eq(group_name))
+        .get_result(&*conn)
+        .optional()
+        .chain_err(|| "DB error")?;
+
+    Ok(exists.is_some())
+}
+
+pub fn get_group(conn : &PgConnection, group_name: &str )  -> Result<Option<UserGroup>> {
+    use schema::user_groups;
+
+    let group : Option<(UserGroup)> = user_groups::table
+        .filter(user_groups::group_name.eq(group_name))
+        .get_result(&*conn)
+        .optional()?;
+
+    Ok(group)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub const SESSID_BITS : usize = 128;
 
@@ -393,6 +522,32 @@ pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<
         .chain_err(|| "Couldn't start a session!") // TODO if the session id already exists, this is going to fail? (A few-in-a 2^128 change, though...)
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 pub fn add_pending_email_confirm(conn : &PgConnection, email : &str, groups: &[i32]) -> Result<String> {
     use schema::pending_email_confirms;
     let secret = data_encoding::base64url::encode(&fresh_sessid()?[..]);
@@ -437,65 +592,23 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
-pub fn join_user_group_by_id(conn: &PgConnection, user: &User, group_id: i32) -> Result<()> {
-    use schema::{user_groups, group_memberships};
 
-    let group: UserGroup = user_groups::table
-        .filter(user_groups::id.eq(group_id))
-        .first(conn)?;
 
-    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id})
-                .into(group_memberships::table)
-                .execute(conn)?;
-    Ok(())
-}
 
-pub fn join_user_group_by_name(conn: &PgConnection, user: &User, group_name: &str) -> Result<()> {
-    use schema::{user_groups, group_memberships};
 
-    let group: UserGroup = user_groups::table
-        .filter(user_groups::group_name.eq(group_name))
-        .first(conn)?;
 
-    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id})
-                .into(group_memberships::table)
-                .execute(conn)?;
-    Ok(())
-}
 
-pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -> Result<bool> {
-    use schema::{user_groups, group_memberships};
 
-    if group_name == "" { return Ok(true) };
 
-    let exists : Option<(UserGroup, GroupMembership)> = user_groups::table
-        .inner_join(group_memberships::table)
-        .filter(group_memberships::user_id.eq(user.id))
-        .filter(user_groups::group_name.eq(group_name))
-        .get_result(&*conn)
-        .optional()
-        .chain_err(|| "DB error")?;
 
-    Ok(exists.is_some())
-}
 
-pub fn get_group(conn : &PgConnection, group_name: &str )  -> Result<Option<UserGroup>> {
-    use schema::user_groups;
 
-    let group : Option<(UserGroup)> = user_groups::table
-        .filter(user_groups::group_name.eq(group_name))
-        .get_result(&*conn)
-        .optional()?;
 
-    Ok(group)
-}
 
-#[derive(Debug)]
-pub struct Fieldset {
-    pub q_variants: Vec<(PathBuf, Option<String>, mime::Mime)>,
-    pub answer_audio: Option<(PathBuf, Option<String>, mime::Mime)>,
-    pub answer_text: String,
-}
+
+
+
+
 
 
 fn save_audio_file(path: &mut std::path::PathBuf, orig_filename: &str) -> Result<()> {
@@ -625,6 +738,59 @@ fn load_audio_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<Vec<Au
     Ok(q_audio_files)
 }
 
+pub fn get_audio_bundles(conn : &PgConnection) -> Result<Vec<(AudioBundle, Vec<AudioFile>)>> {
+    use schema::{audio_bundles};
+    let bundles: Vec<AudioBundle> = audio_bundles::table.get_results(conn)?;
+
+    // FIXME checking this special case until the panicking bug in Diesel is fixed
+    let audio_files = if bundles.len() > 0 {
+        AudioFile::belonging_to(&bundles).load::<AudioFile>(conn)?.grouped_by(&bundles)
+    } else { vec![] };
+    let all = bundles.into_iter().zip(audio_files).collect();
+    Ok(all)
+}
+
+pub fn get_audio_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {
+    use schema::audio_files::dsl::*;
+    use diesel::result::Error::NotFound;
+
+    let file : AudioFile = audio_files
+        .filter(id.eq(line_id))
+        .get_result(&*conn)
+        .map_err(|e| match e {
+                e @ NotFound => e.caused_err(|| ErrorKind::FileNotFound),
+                e => e.caused_err(|| "Couldn't get the file!"),
+        })?;
+
+    Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 fn get_create_skill_nugget_by_name(conn : &PgConnection, skill_summary: &str) -> Result<SkillNugget> {
     use schema::skill_nuggets;
 
@@ -643,6 +809,588 @@ fn get_create_skill_nugget_by_name(conn : &PgConnection, skill_summary: &str) ->
                 .chain_err(|| "Database error!")?
         }
     })
+}
+
+pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<Word>, Vec<(QuizQuestion, Vec<Answer>)>))>> {
+    use schema::{skill_nuggets, quiz_questions, question_answers, words};
+    let nuggets: Vec<SkillNugget> = skill_nuggets::table.get_results(conn)?;
+    let qs = if nuggets.len() > 0 {
+        QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?
+    } else { vec![] };
+
+    // FIXME checking this special case until the panicking bug in Diesel is fixed
+    let aas = if qs.len() > 0 {
+        Answer::belonging_to(&qs).order(question_answers::id.asc()).load::<Answer>(conn)?.grouped_by(&qs)
+    } else { vec![] };
+
+    let qs_and_as = qs.into_iter().zip(aas.into_iter()).collect::<Vec<_>>().grouped_by(&nuggets);
+
+    // FIXME checking this special case until the panicking bug in Diesel is fixed
+    let ws = if nuggets.len() > 0 {
+        Word::belonging_to(&nuggets).order(words::id.asc()).load::<Word>(conn)?.grouped_by(&nuggets)
+    } else { vec![] };
+
+    let cards = ws.into_iter().zip(qs_and_as.into_iter());
+    let all = nuggets.into_iter().zip(cards).collect();
+    Ok(all)
+}
+
+fn log_skill_by_id(conn : &PgConnection, user : &User, skill_id: i32, level_increment: i32) -> Result<SkillData> {
+    use schema::{skill_data};
+
+    let skill_data : Option<SkillData> = skill_data::table
+                                        .filter(skill_data::user_id.eq(user.id))
+                                        .filter(skill_data::skill_nugget.eq(skill_id))
+                                        .get_result(conn)
+                                        .optional()?;
+    Ok(if let Some(skill_data) = skill_data {
+        diesel::update(skill_data::table
+                            .filter(skill_data::user_id.eq(user.id))
+                            .filter(skill_data::skill_nugget.eq(skill_id)))
+                .set(skill_data::skill_level.eq(skill_data.skill_level + level_increment))
+                .get_result(conn)?
+    } else {
+        diesel::insert(&SkillData {
+            user_id: user.id,
+            skill_nugget: skill_id,
+            skill_level: level_increment,
+        }).into(skill_data::table)
+        .get_result(conn)?
+    })
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Debug)]
+pub enum Answered {
+    Word(AnsweredWord),
+    Question(AnsweredQuestion),
+    AnsweredExercise(AnsweredExercise),
+}
+
+#[derive(Debug)]
+pub struct AnsweredWord {
+    pub word_id: i32,
+    pub time: i32,
+    pub times_audio_played: i32,
+}
+
+#[derive(Debug)]
+pub struct AnsweredExercise {
+    pub word_id: i32,
+    pub time: i32,
+    pub times_audio_played: i32,
+    pub correct: bool,
+    pub active_answer_time: i32,
+    pub full_answer_time: i32,
+    pub audio_times: i32,
+}
+
+#[derive(Debug)]
+pub struct AnsweredQuestion {
+    pub question_id: i32,
+    pub right_answer_id: i32,
+    pub answered_id: Option<i32>,
+    pub q_audio_id: i32,
+    pub active_answer_time: i32,
+    pub full_answer_time: i32,
+}
+
+fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) -> Result<()> {
+    use schema::{word_data, user_metrics, words};
+
+
+    let word: Word = words::table.filter(words::id.eq(answer.word_id)).get_result(conn)?;
+
+    // Insert the specifics of this answer event
+    let answerdata = WordData {
+        user_id: user.id,
+        word_id: answer.word_id,
+        audio_times: answer.times_audio_played,
+        answer_time_ms: answer.time,
+    };
+    diesel::insert(&answerdata)
+        .into(word_data::table)
+        .execute(conn)
+        .chain_err(|| "Couldn't save the answer data to database!")?;
+
+    let mut metrics : UserMetrics = user_metrics::table
+        .filter(user_metrics::id.eq(user.id))
+        .get_result(&*conn)?;
+
+    metrics.new_words_today += 1;
+    metrics.new_words_since_break += 1;
+    let _ : UserMetrics = metrics.save_changes(&*conn)?;
+
+    log_skill_by_id(conn, user, word.skill_nugget, 1)?;
+
+    Ok(())
+}
+
+fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQuestion) -> Result<(QuestionData, DueItem)> {
+    use schema::{q_answer_data, due_items, question_data, quiz_questions};
+    use std::cmp::max;
+
+    let correct = answer.right_answer_id == answer.answered_id.unwrap_or(-1);
+
+    // Insert the specifics of this answer event
+    let answerdata = NewQAnswerData {
+        user_id: user.id,
+        question_id: answer.question_id,
+        q_audio_id: answer.q_audio_id,
+        correct_qa_id: answer.right_answer_id,
+        answered_qa_id: answer.answered_id,
+        active_answer_time_ms: answer.active_answer_time,
+        full_answer_time_ms: answer.full_answer_time,
+        correct: correct,
+    };
+
+    diesel::insert(&answerdata)
+        .into(q_answer_data::table)
+        .execute(conn)
+        .chain_err(|| "Couldn't save the answer data to database!")?;
+
+    let question : QuizQuestion = quiz_questions::table
+                    .filter(quiz_questions::id.eq(answer.question_id))
+                    .get_result(conn)?;
+
+    let mut questiondata : Option<(QuestionData, DueItem)> = question_data::table
+                                        .inner_join(due_items::table)
+                                        .filter(due_items::user_id.eq(user.id))
+                                        .filter(question_data::question_id.eq(answer.question_id))
+                                        .get_result(&*conn)
+                                        .optional()?;
+
+    // Update the data for this question (due date, statistics etc.)
+    Ok(if let Some(questiondata, mut due_item) = questiondata {
+
+        let due_delay = if correct { max(questiondata.due_delay * 2, 15) } else { 0 };
+        let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
+        let streak = if correct {questiondata.correct_streak + 1} else { 0 };
+        if streak > 2 { log_skill_by_id(conn, user, question.skill_id, 1)?; };
+
+        due_item.due_date = next_due_date;
+        due_item.due_delay = due_delay;
+        due_item.correct_streak = streak;
+        let due_item = due_item.save_changes(conn);
+        (questiondata, due_item)
+
+    } else { // New!
+
+        let due_delay = if correct { 30 } else { 0 };
+        let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
+        log_skill_by_id(conn, user, question.skill_id, 1)?; // First time bonus!
+
+        let due_item = NewDueItem {
+            user_id: user.id,
+            correct_streak: if correct { 1 } else { 0 },
+            due_date: next_due_date,
+            due_delay: due_delay,
+            item_type: "question".into(),
+        };
+        let due_item: DueItem = diesel::insert(&due_item)
+            .into(due_items::table)
+            .get_result(conn)?;
+        let questiondata = QuestionData {
+            question_id: answer.question_id,
+            due: due_item.id,
+        };
+        let questiondata = diesel::insert(&questiondata)
+            .into(question_data::table)
+            .get_result(conn)?;
+        (questiondata, due_item)
+    })
+}
+
+fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExercise) -> Result<ExerciseData> {
+    use schema::{e_answer_data, due_items, exercise_data, words};
+    use std::cmp::max;
+
+    let correct = answer.correct;
+
+    // Insert the specifics of this answer event
+    let answerdata = NewEAnswerData {
+        user_id: user.id,
+        word_id: answer.word_id,
+        active_answer_time_ms: answer.active_answer_time,
+        full_answer_time_ms: answer.full_answer_time,
+        audio_times: answer.audio_times,
+        correct: correct,
+    };
+
+    diesel::insert(&answerdata)
+        .into(e_answer_data::table)
+        .execute(conn)
+        .chain_err(|| "Couldn't save the answer data to database!")?;
+
+    let w : Word = words::table
+                    .filter(words::id.eq(answer.word_id))
+                    .get_result(conn)?;
+
+    let mut exercisedata : Option<(ExerciseData, DueItem)> = exercise_data::table
+                                        .inner_join(due_items::table)
+                                        .filter(due_items::user_id.eq(user.id))
+                                        .filter(exercise_data::word_id.eq(answer.word_id))
+                                        .get_result(&*conn)
+                                        .optional()?;
+
+    // Update the data for this word exercise (due date, statistics etc.)
+    Ok(if let Some(exercisedata, mut due_item) = exercisedata {
+
+        let due_delay = if correct { max(exercisedata.due_delay * 2, 15) } else { 0 };
+        let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
+        let streak = if correct {exercisedata.correct_streak + 1} else { 0 };
+        if streak > 2 { log_skill_by_id(conn, user, w.skill_nugget, 1)?; };
+
+        due_item.due_date = next_due_date;
+        due_item.due_delay = due_delay;
+        due_item.correct_streak = streak;
+        let due_item = due_item.save_changes(conn);
+        (exercisedata, due_item)
+
+    } else { // New!
+
+        let due_delay = if correct { 30 } else { 0 };
+        let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
+        log_skill_by_id(conn, user, w.skill_nugget, 1)?; // First time bonus!
+
+        let due_item = NewDueItem {
+            user_id: user.id,
+            correct_streak: if correct { 1 } else { 0 },
+            due_date: next_due_date,
+            due_delay: due_delay,
+            item_type: "question".into(),
+        };
+        let due_item: DueItem = diesel::insert(&due_item)
+            .into(due_items::table)
+            .get_result(conn)?;
+        let exercisedata = ExerciseData {
+            due: due_item.id,
+            word_id: answer.word_id,
+        };
+        diesel::insert(&exercisedata)
+            .into(exercise_data::table)
+            .get_result(conn)
+            .chain_err(|| "Couldn't save the question tally data to database!")?
+        (exercisedata, due_item)
+    })
+}
+
+fn load_question(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<Vec<AudioFile>>)>> {
+    use schema::{quiz_questions, question_answers, audio_bundles};
+
+    let qq : Option<QuizQuestion> = quiz_questions::table
+        .filter(quiz_questions::id.eq(id))
+        .get_result(&*conn)
+        .optional()
+        .chain_err(|| "Can't load quiz!")?;
+
+    let qq = try_or!{ qq, else return Ok(None) };
+
+    let (aas, q_bundles) : (Vec<Answer>, Vec<AudioBundle>) = question_answers::table
+        .inner_join(audio_bundles::table)
+        .filter(question_answers::question_id.eq(qq.id))
+        .load(&*conn)
+        .chain_err(|| "Can't load quiz!")?
+        .into_iter().unzip();
+
+    let q_audio_files = load_audio_from_bundles(&*conn, &q_bundles)?;
+    
+    Ok(Some((qq, aas, q_audio_files)))
+}
+
+fn get_due_items(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(DueItem, Option<QuestionData>, Option<ExerciseData>)>> {
+    use schema::{due_items, question_data, exercise_data};
+/*
+    let dues = due_items::table
+        .select(due_items::id)
+        .filter(due_items::user_id.eq(user_id))
+        .order(due_items::due_date.asc())
+        .limit(5);
+*/
+    let due_items : Vec<(DueItem, Option<QuestionData>, Option<ExerciseData>)>;
+    if allow_peeking { 
+
+        let dues: Vec<DueItem> = due_items::table
+            .filter(due_items::user_id.eq(user_id))
+            .order(due_items::due_date.asc())
+            .limit(5)
+            .get_results(&*conn)?;
+
+        let due_questions: Vec<Option<QuestionData>> = due_items::table
+            .left_outer_join(question_data::table)
+            .select(question_data::table)
+            .filter(due_items::user_id.eq(user_id))
+            .order(due_items::due_date.asc())
+            .limit(5)
+            .get_results(&*conn)?;
+
+        let due_exercises: Vec<Option<ExerciseData>> = due_items::table
+            .left_outer_join(exercise_data::table)
+            .select(exercise_data::table)
+            .filter(due_items::user_id.eq(user_id))
+            .order(due_items::due_date.asc())
+            .limit(5)
+            .get_results(&*conn)?;
+
+        due_items = dues.into_iter().zip(due_questions.into_iter().zip(due_exercises.into_iter())).map(|(i, (q, e))| (i, q, e));
+
+    }/* else { // FIXME uncomment this
+
+        due_questions = quiz_questions::table
+            .inner_join(question_data::table)
+            .filter(quiz_questions::id.eq(any(
+                dues.filter(question_data::due_date.lt(chrono::UTC::now()))
+            )))
+            .filter(question_data::user_id.eq(user_id))
+            .filter(quiz_questions::published.eq(true))
+            .order(question_data::due_date.asc())
+            .get_results(&*conn)
+            .chain_err(|| "Can't get due question!")?;
+    }*/;
+
+    Ok(due_items)
+}
+
+fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQuestion>> {
+    use schema::{quiz_questions, question_data, due_items, skill_data};
+    let dues = due_items::table
+        .inner_join(question_data::table)
+        .select(question_data::question_id)
+        .filter(due_items::user_id.eq(user_id));
+
+    let skills = skill_data::table
+        .select(skill_data::skill_nugget)
+        .filter(skill_data::skill_level.gt(1)) // Take only skills with level >= 2 (=both words introduced) before
+        .filter(skill_data::user_id.eq(user_id));
+
+    let new_questions : Vec<QuizQuestion> = quiz_questions::table
+        .filter(quiz_questions::id.ne(any(dues)))
+   //     .filter(quiz_questions::skill_id.eq(any(skills))) // FIXME
+   //     .filter(quiz_questions::published.eq(true))   //FIXME
+        .limit(5)
+        .order(quiz_questions::id.asc())
+        .get_results(conn)?;
+
+    Ok(new_questions)
+}
+
+fn get_new_exercises(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
+    use schema::{words, exercise_data, due_items, skill_data};
+    let dues = due_items::table
+        .inner_join(exercise_data::table)
+        .select(exercise_data::word_id)
+        .filter(exercise_data::user_id.eq(user_id));
+
+    let skills = skill_data::table
+        .select(skill_data::skill_nugget)
+        .filter(skill_data::skill_level.gt(1)) // Take only skills with level >= 2 (=both words introduced) before
+        .filter(skill_data::user_id.eq(user_id));
+
+    let new_questions : Vec<Word> = words::table
+        .left_outer_join(exercise_data::table)
+        .filter(words::id.ne(all(dues)))
+     //   .filter(words::skill_nugget.eq(any(skills))) //FIXME
+     //   .filter(words::published.eq(true)) // FIXME
+        .limit(5)
+        .order(words::id.asc())
+        .get_results(conn)?;
+
+    Ok(new_questions)
+}
+
+fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
+    use diesel::expression::dsl::*;
+    use schema::{words, word_data};
+
+    let seen = word_data::table
+        .select(word_data::word_id)
+        .filter(word_data::user_id.eq(user_id));
+
+    let new_words : Vec<Word> = words::table
+        .filter(words::id.ne(all(seen)))
+        .filter(words::published.eq(true))
+        .limit(5)
+        .order(words::id.asc())
+        .get_results(conn)
+        .chain_err(|| "Can't get new words!")?;
+
+    Ok(new_words)
+}
+
+#[derive(Debug)]
+pub enum Quiz {
+    Word((Word, Vec<AudioFile>, bool)),
+    Exercise(Exercise),
+    Question(Question),
+}
+
+#[derive(Debug)]
+pub struct Exercise {
+    pub word: Word,
+    pub audio_files: Vec<AudioFile>,
+    pub due_delay: i32,
+    pub due_date: Option<chrono::DateTime<chrono::UTC>>,
+}
+#[derive(Debug)]
+pub struct Question {
+    pub question: QuizQuestion,
+    pub question_audio: Vec<AudioFile>,
+    pub right_answer_id: i32,
+    pub answers: Vec<Answer>,
+    pub due_delay: i32,
+    pub due_date: Option<chrono::DateTime<chrono::UTC>>,
+}
+
+pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
+    use rand::Rng;
+    use schema::user_metrics;
+
+    // Checking due questions & exercises first
+
+    let question_data =
+    if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, false)?.get(0) {
+        Some((q.id, qdata.due_delay, Some(qdata.due_date)))
+
+    } else if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
+        Some((q.id, 0, None))
+
+    } else { None };
+
+    if let Some((question_id, due_delay, due_date)) = question_data {
+        let (question, answers, mut qqs) = try_or!{ load_question(conn, question_id)?, else return Ok(None) };
+        
+        let mut rng = rand::thread_rng();
+        let random_answer_index = rng.gen_range(0, answers.len());
+        let right_answer_id = answers[random_answer_index].id;
+        let question_audio = qqs.remove(random_answer_index);
+        
+        return Ok(Some(Quiz::Question(Question{question, question_audio, right_answer_id, answers, due_delay, due_date})))
+
+    }
+
+    // No questions available ATM, checking words
+
+    let metrics : UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user.id)).get_result(&*conn)?;
+    
+    if metrics.new_words_today <= 18 || metrics.new_words_since_break <= 6 {
+        let mut words = get_new_words(&*conn, user.id)?;
+        if words.len() > 0 {
+            let the_word = words.swap_remove(0);
+            let audio_files = load_audio_from_bundle(&*conn, the_word.audio_bundle)?;
+            let show_accents = check_user_group(conn, user, "output_group")?;
+
+            return Ok(Some(Quiz::Word((the_word, audio_files, show_accents))));
+        }
+    }
+
+    // Peeking for the future
+
+    if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, true)?.get(0) {
+        let (question, answers, mut qqs) = try_or!{ load_question(conn, q.id)?, else return Ok(None) };
+        
+        let mut rng = rand::thread_rng();
+        let random_answer_index = rng.gen_range(0, answers.len());
+        let right_answer_id = answers[random_answer_index].id;
+        let question_audio = qqs.remove(random_answer_index);
+        
+        return Ok(Some(Quiz::Question(Question{question, question_audio, right_answer_id, answers, due_delay: qdata.due_delay, due_date: Some(qdata.due_date)})));
+    }
+    Ok(None)
+}
+
+
+pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
+-> Result<Option<Quiz>> {
+
+    match answer_enum {
+        Answered::Word(answer_word) => {
+            log_answer_word(conn, user, &answer_word)?;
+            return get_new_quiz(conn, user);
+        },
+        Answered::AnsweredExercise(exercise) => {
+            log_answer_exercise(conn, user, &exercise)?;
+            return get_new_quiz(conn, user);
+        },
+        Answered::Question(answer) => {
+            let q_data = log_answer_question(conn, user, &answer)?;
+        
+            if q_data.correct_streak > 0 { // RIGHT. Get a new question/word.
+                return get_new_quiz(conn, user);
+        
+            } else {            // WROOONG. Ask the same question again.
+        
+                let (question, answers, mut q_audio_files ) = try_or!{ load_question(conn, answer.question_id)?, else return Ok(None) };
+
+                let right_answer_id = answer.right_answer_id;
+                
+                let (i, _) = answers.iter().enumerate()
+                    .find(|&(_, ref qa)| qa.id == right_answer_id )
+                    .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
+
+                let question_audio : Vec<AudioFile> = q_audio_files.remove(i);
+        
+                return Ok(Some(Quiz::Question(
+                    Question{question, question_audio, right_answer_id, answers, due_delay: q_data.due_delay, due_date: Some(q_data.due_date)}
+                    )))
+            }
+        },
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Debug)]
+pub struct Fieldset {
+    pub q_variants: Vec<(PathBuf, Option<String>, mime::Mime)>,
+    pub answer_audio: Option<(PathBuf, Option<String>, mime::Mime)>,
+    pub answer_text: String,
 }
 
 pub struct NewQuestion {
@@ -713,401 +1461,6 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
     Ok(quiz)
 }
 
-fn load_quiz(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<Vec<AudioFile>>)>> {
-    use schema::{quiz_questions, question_answers, audio_bundles};
-
-    let qq : Option<QuizQuestion> = quiz_questions::table
-        .filter(quiz_questions::id.eq(id))
-        .get_result(&*conn)
-        .optional()
-        .chain_err(|| "Can't load quiz!")?;
-
-    let qq = try_or!{ qq, else return Ok(None) };
-
-    let (aas, q_bundles) : (Vec<Answer>, Vec<AudioBundle>) = question_answers::table
-        .inner_join(audio_bundles::table)
-        .filter(question_answers::question_id.eq(qq.id))
-        .load(&*conn)
-        .chain_err(|| "Can't load quiz!")?
-        .into_iter().unzip();
-
-    let q_audio_files = load_audio_from_bundles(&*conn, &q_bundles)?;
-    
-    Ok(Some((qq, aas, q_audio_files)))
-}
-
-#[derive(Debug)]
-pub enum Answered {
-    Word(AnsweredWord),
-    Question(AnsweredQuestion),
-    AnsweredExercise(AnsweredExercise),
-}
-
-#[derive(Debug)]
-pub struct AnsweredWord {
-    pub word_id: i32,
-    pub time: i32,
-    pub times_audio_played: i32,
-}
-
-#[derive(Debug)]
-pub struct AnsweredExercise {
-    pub word_id: i32,
-    pub time: i32,
-    pub times_audio_played: i32,
-}
-
-#[derive(Debug)]
-pub struct AnsweredQuestion {
-    pub question_id: i32,
-    pub right_answer_id: i32,
-    pub answered_id: Option<i32>,
-    pub q_audio_id: i32,
-    pub active_answer_time: i32,
-    pub full_answer_time: i32,
-}
-
-fn log_skill_by_id(conn : &PgConnection, user : &User, skill_id: i32, level_increment: i32) -> Result<SkillData> {
-    use schema::{skill_data};
-
-    let skill_data : Option<SkillData> = skill_data::table
-                                        .filter(skill_data::user_id.eq(user.id))
-                                        .filter(skill_data::skill_nugget.eq(skill_id))
-                                        .get_result(conn)
-                                        .optional()?;
-    Ok(if let Some(skill_data) = skill_data {
-        diesel::update(skill_data::table
-                            .filter(skill_data::user_id.eq(user.id))
-                            .filter(skill_data::skill_nugget.eq(skill_id)))
-                .set(skill_data::skill_level.eq(skill_data.skill_level + level_increment))
-                .get_result(conn)?
-    } else {
-        diesel::insert(&SkillData {
-            user_id: user.id,
-            skill_nugget: skill_id,
-            skill_level: level_increment,
-        }).into(skill_data::table)
-        .get_result(conn)?
-    })
-
-}
-
-fn log_answer_question(conn : &PgConnection, user : &User, answer: &AnsweredQuestion) -> Result<QuestionData> {
-    use schema::{answer_data, question_data, quiz_questions};
-    use std::cmp::max;
-
-    let correct = answer.right_answer_id == answer.answered_id.unwrap_or(-1);
-
-    // Insert the specifics of this answer event
-    let answerdata = NewAnswerData {
-        user_id: user.id,
-        question_id: answer.question_id,
-        q_audio_id: answer.q_audio_id,
-        correct_qa_id: answer.right_answer_id,
-        answered_qa_id: answer.answered_id,
-        active_answer_time_ms: answer.active_answer_time,
-        full_answer_time_ms: answer.full_answer_time,
-        correct: correct,
-    };
-
-    diesel::insert(&answerdata)
-        .into(answer_data::table)
-        .execute(conn)
-        .chain_err(|| "Couldn't save the answer data to database!")?;
-
-    let q : QuizQuestion = quiz_questions::table
-                    .filter(quiz_questions::id.eq(answer.question_id))
-                    .get_result(conn)?;
-
-    let questiondata : Option<QuestionData> = question_data::table
-                                        .filter(question_data::user_id.eq(user.id))
-                                        .filter(question_data::question_id.eq(answer.question_id))
-                                        .get_result(&*conn)
-                                        .optional()?;
-
-    // Update the data for this question (due date, statistics etc.)
-    Ok(if let Some(questiondata) = questiondata {
-
-        let due_delay = if correct { max(questiondata.due_delay * 2, 15) } else { 0 };
-        let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
-        let streak = if correct {questiondata.correct_streak + 1} else { 0 };
-        if streak > 2 { log_skill_by_id(conn, user, q.skill_id, 1)?; };
-
-        diesel::update(
-                question_data::table
-                    .filter(question_data::user_id.eq(user.id))
-                    .filter(question_data::question_id.eq(answer.question_id))
-            )
-            .set((
-                question_data::due_date.eq(next_due_date),
-                question_data::due_delay.eq(due_delay),
-                question_data::correct_streak.eq(streak),
-            ))
-            .get_result(conn)
-            .chain_err(|| "Couldn't save the question tally data to database!")?
-
-    } else { // New!
-
-        let due_delay = if correct { 30 } else { 0 };
-        let next_due_date = chrono::UTC::now() + chrono::Duration::seconds(due_delay as i64);
-        log_skill_by_id(conn, user, q.skill_id, 1)?; // First time bonus!
-
-        let questiondata = QuestionData {
-            user_id: user.id,
-            question_id: answer.question_id,
-            correct_streak: if correct { 1 } else { 0 },
-            due_date: next_due_date,
-            due_delay: due_delay,
-        };
-        diesel::insert(&questiondata)
-            .into(question_data::table)
-            .get_result(conn)
-            .chain_err(|| "Couldn't save the question tally data to database!")?
-    })
-}
-
-fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) -> Result<()> {
-    use schema::{word_data, user_metrics, words};
-
-
-    let word: Word = words::table.filter(words::id.eq(answer.word_id)).get_result(conn)?;
-
-    // Insert the specifics of this answer event
-    let answerdata = NewWordData {
-        user_id: user.id,
-        word_id: answer.word_id,
-        audio_times: answer.times_audio_played,
-        answer_time_ms: answer.time,
-    };
-    diesel::insert(&answerdata)
-        .into(word_data::table)
-        .execute(conn)
-        .chain_err(|| "Couldn't save the answer data to database!")?;
-
-    let mut metrics : UserMetrics = user_metrics::table
-        .filter(user_metrics::id.eq(user.id))
-        .get_result(&*conn)?;
-
-    metrics.new_words_today += 1;
-    metrics.new_words_since_break += 1;
-    let _ : UserMetrics = metrics.save_changes(&*conn)?;
-
-    log_skill_by_id(conn, user, word.skill_nugget, 1)?;
-
-    Ok(())
-}
-
-fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExercise) -> Result<()> {
-    unimplemented!(); // FIXME
-}
-
-fn get_due_questions(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(QuizQuestion, QuestionData)>> {
-    use schema::{quiz_questions, question_data};
-
-    let dues = question_data::table
-        .select(question_data::question_id)
-        .filter(question_data::user_id.eq(user_id))
-        .order(question_data::due_date.asc())
-        .limit(5);
-
-    let due_questions : Vec<(QuizQuestion, QuestionData)>;
-    if allow_peeking { 
-
-        due_questions = quiz_questions::table
-            .inner_join(question_data::table)
-            .filter(quiz_questions::id.eq(any(dues)))
-            .filter(question_data::user_id.eq(user_id))
-            .filter(quiz_questions::published.eq(true))
-            .order(question_data::due_date.asc())
-            .get_results(&*conn)
-            .chain_err(|| "Can't get due question!")?;
-
-    } else {
-
-        due_questions = quiz_questions::table
-            .inner_join(question_data::table)
-            .filter(quiz_questions::id.eq(any(
-                dues.filter(question_data::due_date.lt(chrono::UTC::now()))
-            )))
-            .filter(question_data::user_id.eq(user_id))
-            .filter(quiz_questions::published.eq(true))
-            .order(question_data::due_date.asc())
-            .get_results(&*conn)
-            .chain_err(|| "Can't get due question!")?;
-    };
-
-    Ok(due_questions)
-}
-
-fn get_new_questions(conn : &PgConnection, user_id : i32) -> Result<Vec<QuizQuestion>> {
-    use schema::{quiz_questions, question_data, skill_data};
-    let dues = question_data::table
-        .select(question_data::question_id)
-        .filter(question_data::user_id.eq(user_id));
-
-    let skills = skill_data::table
-        .select(skill_data::skill_nugget)
-        .filter(skill_data::skill_level.gt(1)) // Take only skills with level >= 2 (=both words introduced) before
-        .filter(skill_data::user_id.eq(user_id));
-
-    let new_questions : Vec<QuizQuestion> = quiz_questions::table
-        .filter(quiz_questions::id.ne(all(dues)))
-        .filter(quiz_questions::skill_id.eq(any(skills)))
-        .filter(quiz_questions::published.eq(true))
-        .limit(5)
-        .order(quiz_questions::id.asc())
-        .get_results(conn)
-        .chain_err(|| "Can't get new question!")?;
-
-    Ok(new_questions)
-}
-
-fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
-    use diesel::expression::dsl::*;
-    use schema::{words, word_data};
-
-    let seen = word_data::table
-        .select(word_data::word_id)
-        .filter(word_data::user_id.eq(user_id));
-
-    let new_words : Vec<Word> = words::table
-        .filter(words::id.ne(all(seen)))
-        .filter(words::published.eq(true))
-        .limit(5)
-        .order(words::id.asc())
-        .get_results(conn)
-        .chain_err(|| "Can't get new words!")?;
-
-    Ok(new_words)
-}
-
-#[derive(Debug)]
-pub enum Card {
-    Word((Word, Vec<AudioFile>)),
-    Quiz(Quiz),
-}
-
-#[derive(Debug)]
-pub struct Quiz {
-    pub question: QuizQuestion,
-    pub question_audio: Vec<AudioFile>,
-    pub right_answer_id: i32,
-    pub answers: Vec<Answer>,
-    pub due_delay: i32,
-    pub due_date: Option<chrono::DateTime<chrono::UTC>>,
-}
-
-pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Card>> {
-    use rand::Rng;
-    use schema::user_metrics;
-
-    // Checking due questions first
-
-    let question_data =
-    if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, false)?.get(0) {
-        Some((q.id, qdata.due_delay, Some(qdata.due_date)))
-
-    } else if let Some(q) = get_new_questions(&*conn, user.id)?.get(0) {
-        Some((q.id, 0, None))
-
-    } else { None };
-
-    if let Some((question_id, due_delay, due_date)) = question_data {
-        let (question, answers, mut qqs) = try_or!{ load_quiz(conn, question_id)?, else return Ok(None) };
-        
-        let mut rng = rand::thread_rng();
-        let random_answer_index = rng.gen_range(0, answers.len());
-        let right_answer_id = answers[random_answer_index].id;
-        let question_audio = qqs.remove(random_answer_index);
-        
-        return Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay, due_date})))
-
-    }
-
-    // No questions available ATM, checking words
-
-    let metrics : UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user.id)).get_result(&*conn)?;
-    
-    if metrics.new_words_today <= 18 || metrics.new_words_since_break <= 6 {
-        let mut words = get_new_words(&*conn, user.id)?;
-        if words.len() > 0 {
-            let the_word = words.swap_remove(0);
-            let audio_files = load_audio_from_bundle(&*conn, the_word.audio_bundle)?;
-
-            return Ok(Some(Card::Word((the_word, audio_files))));
-        }
-    }
-
-    // Peeking for the future
-
-    if let Some(&(ref q, ref qdata)) = get_due_questions(&*conn, user.id, true)?.get(0) {
-        let (question, answers, mut qqs) = try_or!{ load_quiz(conn, q.id)?, else return Ok(None) };
-        
-        let mut rng = rand::thread_rng();
-        let random_answer_index = rng.gen_range(0, answers.len());
-        let right_answer_id = answers[random_answer_index].id;
-        let question_audio = qqs.remove(random_answer_index);
-        
-        return Ok(Some(Card::Quiz(Quiz{question, question_audio, right_answer_id, answers, due_delay: qdata.due_delay, due_date: Some(qdata.due_date)})));
-    }
-    Ok(None)
-}
-
-
-pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
--> Result<Option<Card>> {
-
-    match answer_enum {
-        Answered::Word(answer_word) => {
-            log_answer_word(conn, user, &answer_word)?;
-            return get_new_quiz(conn, user);
-        },
-        Answered::AnsweredExercise(exercise) => {
-            log_answer_exercise(conn, user, &exercise)?;
-            return get_new_quiz(conn, user);
-        },
-        Answered::Question(answer) => {
-            let q_data = log_answer_question(conn, user, &answer)?;
-        
-            if q_data.correct_streak > 0 { // RIGHT. Get a new question/word.
-                return get_new_quiz(conn, user);
-        
-            } else {            // WROOONG. Ask the same question again.
-        
-                let (question, answers, mut q_audio_files ) = try_or!{ load_quiz(conn, answer.question_id)?, else return Ok(None) };
-
-                let right_answer_id = answer.right_answer_id;
-                
-                let (i, _) = answers.iter().enumerate()
-                    .find(|&(_, ref qa)| qa.id == right_answer_id )
-                    .ok_or_else(|| ErrorKind::DatabaseOdd.to_err())?;
-
-                let question_audio : Vec<AudioFile> = q_audio_files.remove(i);
-        
-                return Ok(Some(Card::Quiz(
-                    Quiz{question, question_audio, right_answer_id, answers, due_delay: q_data.due_delay, due_date: Some(q_data.due_date)}
-                    )))
-            }
-        },
-    }
-
-}
-
-pub fn get_audio_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mime)> {
-    use schema::audio_files::dsl::*;
-    use diesel::result::Error::NotFound;
-
-    let file : AudioFile = audio_files
-        .filter(id.eq(line_id))
-        .get_result(&*conn)
-        .map_err(|e| match e {
-                e @ NotFound => e.caused_err(|| ErrorKind::FileNotFound),
-                e => e.caused_err(|| "Couldn't get the file!"),
-        })?;
-
-    Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
-}
-
 #[derive(Debug)]
 pub struct NewWordFromStrings {
     pub word: String,
@@ -1144,44 +1497,8 @@ pub fn create_word(conn : &PgConnection, w: NewWordFromStrings) -> Result<Word> 
     Ok(word)
 }
 
-pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<Word>, Vec<(QuizQuestion, Vec<Answer>)>))>> {
-    use schema::{skill_nuggets, quiz_questions, question_answers, words};
-    let nuggets: Vec<SkillNugget> = skill_nuggets::table.get_results(conn)?;
-    let qs = if nuggets.len() > 0 {
-        QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?
-    } else { vec![] };
-
-    // FIXME checking this special case until the panicking bug in Diesel is fixed
-    let aas = if qs.len() > 0 {
-        Answer::belonging_to(&qs).order(question_answers::id.asc()).load::<Answer>(conn)?.grouped_by(&qs)
-    } else { vec![] };
-
-    let qs_and_as = qs.into_iter().zip(aas.into_iter()).collect::<Vec<_>>().grouped_by(&nuggets);
-
-    // FIXME checking this special case until the panicking bug in Diesel is fixed
-    let ws = if nuggets.len() > 0 {
-        Word::belonging_to(&nuggets).order(words::id.asc()).load::<Word>(conn)?.grouped_by(&nuggets)
-    } else { vec![] };
-
-    let cards = ws.into_iter().zip(qs_and_as.into_iter());
-    let all = nuggets.into_iter().zip(cards).collect();
-    Ok(all)
-}
-
-pub fn get_audio_bundles(conn : &PgConnection) -> Result<Vec<(AudioBundle, Vec<AudioFile>)>> {
-    use schema::{audio_bundles};
-    let bundles: Vec<AudioBundle> = audio_bundles::table.get_results(conn)?;
-
-    // FIXME checking this special case until the panicking bug in Diesel is fixed
-    let audio_files = if bundles.len() > 0 {
-        AudioFile::belonging_to(&bundles).load::<AudioFile>(conn)?.grouped_by(&bundles)
-    } else { vec![] };
-    let all = bundles.into_iter().zip(audio_files).collect();
-    Ok(all)
-}
-
 pub fn get_question(conn : &PgConnection, id : i32) -> Result<Option<(QuizQuestion, Vec<Answer>)>> {
-    if let Some((qq, aas, _)) = load_quiz(conn, id)? {
+    if let Some((qq, aas, _)) = load_question(conn, id)? {
         Ok(Some((qq, aas)))
     } else {
         Ok(None)
@@ -1268,6 +1585,48 @@ pub fn event_state(conn: &PgConnection, event_name: &str, user: &User) -> Result
         .optional()?;
     Ok(ok)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 pub fn is_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<bool> {

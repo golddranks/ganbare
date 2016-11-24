@@ -1,7 +1,6 @@
 
 use super::*;
 use pencil::{abort, jsonify, Response, redirect};
-use chrono;
 use rand;
 use pencil::helpers::{send_file, send_from_directory};
 use rustc_serialize;
@@ -51,7 +50,7 @@ pub fn get_image(req: &mut Request) -> PencilResult {
 }
 
 #[derive(RustcEncodable)]
-struct QuizJson {
+struct QuestionJson {
     quiz_type: String,
     question_id: i32,
     explanation: String,
@@ -64,7 +63,16 @@ struct QuizJson {
 
 #[derive(RustcEncodable)]
 struct WordJson {
+    quiz_type: String,
     show_accents: bool,
+    id: i32,
+    word: String,
+    explanation: String,
+    audio_id: i32,
+}
+
+#[derive(RustcEncodable)]
+struct ExerciseJson {
     quiz_type: String,
     id: i32,
     word: String,
@@ -74,12 +82,12 @@ struct WordJson {
     due_date: Option<String>,
 }
 
-pub fn card_to_json(card: ganbare::Card) -> PencilResult {
+pub fn quiz_to_json(quiz: ganbare::Quiz) -> PencilResult {
     use rand::Rng;
-    use ganbare::Card::*;
+    use ganbare::Quiz::*;
     let mut rng = rand::thread_rng();
-    match card {
-    Quiz(ganbare::Quiz{ question, question_audio, right_answer_id, answers, due_delay, due_date }) => {
+    match quiz {
+    Question(ganbare::Question{ question, question_audio, right_answer_id, answers, due_delay, due_date }) => {
 
         let mut answers_json = Vec::with_capacity(answers.len());
 
@@ -93,7 +101,7 @@ pub fn card_to_json(card: ganbare::Card) -> PencilResult {
         rng.shuffle(&mut answers_json);
         
 
-        jsonify(&QuizJson {
+        jsonify(&QuestionJson {
             quiz_type: "question".into(),
             question_id: question.id,
             explanation: question.q_explanation,
@@ -104,19 +112,31 @@ pub fn card_to_json(card: ganbare::Card) -> PencilResult {
             due_date: due_date.map(|d| d.to_rfc3339()),
         })
     },
-    Word((ganbare::models::Word { id, word, explanation, .. }, audio_files)) => {
+    Exercise(ganbare::Exercise { word: ganbare::models::Word { id, word, explanation, .. }, due_date, due_delay, audio_files }) => {
+
+        let chosen_audio = rng.choose(&audio_files).expect("Audio for a Exercise: Shouldn't be empty! Borked database?");
+
+        jsonify(&ExerciseJson {
+            quiz_type: "exercise".into(),
+            id,
+            word: word.nfc().collect::<String>(), // Unicode normalization, because "word" is going to be accented kana-by-kana.
+            explanation,
+            audio_id: chosen_audio.id,
+            due_delay,
+            due_date: due_date.map(|d| d.to_rfc3339()),
+        })
+    },
+    Word((ganbare::models::Word { id, word, explanation, .. }, audio_files, show_accents)) => {
 
         let chosen_audio = rng.choose(&audio_files).expect("Audio for a Word: Shouldn't be empty! Borked database?");
 
         jsonify(&WordJson {
-            show_accents: true, // FIXME
+            show_accents,
             quiz_type: "word".into(),
             id,
             word: word.nfc().collect::<String>(), // Unicode normalization, because "word" is going to be accented kana-by-kana.
             explanation,
             audio_id: chosen_audio.id,
-            due_delay: 30, // FIXME
-            due_date: Some(chrono::UTC::now()).map(|d| d.to_rfc3339()), // FIXME
         })
     },
     }
@@ -127,9 +147,9 @@ pub fn new_quiz(req: &mut Request) -> PencilResult {
 
     let new_quiz = ganbare::get_new_quiz(&conn, &user).err_500()?;
 
-    let card = try_or!{new_quiz, else return jsonify(&())}; 
+    let quiz = try_or!{new_quiz, else return jsonify(&())}; 
 
-    card_to_json(card).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    quiz_to_json(quiz).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 pub fn next_quiz(req: &mut Request) -> PencilResult {
@@ -169,8 +189,8 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
     let new_quiz = ganbare::get_next_quiz(&conn, &user, answer)
         .err_500()?;
 
-    let card = try_or!{new_quiz, else return jsonify(&())}; 
-    card_to_json(card).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    let quiz = try_or!{new_quiz, else return jsonify(&())}; 
+    quiz_to_json(quiz).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
 }
 
 

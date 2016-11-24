@@ -1,4 +1,13 @@
-CREATE TABLE answer_data (
+CREATE TABLE due_items (
+	id SERIAL PRIMARY KEY,
+	user_id SERIAL REFERENCES users,
+	due_date TIMESTAMPTZ NOT NULL,
+	due_delay INTEGER NOT NULL,
+	correct_streak INTEGER NOT NULL DEFAULT 0,
+	item_type CHAR(8) NOT NULL
+);
+
+CREATE TABLE q_answer_data (
 	id SERIAL PRIMARY KEY,
 	user_id SERIAL REFERENCES users,
 	question_id SERIAL REFERENCES quiz_questions,
@@ -11,13 +20,15 @@ CREATE TABLE answer_data (
 	correct BOOLEAN
 );
 
-CREATE TABLE question_data (
+CREATE TABLE e_answer_data (
+	id SERIAL PRIMARY KEY,
 	user_id SERIAL REFERENCES users,
-	question_id SERIAL REFERENCES quiz_questions,
-	correct_streak INTEGER NOT NULL DEFAULT 0,
-	due_date TIMESTAMPTZ NOT NULL,
-	due_delay INTEGER NOT NULL,
-	PRIMARY KEY(user_id, question_id)
+	word_id SERIAL REFERENCES words,
+	answered_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	active_answer_time_ms INTEGER NOT NULL,
+	full_answer_time_ms INTEGER NOT NULL,
+	audio_times INTEGER NOT NULL,
+	correct BOOLEAN
 );
 
 CREATE TABLE word_data (
@@ -27,6 +38,18 @@ CREATE TABLE word_data (
 	audio_times INTEGER NOT NULL,
 	checked_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	PRIMARY KEY(user_id, word_id)
+);
+
+CREATE TABLE question_data (
+	question_id SERIAL REFERENCES quiz_questions,
+	due SERIAL REFERENCES due_items,
+	PRIMARY KEY(due, question_id)
+);
+
+CREATE TABLE exercise_data (
+	word_id SERIAL REFERENCES words,
+	due SERIAL REFERENCES due_items,
+	PRIMARY KEY(due, word_id)
 );
 
 CREATE TABLE skill_data (

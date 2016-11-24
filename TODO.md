@@ -23,4 +23,4 @@ Stretch goals:
 - FIX: contenteditable adds <br> at the end
 - FEATURE: download images server-side and replace the outbound links with links to the own static folder
 - FEATURE: add answers in the manager screen
-
+- IMPROVEMENT: check if group names and event names are possible to enumify
