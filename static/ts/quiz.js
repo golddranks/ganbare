@@ -1,4 +1,8 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
+/// <reference path="typings/globals/howler/index.d.ts" />
+function unaccentuate(word) {
+    return word.replace("・", "").replace("*", "");
+}
 function accentuate(word) {
     var empty = '<span class="accent">';
     var middle = '<span class="accent"><img src="/static/images/accent_middle.png">';
@@ -85,14 +89,21 @@ $(function () {
     var correct = document.getElementById('sfxCorrect');
     var wrong = document.getElementById('sfxWrong');
     /* word-related things */
-    var wordShow = $("#wordShow");
+    var wordShowButton = $("#wordShowButton");
     var wordShowKana = $("#wordShowKana");
     var wordStatus = $("#wordStatus");
     var wordExplanation = $("#wordExplanation");
     var soundIcon = $(".soundicon");
     var wordOkButton = $("#wordOkButton");
+    var exerciseOkButton = $("#exerciseOkButton");
+    var exerciseSuccessButton = $("#exerciseSuccessButton");
+    var exerciseFailureButton = $("#exerciseFailureButton");
+    var exerciseSuccessP = $("#exerciseSuccessP");
+    var exerciseFailureP = $("#exerciseFailureP");
+    var wordButtonLabel = $("#wordButtonLabel");
+    var buttonSection = $("#buttonSection");
     var wordAudio = document.getElementById('wordAudio');
-    wordShow.click(function () {
+    wordShowButton.click(function () {
         timesAudioPlayed++;
         wordAudio.play();
         soundIcon.prop("src", "/static/images/speaker_pink.png");
@@ -290,7 +301,14 @@ $(function () {
         questionSection.hide();
         aAudio = [];
         answerMarks.hide();
+        exerciseOkButton.hide();
+        exerciseFailureP.hide();
+        exerciseSuccessP.hide();
+        wordShowButton.hide();
+        wordButtonLabel.hide();
+        wordOkButton.hide();
         avatar.hide();
+        wordStatus.hide();
         answerMarks.addClass("hidden");
         questionExplanation.text("");
         questionExplanation.hide();
@@ -347,6 +365,7 @@ $(function () {
     }
     function showWord(word) {
         console.log("showWord!");
+        wordOkButton.show();
         var word_html = word.word;
         if (word.show_accents) {
             word_html = accentuate(word.word);
@@ -358,6 +377,36 @@ $(function () {
         timesAudioPlayed++;
         activeAnswerTime = Date.now();
         soundIcon.prop("src", "/static/images/speaker_pink.png");
+        setTimeout(function () { wordSection.slideDown(); }, 100);
+    }
+    function showExercise(exercise) {
+        console.log("showExercise!");
+        exerciseOkButton.show();
+        wordStatus.text("Äännä parhaasi mukaan:").show();
+        wordShowKana.html(accentuate(exercise.word));
+        $(".accent img").hide();
+        wordExplanation.html(exercise.explanation);
+        console.log(exercise.audio_id);
+        var exerciseAudio = new Howl({ src: ['/api/audio/' + exercise.audio_id + '.mp3'] });
+        exerciseAudio.on('end', function () {
+            $(".accent img").fadeIn();
+            wordShowButton.fadeIn();
+            exerciseFailureP.show();
+            exerciseSuccessP.show();
+            wordButtonLabel.show();
+            buttonSection.slideDown(400);
+        });
+        exerciseOkButton.one("click", function () {
+            exerciseAudio.play();
+            timesAudioPlayed++;
+            activeAnswerTime = Date.now();
+            wordButtonLabel.text("Itsearvio");
+            buttonSection.slideUp(400, function () {
+                exerciseOkButton.hide();
+            });
+            wordStatus.slideUp();
+        });
+        fullAnswerTime = Date.now();
         setTimeout(function () { wordSection.slideDown(); }, 100);
     }
     function showQuiz(question) {
@@ -387,6 +436,9 @@ $(function () {
         }
         else if (question.quiz_type === "word") {
             showWord(question);
+        }
+        else if (question.quiz_type === "exercise") {
+            showExercise(question);
         }
         else {
             bugMessage(question);

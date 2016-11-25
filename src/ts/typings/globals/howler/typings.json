@@ -1,0 +1,8 @@
+{
+  "resolution": "main",
+  "tree": {
+    "src": "https://raw.githubusercontent.com/DefinitelyTyped/DefinitelyTyped/c95ee63a5635ee935c3f17518d4d5d76e7d1cf83/howlerjs/howler.d.ts",
+    "raw": "registry:dt/howler#1.1.29+20161013183012",
+    "typings": "https://raw.githubusercontent.com/DefinitelyTyped/DefinitelyTyped/c95ee63a5635ee935c3f17518d4d5d76e7d1cf83/howlerjs/howler.d.ts"
+  }
+}

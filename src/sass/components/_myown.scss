@@ -9,6 +9,8 @@
     filter: blur(4px);
 }
 
+button:focus {outline:0;}
+
 #main {
 		max-width: 40em;
 		&.fullwidth {

@@ -96,7 +96,7 @@ pub fn main() {
     app.put("/api/questions/answers/<id:int>", "update_answer", http_api::update_item);
     app.get("/api/new_quiz", "new_quiz", http_api::new_quiz);
     app.post("/api/next_quiz", "next_quiz", http_api::next_quiz);
-    app.get("/api/audio/<line_id:int>", "get_audio", http_api::get_audio);
+    app.get("/api/audio/<audio_name:string>", "get_audio", http_api::get_audio);
     app.get("/api/images/<filename:string>", "get_image", http_api::get_image);
 
 

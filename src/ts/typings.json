@@ -1,5 +1,6 @@
 {
   "globalDependencies": {
     "jquery": "registry:dt/jquery#1.10.0+20160908203239"
+    "howler": "registry:dt/howler#1.1.29+20161013183012"
   }
 }

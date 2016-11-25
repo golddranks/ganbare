@@ -1,4 +1,5 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
+/// <reference path="typings/globals/howler/index.d.ts" />
 
 function accentuate(word) {
 
@@ -74,30 +75,25 @@ var answerMarks = $(".answerMark");
 var semaphore = 0;
 var topmessage = $(".topmessageparagraph");
 var breakTimeWaitHandle = null;
-var aAudio = [];
 let currentQuestion = null;
 var activeAnswerTime = null;
 var fullAnswerTime = null;
 var timesAudioPlayed = 0;
 
-var qAudio = <HTMLAudioElement>document.getElementById('questionAudio');
-var correct = <HTMLAudioElement>document.getElementById('sfxCorrect');
-var wrong = <HTMLAudioElement>document.getElementById('sfxWrong');
-
 /* word-related things */
-var wordShow = $("#wordShow");
+var wordShowButton = $("#wordShowButton");
 var wordShowKana = $("#wordShowKana");
 var wordStatus = $("#wordStatus");
 var wordExplanation = $("#wordExplanation");
 var soundIcon = $(".soundicon");
 var wordOkButton = $("#wordOkButton");
-
-var wordAudio = <HTMLAudioElement>document.getElementById('wordAudio');
-wordShow.click(function() {
-	timesAudioPlayed++;
-	wordAudio.play(); 
-	soundIcon.prop("src", "/static/images/speaker_pink.png");
-});
+var exerciseOkButton = $("#exerciseOkButton");
+var exerciseSuccessButton = $("#exerciseSuccessButton");
+var exerciseFailureButton = $("#exerciseFailureButton");
+var exerciseSuccessP = $("#exerciseSuccessP");
+var exerciseFailureP = $("#exerciseFailureP");
+var wordButtonLabel = $("#wordButtonLabel");
+var buttonSection = $("#buttonSection");
 
 function bugMessage(e) {
 	console.log("Bug?", e);
@@ -111,40 +107,6 @@ function clearError() {
 	errorSection.hide();
 	main.removeClass("errorOn");
 }
-
-$(wordAudio).bind('ended', function() {
-	soundIcon.prop("src", "/static/images/speaker_teal.png");
-});
-
-$(qAudio).bind('ended', function() {
-	activeAnswerTime = Date.now();
-	topmessage.text("Vastausaikaa 8 s");
-	topmessage.fadeIn();
-	questionText.text(currentQuestion.question[0]);
-
-	answerList.slideDown(400);
-	var thisQ = currentQuestion; // Let the closures capture a local variable, not global
-	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
-	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
-	window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
-	window.setTimeout(function() {
-		if (thisQ.answered) {return};
-		topmessage.fadeOut(); 
-		answerQuestion(-1, false, thisQ, null);
-	}, 8000);
-});
-
-play_button.click(function() {
-   	if (play_button.prop("disabled")) {
-   		return;
-   	};
-   	questionStatus.slideUp();
-	play_button.prop("disabled", true);
-	qAudio.play();
-	console.log("Playing!");
-	main.css("min-height", main.css("height"));
-	avatar.fadeOut(400);
-});
 
 /* menu */
 
@@ -190,8 +152,6 @@ function answerWord() {
 		setTimeout(answerWord, 3000);
 	});
 };
-
-wordOkButton.click(answerWord);
 
 function nextQuestion() {
 	semaphore--;
@@ -266,15 +226,14 @@ function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
 	var newAnswerButton = prototypeAnswer.clone();
 	newAnswerButton.children("button")
 		.html(text)
-		.click(function(){
+		.one('click', function(){
 			answerQuestion(ansId, isCorrect, question, this);
 		});
 
 	if (ansAudioId !== null) {
-		var audio = document.createElement('audio');
-		audio.setAttribute("preload", "auto");
-		audio.setAttribute('src', "/api/audio/"+ansAudioId);
-		aAudio[ansId] = audio;
+
+		var exerciseAudio = new Howl({ src: ['/api/audio/'+ansAudioId+'.mp3']});
+		aAudio[ansId] = exerciseAudio;
 	}
 	answerList.append(newAnswerButton);
 };
@@ -287,7 +246,14 @@ function cleanState() {
 	questionSection.hide();
 	aAudio = [];
 	answerMarks.hide();
+	exerciseOkButton.hide();
+	exerciseFailureP.hide();
+	exerciseSuccessP.hide();
+	wordShowButton.hide();
+	wordButtonLabel.hide();
+	wordOkButton.hide();
 	avatar.hide();
+	wordStatus.hide();
 	answerMarks.addClass("hidden");
 	questionExplanation.text("");
 	questionExplanation.hide();
@@ -336,30 +302,108 @@ function askQuestion(question) {
 	avatar.css('opacity', '0');
 	questionExplanation.slideDown(400, function() { avatar.fadeTo(400, 1); });
 	play_button.prop("disabled", false);
+	fullAnswerTime = Date.now();
 
 	question.answers.forEach(function(a, i) {
 		var isCorrect = (question.right_a === a[0])?true:false;
 		spawnAnswerButton(a[0], a[1], a[2], isCorrect, question);
 	});
+	qAudio = new Howl({ src: ['/api/audio/'+question.question[1]+'.mp3']});
 
-	qAudio.setAttribute('src', "/api/audio/"+question.question[1]);
-	fullAnswerTime = Date.now();
+	play_button.off('click').one('click', function() {
+	   	if (play_button.prop("disabled")) {
+	   		return;
+	   	};
+	   	questionStatus.slideUp();
+		play_button.prop("disabled", true);
+		qAudio.play();
+		console.log("Playing!");
+		main.css("min-height", main.css("height"));
+		avatar.fadeOut(400);
+	});
+	
+	qAudio.on('end', function() {
+		activeAnswerTime = Date.now();
+		topmessage.text("Vastausaikaa 8 s");
+		topmessage.fadeIn();
+		questionText.text(currentQuestion.question[0]);
+	
+		answerList.slideDown(400);
+		var thisQ = currentQuestion; // Let the closures capture a local variable, not global
+		window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
+		window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
+		window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
+		window.setTimeout(function() {
+			if (thisQ.answered) {return};
+			topmessage.fadeOut(); 
+			answerQuestion(-1, false, thisQ, null);
+		}, 8000);
+	});
+	
 }
-
 
 function showWord(word) {
 	console.log("showWord!");
+	wordOkButton.show()
+	wordOkButton.one('click', answerWord);
 	var word_html = word.word;
 	if (word.show_accents) {
 		word_html = accentuate(word.word);
 	} 
 	wordShowKana.html(word_html);
 	wordExplanation.html(word.explanation);
-	wordAudio.setAttribute('src', "/api/audio/"+word.audio_id);
+	wordAudio = new Howl({ src: ['/api/audio/'+word.audio_id+'.mp3']});
+
+	wordAudio.on('end', function() {
+		soundIcon.prop("src", "/static/images/speaker_teal.png");
+	});
+	
 	wordAudio.play();
+
+	wordShowButton.off('click').on('click', function() {
+		timesAudioPlayed++;
+		wordAudio.play(); 
+		soundIcon.prop("src", "/static/images/speaker_pink.png");
+	});
+
 	timesAudioPlayed++;
 	activeAnswerTime = Date.now();
 	soundIcon.prop("src", "/static/images/speaker_pink.png");
+	setTimeout(function() { wordSection.slideDown(); }, 100);
+}
+
+function showExercise(exercise) {
+	console.log("showExercise!");
+	exerciseOkButton.show();
+	wordStatus.text("Äännä parhaasi mukaan:").show();
+	wordShowKana.html(accentuate(exercise.word));
+	$(".accent img").hide();
+	wordExplanation.html(exercise.explanation);
+
+	var exerciseAudio = new Howl({ src: ['/api/audio/'+exercise.audio_id+'.mp3']});
+
+	exerciseAudio.on('end', function(){
+		$(".accent img").fadeIn();
+		wordShowButton.fadeIn();
+		exerciseFailureP.show();
+		exerciseSuccessP.show();
+		wordButtonLabel.show();
+		buttonSection.slideDown(400);
+	});
+
+	exerciseOkButton.one("click", function() {
+		exerciseAudio.play();
+		timesAudioPlayed++;
+		activeAnswerTime = Date.now();
+		wordButtonLabel.text("Itsearvio");
+		buttonSection.slideUp(400, function() {
+			exerciseOkButton.hide();
+		});
+		wordStatus.slideUp();
+	});
+	
+	
+	fullAnswerTime = Date.now();
 	setTimeout(function() { wordSection.slideDown(); }, 100);
 }
 
@@ -390,13 +434,17 @@ function showQuiz(question) {
 		askQuestion(question);
 	} else if (question.quiz_type === "word") {
 		showWord(question);
+	} else if (question.quiz_type === "exercise") {
+		showExercise(question);
 	} else {
 		bugMessage(question);
 	}
 
 }
 
-$("#questionAudio").on("error", function (e) {
+// TODO loaderror with howler
+
+$("#questionAudio").on("loaderror", function (e) {
 	if (currentQuestion === null || currentQuestion.quiz_type !== "question") { return false; };
 	var audio = $(this);
 	var src = audio.attr("src");
@@ -408,7 +456,7 @@ $("#questionAudio").on("error", function (e) {
 	}, 3000);
 });
 
-$("#wordAudio").on("error", function (e) {
+$("#wordAudio").on("loaderror", function (e) {
 	if (currentQuestion === null || currentQuestion.quiz_type !== "word") { return false; };
 	var audio = $(this);
 	var src = audio.attr("src");
@@ -420,7 +468,7 @@ $("#wordAudio").on("error", function (e) {
 	}, 3000);
 });
 
-$(".soundEffect").on("error", function (e) {
+$(".soundEffect").on("loaderror", function (e) {
 	if (currentQuestion === null || currentQuestion.quiz_type !== "question") { return false; };
 	var audio = $(this);
 	var src = audio.attr("src");

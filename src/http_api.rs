@@ -11,9 +11,17 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "")?;
 
-    let line_id = req.view_args.get("line_id").expect("Pencil guarantees that Line ID should exist as an arg.");
-    let line_id = line_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
-    let (file_name, mime_type) = ganbare::get_audio_file(&conn, line_id)
+    let mut audio_name = req.view_args.get("audio_name").expect("Pencil guarantees that Line ID should exist as an arg.").split('.');
+    let audio_id = try_or!(audio_name.next(), else return abort(404));
+    let audio_extension = try_or!(audio_name.next(), else return abort(404));
+    if audio_extension != "mp3" {
+        return abort(404);
+    }
+    if audio_name.next().is_some() {
+        return abort(404);
+    }
+    let audio_id = audio_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let (file_name, mime_type) = ganbare::get_audio_file(&conn, audio_id)
         .map_err(|e| {
             match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),
