@@ -200,9 +200,8 @@ $(function () {
             ;
             console.log("Error with " + elementName + " element! Trying again after 3 secs.");
             bugMessage(e);
-            console.log("element", audioElement);
-            audioElement.off("load").once("load", function () {
-                console.log(audioElement);
+            audioElement.off("load").once("load", function (id) {
+                console.log("Managed to load!", id);
                 clearError();
             });
             setTimeout(function () {
@@ -398,34 +397,32 @@ $(function () {
         play_button.one('click', function () {
             questionStatus.slideUp();
             qAudio.play();
-            console.log(qAudio);
             main.css("min-height", main.css("height"));
             avatar.fadeOut(400);
-        });
-        qAudio.on('play', function () { console.log("Playing!"); });
-        qAudio.once('end', function () {
-            activeAnswerTime = Date.now();
-            topmessage.text("Vastausaikaa 8 s");
-            topmessage.fadeIn();
-            questionText.text(currentQuestion.question[0]);
-            answerList.slideDown(400);
-            window.setTimeout(function () { if (question.answered) {
-                return;
-            } ; topmessage.text("Vastausaikaa 3 s"); }, 5000);
-            window.setTimeout(function () { if (question.answered) {
-                return;
-            } ; topmessage.text("Vastausaikaa 2 s"); }, 6000);
-            window.setTimeout(function () { if (question.answered) {
-                return;
-            } ; topmessage.text("Vastausaikaa 1 s"); }, 7000);
-            window.setTimeout(function () {
-                if (question.answered) {
+            qAudio.once('end', function () {
+                activeAnswerTime = Date.now();
+                topmessage.text("Vastausaikaa 8 s");
+                topmessage.fadeIn();
+                questionText.text(currentQuestion.question[0]);
+                answerList.slideDown(400);
+                window.setTimeout(function () { if (question.answered) {
                     return;
-                }
-                ;
-                topmessage.fadeOut();
-                answerQuestion(-1, false, question, null);
-            }, 8000);
+                } ; topmessage.text("Vastausaikaa 3 s"); }, 5000);
+                window.setTimeout(function () { if (question.answered) {
+                    return;
+                } ; topmessage.text("Vastausaikaa 2 s"); }, 6000);
+                window.setTimeout(function () { if (question.answered) {
+                    return;
+                } ; topmessage.text("Vastausaikaa 1 s"); }, 7000);
+                window.setTimeout(function () {
+                    if (question.answered) {
+                        return;
+                    }
+                    ;
+                    topmessage.fadeOut();
+                    answerQuestion(-1, false, question, null);
+                }, 8000);
+            });
         });
         setLoadError(qAudio, "questionAudio", question);
     }

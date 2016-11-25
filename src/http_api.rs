@@ -39,6 +39,8 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
             _ => { internal_error(e) }
         })
+
+  //  return abort(500);
 }
 
 pub fn get_image(req: &mut Request) -> PencilResult {
