@@ -1,60 +1,60 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
-function accentuate_kana(word) {
-    var empty = '<span class="accent">';
-    var middle = '<span class="accent"><img src="/static/images/accent_middle.png">';
-    var start = '<span class="accent"><img src="/static/images/accent_start.png">';
-    var end = '<span class="accent"><img src="/static/images/accent_end.png" class="accent">';
-    var flat_end = '<span class="accent"><img src="/static/images/accent_end_flat.png">';
-    var start_end = '<span class="accent"><img src="/static/images/accent_start_end.png">';
-    var start_end_flat = '<span class="accent"><img src="/static/images/accent_start_end_flat.png">';
-    var start_end_flat_short = '<span class="accent"><img src="/static/images/accent_start_end_flat_short.png">';
-    var peak = '<span class="accent"><img src="/static/images/accent_peak.png">';
-    function isAccentMark(i) {
-        return (word.charAt(i) === "*" || word.charAt(i) === "・");
-    }
-    ;
-    var accentuated = [""];
-    var ended = false;
-    for (var i = 0, len = word.length; i < len; i++) {
-        if (isAccentMark(i)) {
-            continue;
-        }
-        else if (word.length === 1) {
-            accentuated.push(start_end_flat_short);
-        }
-        else if (i === 0 && isAccentMark(i + 1)) {
-            accentuated.push(start_end);
-            ended = true;
-        }
-        else if (i === 1 && !ended && isAccentMark(i + 1)) {
-            accentuated.push(peak);
-            ended = true;
-        }
-        else if (i === 1 && !ended && i === len - 1) {
-            accentuated.push(start_end_flat);
-        }
-        else if (i === 1 && !ended) {
-            accentuated.push(start);
-        }
-        else if (i > 1 && !ended && i === len - 1) {
-            accentuated.push(flat_end);
-        }
-        else if (i > 1 && !ended && isAccentMark(i + 1)) {
-            accentuated.push(end);
-            ended = true;
-        }
-        else if (i > 1 && !ended && !isAccentMark(i + 1)) {
-            accentuated.push(middle);
-        }
-        else {
-            accentuated.push(empty);
-        }
-        accentuated.push(word.charAt(i));
-        accentuated.push("</span>");
-    }
-    return accentuated.join("");
-}
 $(function () {
+    function accentuate(word) {
+        var empty = '<span class="accent">';
+        var middle = '<span class="accent"><img src="/static/images/accent_middle.png">';
+        var start = '<span class="accent"><img src="/static/images/accent_start.png">';
+        var end = '<span class="accent"><img src="/static/images/accent_end.png" class="accent">';
+        var flat_end = '<span class="accent"><img src="/static/images/accent_end_flat.png">';
+        var start_end = '<span class="accent"><img src="/static/images/accent_start_end.png">';
+        var start_end_flat = '<span class="accent"><img src="/static/images/accent_start_end_flat.png">';
+        var start_end_flat_short = '<span class="accent"><img src="/static/images/accent_start_end_flat_short.png">';
+        var peak = '<span class="accent"><img src="/static/images/accent_peak.png">';
+        function isAccentMark(i) {
+            return (word.charAt(i) === "*" || word.charAt(i) === "・");
+        }
+        ;
+        var accentuated = [""];
+        var ended = false;
+        for (var i = 0, len = word.length; i < len; i++) {
+            if (isAccentMark(i)) {
+                continue;
+            }
+            else if (word.length === 1) {
+                accentuated.push(start_end_flat_short);
+            }
+            else if (i === 0 && isAccentMark(i + 1)) {
+                accentuated.push(start_end);
+                ended = true;
+            }
+            else if (i === 1 && !ended && isAccentMark(i + 1)) {
+                accentuated.push(peak);
+                ended = true;
+            }
+            else if (i === 1 && !ended && i === len - 1) {
+                accentuated.push(start_end_flat);
+            }
+            else if (i === 1 && !ended) {
+                accentuated.push(start);
+            }
+            else if (i > 1 && !ended && i === len - 1) {
+                accentuated.push(flat_end);
+            }
+            else if (i > 1 && !ended && isAccentMark(i + 1)) {
+                accentuated.push(end);
+                ended = true;
+            }
+            else if (i > 1 && !ended && !isAccentMark(i + 1)) {
+                accentuated.push(middle);
+            }
+            else {
+                accentuated.push(empty);
+            }
+            accentuated.push(word.charAt(i));
+            accentuated.push("</span>");
+        }
+        return accentuated.join("");
+    }
     $("body").click(function () {
         var closeEditEvent = new Event('closeEdit');
         this.dispatchEvent(closeEditEvent);
@@ -91,7 +91,7 @@ $(function () {
             var questions = tuple[1][1];
             words.forEach(function (word, index) {
                 var c_item = $("<li></li>").appendTo(c_list);
-                var c_header = $('<h3></h3>').html('Word: ' + accentuate_kana(word.word)).appendTo(c_item);
+                var c_header = $('<h3></h3>').html('Word: ' + accentuate(word.word)).appendTo(c_item);
                 var id = "n" + nugget_index + "w" + index;
                 var c_info = $('<div><label for="' + id + '">public</label></div>').appendTo(c_item);
                 var checkbox = $('<input type="checkbox" id="' + id + '">').prependTo(c_info);
@@ -115,7 +115,7 @@ $(function () {
                 var wordLatestResp = word;
                 var w_word_okayToUpdate = false;
                 var c_body = $('<section class="bordered cardBody" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
-                var w_word = $('<p class="wordShowKana"></p>').appendTo(c_body).html(accentuate_kana(word.word));
+                var w_word = $('<p class="wordShowKana"></p>').appendTo(c_body).html(accentuate(word.word));
                 w_word.click(function w_wordStartEdit(ev) {
                     ev.stopPropagation();
                     w_word_okayToUpdate = false;
@@ -125,14 +125,14 @@ $(function () {
                     $("body").one('click', function (ev) {
                         word.word = wordLatestResp.word;
                         w_word_okayToUpdate = true;
-                        w_word.html(accentuate_kana(word.word));
+                        w_word.html(accentuate(word.word));
                         w_word_edit.replaceWith(w_word);
                         w_word.click(w_wordStartEdit);
                     });
                     w_word_edit.click(function (ev) { ev.stopPropagation(); });
                     wordEdit.on('input', function () {
                         word.word = wordEdit.val();
-                        c_header.html('Word: ' + accentuate_kana(word.word));
+                        c_header.html('Word: ' + accentuate(word.word));
                         var request = {
                             type: 'PUT',
                             url: "/api/words/" + word.id,
@@ -142,7 +142,7 @@ $(function () {
                                 wordLatestResp = resp;
                                 if (w_word_okayToUpdate) {
                                     word.word = wordLatestResp.word;
-                                    w_word.html(accentuate_kana(word.word));
+                                    w_word.html(accentuate(word.word));
                                 }
                             }
                         };
@@ -355,3 +355,4 @@ $(function () {
         }
     });
 });
+//# sourceMappingURL=manage.js.map

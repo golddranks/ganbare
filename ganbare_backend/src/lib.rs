@@ -45,6 +45,7 @@ pub mod errors {
 
     error_chain! {
         foreign_links {
+            ::std::str::ParseBoolError, ParseBoolError;
             ::std::env::VarError, VarError;
             ::std::num::ParseIntError, ParseIntError;
             ::std::num::ParseFloatError, ParseFloatError;
@@ -887,7 +888,7 @@ fn log_skill_by_id(conn : &PgConnection, user : &User, skill_id: i32, level_incr
 pub enum Answered {
     Word(AnsweredWord),
     Question(AnsweredQuestion),
-    AnsweredExercise(AnsweredExercise),
+    Exercise(AnsweredExercise),
 }
 
 #[derive(Debug)]
@@ -900,12 +901,10 @@ pub struct AnsweredWord {
 #[derive(Debug)]
 pub struct AnsweredExercise {
     pub word_id: i32,
-    pub time: i32,
-    pub times_audio_played: i32,
-    pub correct: bool,
     pub active_answer_time: i32,
     pub full_answer_time: i32,
-    pub audio_times: i32,
+    pub times_audio_played: i32,
+    pub correct: bool,
 }
 
 #[derive(Debug)]
@@ -1036,7 +1035,7 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExerci
         word_id: answer.word_id,
         active_answer_time_ms: answer.active_answer_time,
         full_answer_time_ms: answer.full_answer_time,
-        audio_times: answer.audio_times,
+        audio_times: answer.times_audio_played,
         correct: correct,
     };
 
@@ -1081,7 +1080,7 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExerci
             correct_streak: if correct { 1 } else { 0 },
             due_date: next_due_date,
             due_delay: due_delay,
-            item_type: "question".into(),
+            item_type: "exercise".into(),
         };
         let due_item: DueItem = diesel::insert(&due_item)
             .into(due_items::table)
@@ -1377,7 +1376,7 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
             log_answer_word(conn, user, &answer_word)?;
             return get_new_quiz(conn, user);
         },
-        Answered::AnsweredExercise(exercise) => {
+        Answered::Exercise(exercise) => {
             log_answer_exercise(conn, user, &exercise)?;
             return get_new_quiz(conn, user);
         },

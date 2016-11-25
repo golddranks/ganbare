@@ -1,17 +1,19 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
 /// <reference path="typings/globals/howler/index.d.ts" />
 
-function accentuate(word) {
+$(function() {
+
+function accentuate(word: string) {
 
 	var empty = '<span class="accent">';
-	var middle = '<span class="accent"><img src="/static/images/accent_middle.png">';
-	var start = '<span class="accent"><img src="/static/images/accent_start.png">';
-	var end = '<span class="accent"><img src="/static/images/accent_end.png" class="accent">';
-	var flat_end = '<span class="accent"><img src="/static/images/accent_end_flat.png">';
-	var start_end = '<span class="accent"><img src="/static/images/accent_start_end.png">';
-	var start_end_flat = '<span class="accent"><img src="/static/images/accent_start_end_flat.png">';
-	var start_end_flat_short = '<span class="accent"><img src="/static/images/accent_start_end_flat_short.png">';
-	var peak = '<span class="accent"><img src="/static/images/accent_peak.png">';
+	var middle = '<span class="accent"><img src="/static/images/accent_middle.png" style="display:none;">';
+	var start = '<span class="accent"><img src="/static/images/accent_start.png" style="display:none;">';
+	var end = '<span class="accent"><img src="/static/images/accent_end.png" class="accent" style="display:none;">';
+	var flat_end = '<span class="accent"><img src="/static/images/accent_end_flat.png" style="display:none;">';
+	var start_end = '<span class="accent"><img src="/static/images/accent_start_end.png" style="display:none;">';
+	var start_end_flat = '<span class="accent"><img src="/static/images/accent_start_end_flat.png" style="display:none;">';
+	var start_end_flat_short = '<span class="accent"><img src="/static/images/accent_start_end_flat_short.png" style="display:none;">';
+	var peak = '<span class="accent"><img src="/static/images/accent_peak.png" style="display:none;">';
 	
 	function isAccentMark(i) {
 		return (word.charAt(i) === "*" || word.charAt(i) === "・")
@@ -51,12 +53,22 @@ function accentuate(word) {
 	return accentuated.join("");
 }
 
-$(function() {
-/* init the static machinery */
+
+
+/* general things */
 
 var main = $("#main");
 var errorSection = $("#errorSection");
 var errorStatus = $("#errorStatus");
+var semaphore = 0;
+var breakTimeWaitHandle = null;
+let currentQuestion = null;
+var activeAnswerTime = null;
+var fullAnswerTime = null;
+var timesAudioPlayed = 0;
+var correct = new Howl({ src: ['/static/sfx/correct.m4a', '/static/sfx/correct.mp3']});
+var wrong = new Howl({ src: ['/static/sfx/wrong.m4a', '/static/sfx/wrong.mp3']});
+var bell = new Howl({ src: ['/static/sfx/bell.m4a', '/static/sfx/bell.mp3']});
 
 /* question-related things */
 var prototypeAnswer = $(".answer").remove();
@@ -72,15 +84,10 @@ var play_button = $("#quiz .avatar .imgbutton");
 var maru = $("#maru");
 var batsu = $("#batsu");
 var answerMarks = $(".answerMark");
-var semaphore = 0;
 var topmessage = $(".topmessageparagraph");
-var breakTimeWaitHandle = null;
-let currentQuestion = null;
-var activeAnswerTime = null;
-var fullAnswerTime = null;
-var timesAudioPlayed = 0;
 
-/* word-related things */
+
+/* word- and exercise-related things */
 var wordShowButton = $("#wordShowButton");
 var wordShowKana = $("#wordShowKana");
 var wordStatus = $("#wordStatus");
@@ -94,6 +101,8 @@ var exerciseSuccessP = $("#exerciseSuccessP");
 var exerciseFailureP = $("#exerciseFailureP");
 var wordButtonLabel = $("#wordButtonLabel");
 var buttonSection = $("#buttonSection");
+
+/* errors */
 
 function bugMessage(e) {
 	console.log("Bug?", e);
@@ -131,120 +140,13 @@ $("body").click(cancelMenu);
 menuButton.click(toggleMenu);
 $("#settingsMenu").click(function( event ) { event.stopPropagation(); });
 
-/* dynamics */
 
-function answerWord() {
-	wordSection.slideUp();
-	clearError();
-	semaphore = 2;
-	setTimeout(function() {nextQuestion();}, 100);
-	var jqxhr = $.post("/api/next_quiz", {
-		type: "word",
-		word_id: currentQuestion.id,
-		times_audio_played: timesAudioPlayed,
-		time: Date.now() - activeAnswerTime,
-	}, function(result) {
-		currentQuestion = result;
-		nextQuestion();
-	});
-	jqxhr.fail(function(e) {
-		bugMessage(e);
-		setTimeout(answerWord, 3000);
-	});
-};
-
-function nextQuestion() {
-	semaphore--;
-	if (semaphore > 0) { return; };
-	showQuiz(currentQuestion);
-};
-
-function answerQuestion(ansId, isCorrect, question, button) {
-	if (question.answered) { return; };
-	question.answered = true;
-	$(this).addClass("buttonHilight");
-	var mark = null;
-	var activeATime = Date.now() - activeAnswerTime;
-	var fullATime = Date.now() - fullAnswerTime;
-	if (isCorrect) {
-		mark = maru;
-		questionStatus.text("Oikein! Seuraava kysymys.");
-		correct.play();
-	} else if (ansId > 0) {
-		mark = batsu;
-		questionStatus.text("Pieleen meni, kokeile uudestaan!");
-		wrong.play();
-	} else if (ansId === -1) {
-		mark = batsu;
-		questionStatus.text("Aika loppui!");
-		wrong.play();
-	}
-	questionStatus.show();
-	questionExplanation.hide();
-	semaphore = 2;
-
-	function postQuestionAnswer() {
-		clearError();
-		var jqxhr = $.post("/api/next_quiz", {
-			type: "question",
-			answered_id: ansId,
-			right_a_id: question.right_a,
-			question_id: question.question_id,
-			q_audio_id: question.question[1],
-			active_answer_time: activeATime,
-			full_answer_time: fullATime,
-		}, function(result) {
-			console.log("postQuestionAnswer: got result");
-			currentQuestion = result;
-			nextQuestion();
-		});
-		jqxhr.fail(function(e) {
-			bugMessage(e);
-			setTimeout(postQuestionAnswer, 3000);
-		});
-	};
-	postQuestionAnswer();
-
-	if (button === null) {
-		mark.css("top", "55%;");
-	} else {
-		var top = $(button).position().top + ($(button).height()/2);
-		mark.css("top", top + "px");
-	}
-	mark.show();
-	mark.removeClass("hidden");
-	window.setTimeout(function() { mark.fadeOut(400); }, 1700);
-	window.setTimeout(function() { answerList.slideUp(400, function() {
-		topmessage.fadeOut();
-		questionExplanation.text("Loading...");
-		questionExplanation.slideDown();
-		nextQuestion();
-	}); }, 2200);
-}
-
-function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
-	var newAnswerButton = prototypeAnswer.clone();
-	newAnswerButton.children("button")
-		.html(text)
-		.one('click', function(){
-			answerQuestion(ansId, isCorrect, question, this);
-		});
-
-	if (ansAudioId !== null) {
-
-		var exerciseAudio = new Howl({ src: ['/api/audio/'+ansAudioId+'.mp3']});
-		aAudio[ansId] = exerciseAudio;
-	}
-	answerList.append(newAnswerButton);
-};
+/* app main logic */
 
 function cleanState() {
-	correct.load();
-	wrong.load();
 	timesAudioPlayed = 0;
 	wordSection.hide();
 	questionSection.hide();
-	aAudio = [];
 	answerMarks.hide();
 	exerciseOkButton.hide();
 	exerciseFailureP.hide();
@@ -295,50 +197,228 @@ function breakTime(question) {
 	questionStatus.slideDown();
 }
 
-function askQuestion(question) {
+function nextQuestion() {
+	semaphore--;
+	if (semaphore > 0) { return; };
+	showQuiz(currentQuestion);
+};
+
+function setLoadError(audioElement, elementName, closureQuestion) {
+
+	audioElement.on("loaderror", function (e) {
+		if (closureQuestion !== null && currentQuestion !== closureQuestion) { this.off(); return false; };
+	    console.log("Error with qAudio element! Trying again after 3 secs.");
+		bugMessage(e);
+		setTimeout(function() {
+			audioElement.load();
+			clearError();
+		}, 3000);
+	});
+	
+};
+
+setLoadError(correct, "correctSfx", null);
+setLoadError(wrong, "wrongSfx", null);
+
+function setWordShowButton(audio) {
+
+	wordShowButton.off('click').on('click', function() {
+		timesAudioPlayed++;
+		audio.play(); 
+		soundIcon.prop("src", "/static/images/speaker_pink.png");
+	});
+
+	audio.on('end', function() {
+		soundIcon.prop("src", "/static/images/speaker_teal.png");
+	});
+
+}
+
+
+function answerExercise(isCorrect, exercise) {
+	wordShowButton.off('click');
+	exerciseFailureButton.off('click');
+	exerciseSuccessButton.off('click');
+	buttonSection.slideUp(100);
+	setTimeout(function() {
+		wordSection.slideUp(400, function() {
+			nextQuestion();
+		});
+	}, 600);
+	if (isCorrect) {
+		correct.play();
+	} else {
+		bell.play();
+	}
+	clearError();
+	semaphore = 2;
+	function postAnswerExercise() {
+		var jqxhr = $.post("/api/next_quiz", {
+			type: "exercise",
+			word_id: exercise.id,
+			correct: isCorrect,
+			times_audio_played: timesAudioPlayed,
+			active_answer_time: activeAnswerTime - fullAnswerTime,
+			full_answer_time: Date.now() - fullAnswerTime,
+		}, function(result) {
+			console.log("postAnswerExercise: got result");
+			currentQuestion = result;
+			nextQuestion();
+		});
+		jqxhr.fail(function(e) {
+			bugMessage(e);
+			setTimeout(postAnswerExercise, 3000);
+		});
+	};
+	postAnswerExercise();
+};
+
+function answerWord() {
+	wordShowButton.off('click');
+	setTimeout(function() {
+		wordSection.slideUp(400, function() {
+			nextQuestion();
+		});
+	}, 500);
+	clearError();
+	semaphore = 2;
+	function postAnswerWord() {
+		var jqxhr = $.post("/api/next_quiz", {
+			type: "word",
+			word_id: currentQuestion.id,
+			times_audio_played: timesAudioPlayed,
+			time: Date.now() - activeAnswerTime,
+		}, function(result) {
+			console.log("postAnswerWord: got result");
+			currentQuestion = result;
+			nextQuestion();
+		});
+		jqxhr.fail(function(e) {
+			bugMessage(e);
+			setTimeout(postAnswerWord, 3000);
+		});
+	};
+	postAnswerWord();
+};
+
+function answerQuestion(ansId, isCorrect, question, button) {
+	if (question.answered) { return; };
+	question.answered = true;
+	$(this).addClass("buttonHilight");
+	var mark = null;
+	var activeATime = Date.now() - activeAnswerTime;
+	var fullATime = Date.now() - fullAnswerTime;
+	if (isCorrect) {
+		mark = maru;
+		questionStatus.text("Oikein! Seuraava kysymys.");
+		correct.play();
+	} else if (ansId > 0) {
+		mark = batsu;
+		questionStatus.text("Pieleen meni, kokeile uudestaan!");
+		wrong.play();
+	} else if (ansId === -1) {
+		mark = batsu;
+		questionStatus.text("Aika loppui!");
+		wrong.play();
+	}
+	questionStatus.show();
+	questionExplanation.hide();
+	semaphore = 2;
+	if (button === null) {
+		mark.css("top", "55%;");
+	} else {
+		var top = $(button).position().top + ($(button).height()/2);
+		mark.css("top", top + "px");
+	}
+	mark.show();
+	mark.removeClass("hidden");
+	setTimeout(function() { mark.fadeOut(400); }, 1700);
+	setTimeout(function() { answerList.slideUp(400, function() {
+		topmessage.fadeOut();
+		questionExplanation.text("Loading...");
+		questionExplanation.slideDown();
+		nextQuestion();
+	}); }, 2200);
+
+	function postAnswerQuestion() {
+		clearError();
+		var jqxhr = $.post("/api/next_quiz", {
+			type: "question",
+			answered_id: ansId,
+			right_a_id: question.right_a,
+			question_id: question.question_id,
+			q_audio_id: question.question[1],
+			active_answer_time: activeATime,
+			full_answer_time: fullATime,
+		}, function(result) {
+			console.log("postAnswerQuestion: got result");
+			currentQuestion = result;
+			nextQuestion();
+		});
+		jqxhr.fail(function(e) {
+			bugMessage(e);
+			setTimeout(postAnswerQuestion, 3000);
+		});
+	};
+	postAnswerQuestion();
+}
+
+function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
+	var newAnswerButton = prototypeAnswer.clone();
+	var aAudio = null;
+	if (ansAudioId !== null) {
+		aAudio = new Howl({ src: ['/api/audio/'+ansAudioId+'.mp3']});
+		setLoadError(aAudio, "answerAudio", question);
+	}
+	newAnswerButton.children("button")
+		.html(text)
+		.one('click', function() {
+			if (aAudio !== null) { aAudio.play() };
+			answerQuestion(ansId, isCorrect, question, this);
+		});
+	answerList.append(newAnswerButton);
+};
+
+function showQuestion(question) {
 	questionSection.show();
 	questionExplanation.text(question.explanation);
 	avatar.show();
 	avatar.css('opacity', '0');
 	questionExplanation.slideDown(400, function() { avatar.fadeTo(400, 1); });
-	play_button.prop("disabled", false);
 	fullAnswerTime = Date.now();
 
 	question.answers.forEach(function(a, i) {
 		var isCorrect = (question.right_a === a[0])?true:false;
 		spawnAnswerButton(a[0], a[1], a[2], isCorrect, question);
 	});
-	qAudio = new Howl({ src: ['/api/audio/'+question.question[1]+'.mp3']});
+	var qAudio = new Howl({ src: ['/api/audio/'+question.question[1]+'.mp3']});
 
-	play_button.off('click').one('click', function() {
-	   	if (play_button.prop("disabled")) {
-	   		return;
-	   	};
+	play_button.one('click', function() {
 	   	questionStatus.slideUp();
-		play_button.prop("disabled", true);
 		qAudio.play();
 		console.log("Playing!");
 		main.css("min-height", main.css("height"));
 		avatar.fadeOut(400);
 	});
 	
-	qAudio.on('end', function() {
+	qAudio.once('end', function() {
 		activeAnswerTime = Date.now();
 		topmessage.text("Vastausaikaa 8 s");
 		topmessage.fadeIn();
 		questionText.text(currentQuestion.question[0]);
 	
 		answerList.slideDown(400);
-		var thisQ = currentQuestion; // Let the closures capture a local variable, not global
-		window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
-		window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
-		window.setTimeout(function() { if (thisQ.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
+		window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
+		window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
+		window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
 		window.setTimeout(function() {
-			if (thisQ.answered) {return};
+			if (question.answered) {return};
 			topmessage.fadeOut(); 
-			answerQuestion(-1, false, thisQ, null);
+			answerQuestion(-1, false, question, null);
 		}, 8000);
 	});
+
+	setLoadError(qAudio, "questionAudio", question);
 	
 }
 
@@ -346,29 +426,23 @@ function showWord(word) {
 	console.log("showWord!");
 	wordOkButton.show()
 	wordOkButton.one('click', answerWord);
-	var word_html = word.word;
+	buttonSection.show();
+	wordShowKana.html(accentuate(word.word));
 	if (word.show_accents) {
-		word_html = accentuate(word.word);
-	} 
-	wordShowKana.html(word_html);
+		$(".accent img").show();
+	}
 	wordExplanation.html(word.explanation);
-	wordAudio = new Howl({ src: ['/api/audio/'+word.audio_id+'.mp3']});
+	var wordAudio = new Howl({ src: ['/api/audio/'+word.audio_id+'.mp3']});
 
-	wordAudio.on('end', function() {
-		soundIcon.prop("src", "/static/images/speaker_teal.png");
-	});
+	setLoadError(wordAudio, "wordAudio", word);
 	
-	wordAudio.play();
-
-	wordShowButton.off('click').on('click', function() {
-		timesAudioPlayed++;
-		wordAudio.play(); 
-		soundIcon.prop("src", "/static/images/speaker_pink.png");
-	});
+	wordShowButton.show();
+	
+	setTimeout(function() { setWordShowButton(wordAudio); wordShowButton.trigger('click');}, 1500);
 
 	timesAudioPlayed++;
 	activeAnswerTime = Date.now();
-	soundIcon.prop("src", "/static/images/speaker_pink.png");
+
 	setTimeout(function() { wordSection.slideDown(); }, 100);
 }
 
@@ -376,27 +450,37 @@ function showExercise(exercise) {
 	console.log("showExercise!");
 	exerciseOkButton.show();
 	wordStatus.text("Äännä parhaasi mukaan:").show();
+	buttonSection.show();
 	wordShowKana.html(accentuate(exercise.word));
 	$(".accent img").hide();
 	wordExplanation.html(exercise.explanation);
 
 	var exerciseAudio = new Howl({ src: ['/api/audio/'+exercise.audio_id+'.mp3']});
 
-	exerciseAudio.on('end', function(){
-		$(".accent img").fadeIn();
-		wordShowButton.fadeIn();
-		exerciseFailureP.show();
-		exerciseSuccessP.show();
-		wordButtonLabel.show();
-		buttonSection.slideDown(400);
+	setLoadError(exerciseAudio, "exerciseAudio", exercise);
+	setWordShowButton(exerciseAudio);
+
+	exerciseSuccessButton.one('click', function() { answerExercise(true, exercise); });
+
+	exerciseFailureButton.one('click', function() { answerExercise(false, exercise); });
+
+	exerciseAudio.once('end', function(){
+		wordButtonLabel.text("Itsearvio");
+		setTimeout(function() {
+			wordShowButton.fadeIn();
+			exerciseFailureP.show();
+			exerciseSuccessP.show();
+			wordButtonLabel.show();
+			buttonSection.slideDown(400);
+		}, 900);
 	});
 
 	exerciseOkButton.one("click", function() {
+		$(".accent img").fadeIn();
 		exerciseAudio.play();
 		timesAudioPlayed++;
 		activeAnswerTime = Date.now();
-		wordButtonLabel.text("Itsearvio");
-		buttonSection.slideUp(400, function() {
+		buttonSection.slideUp(200, function() {
 			exerciseOkButton.hide();
 		});
 		wordStatus.slideUp();
@@ -416,12 +500,10 @@ function showQuiz(question) {
 		questionSection.show();
 		questionStatus.text("Ei ole mitään kysyttävää ☹️");
 		questionStatus.slideDown();
-		play_button.prop("disabled", true);
 		avatar.fadeOut(100);
 		return;
 	} else if (new Date(question.due_date) > new Date()) {
 		console.log("BreakTime!");
-		play_button.prop("disabled", true);
 		avatar.fadeOut(100);
 		breakTime(question);
 		breakTimeWaitHandle = window.setInterval(function() { breakTime(question); }, 1000);
@@ -431,7 +513,7 @@ function showQuiz(question) {
 	question.answered = false;
 
 	if (question.quiz_type === "question") {
-		askQuestion(question);
+		showQuestion(question);
 	} else if (question.quiz_type === "word") {
 		showWord(question);
 	} else if (question.quiz_type === "exercise") {
@@ -441,44 +523,6 @@ function showQuiz(question) {
 	}
 
 }
-
-// TODO loaderror with howler
-
-$("#questionAudio").on("loaderror", function (e) {
-	if (currentQuestion === null || currentQuestion.quiz_type !== "question") { return false; };
-	var audio = $(this);
-	var src = audio.attr("src");
-       console.log("Error with qAudio element! Trying again after 3 secs.", src);
-	bugMessage(e);
-	setTimeout(function() {
-		audio.attr("src", src);
-		clearError();
-	}, 3000);
-});
-
-$("#wordAudio").on("loaderror", function (e) {
-	if (currentQuestion === null || currentQuestion.quiz_type !== "word") { return false; };
-	var audio = $(this);
-	var src = audio.attr("src");
-    console.log("Error with wordAudio element! Trying again after 3 secs.", src);
-	bugMessage(e);
-	setTimeout(function() {
-		audio.attr("src", src);
-		clearError();
-	}, 3000);
-});
-
-$(".soundEffect").on("loaderror", function (e) {
-	if (currentQuestion === null || currentQuestion.quiz_type !== "question") { return false; };
-	var audio = $(this);
-	var src = audio.attr("src");
-    console.log("Error with soundEffect element! Trying again after 3 secs.", src);
-	bugMessage(e);
-	setTimeout(function() {
-		audio.attr("src", src);
-		clearError();
-	}, 3000);
-});
 
 function start() {
 	clearError();

@@ -1,6 +1,8 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
 
-function accentuate_kana(word) {
+$(function() {
+
+function accentuate(word: string) {
 
 	var empty = '<span class="accent">';
 	var middle = '<span class="accent"><img src="/static/images/accent_middle.png">';
@@ -51,7 +53,6 @@ function accentuate_kana(word) {
 }
 
 
-$(function() {
 
 $("body").click(function() {
 	var closeEditEvent = new Event('closeEdit');
@@ -98,7 +99,7 @@ function drawList(nugget_resp, bundle_resp) {
 		
 		words.forEach(function(word, index) {
 			var c_item = $("<li></li>").appendTo(c_list);
-			var c_header = $('<h3></h3>').html('Word: ' + accentuate_kana(word.word)).appendTo(c_item);
+			var c_header = $('<h3></h3>').html('Word: ' + accentuate(word.word)).appendTo(c_item);
 
 			var id = "n"+nugget_index+"w"+index;
 			var c_info = $('<div><label for="'+id+'">public</label></div>').appendTo(c_item);
@@ -125,7 +126,7 @@ function drawList(nugget_resp, bundle_resp) {
 
 			var w_word_okayToUpdate = false;
 			var c_body = $('<section class="bordered cardBody" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
-			var w_word = $('<p class="wordShowKana"></p>').appendTo(c_body).html(accentuate_kana(word.word));
+			var w_word = $('<p class="wordShowKana"></p>').appendTo(c_body).html(accentuate(word.word));
 			w_word.click(function w_wordStartEdit(ev){
 				ev.stopPropagation();
 				w_word_okayToUpdate = false;
@@ -135,7 +136,7 @@ function drawList(nugget_resp, bundle_resp) {
 				$("body").one('click', function(ev){
 					word.word = wordLatestResp.word;
 					w_word_okayToUpdate = true;
-					w_word.html(accentuate_kana(word.word));
+					w_word.html(accentuate(word.word));
 
 					w_word_edit.replaceWith(w_word);
 					w_word.click(w_wordStartEdit);
@@ -143,7 +144,7 @@ function drawList(nugget_resp, bundle_resp) {
 				w_word_edit.click(function(ev){ ev.stopPropagation(); });
 				wordEdit.on('input', function() {
 					word.word = wordEdit.val();
-					c_header.html('Word: ' + accentuate_kana(word.word));
+					c_header.html('Word: ' + accentuate(word.word));
 					var request = {
 						type: 'PUT',
 						url: "/api/words/"+word.id,
@@ -153,7 +154,7 @@ function drawList(nugget_resp, bundle_resp) {
 							wordLatestResp = resp;
 							if (w_word_okayToUpdate) {
 								word.word = wordLatestResp.word;
-								w_word.html(accentuate_kana(word.word));
+								w_word.html(accentuate(word.word));
 							}
 						},
 					};

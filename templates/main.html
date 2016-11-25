@@ -1,6 +1,6 @@
 {{#partial page_script_link}}
-	<script src="static/js/howler.min.js"></script>
-	<script src="static/ts/quiz.js"></script>
+	<script src="/static/js/howler.min.js"></script>
+	<script src="/static/ts/quiz.js"></script>
 {{/partial}}
 
 {{#partial main_section}}
@@ -40,10 +40,10 @@
 		<label id="wordButtonLabel" style="display: none;"></label>
 		<button id="wordOkButton" style="display: none;">Ok, painan sanan mieleeni!</button>
 		<button id="exerciseOkButton" style="display: none;">Ok, tarkista vastaus!</button>
-		<p id="exerciseSuccessP" style="display: none; max-width: 100%; text-align: center;">
-		<button id="exerciseSuccessButton" style="height: 5.5em; line-height: 2.2em;">Muistin äänenpainon paikan<br>ja äänsin ongelmitta.</button></p>
-		<p id="exerciseFailureP" style="display: none; max-width: 100%; text-align: center;">
-		<button id="exerciseFailureButton" style="height: 5.5em; line-height: 2.2em;">Suorituksessani on vielä<br>parantamisen varaa</button></p>
+		<p id="exerciseSuccessP" style="display: none; max-width: 100%; min-width: 75%; text-align: center;">
+		<button id="exerciseSuccessButton" class="multilineButton">Muistin äänenpainon paikan<br>ja äänsin ongelmitta.</button></p>
+		<p id="exerciseFailureP" style="display: none; max-width: 100%; min-width: 75%; text-align: center;">
+		<button id="exerciseFailureButton" class="multilineButton">Suorituksessani on vielä<br>parantamisen varaa</button></p>
 		</div>
 	</div>
 	</section>

@@ -175,6 +175,15 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
             Ok(ganbare::Answered::Word(
                 ganbare::AnsweredWord{word_id, times_audio_played, time}
             ))
+        } else if answer_type == "exercise" {
+            let word_id = str::parse::<i32>(&parse!(form.get("word_id")))?;
+            let times_audio_played = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
+            let active_answer_time = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
+            let full_answer_time = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
+            let correct = str::parse::<bool>(&parse!(form.get("correct")))?;
+            Ok(ganbare::Answered::Exercise(
+                ganbare::AnsweredExercise{word_id, times_audio_played, active_answer_time, full_answer_time, correct}
+            ))
         } else if answer_type == "question" {
             let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
             let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;

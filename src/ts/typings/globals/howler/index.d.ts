@@ -64,6 +64,7 @@ interface Howl {
     urls(): string[];
     urls(urls: string[]): Howl;
     on(event: string, listener?: Function): Howl;
+    once(event: string, listener?: Function): Howl;
     off(event: string, listener?: Function): Howl;
     unload(): void;
 }
