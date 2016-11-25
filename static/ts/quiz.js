@@ -69,6 +69,8 @@ $(function () {
     var correct = new Howl({ src: ['/static/sfx/correct.m4a', '/static/sfx/correct.mp3'] });
     var wrong = new Howl({ src: ['/static/sfx/wrong.m4a', '/static/sfx/wrong.mp3'] });
     var bell = new Howl({ src: ['/static/sfx/bell.m4a', '/static/sfx/bell.mp3'] });
+    var speakerIconTeal = $("#speakerIconTeal");
+    var speakerIconPink = $("#speakerIconPink");
     /* question-related things */
     var prototypeAnswer = $(".answer").remove();
     prototypeAnswer.show();
@@ -190,17 +192,22 @@ $(function () {
     }
     ;
     function setLoadError(audioElement, elementName, closureQuestion) {
-        audioElement.on("loaderror", function (e) {
+        audioElement.on("loaderror", function (id, e) {
             if (closureQuestion !== null && currentQuestion !== closureQuestion) {
                 this.off();
                 return false;
             }
             ;
-            console.log("Error with qAudio element! Trying again after 3 secs.");
+            console.log("Error with " + elementName + " element! Trying again after 3 secs.");
             bugMessage(e);
-            setTimeout(function () {
-                audioElement.load();
+            console.log("element", audioElement);
+            audioElement.off("load").once("load", function () {
+                console.log(audioElement);
                 clearError();
+            });
+            setTimeout(function () {
+                audioElement.unload();
+                audioElement.load();
             }, 3000);
         });
     }
@@ -211,10 +218,12 @@ $(function () {
         wordShowButton.off('click').on('click', function () {
             timesAudioPlayed++;
             audio.play();
-            soundIcon.prop("src", "/static/images/speaker_pink.png");
+            speakerIconTeal.hide();
+            speakerIconPink.show();
         });
         audio.on('end', function () {
-            soundIcon.prop("src", "/static/images/speaker_teal.png");
+            speakerIconTeal.show();
+            speakerIconPink.hide();
         });
     }
     function answerExercise(isCorrect, exercise) {
@@ -233,7 +242,6 @@ $(function () {
         else {
             bell.play();
         }
-        clearError();
         semaphore = 2;
         function postAnswerExercise() {
             var jqxhr = $.post("/api/next_quiz", {
@@ -244,6 +252,7 @@ $(function () {
                 active_answer_time: activeAnswerTime - fullAnswerTime,
                 full_answer_time: Date.now() - fullAnswerTime
             }, function (result) {
+                clearError();
                 console.log("postAnswerExercise: got result");
                 currentQuestion = result;
                 nextQuestion();
@@ -264,7 +273,6 @@ $(function () {
                 nextQuestion();
             });
         }, 500);
-        clearError();
         semaphore = 2;
         function postAnswerWord() {
             var jqxhr = $.post("/api/next_quiz", {
@@ -273,6 +281,7 @@ $(function () {
                 times_audio_played: timesAudioPlayed,
                 time: Date.now() - activeAnswerTime
             }, function (result) {
+                clearError();
                 console.log("postAnswerWord: got result");
                 currentQuestion = result;
                 nextQuestion();
@@ -333,7 +342,6 @@ $(function () {
             });
         }, 2200);
         function postAnswerQuestion() {
-            clearError();
             var jqxhr = $.post("/api/next_quiz", {
                 type: "question",
                 answered_id: ansId,
@@ -343,6 +351,7 @@ $(function () {
                 active_answer_time: activeATime,
                 full_answer_time: fullATime
             }, function (result) {
+                clearError();
                 console.log("postAnswerQuestion: got result");
                 currentQuestion = result;
                 nextQuestion();
@@ -389,10 +398,11 @@ $(function () {
         play_button.one('click', function () {
             questionStatus.slideUp();
             qAudio.play();
-            console.log("Playing!");
+            console.log(qAudio);
             main.css("min-height", main.css("height"));
             avatar.fadeOut(400);
         });
+        qAudio.on('play', function () { console.log("Playing!"); });
         qAudio.once('end', function () {
             activeAnswerTime = Date.now();
             topmessage.text("Vastausaikaa 8 s");
