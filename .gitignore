@@ -1,3 +1,4 @@
+*.map
 .env
 .sass-cache
 *.css.map

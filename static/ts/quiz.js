@@ -94,8 +94,6 @@ $(function () {
     var exerciseOkButton = $("#exerciseOkButton");
     var exerciseSuccessButton = $("#exerciseSuccessButton");
     var exerciseFailureButton = $("#exerciseFailureButton");
-    var exerciseSuccessP = $("#exerciseSuccessP");
-    var exerciseFailureP = $("#exerciseFailureP");
     var wordButtonLabel = $("#wordButtonLabel");
     var buttonSection = $("#buttonSection");
     /* errors */
@@ -135,8 +133,8 @@ $(function () {
         questionSection.hide();
         answerMarks.hide();
         exerciseOkButton.hide();
-        exerciseFailureP.hide();
-        exerciseSuccessP.hide();
+        exerciseFailureButton.hide();
+        exerciseSuccessButton.hide();
         wordShowButton.hide();
         wordButtonLabel.hide();
         wordOkButton.hide();
@@ -454,13 +452,13 @@ $(function () {
         exerciseFailureButton.one('click', function () { answerExercise(false, exercise); });
         exerciseAudio.once('end', function () {
             wordButtonLabel.text("Itsearvio");
+            wordButtonLabel.show();
+            exerciseFailureButton.show();
+            exerciseSuccessButton.show();
             setTimeout(function () {
                 wordShowButton.fadeIn();
-                exerciseFailureP.show();
-                exerciseSuccessP.show();
-                wordButtonLabel.show();
-                buttonSection.slideDown(400);
-            }, 900);
+                buttonSection.slideDown();
+            }, 1100);
         });
         exerciseOkButton.one("click", function () {
             $(".accent img").fadeIn();

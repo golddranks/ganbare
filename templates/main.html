@@ -36,14 +36,13 @@
 		<button id="wordShowButton"><img src="/static/images/speaker_teal.png" class="soundicon"></button></p>
 		<div id="wordExplanation"></div>
 		<div id="buttonSection">
-
+		<div id="buttonContainer"><!-- jQuery supports animating only "normal" divs so we need another one to have the display: table layout -->
 		<label id="wordButtonLabel" style="display: none;"></label>
 		<button id="wordOkButton" style="display: none;">Ok, painan sanan mieleeni!</button>
 		<button id="exerciseOkButton" style="display: none;">Ok, tarkista vastaus!</button>
-		<p id="exerciseSuccessP" style="display: none; max-width: 100%; min-width: 75%; text-align: center;">
-		<button id="exerciseSuccessButton" class="multilineButton">Muistin äänenpainon paikan<br>ja äänsin ongelmitta.</button></p>
-		<p id="exerciseFailureP" style="display: none; max-width: 100%; min-width: 75%; text-align: center;">
-		<button id="exerciseFailureButton" class="multilineButton">Suorituksessani on vielä<br>parantamisen varaa</button></p>
+		<button id="exerciseSuccessButton" class="multilineButton">Muistin äänenpainon paikan<br>ja äänsin ongelmitta.</button>
+		<button id="exerciseFailureButton" class="multilineButton">Suorituksessani on vielä<br>parantamisen varaa</button>
+		</div>
 		</div>
 	</div>
 	</section>
