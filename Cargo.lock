@@ -602,7 +602,7 @@ dependencies = [
 [[package]]
 name = "pencil"
 version = "0.3.0"
-source = "git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare#16480e5871e1ca703612d4c20887f2b2d34c1c1a"
+source = "git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare#9c140063f7743c4b9a80cb5073a1a661163b61a2"
 dependencies = [
  "formdata 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",

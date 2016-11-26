@@ -401,7 +401,6 @@ function showQuestion(question) {
 
 	play_button.one('click', function() {
 	   	questionStatus.slideUp();
-		qAudio.play();
 		main.css("min-height", main.css("height"));
 		avatar.fadeOut(400);
 
@@ -421,6 +420,7 @@ function showQuestion(question) {
 				answerQuestion(-1, false, question, null);
 			}, 8000);
 		});
+		qAudio.play();
 	});
 
 	setLoadError(qAudio, "questionAudio", question);

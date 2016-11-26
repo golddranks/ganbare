@@ -33,14 +33,12 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
 
     let file_path = AUDIO_DIR.to_string() + "/" + &file_name;
 
-    send_file(&file_path, mime_type, false)
+    send_file(&file_path, mime_type, false, req.headers().get())
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
             _ => { internal_error(e) }
         })
-
-  //  return abort(500);
 }
 
 pub fn get_image(req: &mut Request) -> PencilResult {
@@ -51,7 +49,7 @@ pub fn get_image(req: &mut Request) -> PencilResult {
 
     use pencil::{PencilError, HTTPError};
 
-    send_from_directory(&*IMAGES_DIR, &file_name, false)
+    send_from_directory(&*IMAGES_DIR, &file_name, false, req.headers().get())
         .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Image file not found! {}", file_name); e },

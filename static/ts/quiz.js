@@ -396,7 +396,6 @@ $(function () {
         var qAudio = new Howl({ src: ['/api/audio/' + question.question[1] + '.mp3'] });
         play_button.one('click', function () {
             questionStatus.slideUp();
-            qAudio.play();
             main.css("min-height", main.css("height"));
             avatar.fadeOut(400);
             qAudio.once('end', function () {
@@ -423,6 +422,7 @@ $(function () {
                     answerQuestion(-1, false, question, null);
                 }, 8000);
             });
+            qAudio.play();
         });
         setLoadError(qAudio, "questionAudio", question);
     }
