@@ -1,7 +1,9 @@
 # To Do list
 
 Today
-- Design an UI mode for quizes: traditional/output
+- Do something for the copyright footer when using with small-screened devices
+- FIX: multiple overlapping sessions getting stale
+
 - Do a group view, add anonymous groups and anonymous aliases
 - Refine the timing algorithms, especially w.r.t breaks and higher-level questions
 
@@ -15,11 +17,8 @@ Plan:
 
 
 Stretch goals:
-- Fix the TypeScript errors
 - FIX: unpublishing doesn't have effect on things showing up on due list. This needs filtering the source query BEFORE left_outer_join (in get_due_items()), but that's impossible with the current Diesel.
-- Do something for the copyright footer when using with small-screened devices
 - Test with different browsers
-- FIX: multiple overlapping sessions getting stale
 - FIX: contenteditable adds <br> at the end
 - FEATURE: download images server-side and replace the outbound links with links to the own static folder
 - FEATURE: add answers in the manager screen

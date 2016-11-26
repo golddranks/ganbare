@@ -18,6 +18,11 @@
 		cursor: default;
 		text-align: center;
 
+
+		@include breakpoint(xxsmall) {
+			display: none;
+		}
+
 		.copyright {
 			margin: 0;
 			padding: 0;

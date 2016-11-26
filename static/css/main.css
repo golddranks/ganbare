@@ -820,6 +820,11 @@ span.accent {
   -webkit-transition: opacity 1s ease, -webkit-transform 1s ease;
   -ms-transition: opacity 1s ease, -ms-transform 1s ease;
   transition: opacity 1s ease, transform 1s ease; }
+  @media screen and (max-width: 360px) {
+    #main {
+      border-radius: 0; }
+      #main .optional {
+        display: none; } }
   #main .avatar {
     position: relative;
     display: block;
@@ -866,6 +871,9 @@ span.accent {
   color: rgba(255, 255, 255, 0.75);
   cursor: default;
   text-align: center; }
+  @media screen and (max-width: 360px) {
+    #footer {
+      display: none; } }
   #footer .copyright {
     margin: 0;
     padding: 0;
@@ -912,9 +920,12 @@ span.accent {
   #wrapper:before {
     content: '';
     display: block; }
-  @media screen and (max-width: 360px) {
+  @media screen and (max-width: 736px) {
     #wrapper {
       padding: 0.75em; } }
+  @media screen and (max-width: 360px) {
+    #wrapper {
+      padding: 0; } }
   body.is-ie #wrapper {
     height: 100%; }
 

@@ -42,6 +42,9 @@ lazy_static! {
     pub static ref JQUERY_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_JQUERY")
         .unwrap_or_else(|_| "/static/js/jquery.min.js".into()) };
 
+    pub static ref FONT_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_FONT_URL")
+        .unwrap_or_else(|_| "/static/fonts/default.css".into()) };
+
     pub static ref AUDIO_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_AUDIO_DIR")
         .unwrap_or_else(|_| "audio".into()) };
 
@@ -75,6 +78,7 @@ pub fn new_template_context() -> BTreeMap<String, String> {
     let mut ctx = BTreeMap::new();
     ctx.insert("title".to_string(), "akusento.ganba.re".to_string());
     ctx.insert("jquery_url".to_string(), JQUERY_URL.to_string());
+    ctx.insert("font_stylesheet".to_string(), FONT_URL.to_string());
     ctx
 }
 

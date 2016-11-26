@@ -18,7 +18,9 @@
 		@include vendor('perspective', '1000px');
 		position: relative;
 		min-height: 100%;
+
 		padding: _size(element-margin);
+
 		z-index: 2;
 
 		> * {
@@ -30,8 +32,12 @@
 			display: block;
 		}
 
-		@include breakpoint(xxsmall) {
+		@include breakpoint(small) {
 			padding: (_size(element-margin) * 0.5);
+		}
+
+		@include breakpoint(xxsmall) {
+			padding: 0;
 		}
 
 		body.is-ie & {
