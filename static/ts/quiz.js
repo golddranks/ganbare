@@ -192,6 +192,7 @@ $(function () {
     }
     ;
     function setLoadError(audioElement, elementName, closureQuestion) {
+        console.log("setLoadError", audioElement);
         audioElement.on("loaderror", function (id, e) {
             if (closureQuestion !== null && currentQuestion !== closureQuestion) {
                 this.off();
@@ -200,8 +201,8 @@ $(function () {
             ;
             console.log("Error with " + elementName + " element! Trying again after 3 secs.");
             bugMessage(e);
-            audioElement.off("load").once("load", function (id) {
-                console.log("Managed to load!", id);
+            audioElement.off("load").once("load", function () {
+                console.log("Managed to load!", audioElement);
                 clearError();
             });
             setTimeout(function () {
