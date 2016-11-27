@@ -56,6 +56,11 @@ function accentuate(word: string) {
 
 
 /* general things */
+var bitSlow = 600;
+var normalSlow = 500;
+var normalSpeed = 400;
+var quiteFast = 200;
+var superFast = 100;
 
 var main = $("#main");
 var errorSection = $("#errorSection");
@@ -78,6 +83,7 @@ prototypeAnswer.show();
 var avatar = $("#quiz .avatar");
 var questionSection = $("#questionSection");
 var wordSection = $("#wordSection");
+var wordSectionSlideContainer = $("#wordSectionSlideContainer");
 var answerList = $(".answerList");
 var questionText = $(".questionText");
 var questionExplanation = $("#questionExplanation");
@@ -145,6 +151,10 @@ $("#settingsMenu").click(function( event ) { event.stopPropagation(); });
 /* app main logic */
 
 function cleanState() {
+	buttonSection.hide();
+	wordSectionSlideContainer.hide();
+	wordExplanation.html("");
+	wordExplanation.removeClass("imageLoaded");
 	timesAudioPlayed = 0;
 	wordSection.hide();
 	questionSection.hide();
@@ -176,7 +186,7 @@ function breakTime(question) {
 		// The waiting has ended
 		window.clearInterval(breakTimeWaitHandle);
 		breakTimeWaitHandle = null;
-		questionStatus.slideUp();
+		questionStatus.slideUp(normalSpeed);
 		showQuiz(question);
 		return;
 	}
@@ -195,7 +205,7 @@ function breakTime(question) {
 			+ dur_seconds_remainder +" sekunnin päästä");
 	}
 	questionSection.show();
-	questionStatus.slideDown();
+	questionStatus.slideDown(normalSpeed);
 }
 
 function nextQuestion() {
@@ -205,8 +215,6 @@ function nextQuestion() {
 };
 
 function setLoadError(audioElement, elementName, closureQuestion) {
-
-	console.log("setLoadError", audioElement);
 
 	audioElement.on("loaderror", function (id, e) {
 
@@ -248,12 +256,12 @@ function answerExercise(isCorrect, exercise) {
 	wordShowButton.off('click');
 	exerciseFailureButton.off('click');
 	exerciseSuccessButton.off('click');
-	buttonSection.slideUp(100);
 	setTimeout(function() {
-		wordSection.slideUp(400, function() {
+		wordExplanation.removeClass("imageLoaded");
+		wordSectionSlideContainer.slideUp(normalSpeed, function() {
 			nextQuestion();
 		});
-	}, 600);
+	}, bitSlow);
 	if (isCorrect) {
 		correct.play();
 	} else {
@@ -283,12 +291,13 @@ function answerExercise(isCorrect, exercise) {
 };
 
 function answerWord() {
+	wordExplanation.removeClass("imageLoaded");
 	wordShowButton.off('click');
 	setTimeout(function() {
-		wordSection.slideUp(400, function() {
+		wordSectionSlideContainer.slideUp(normalSpeed, function() {
 			nextQuestion();
 		});
-	}, 500);
+	}, normalSlow);
 	semaphore = 2;
 	function postAnswerWord() {
 		var jqxhr = $.post("/api/next_quiz", {
@@ -333,19 +342,20 @@ function answerQuestion(ansId, isCorrect, question, button) {
 	questionStatus.show();
 	questionExplanation.hide();
 	semaphore = 2;
+	var top = 0;
 	if (button === null) {
-		mark.css("top", "55%;");
+		top = answerList.height()/2;
 	} else {
-		var top = $(button).position().top + ($(button).height()/2);
-		mark.css("top", top + "px");
+		top = $(button).position().top + ($(button).height()/2);
 	}
+	mark.css("top", top + "px");
 	mark.show();
 	mark.removeClass("hidden");
-	setTimeout(function() { mark.fadeOut(400); }, 1700);
-	setTimeout(function() { answerList.slideUp(400, function() {
+	setTimeout(function() { mark.fadeOut(normalSpeed); }, 1700);
+	setTimeout(function() { answerList.slideUp(normalSpeed, function() {
 		topmessage.fadeOut();
 		questionExplanation.text("Loading...");
-		questionExplanation.slideDown();
+		questionExplanation.slideDown(normalSpeed);
 		nextQuestion();
 	}); }, 2200);
 
@@ -393,7 +403,7 @@ function showQuestion(question) {
 	questionExplanation.text(question.explanation);
 	avatar.show();
 	avatar.css('opacity', '0');
-	questionExplanation.slideDown(400, function() { avatar.fadeTo(400, 1); });
+	questionExplanation.slideDown(normalSpeed, function() { avatar.fadeTo(normalSpeed, 1); });
 	fullAnswerTime = Date.now();
 
 	question.answers.forEach(function(a, i) {
@@ -403,9 +413,10 @@ function showQuestion(question) {
 	var qAudio = new Howl({ src: ['/api/audio/'+question.question[1]+'.mp3']});
 
 	play_button.one('click', function() {
-	   	questionStatus.slideUp();
-		main.css("min-height", main.css("height"));
-		avatar.fadeOut(400);
+	   	questionStatus.slideUp(normalSpeed);
+		questionSection.css("min-height", questionSection.css("height")); // For mobile/xxsmall (questionSection is centered in a flexbox)
+		main.css("min-height", main.css("height")); // For desktop (main changes size)
+		avatar.fadeOut(quiteFast);
 
 		qAudio.once('end', function() {
 			activeAnswerTime = Date.now();
@@ -413,7 +424,7 @@ function showQuestion(question) {
 			topmessage.fadeIn();
 			questionText.text(currentQuestion.question[0]);
 		
-			answerList.slideDown(400);
+			answerList.slideDown(normalSpeed);
 			window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
 			window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
 			window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
@@ -431,6 +442,7 @@ function showQuestion(question) {
 }
 
 function showWord(word) {
+	wordSection.show();
 	console.log("showWord!");
 	wordOkButton.show()
 	wordOkButton.one('click', answerWord);
@@ -446,15 +458,19 @@ function showWord(word) {
 	
 	wordShowButton.show();
 	
-	setTimeout(function() { setWordShowButton(wordAudio); wordShowButton.trigger('click');}, 1500);
+	setTimeout(function() { setWordShowButton(wordAudio); wordShowButton.trigger('click');}, 1100);
 
 	timesAudioPlayed++;
 	activeAnswerTime = Date.now();
 
-	setTimeout(function() { wordSection.slideDown(); }, 100);
+	setTimeout(function() {
+		wordExplanation.addClass("imageLoaded");
+		wordSectionSlideContainer.slideDown(normalSpeed);
+	}, 100);
 }
 
 function showExercise(exercise) {
+	wordSection.show();
 	console.log("showExercise!");
 	exerciseOkButton.show();
 	wordStatus.text("Äännä parhaasi mukaan:").show();
@@ -473,13 +489,13 @@ function showExercise(exercise) {
 	exerciseFailureButton.one('click', function() { answerExercise(false, exercise); });
 
 	exerciseAudio.once('end', function(){
-		wordButtonLabel.text("Itsearvio");
-		wordButtonLabel.show();
-		exerciseFailureButton.show();
-		exerciseSuccessButton.show();
 		setTimeout(function() {
+			wordButtonLabel.text("Itsearvio");
+			wordButtonLabel.show();
+			exerciseFailureButton.show();
+			exerciseSuccessButton.show();
 			wordShowButton.fadeIn();
-			buttonSection.slideDown();
+			buttonSection.slideDown(normalSpeed);
 		}, 1100);
 	});
 
@@ -488,15 +504,19 @@ function showExercise(exercise) {
 		exerciseAudio.play();
 		timesAudioPlayed++;
 		activeAnswerTime = Date.now();
-		buttonSection.slideUp(200, function() {
+		buttonSection.slideUp(normalSpeed, function() {
 			exerciseOkButton.hide();
 		});
-		wordStatus.slideUp();
+		wordStatus.slideUp(normalSpeed);
 	});
 	
 	
 	fullAnswerTime = Date.now();
-	setTimeout(function() { wordSection.slideDown(); }, 100);
+
+	setTimeout(function() {
+		wordExplanation.addClass("imageLoaded");
+		wordSectionSlideContainer.slideDown(normalSpeed);
+	}, 100);
 }
 
 function showQuiz(question) {
@@ -507,12 +527,12 @@ function showQuiz(question) {
 		console.log("No cards!");
 		questionSection.show();
 		questionStatus.text("Ei ole mitään kysyttävää ☹️");
-		questionStatus.slideDown();
-		avatar.fadeOut(100);
+		questionStatus.slideDown(normalSpeed);
+		avatar.fadeOut(superFast);
 		return;
 	} else if (new Date(question.due_date) > new Date()) {
 		console.log("BreakTime!");
-		avatar.fadeOut(100);
+		avatar.fadeOut(superFast);
 		breakTime(question);
 		breakTimeWaitHandle = window.setInterval(function() { breakTime(question); }, 1000);
 		return;

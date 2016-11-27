@@ -13,22 +13,29 @@
 	#main {
 		position: relative;
 		min-width: 28em;
-		@include padding(4.5em, 2em);
+		padding: 3.5em 2em 2em 2em;
 
 		background: _palette(bg);
 		border-radius: _size(border-radius);
 
-		@include breakpoint(xxsmall) {
-			border-radius: 0;
-			.optional {
-				display: none;
-			}
-
-		}
 		cursor: default;
 		opacity: 0.95;
 		text-align: center;
 		min-height: 17em;
+
+		@include breakpoint(xxsmall) {
+			border-radius: 0;
+			margin: 0;
+			display: table-cell;
+			height: 100%;
+			hr {
+				margin-top: (_size(element-margin) * 0.8);
+				margin-bottom: (_size(element-margin) * 0.8);
+			}
+			.optional {
+				display: none;
+			}
+		}
 
 		@include vendor('transform-origin', '50% 50%');
 		@include vendor('transform', 'rotateX(0deg)');
@@ -66,7 +73,7 @@
 		@include breakpoint(xsmall) {
 			min-width: 0;
 			width: 100%;
-			@include padding(4em, 2em);
+			padding: 3em 2em 0 2em;
 
 			.avatar {
 				&:before {

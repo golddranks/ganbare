@@ -19,34 +19,36 @@
 		<p id="errorStatus"></p>
 	</div>
 	<section id="quiz">
-	<div id="questionSection" style="display: none;">
-		<p id="questionStatus" style="display: none;"></p>
-		<p id="questionExplanation" style="display: none;"></p>
-		<span class="avatar"><button class="imgbutton"><img src="static/images/play-button.png" alt="" /></button></span>
-		<div class="answerList compactAnswerList">
-			<img src="/static/images/maru_green2.png" id="maru" class="answerMark hidden" style="display:none;">
-			<img src="/static/images/batsu.png" id="batsu" class="answerMark hidden" style="display:none;">
-			<p class="questionText"></p>
-			<p class="answer" style="display: none;"><button></button></p>
+		<div id="questionSection" style="display: none;">
+			<p id="questionStatus" style="display: none;"></p>
+			<p id="questionExplanation" style="display: none;"></p>
+			<span class="avatar"><button class="imgbutton"><img src="static/images/play-button.png" alt="" /></button></span>
+			<div class="answerList compactAnswerList">
+				<img src="/static/images/maru_green2.png" id="maru" class="answerMark hidden" style="display:none;">
+				<img src="/static/images/batsu.png" id="batsu" class="answerMark hidden" style="display:none;">
+				<p class="questionText"></p>
+				<p class="answer" style="display: none;" class="button"><button></button></p>
+			</div>
 		</div>
-	</div>
-	<div id="wordSection" style="display: none;">
-		<p id="wordStatus" style="display: none;"></p>
-		<p><span id="wordShowKana"></span>　
-		<button id="wordShowButton"><!--
-		--><img src="/static/images/speaker_teal.png"  class="soundicon" id="speakerIconTeal"><!--
-		--><img src="/static/images/speaker_pink.png" class="soundicon" id="speakerIconPink" style="display:none;"></button></p>
-		<div id="wordExplanation"></div>
-		<div id="buttonSection">
-		<div id="buttonContainer"><!-- jQuery supports animating only "normal" divs so we need another one to have the display: table layout -->
-		<label id="wordButtonLabel" style="display: none;"></label>
-		<button id="wordOkButton" style="display: none;">Ok, painan sanan mieleeni!</button>
-		<button id="exerciseOkButton" style="display: none;">Ok, tarkista vastaus!</button>
-		<button id="exerciseSuccessButton" class="multilineButton">Muistin äänenpainon paikan<br>ja äänsin ongelmitta.</button>
-		<button id="exerciseFailureButton" class="multilineButton">Suorituksessani on vielä<br>parantamisen varaa</button>
+		<div id="wordSection" style="display: none;">
+		<div id="wordSectionSlideContainer">
+			<p id="wordStatus" style="display: none;"></p>
+			<p class="wordShowSection"><span id="wordShowKana"></span>　
+			<button id="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" id="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" id="speakerIconPink" style="display:none;"></button></p>
+			<div id="wordExplanation"></div>
+			<div id="buttonSection">
+				<div id="buttonContainer"><!-- jQuery supports animating only "normal" divs so we need another one to have the display: table layout -->
+					<label id="wordButtonLabel" style="display: none;"></label>
+					<button id="wordOkButton" style="display: none;">Ok, painan sanan mieleeni!</button>
+					<button id="exerciseOkButton" style="display: none;">Ok, tarkista vastaus!</button>
+					<button id="exerciseSuccessButton" class="multilineButton">Muistin äänenpainon paikan<br>ja äänsin ongelmitta.</button>
+					<button id="exerciseFailureButton" class="multilineButton">Suorituksessani on vielä<br>parantamisen varaa</button>
+				</div>
+			</div>
 		</div>
 		</div>
-	</div>
 	</section>
 
 {{/partial}}

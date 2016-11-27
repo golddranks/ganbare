@@ -10,8 +10,11 @@
 }
 
 button:focus {outline:0;}
+* { -webkit-tap-highlight-color: rgba(0, 0, 0, 0); }
 
 #main {
+
+
 		max-width: 40em;
 		&.fullwidth {
 			max-width: 100%;
@@ -19,9 +22,6 @@ button:focus {outline:0;}
 
 		.error {
 			color: red;
-		}
-
-		#quiz {
 		}
 
 		.uiButton {
@@ -54,7 +54,7 @@ button:focus {outline:0;}
 				width: 100%;
 				text-align: center;
 			}
-			z-index: 300;
+			z-index: 400;
 			position: absolute;
 			top: 0;
 			right: 0;
@@ -141,6 +141,7 @@ button:focus {outline:0;}
 /* AnswerMark */
 
 .answerMark {
+	z-index: 300;
 	position: absolute;
 	left: calc(50%);
 	top: calc(55%);
@@ -160,17 +161,51 @@ button:focus {outline:0;}
 		padding: 0.2em;
 }
 
+@include breakpoint(xxsmall) {
+
+	#quiz {
+		display: block;
+		margin: 0;
+		padding: 0;
+		height: 100%;
+		@include vendor('display', 'flex');
+		@include vendor('flex-direction', 'column');
+		@include vendor('justify-content', 'center');
+	}
+
+	#questionSection {
+		height: auto;
+		@include vendor('flex-basis', 'content');
+		@include vendor('flex-shrink', '0');
+	}
+}
 
 .answerList {
+	padding: 0;
+	margin: 0;
 	position: relative;
+
+	@include breakpoint(xxsmall) {
+		p {
+			margin-bottom: (_size(element-margin) * 0.5);
+		}
+		button {
+			padding-bottom: (_size(element-margin) * 0.5);
+		}
+	}
+
+	*:last-child {
+		padding-bottom: 0;
+		margin-bottom: 0;
+	}
+
 	button,
 	.answerButton {
 		
 		background-color: transparent;
 		border-radius: _size(border-radius);
-		border: solid 1px _palette(border);
-		color: _palette(fg) !important;
 		display: inline-block;
+		margin-bottom: 0;
 
 		height: auto;
 		padding: 0.5em 0 0.5em 0;
@@ -178,6 +213,25 @@ button:focus {outline:0;}
 			max-width: 23em;
 			max-height: 12em;
 		}
+
+		@include vendor('transition', (
+			'transform #{_duration(transition)} ease'
+		));
+
+		&:enabled:active {
+			@include vendor('transform', 'scale(0.95)');
+			@include vendor('transition', (
+				'transform #{_duration(fast)} ease-out'
+			));
+		}
+
+		@include breakpoint(xxsmall) {
+			img {
+				width: auto;
+				max-height: 11em;
+			}
+		}
+
 	}
 }
 
@@ -185,12 +239,6 @@ button:focus {outline:0;}
 	 border-color: #f0f0f0;
 }
 
-.compactAnswerList {
-	margin-bottom: -3em;
-}
-
-
-/* stylized file upload button added by Pyry */
 .fileUpload {
     position: relative;
     overflow: hidden;
@@ -229,10 +277,26 @@ button:focus {outline:0;}
 #wordExplanation,
 .wordExplanation {
 	img {
-		max-width: 100%;
 		height: auto;
-		max-height: 20em;
+		max-width: 100%;
+    	transition: all 300ms linear;
 	}
+	@include breakpoint(xxsmall) {
+		img {
+			width: auto;
+			max-height: 40vh;
+		}
+	}
+}
+
+#wordExplanation.imageLoaded img {
+	opacity: 1;
+	max-height: 20em;
+}
+
+#wordExplanation:not(.imageLoaded) img {
+	opacity: 0;
+	max-height: 17em;
 }
 
 #wordShowButton,

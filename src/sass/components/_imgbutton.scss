@@ -16,10 +16,15 @@
 	width: auto;
 	border: none;
 
+
+	@include vendor('transition', (
+		'transform #{_duration(transition)} ease'
+	));
+
+
 	&:enabled:hover {
 		@include vendor('transform', 'scale(1.05)');
 		@include vendor('transition', (
-			'opacity #{_duration(transition)} ease',
 			'transform #{_duration(transition)} ease'
 		));
 	}
@@ -28,7 +33,6 @@
 	&:enabled:active {
 		@include vendor('transform', 'scale(0.9)');
 		@include vendor('transition', (
-			'opacity #{_duration(fast)} ease-out',
 			'transform #{_duration(fast)} ease-out'
 		));
 	}

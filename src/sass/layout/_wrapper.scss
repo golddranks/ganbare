@@ -30,6 +30,9 @@
 		&:before {
 			content: '';
 			display: block;
+			@include breakpoint(xxsmall) {
+				display: none;
+			}
 		}
 
 		@include breakpoint(small) {
@@ -37,6 +40,9 @@
 		}
 
 		@include breakpoint(xxsmall) {
+			display:table;
+			height: 100%;
+			width: 100%;
 			padding: 0;
 		}
 

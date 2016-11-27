@@ -14,6 +14,7 @@
 	input[type="reset"],
 	input[type="button"],
 	button,
+	.answerButton
 	.button {
 		@include vendor('appearance', 'none');
 		@include vendor('transition', (
@@ -37,6 +38,17 @@
 		&:hover {
 			border-color: _palette(highlight);
 			color: _palette(highlight) !important;
+		}
+
+		@include vendor('transition', (
+			'transform #{_duration(transition)} ease'
+		));
+
+		&:enabled:active {
+			@include vendor('transform', 'scale(0.95)');
+			@include vendor('transition', (
+				'transform #{_duration(fast)} ease-out'
+			));
 		}
 
 		&.icon {
