@@ -6,7 +6,7 @@
 #![plugin(diesel_codegen, binary_macros, dotenv_macros)]
 
 
-#[macro_use] extern crate diesel;
+#[macro_use] pub extern crate diesel;
 #[macro_use] extern crate diesel_codegen;
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate log;
@@ -14,7 +14,7 @@
 
 extern crate time;
 extern crate crypto;
-extern crate chrono;
+pub extern crate chrono;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate data_encoding;
@@ -23,7 +23,7 @@ extern crate unicode_normalization;
 
 
 use rand::thread_rng;
-use diesel::prelude::*;
+pub use diesel::prelude::*;
 use diesel::expression::dsl::{all, any};
 use std::net::IpAddr;
 use std::path::PathBuf;
@@ -39,7 +39,7 @@ macro_rules! try_or {
 pub mod schema;
 pub mod models;
 pub mod email;
-use models::*;
+pub use models::*;
 pub mod password;
 pub mod errors {
 
@@ -110,7 +110,7 @@ pub mod errors {
     }
 }
 
-use errors::*;
+pub use errors::*;
 
 
 
@@ -1620,7 +1620,51 @@ pub fn post_question(conn : &PgConnection, question: NewQuizQuestion, mut answer
     Ok(q.id)
 }
 
-pub fn event_state(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pub mod event {
+
+    use super::*;
+
+pub fn state(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences, events};
 
     let ok = events::table
@@ -1633,50 +1677,8 @@ pub fn event_state(conn: &PgConnection, event_name: &str, user: &User) -> Result
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-pub fn is_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<bool> {
-    let state = event_state(conn, event_name, user)?;
+pub fn is_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<bool> {
+    let state = state(conn, event_name, user)?;
     Ok(match state {
         Some(e) => match e.1.event_time {
             Some(_) => true,
@@ -1687,14 +1689,14 @@ pub fn is_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Resu
 }
 
 
-pub fn initiate_event(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+pub fn initiate(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences, events};
 
-    let ev: Event = try_or!(events::table
+    if let Some((ev, exp)) = state(conn, event_name, user)? { return Ok(Some((ev, exp))) };
+
+    let ev: Event = events::table
         .filter(events::name.eq(event_name))
-        .filter(events::published.eq(true))
-        .get_result(conn)
-        .optional()?, else return Ok(None));
+        .get_result(conn)?;
 
     let exp: EventExperience = diesel::insert(&EventExperience {user_id: user.id, event_id: ev.id, event_time: None})
         .into(event_experiences::table)
@@ -1704,10 +1706,10 @@ pub fn initiate_event(conn: &PgConnection, event_name: &str, user: &User) -> Res
 }
 
 
-pub fn set_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+pub fn set_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences};
 
-    if let Some((ev, mut exp)) = event_state(conn, event_name, user)? {
+    if let Some((ev, mut exp)) = state(conn, event_name, user)? {
         exp.event_time = Some(chrono::UTC::now());
         diesel::update(
                 event_experiences::table
@@ -1720,4 +1722,6 @@ pub fn set_event_done(conn: &PgConnection, event_name: &str, user: &User) -> Res
     } else {
         Ok(None)
     }
+}
+
 }

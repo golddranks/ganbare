@@ -22,7 +22,7 @@ pub fn ok(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
 
     let event_name = err_400!(req.form_mut().take("event_ok"), "Field event_ok is missing!");
-    let _ = err_400!(ganbare::set_event_done(&conn, &event_name, &user).err_500()?, "Event \"{}\" doesn't exist!", &event_name);
+    let _ = err_400!(ganbare::event::set_done(&conn, &event_name, &user).err_500()?, "Event \"{}\" doesn't exist!", &event_name);
 
 
     redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
@@ -31,11 +31,11 @@ pub fn ok(req: &mut Request) -> PencilResult {
 pub fn dispatch_events(req: &mut Request, conn: &PgConnection, user: &User, sess: &Session)
     -> StdResult<Option<PencilResult>, PencilError> {
 
-    let event_redirect = if ! ganbare::is_event_done(conn, "welcome", &user).err_500()? {
+    let event_redirect = if ! ganbare::event::is_done(conn, "welcome", &user).err_500()? {
 
         Some(redirect("/welcome", 303))
 
-    } else if ! ganbare::is_event_done(conn, "survey", &user).err_500()? {
+    } else if ! ganbare::event::is_done(conn, "survey", &user).err_500()? {
 
         Some(redirect("/survey", 303))
 
@@ -51,7 +51,7 @@ pub fn main_quiz(req: &mut Request, _: &PgConnection, _: &User) -> PencilResult 
 
 pub fn survey(req: &mut Request) -> PencilResult {
     let (conn, user, _) = auth_user(req, "")?;
-    ganbare::initiate_event(&conn, "survey", &user).err_500()?;
+    ganbare::event::initiate(&conn, "survey", &user).err_500()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "survey".into());
     req.app.render_template("survey.html", &context)
@@ -59,7 +59,7 @@ pub fn survey(req: &mut Request) -> PencilResult {
 
 pub fn welcome(req: &mut Request) -> PencilResult { 
     let (conn, user, _) = auth_user(req, "")?;
-    ganbare::initiate_event(&conn, "welcome", &user).err_500()?;
+    ganbare::event::initiate(&conn, "welcome", &user).err_500()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "welcome".into());
     req.app.render_template("welcome.html", &context)
