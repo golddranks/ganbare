@@ -168,16 +168,15 @@ button:focus {outline:0;}
 		margin: 0;
 		padding: 0;
 		height: 100%;
+	}
+
+	#questionSectionFlexContainer {
+		height: 100%;
 		@include vendor('display', 'flex');
 		@include vendor('flex-direction', 'column');
 		@include vendor('justify-content', 'center');
 	}
 
-	#questionSection {
-		height: auto;
-		@include vendor('flex-basis', 'content');
-		@include vendor('flex-shrink', '0');
-	}
 }
 
 .answerList {
@@ -189,14 +188,6 @@ button:focus {outline:0;}
 		p {
 			margin-bottom: (_size(element-margin) * 0.5);
 		}
-		button {
-			padding-bottom: (_size(element-margin) * 0.5);
-		}
-	}
-
-	*:last-child {
-		padding-bottom: 0;
-		margin-bottom: 0;
 	}
 
 	button,
@@ -226,12 +217,17 @@ button:focus {outline:0;}
 		}
 
 		@include breakpoint(xxsmall) {
+			padding-bottom: (_size(element-margin) * 0.5);
 			img {
 				width: auto;
 				max-height: 11em;
 			}
 		}
+	}
 
+	*:last-child {
+		padding-bottom: 0;
+		margin-bottom: 0;
 	}
 }
 
@@ -274,21 +270,6 @@ button:focus {outline:0;}
 	max-width: 30em;
 }
 
-#wordExplanation,
-.wordExplanation {
-	img {
-		height: auto;
-		max-width: 100%;
-    	transition: all 300ms linear;
-	}
-	@include breakpoint(xxsmall) {
-		img {
-			width: auto;
-			max-height: 40vh;
-		}
-	}
-}
-
 #wordExplanation.imageLoaded img {
 	opacity: 1;
 	max-height: 20em;
@@ -298,6 +279,20 @@ button:focus {outline:0;}
 	opacity: 0;
 	max-height: 17em;
 }
+
+#wordExplanation,
+.wordExplanation {
+	img {
+		height: auto;
+		max-width: 100%;
+    	transition: all 300ms linear;
+		@include breakpoint(xxsmall) {
+			width: auto;
+			max-height: 38vh !important;
+		}
+	}
+}
+
 
 #wordShowButton,
 .wordShowButton {

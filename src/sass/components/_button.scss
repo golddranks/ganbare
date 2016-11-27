@@ -35,6 +35,7 @@
 		text-decoration: none;
 		white-space: nowrap;
 
+	.hover
 		&:hover {
 			border-color: _palette(highlight);
 			color: _palette(highlight) !important;
@@ -45,6 +46,8 @@
 		));
 
 		&:enabled:active {
+			border-color: _palette(highlight);
+			color: _palette(highlight) !important;
 			@include vendor('transform', 'scale(0.95)');
 			@include vendor('transition', (
 				'transform #{_duration(fast)} ease-out'

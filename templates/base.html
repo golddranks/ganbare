@@ -49,6 +49,7 @@
 		<!-- Scripts -->
 			<!--[if lte IE 8]><script src="static/js/respond.min.js"></script><![endif]-->
 			<script>
+				document.body.className = 'ontouchstart' in document.documentElement ? '' : 'hover';
 				$(function() {
 					document.body.className = document.body.className.replace(/\bis-loading\b/, '');
 					{{~#block page_script_inline}}{{/block~}}

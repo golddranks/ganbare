@@ -82,8 +82,7 @@ var prototypeAnswer = $(".answer").remove();
 prototypeAnswer.show();
 var avatar = $("#quiz .avatar");
 var questionSection = $("#questionSection");
-var wordSection = $("#wordSection");
-var wordSectionSlideContainer = $("#wordSectionSlideContainer");
+var questionSectionFlexContainer = $("#questionSectionFlexContainer");
 var answerList = $(".answerList");
 var questionText = $(".questionText");
 var questionExplanation = $("#questionExplanation");
@@ -96,6 +95,8 @@ var topmessage = $(".topmessageparagraph");
 
 
 /* word- and exercise-related things */
+var wordSection = $("#wordSection");
+var wordSectionSlideContainer = $("#wordSectionSlideContainer");
 var wordShowButton = $("#wordShowButton");
 var wordShowKana = $("#wordShowKana");
 var wordStatus = $("#wordStatus");
@@ -152,6 +153,7 @@ $("#settingsMenu").click(function( event ) { event.stopPropagation(); });
 
 function cleanState() {
 	buttonSection.hide();
+	questionSectionFlexContainer.hide();
 	wordSectionSlideContainer.hide();
 	wordExplanation.html("");
 	wordExplanation.removeClass("imageLoaded");
@@ -295,6 +297,7 @@ function answerWord() {
 	wordShowButton.off('click');
 	setTimeout(function() {
 		wordSectionSlideContainer.slideUp(normalSpeed, function() {
+			wordShowButton.focusout();
 			nextQuestion();
 		});
 	}, normalSlow);
@@ -399,6 +402,7 @@ function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
 };
 
 function showQuestion(question) {
+	questionSectionFlexContainer.show();
 	questionSection.show();
 	questionExplanation.text(question.explanation);
 	avatar.show();
@@ -466,7 +470,7 @@ function showWord(word) {
 	setTimeout(function() {
 		wordExplanation.addClass("imageLoaded");
 		wordSectionSlideContainer.slideDown(normalSpeed);
-	}, 100);
+	}, 200);
 }
 
 function showExercise(exercise) {
@@ -516,7 +520,7 @@ function showExercise(exercise) {
 	setTimeout(function() {
 		wordExplanation.addClass("imageLoaded");
 		wordSectionSlideContainer.slideDown(normalSpeed);
-	}, 100);
+	}, 200);
 }
 
 function showQuiz(question) {
