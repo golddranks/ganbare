@@ -8,3 +8,5 @@ target
 /audio/
 /images/
 /backups/
+/static/css/main.css
+/static/ts/
