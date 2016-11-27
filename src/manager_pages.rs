@@ -12,10 +12,11 @@ pub fn fresh_install_form(req: &mut Request) -> PencilResult {
 }
 
 pub fn fresh_install_post(req: &mut Request) -> PencilResult {
-    let form = req.form_mut();
-    let email = err_400!(form.take("email"), "email missing");
-    let new_password = err_400!(form.take("new_password"), "new_password missing");
-    let new_password_check = err_400!(form.take("new_password_check"), "new_password_check missing");
+    req.load_form_data();
+    let form = req.form().expect("Form data loaded");
+    let email = err_400!(form.get("email"), "email missing");
+    let new_password = err_400!(form.get("new_password"), "new_password missing");
+    let new_password_check = err_400!(form.get("new_password_check"), "new_password_check missing");
     if new_password != new_password_check { return Ok(bad_request("passwords don't match")) };
 
     let conn = ganbare::db_connect(&*DATABASE_URL).err_500()?;
@@ -25,15 +26,23 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
     ganbare::join_user_group_by_name(&conn, &user, "admins").err_500()?;
     ganbare::join_user_group_by_name(&conn, &user, "editors").err_500()?;
 
-    let mut context = new_template_context();
-    context.insert("install_success".into(), "success".into());
-    req.app.render_template("fresh_install.html", &context)
+
+    match do_login(&user.email, &new_password, &*req).err_500()? {
+        Some((_, mut sess)) => {
+            let mut context = new_template_context();
+            context.insert("install_success".into(), "success".into());
+            req.app
+                .render_template("fresh_install.html", &context)
+                .refresh_cookie(&conn, &mut sess, &*req)
+        },
+        None => { Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login them in. A bug?".to_string())))) },
+    }
 }
 
 pub fn manage(req: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
 
-    let (user, sess) = get_user(&conn, req).err_500()?
+    let (user, mut sess) = get_user(&conn, req).err_500()?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
     if ! ganbare::check_user_group(&conn, &user, "editors").err_500()?
@@ -41,18 +50,20 @@ pub fn manage(req: &mut Request) -> PencilResult {
 
     let context = new_template_context();
 
-    req.app.render_template("manage.html", &context)
-                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    req.app
+        .render_template("manage.html", &context)
+        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
 }
 
 pub fn add_quiz_form(req: &mut Request) -> PencilResult {
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, _, mut sess) = auth_user(req, "editors")?;
 
     let context = new_template_context();
 
-    req.app.render_template("add_quiz.html", &context)
-                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    req.app
+        .render_template("add_quiz.html", &context)
+        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
 }
 
 pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
@@ -118,7 +129,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
         Ok((ganbare::NewQuestion{q_name, q_explanation, question_text, skill_nugget}, fieldsets))
     }
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, _, mut sess) = auth_user(req, "editors")?;
 
     let form = parse_form(&mut *req).map_err(|ee| { error!("{:?}", ee); abort(400).unwrap_err()})?;
     let result = ganbare::create_quiz(&conn, form.0, form.1);
@@ -127,16 +138,18 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
         _ => abort(500).unwrap_err(),
     })?;
 
-    redirect("/add_quiz", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
+    redirect("/add_quiz", 303)
+        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
 }
 
 pub fn add_word_form(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, _, mut sess) = auth_user(req, "editors")?;
 
     let context = new_template_context();
 
-    req.app.render_template("add_word.html", &context)
-                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    req.app
+        .render_template("add_word.html", &context)
+        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
 }
 
 pub fn add_word_post(req: &mut Request) -> PencilResult  {
@@ -173,27 +186,29 @@ pub fn add_word_post(req: &mut Request) -> PencilResult  {
         Ok(ganbare::NewWordFromStrings{word, explanation, narrator: "".into(), nugget, files})
     }
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, _, mut sess) = auth_user(req, "editors")?;
 
     let word = parse_form(req)
             .map_err(|_| abort(400).unwrap_err())?;
 
     ganbare::create_word(&conn, word).err_500()?;
     
-    redirect("/add_word", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
+    redirect("/add_word", 303)
+        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
 }
 
 pub fn add_users_form(req: &mut Request) -> PencilResult {
 
-    let (conn, _, sess) = auth_user(req, "admins")?;
+    let (conn, _, mut sess) = auth_user(req, "admins")?;
 
     let context = new_template_context();
-    req.app.render_template("add_users.html", &context)
-                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    req.app
+        .render_template("add_users.html", &context)
+        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
 }
 
 pub fn add_users(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "admins")?;
+    let (conn, _, mut sess) = auth_user(req, "admins")?;
 
     req.load_form_data();
     let form = req.form().expect("The form data is loaded.");
@@ -214,6 +229,7 @@ pub fn add_users(req: &mut Request) -> PencilResult {
     }
 
     let context = new_template_context();
-    req.app.render_template("add_users.html", &context)
-                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    req.app
+        .render_template("add_users.html", &context)
+        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
 }

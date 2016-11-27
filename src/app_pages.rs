@@ -1,34 +1,9 @@
 
 use super::*;
 use pencil::redirect;
+use helpers;
 
-pub fn hello(req: &mut Request) -> PencilResult {
-
-    if let Some((conn, user, sess)) = try_auth_user(req).err_500()? {
-
-        if let Some(event_redirect) = dispatch_events(req, &conn, &user, &sess)? {
-            event_redirect
-        } else {
-            main_quiz(req, &conn, &user)
-        }
-
-    } else {
-        return redirect("/login", 303)
-    }
-}
-
-pub fn ok(req: &mut Request) -> PencilResult {
-
-    let (conn, user, sess) = auth_user(req, "")?;
-
-    let event_name = err_400!(req.form_mut().take("event_ok"), "Field event_ok is missing!");
-    let _ = err_400!(ganbare::event::set_done(&conn, &event_name, &user).err_500()?, "Event \"{}\" doesn't exist!", &event_name);
-
-
-    redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
-}
-
-pub fn dispatch_events(req: &mut Request, conn: &PgConnection, user: &User, sess: &Session)
+fn dispatch_events(conn: &PgConnection, user: &User)
     -> StdResult<Option<PencilResult>, PencilError> {
 
     let event_redirect = if ! ganbare::event::is_done(conn, "welcome", &user).err_500()? {
@@ -41,34 +16,66 @@ pub fn dispatch_events(req: &mut Request, conn: &PgConnection, user: &User, sess
 
     } else { None };
 
-    Ok(event_redirect.map(|redirect| redirect.map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))))
+    Ok(event_redirect)
 }
 
-pub fn main_quiz(req: &mut Request, _: &PgConnection, _: &User) -> PencilResult { 
+fn main_quiz(req: &mut Request, _: &PgConnection, _: &User) -> PencilResult { 
     let context = new_template_context();
+
     req.app.render_template("main.html", &context)
 }
 
+pub fn hello(req: &mut Request) -> PencilResult {
+
+    if let Some((conn, user, mut sess)) = try_auth_user(req).err_500()? {
+
+        if let Some(event_redirect) = dispatch_events(&conn, &user)? {
+            event_redirect
+        } else {
+            main_quiz(req, &conn, &user)
+
+        }.refresh_cookie(&conn, &mut sess, req)
+
+    } else {
+        redirect("/login", 303)
+    }
+}
+
+pub fn ok(req: &mut Request) -> PencilResult {
+
+    let (conn, user, mut sess) = auth_user(req, "")?;
+
+    let event_name = err_400!(req.form_mut().take("event_ok"), "Field event_ok is missing!");
+    let _ = err_400!(ganbare::event::set_done(&conn, &event_name, &user).err_500()?, "Event \"{}\" doesn't exist!", &event_name);
+
+
+    redirect("/", 303).refresh_cookie(&conn, &mut sess, req)
+}
+
 pub fn survey(req: &mut Request) -> PencilResult {
-    let (conn, user, _) = auth_user(req, "")?;
+    let (conn, user, mut sess) = auth_user(req, "")?;
     ganbare::event::initiate(&conn, "survey", &user).err_500()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "survey".into());
-    req.app.render_template("survey.html", &context)
+    req.app
+        .render_template("survey.html", &context)
+        .refresh_cookie(&conn, &mut sess, req)
 }
 
 pub fn welcome(req: &mut Request) -> PencilResult { 
-    let (conn, user, _) = auth_user(req, "")?;
+    let (conn, user, mut sess) = auth_user(req, "")?;
     ganbare::event::initiate(&conn, "welcome", &user).err_500()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "welcome".into());
-    req.app.render_template("welcome.html", &context)
+    req.app
+        .render_template("welcome.html", &context)
+        .refresh_cookie(&conn, &mut sess, req)
 }
 
 pub fn login_form(req: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
-    if let Some(_) = get_user(&conn, req).err_500()? {
-        return redirect("/", 303)
+    if let Some((_, mut sess)) = get_user(&conn, req).err_500()? {
+        return redirect("/", 303).refresh_cookie(&conn, &mut sess, req)
     }
     if ! ganbare::is_installed(&conn).err_500()? {
         return redirect("/fresh_install", 303)
@@ -89,8 +96,8 @@ pub fn login_post(request: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
 
     match do_login(&email, &plaintext_pw, ip).err_500()? {
-        Some((_, sess)) => {
-            redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, ip) )
+        Some((_, mut sess)) => {
+            redirect("/", 303).refresh_cookie(&conn, &mut sess, ip)
         },
         None => {
             warn!("Failed login.");
@@ -103,22 +110,16 @@ pub fn login_post(request: &mut Request) -> PencilResult {
 }
 
 pub fn logout(request: &mut Request) -> PencilResult {
-    let conn = db_connect().err_500()?;
-    if let Some(session_id) = request.cookies().and_then(get_cookie) {
-        ganbare::end_session(&conn, &session_id).err_500()?;
-    };
-
-    redirect("/", 303).map(ResponseExt::expire_cookie)
+    helpers::do_logout(request.cookies().and_then(get_cookie))?;
+    redirect("/", 303).expire_cookie()
 }
 
 
 pub fn confirm_form(request: &mut Request) -> PencilResult {
 
     let secret = err_400!(request.args().get("secret"), "secret");
-    let conn = db_connect()
-        .map_err(|e| internal_error(e) )?;
-    let (email, _) = ganbare::check_pending_email_confirm(&conn, &secret)
-        .err_500()?;
+    let conn = db_connect().err_500()?;
+    let (email, _) = ganbare::check_pending_email_confirm(&conn, &secret).err_500()?;
 
     let mut context = new_template_context();
     context.insert("email".to_string(), email);
@@ -129,9 +130,8 @@ pub fn confirm_form(request: &mut Request) -> PencilResult {
 
 pub fn confirm_post(req: &mut Request) -> PencilResult {
     req.load_form_data();
-    let ip = req.request.remote_addr.ip();
-    let conn = db_connect()
-        .err_500()?;
+ //   let ip = req.request.remote_addr.ip();
+    let conn = db_connect().err_500()?;
     let secret = err_400!(req.args().get("secret"), "secret missing").clone();
     let password = err_400!(req.form().expect("form data loaded.").get("password"), "password missing");
     let user = match ganbare::complete_pending_email_confirm(&conn, &password, &secret, &*RUNTIME_PEPPER) {
@@ -143,9 +143,9 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
         }
     };
 
-    match do_login(&user.email, &password, ip).err_500()? {
-        Some((_, sess)) => {
-            redirect("/", 303).map(|resp| resp.refresh_cookie(&conn, &sess, ip) )
+    match do_login(&user.email, &password, &*req).err_500()? {
+        Some((_, mut sess)) => {
+            redirect("/", 303).refresh_cookie(&conn, &mut sess, &*req)
         },
         None => { Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login them in. A bug?".to_string())))) },
     }
@@ -154,7 +154,7 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
 
 pub fn change_password_form(req: &mut Request) -> PencilResult {
 
-    let (conn, _, sess) = auth_user(req, "")?;
+    let (conn, _, mut sess) = auth_user(req, "")?;
 
     let mut context = new_template_context();
 
@@ -164,8 +164,9 @@ pub fn change_password_form(req: &mut Request) -> PencilResult {
 
     context.insert("password_changed".to_string(), password_changed);
 
-    req.app.render_template("change_password.html", &context)
-                    .map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()))
+    req.app
+        .render_template("change_password.html", &context)
+        .refresh_cookie(&conn, &mut sess, req)
 }
 
 pub fn change_password(req: &mut Request) -> PencilResult {
@@ -184,7 +185,7 @@ pub fn change_password(req: &mut Request) -> PencilResult {
         Ok((old_password, new_password))
     }
 
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, user, mut sess) = auth_user(req, "")?;
 
     let (old_password, new_password) = err_400!(parse_form(req), "invalid form data");
 
@@ -211,5 +212,5 @@ pub fn change_password(req: &mut Request) -> PencilResult {
         },
     };
 
-    redirect("/change_password?password_changed=true", 303).map(|resp| resp.refresh_cookie(&conn, &sess, req.remote_addr().ip()) )
+    redirect("/change_password?password_changed=true", 303).refresh_cookie(&conn, &mut sess, req)
 }

@@ -40,7 +40,8 @@ pub struct Password {
 #[derive(Debug, Insertable)]
 #[table_name="sessions"]
 pub struct NewSession<'a> {
-    pub sess_id: &'a [u8],
+    pub sess_token: &'a [u8],
+    pub proposed_token: Option<&'a [u8]>,
     pub user_id: i32,
     pub started: DateTime<UTC>,
     pub last_seen: DateTime<UTC>,
@@ -48,11 +49,15 @@ pub struct NewSession<'a> {
 }
 
 
-#[derive(Identifiable, Queryable, Debug, Associations)]
+
+#[derive(Identifiable, Queryable, Debug, Associations, AsChangeset)]
+#[table_name="sessions"]
 #[belongs_to(User, foreign_key = "user_id")]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct Session {
     pub id: i32,
-    pub sess_id: Vec<u8>,
+    pub sess_token: Vec<u8>,
+    pub proposed_token: Option<Vec<u8>>,
     pub user_id: i32,
     pub started: DateTime<UTC>,
     pub last_seen: DateTime<UTC>,

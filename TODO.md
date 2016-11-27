@@ -1,9 +1,7 @@
 # To Do list
 
 Today
-- Do something for the copyright footer when using with small-screened devices
-- FIX: multiple overlapping sessions getting stale
-
+- Desgin a survey
 - Do a group view, add anonymous groups and anonymous aliases
 - Refine the timing algorithms, especially w.r.t breaks and higher-level questions
 
@@ -13,7 +11,6 @@ Plan:
 - Impl a tool that then splits the group into half and assigns them to different groups
 - Check the group when giving new quizes
 - Impl the test tool (asks questions from both groups)
-- Desgin a survey
 
 
 Stretch goals:

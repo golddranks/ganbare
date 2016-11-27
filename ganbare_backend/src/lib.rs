@@ -25,7 +25,6 @@ extern crate unicode_normalization;
 use rand::thread_rng;
 pub use diesel::prelude::*;
 use diesel::expression::dsl::{all, any};
-use std::net::IpAddr;
 use std::path::PathBuf;
 
 pub use diesel::pg::PgConnection;
@@ -403,18 +402,31 @@ pub fn get_group(conn : &PgConnection, group_name: &str )  -> Result<Option<User
 
 
 
+pub mod session {
 
+use super::*;
+use std::net::IpAddr;
+use std::mem;
 
 pub const SESSID_BITS : usize = 128;
 
-/// TODO refactor this function, this is only a temporary helper
-pub fn sess_to_hex(sess : &Session) -> String {
-    use data_encoding::base16;
-    base16::encode(sess.sess_id.as_ref())
+pub fn fresh_token() -> Result<[u8; SESSID_BITS/8]> {
+    use rand::{Rng, OsRng};
+    let mut session_id = [0_u8; SESSID_BITS/8];
+    OsRng::new().chain_err(|| "Unable to connect to the system random number generator!")?.fill_bytes(&mut session_id);
+    Ok(session_id)
 }
 
-/// TODO refactor this function, this is only a temporary helper
-pub fn sess_to_bin(sessid : &str) -> Result<Vec<u8>> {
+pub fn to_hex(sess : &Session) -> String {
+    use data_encoding::base16;
+    match sess.proposed_token {
+        Some(ref t) => base16::encode(t),
+        None => base16::encode(&sess.sess_token),
+    }
+    
+}
+
+fn token_to_bin(sessid : &str) -> Result<Vec<u8>> {
     use data_encoding::base16;
     if sessid.len() == SESSID_BITS/4 {
         base16::decode(sessid.as_bytes()).chain_err(|| ErrorKind::BadSessId)
@@ -423,86 +435,80 @@ pub fn sess_to_bin(sessid : &str) -> Result<Vec<u8>> {
     }
 }
 
+fn update_token(conn: &PgConnection, mut sess: Session) -> Result<Session> {
+    sess.sess_token = sess.proposed_token.ok_or(ErrorKind::DatabaseOdd.to_err())?;
+    sess.proposed_token = None;
+    let new_sess = sess.save_changes(conn)?;
+    Ok(new_sess)
+}
 
-pub fn check_session(conn : &PgConnection, session_id : &str) -> Result<(User, Session)> {
+
+pub fn check(conn : &PgConnection, token_hex : &str) -> Result<Option<(User, Session)>> {
     use schema::{users, sessions};
     use diesel::ExpressionMethods;
-    use diesel::result::Error::NotFound;
 
-    let (session, user) : (Session, User) = sessions::table
-        .inner_join(users::table)
-        .filter(sessions::sess_id.eq(sess_to_bin(session_id)?))
+    let token = token_to_bin(token_hex)?;
+
+    let user_sess: Option<(User, Session)> = users::table
+        .inner_join(sessions::table)
+        .filter(sessions::sess_token.eq(&token).or(sessions::proposed_token.eq(&token)))
         .get_result(conn)
-        .map_err(|e| match e {
-                e @ NotFound => e.caused_err(|| ErrorKind::NoSuchSess),
-                e => e.caused_err(|| "Database error?!"),
-        })?;
+        .optional()?;
 
-    Ok((user, session))
+    if let Some((user, mut sess)) = user_sess {
+
+        if sess.proposed_token == Some(token) {
+            sess = update_token(conn, sess)?;
+        }
+            
+        Ok(Some((user, sess)))
+    } else {
+        Ok(None)
+    }
 } 
 
-pub fn refresh_session(conn : &PgConnection, old_session : &Session, ip : IpAddr) -> Result<Session> {
-    use schema::{sessions};
-    use diesel::ExpressionMethods;
-    use diesel::result::Error::NotFound;
+pub fn refresh(conn : &PgConnection, sess : &mut Session, ip : IpAddr) -> Result<()> {
+    use diesel::SaveChangesDsl;
 
-    let new_sessid = fresh_sessid()?;
+    sess.last_ip.truncate(0);
 
-    let ip_as_bytes = match ip {
-        IpAddr::V4(ip) => { ip.octets()[..].to_vec() },
-        IpAddr::V6(ip) => { ip.octets()[..].to_vec() },
+    match ip {
+        IpAddr::V4(ip) => { sess.last_ip.extend(&ip.octets()[..]) },
+        IpAddr::V6(ip) => { sess.last_ip.extend(&ip.octets()[..]) },
     };
 
-    let fresh_sess = NewSession {
-        sess_id: &new_sessid,
-        user_id: old_session.user_id,
-        started: old_session.started,
-        last_seen: chrono::UTC::now(),
-        last_ip: ip_as_bytes,
-    };
+    let proposed_token = fresh_token()?;
 
-    let session : Session = diesel::insert(&fresh_sess)
-        .into(sessions::table)
-        .get_result(conn)
-        .map_err(|e| match e {
-                e @ NotFound => e.caused_err(|| ErrorKind::NoSuchSess),
-                e => e.caused_err(|| "Couldn't update the session."),
-        })?;
+    let mut vec = if let Some(mut vec) = sess.proposed_token.take() { vec.truncate(0); vec } else { vec![] };
+    vec.extend(proposed_token.as_ref());
 
-    // This will delete the user's old sessions IDs, but only after the creation of a new one is underway.
-    // In continuous usage, the IDs older than 1 minute will be deleted. But if the user doesn't authenticate,
-    // for a while, the newest session IDs will remain until the user returns.
-    diesel::delete(
-            sessions::table
-                .filter(sessions::user_id.eq(old_session.user_id))
-                .filter(sessions::last_seen.lt(chrono::UTC::now()-chrono::Duration::minutes(1)))
-        ).execute(&*conn)
-        .map_err(|_| "Can't delete old sessions!")?;
+    sess.proposed_token = Some(vec);
+    sess.last_seen = chrono::UTC::now();
 
-    Ok(session)
-} 
+    let updated_sess = sess.save_changes(conn)?;
 
-pub fn end_session(conn : &PgConnection, session_id : &str) -> Result<()> {
-    use schema::sessions;
+    mem::replace(sess, updated_sess);
 
-    diesel::delete(sessions::table
-        .filter(sessions::sess_id.eq(sess_to_bin(session_id).chain_err(|| "Session ID was malformed!")?)))
-        .execute(conn)
-        .chain_err(|| "Couldn't end the session.")?;
     Ok(())
 } 
 
-fn fresh_sessid() -> Result<[u8; SESSID_BITS/8]> {
-    use rand::{Rng, OsRng};
-    let mut session_id = [0_u8; SESSID_BITS/8];
-    OsRng::new().chain_err(|| "Unable to connect to the system random number generator!")?.fill_bytes(&mut session_id);
-    Ok(session_id)
-}
-
-pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
+pub fn end(conn : &PgConnection, token_hex : &str) -> Result<Option<()>> {
     use schema::sessions;
 
-    let new_sessid = fresh_sessid()?;
+    let token = token_to_bin(token_hex)?;
+
+    let deleted = diesel::delete(sessions::table
+            .filter(sessions::sess_token.eq(&token).or(sessions::proposed_token.eq(&token)))
+        )
+        .execute(conn)
+        .optional()?;
+    Ok(deleted.map(|_| ()))
+} 
+
+pub fn start(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
+    use schema::sessions;
+
+    let new_sessid = fresh_token()?;
 
     let ip_as_bytes = match ip {
         IpAddr::V4(ip) => { ip.octets()[..].to_vec() },
@@ -510,7 +516,8 @@ pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<
     };
 
     let new_sess = NewSession {
-        sess_id: &new_sessid,
+        sess_token: &new_sessid,
+        proposed_token: None,
         user_id: user.id,
         started: chrono::UTC::now(),
         last_seen: chrono::UTC::now(),
@@ -523,8 +530,7 @@ pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<
         .chain_err(|| "Couldn't start a session!") // TODO if the session id already exists, this is going to fail? (A few-in-a 2^128 change, though...)
 }
 
-
-
+}
 
 
 
@@ -551,7 +557,7 @@ pub fn start_session(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<
 
 pub fn add_pending_email_confirm(conn : &PgConnection, email : &str, groups: &[i32]) -> Result<String> {
     use schema::pending_email_confirms;
-    let secret = data_encoding::base64url::encode(&fresh_sessid()?[..]);
+    let secret = data_encoding::base64url::encode(&session::fresh_token()?[..]);
     {
         let confirm = NewPendingEmailConfirm {
             email,

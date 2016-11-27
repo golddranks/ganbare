@@ -530,6 +530,7 @@ function showQuiz(question) {
 	if (question === null) {
 		console.log("No cards!");
 		questionSection.show();
+		questionSectionFlexContainer.show();
 		questionStatus.text("Ei ole mitään kysyttävää ☹️");
 		questionStatus.slideDown(normalSpeed);
 		avatar.fadeOut(superFast);

@@ -7,10 +7,8 @@ use ganbare;
 use ganbare::PgConnection;
 use hyper::header::{SetCookie, CookiePair, Cookie};
 use std::collections::BTreeMap;
-use pencil;
-use pencil::{Request, Response, abort, PencilError};
+use pencil::{self, Request, Response, abort, PencilError, PencilResult};
 use ganbare::models::{User, Session};
-use ganbare::errors::{ErrorKind};
 use std::net::IpAddr;
 use time;
 use std::result::Result as StdResult;
@@ -83,35 +81,53 @@ pub fn new_template_context() -> BTreeMap<String, String> {
 }
 
 pub fn get_user(conn : &PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
-    if let Some(session_id) = req.cookies().and_then(get_cookie) {
-        ganbare::check_session(&conn, session_id)
-            .map(|user_sess| Some(user_sess))
-            .or_else(|e| match e.kind() {
-                &ErrorKind::BadSessId => Ok(None),
-                &ErrorKind::NoSuchSess => Ok(None),
-                _ => Err(e),
-            })
+    if let Some(sess_token) = req.cookies().and_then(get_cookie) {
+        Ok(ganbare::session::check(&conn, sess_token)?)
     } else {
         Ok(None)
     }
 }
 
-pub trait ResponseExt {
-    fn refresh_cookie(self, &PgConnection, &Session, IpAddr) -> Self;
+pub trait IntoIp {
+    fn into_ip(self) -> IpAddr;
+}
+
+impl IntoIp for IpAddr {
+    fn into_ip(self) -> IpAddr { self }
+}
+
+impl<'a, 'b, 'c> IntoIp for Request<'a, 'b, 'c> {
+    fn into_ip(self) -> IpAddr { self.request.remote_addr.ip() }
+}
+
+impl<'r, 'a, 'b, 'c> IntoIp for &'r mut Request<'a, 'b, 'c> {
+    fn into_ip(self) -> IpAddr { self.request.remote_addr.ip() }
+}
+
+impl<'r, 'a, 'b, 'c> IntoIp for &'r Request<'a, 'b, 'c> {
+    fn into_ip(self) -> IpAddr { self.request.remote_addr.ip() }
+}
+
+pub trait CookieProcessor{
+    fn refresh_cookie<I: IntoIp>(self, &PgConnection, &mut Session, ip: I) -> PencilResult;
     fn expire_cookie(self) -> Self;
 }
 
-impl ResponseExt for Response {
+impl CookieProcessor for Response {
 
-    fn refresh_cookie(mut self, conn: &PgConnection, old_sess : &Session, ip: IpAddr) -> Self {
-        let sess = ganbare::refresh_session(&conn, &old_sess, ip).expect("Session should already checked to be valid");
+    fn refresh_cookie<I: IntoIp>(mut self, conn: &PgConnection, sess : &mut Session, req: I) -> PencilResult {
+        let ip = req.into_ip();
+        ganbare::session::refresh(&conn, sess, ip).err_500()?;
+            // Erroring here despice having a valid Session struct means that the session has expired
+            // WHILE we were handling the request. One-in-a-million change, but possible.
+            // Or then the database suddenly went down.
     
-        let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::sess_to_hex(&sess));
+        let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::session::to_hex(sess));
         cookie.path = Some("/".to_owned());
         cookie.domain = Some(SITE_DOMAIN.to_owned());
         cookie.expires = Some(time::now_utc() + time::Duration::weeks(2));
         self.set_cookie(SetCookie(vec![cookie]));
-        self
+        Ok(self)
     }
     
     fn expire_cookie(mut self) -> Self {
@@ -124,6 +140,16 @@ impl ResponseExt for Response {
     }
 }
 
+impl CookieProcessor for PencilResult {
+
+    fn refresh_cookie<I: IntoIp>(self, conn: &PgConnection, sess : &mut Session, req: I) -> PencilResult {
+        self.and_then(|resp| resp.refresh_cookie(conn, sess, req))
+    }
+    
+    fn expire_cookie(self) -> Self {
+        self.and_then(|resp| Ok(<Response as CookieProcessor>::expire_cookie(resp)))
+    }
+}
 
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
@@ -242,16 +268,23 @@ pub fn try_auth_user(req: &mut Request)
 
 pub fn check_env_vars() { &*DATABASE_URL; &*EMAIL_SERVER; &*SITE_DOMAIN; }
 
-pub fn do_login(email : &str, plaintext_pw : &str, ip : IpAddr) -> StdResult<Option<(User, Session)>, PencilError> {
+pub fn do_login<I: IntoIp>(email : &str, plaintext_pw : &str, ip: I) -> StdResult<Option<(User, Session)>, PencilError> {
     let conn = db_connect().err_500()?;
     let user = try_or!(ganbare::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
             else return Ok(None));
 
-    let sess = ganbare::start_session(&conn, &user, ip).err_500()?;
+    let sess = ganbare::session::start(&conn, &user, ip.into_ip()).err_500()?;
 
     Ok(Some((user, sess)))
 }
 
+pub fn do_logout(sess_token: Option<&str>) -> StdResult<(), PencilError> {
+    let conn = db_connect().err_500()?;
+    if let Some(sess_token) = sess_token {
+        ganbare::session::end(&conn, &sess_token).err_500()?;
+    };
+    Ok(())
+}
 
 macro_rules! parse {
     ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
