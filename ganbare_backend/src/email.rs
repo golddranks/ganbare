@@ -1,17 +1,21 @@
 extern crate lettre;
 extern crate handlebars;
-extern crate email;
+extern crate email as rust_email;
 
-use super::errors::{Result, ChainErr};
+use data_encoding;
+
 use self::lettre::transport::smtp::response::Response as EmailResponse;
 use self::lettre::transport::smtp::SmtpTransportBuilder;
 use self::lettre::transport::EmailTransport;
 use self::lettre::email::EmailBuilder;
 use self::handlebars::Handlebars;
 use std::net::ToSocketAddrs;
-use self::email::{Mailbox};
+use self::rust_email::{Mailbox};
 use std::collections::BTreeMap;
 use rustc_serialize::json::{Json, ToJson};
+
+use schema::pending_email_confirms;
+use super::*;
 
 #[derive(RustcEncodable)]
 struct EmailData<'a> { secret: &'a str, site_domain: &'a str }
@@ -44,3 +48,50 @@ pub fn send_confirmation<SOCK: ToSocketAddrs>(email : &str, secret : &str, mail_
     mailer.send(email)
         .chain_err(|| "Couldn't send email!")
 }
+
+
+
+pub fn add_pending_email_confirm(conn : &PgConnection, email : &str, groups: &[i32]) -> Result<String> {
+    let secret = data_encoding::base64url::encode(&session::fresh_token()?[..]);
+    {
+        let confirm = NewPendingEmailConfirm {
+            email,
+            secret: secret.as_ref(),
+            groups
+        };
+        diesel::insert(&confirm)
+            .into(pending_email_confirms::table)
+            .execute(conn)
+            .chain_err(|| "Error :(")?;
+    }
+    Ok(secret)
+}
+
+pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Result<(String, Vec<i32>)> {
+    let confirm : PendingEmailConfirm = pending_email_confirms::table
+        .filter(pending_email_confirms::secret.eq(secret))
+        .first(conn)
+        .chain_err(|| "No such secret/email found :(")?;
+    Ok((confirm.email, confirm.groups))
+}
+
+pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, secret : &str, pepper: &[u8]) -> Result<User> {
+
+    let (email, group_ids) = check_pending_email_confirm(&*conn, secret)?;
+    let user = user::add_user(&*conn, &email, password, pepper)?;
+
+    for g in group_ids {
+        user::join_user_group_by_id(&*conn, &user, g)?
+    }
+
+    diesel::delete(pending_email_confirms::table
+        .filter(pending_email_confirms::secret.eq(secret)))
+        .execute(conn)
+        .chain_err(|| "Couldn't delete the pending request.")?;
+
+    Ok(user)
+}
+
+
+
+

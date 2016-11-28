@@ -9,11 +9,11 @@ extern crate dotenv;
 extern crate handlebars;
 extern crate rustc_serialize;
 
-
-use ganbare_backend::*;
-use diesel::prelude::*;
+use ganbare_backend::PgConnection;
 use ganbare_backend::errors::*;
+use ganbare_backend::db;
 use ganbare_backend::models::*;
+use diesel::LoadDsl;
 #[macro_use]  extern crate lazy_static;
 
 
@@ -49,7 +49,7 @@ fn main() {
         .subcommand(SubCommand::with_name("lsq").about("List all questions"))
         .subcommand(SubCommand::with_name("addq").about("Add a question"))
         .get_matches();
-    let conn = db_connect(&*DATABASE_URL).unwrap();
+    let conn = db::connect(&*DATABASE_URL).unwrap();
     match matches.subcommand() {
         ("lss", Some(_)) => {
             let items = list_skillnuggets(&conn).unwrap();

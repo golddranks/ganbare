@@ -21,7 +21,7 @@ lazy_static! {
 }
 
 fn import_batch(path: &str) {
-    let conn = db_connect(&*DATABASE_URL).unwrap();
+    let conn = db::connect(&*DATABASE_URL).unwrap();
 
     let files = std::fs::read_dir(path).unwrap();
 
@@ -47,7 +47,7 @@ fn import_batch(path: &str) {
 
         let nugget = word.replace("*", "").replace("・", "");
 
-        let w = NewWordFromStrings {
+        let w = manage::NewWordFromStrings {
             word,
             explanation: "".into(),
             nugget,
@@ -57,7 +57,7 @@ fn import_batch(path: &str) {
         
         println!("{:?}", w);
 
-        create_word(&conn, w).unwrap();
+        manage::create_word(&conn, w).unwrap();
     }
 
 }

@@ -8,6 +8,13 @@ use rustc_serialize;
 use regex;
 use unicode_normalization::UnicodeNormalization;
 
+
+use ganbare::audio;
+use ganbare::quiz;
+use ganbare::models;
+use ganbare::skill;
+use ganbare::manage;
+
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
     let (conn, _, mut sess) = auth_user(req, "")?;
@@ -22,7 +29,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
         return abort(404);
     }
     let audio_id = audio_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
-    let (file_name, mime_type) = ganbare::get_audio_file(&conn, audio_id)
+    let (file_name, mime_type) = audio::get_file(&conn, audio_id)
         .map_err(|e| {
             match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),
@@ -50,7 +57,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
 
     let asked_id = asked_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
 
-    let (file_name, mime_type) = ganbare::get_audio_for_quiz(&conn, &user, asked_id)
+    let (file_name, mime_type) = audio::for_quiz(&conn, &user, asked_id)
         .map_err(|e| {
             match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),
@@ -107,13 +114,13 @@ struct ExerciseJson {
     due_date: Option<String>,
 }
 
-pub fn quiz_to_json(quiz: ganbare::Quiz) -> PencilResult {
+pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
     use rand::Rng;
-    use ganbare::Quiz::*;
+    use ganbare::quiz::Quiz::*;
     let mut rng = rand::thread_rng();
     match quiz {
         Q(q_json) => jsonify(&q_json),
-    Exercise(ganbare::Exercise { word: ganbare::models::Word { id, word, explanation, .. }, due_date, due_delay, audio_files }) => {
+    Exercise(quiz::Exercise { word: models::Word { id, word, explanation, .. }, due_date, due_delay, audio_files }) => {
 
         let chosen_audio = rng.choose(&audio_files).expect("Audio for a Exercise: Shouldn't be empty! Borked database?");
 
@@ -127,7 +134,7 @@ pub fn quiz_to_json(quiz: ganbare::Quiz) -> PencilResult {
             due_date: due_date.map(|d| d.to_rfc3339()),
         })
     },
-    Word((ganbare::models::Word { id, word, explanation, .. }, audio_files, show_accents)) => {
+    Word((models::Word { id, word, explanation, .. }, audio_files, show_accents)) => {
 
         let chosen_audio = rng.choose(&audio_files).expect("Audio for a Word: Shouldn't be empty! Borked database?");
 
@@ -147,7 +154,7 @@ pub fn quiz_to_json(quiz: ganbare::Quiz) -> PencilResult {
 pub fn new_quiz(req: &mut Request) -> PencilResult {
     let (conn, user, mut sess) = auth_user(req, "")?;
 
-    let new_quiz = ganbare::get_new_quiz(&conn, &user).err_500()?;
+    let new_quiz = quiz::get_new_quiz(&conn, &user).err_500()?;
 
     match new_quiz {
 
@@ -161,7 +168,7 @@ pub fn new_quiz(req: &mut Request) -> PencilResult {
 pub fn next_quiz(req: &mut Request) -> PencilResult {
     let (conn, user, mut sess) = auth_user(req, "")?;
 
-    fn parse_answer(req : &mut Request) -> Result<ganbare::Answered> {
+    fn parse_answer(req : &mut Request) -> Result<quiz::Answered> {
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
         let answer_type = &parse!(form.get("type"));
@@ -170,8 +177,8 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
             let word_id = str::parse::<i32>(&parse!(form.get("word_id")))?;
             let times_audio_played = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
             let time = str::parse::<i32>(&parse!(form.get("time")))?;
-            Ok(ganbare::Answered::Word(
-                ganbare::AnsweredWord{word_id, times_audio_played, time}
+            Ok(quiz::Answered::Word(
+                quiz::AnsweredWord{word_id, times_audio_played, time}
             ))
         } else if answer_type == "exercise" {
             let word_id = str::parse::<i32>(&parse!(form.get("word_id")))?;
@@ -179,8 +186,8 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
             let active_answer_time = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
             let full_answer_time = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
             let correct = str::parse::<bool>(&parse!(form.get("correct")))?;
-            Ok(ganbare::Answered::Exercise(
-                ganbare::AnsweredExercise{word_id, times_audio_played, active_answer_time, full_answer_time, correct}
+            Ok(quiz::Answered::Exercise(
+                quiz::AnsweredExercise{word_id, times_audio_played, active_answer_time, full_answer_time, correct}
             ))
         } else if answer_type == "question" {
             let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
@@ -188,8 +195,8 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
             let answered_qa_id = if answered_qa_id > 0 { Some(answered_qa_id) } else { None }; // Negatives mean that question was unanswered (due to time limit)
             let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
             let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
-            Ok(ganbare::Answered::Q(
-                ganbare::models::QAnsweredData{id, answered_qa_id, answered_date: UTC::now(), active_answer_time_ms, full_answer_time_ms}      
+            Ok(quiz::Answered::Q(
+                models::QAnsweredData{id, answered_qa_id, answered_date: UTC::now(), active_answer_time_ms, full_answer_time_ms}      
             ))
         } else {
             Err(ErrorKind::FormParseError.into())
@@ -199,7 +206,7 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
     let answer = parse_answer(req)
         .map_err(|_| abort(400).unwrap_err())?;
 
-    let new_quiz = ganbare::get_next_quiz(&conn, &user, answer)
+    let new_quiz = quiz::get_next_quiz(&conn, &user, answer)
         .err_500()?;
 
     match new_quiz {
@@ -220,12 +227,12 @@ pub fn get_item(req: &mut Request) -> PencilResult {
     let endpoint = req.endpoint().expect("Pencil guarantees this");
     let json = match endpoint.as_ref() {
         "get_word" => {
-            let item = ganbare::get_word(&conn, id).err_500()?
+            let item = manage::get_word(&conn, id).err_500()?
                 .ok_or_else(|| abort(404).unwrap_err())?;
             jsonify(&item)
                 },
         "get_question" => {
-            let item = ganbare::get_question(&conn, id).err_500()?
+            let item = manage::get_question(&conn, id).err_500()?
                 .ok_or_else(|| abort(404).unwrap_err())?;
             jsonify(&item)
         },
@@ -244,11 +251,11 @@ pub fn get_all(req: &mut Request) -> PencilResult {
     let endpoint = req.endpoint().expect("Pencil guarantees this");
     let json = match endpoint.as_ref() {
         "get_nuggets" => {
-            let items = ganbare::get_skill_nuggets(&conn).err_500()?;
+            let items = skill::get_skill_nuggets(&conn).err_500()?;
             jsonify(&items)
         },
         "get_bundles" => {
-            let items = ganbare::get_audio_bundles(&conn).err_500()?;
+            let items = audio::get_bundles(&conn).err_500()?;
             jsonify(&items)
         },
         _ => {
@@ -268,16 +275,16 @@ pub fn set_published(req: &mut Request) -> PencilResult {
 
     match endpoint.as_ref() {
         "publish_words" => {
-            ganbare::publish_word(&conn, id, true).err_500()?;
+            manage::publish_word(&conn, id, true).err_500()?;
         },
         "publish_questions" => {
-            ganbare::publish_question(&conn, id, true).err_500()?;
+            manage::publish_question(&conn, id, true).err_500()?;
         },
         "unpublish_words" => {
-            ganbare::publish_word(&conn, id, false).err_500()?;
+            manage::publish_word(&conn, id, false).err_500()?;
         },
         "unpublish_questions" => {
-            ganbare::publish_question(&conn, id, false).err_500()?;
+            manage::publish_question(&conn, id, false).err_500()?;
         },
         _ => {
             return abort(500)
@@ -313,7 +320,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
             let item = rustc_serialize::json::decode(&text)
                             .map_err(|_| abort(400).unwrap_err())?;
         
-            let updated_item = try_or!(ganbare::update_word(&conn, id, item).err_500()?, else return abort(404));
+            let updated_item = try_or!(manage::update_word(&conn, id, item).err_500()?, else return abort(404));
 
             json = jsonify(&updated_item);
 
@@ -323,7 +330,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
             let item = rustc_serialize::json::decode(&text)
                             .map_err(|_| abort(400).unwrap_err())?;
         
-            let updated_item = try_or!(ganbare::update_question(&conn, id, item).err_500()?, else return abort(404));
+            let updated_item = try_or!(manage::update_question(&conn, id, item).err_500()?, else return abort(404));
 
             json = jsonify(&updated_item);
         },
@@ -332,7 +339,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
             let item = rustc_serialize::json::decode(&text)
                             .map_err(|_| abort(400).unwrap_err())?;
         
-            let updated_item = try_or!(ganbare::update_answer(&conn, id, item).err_500()?, else return abort(404));
+            let updated_item = try_or!(manage::update_answer(&conn, id, item).err_500()?, else return abort(404));
 
             json = jsonify(&updated_item);
         },
@@ -387,7 +394,7 @@ pub fn post_question(req: &mut Request) -> PencilResult {
         new_aas.push(new_aa);
     }
 
-    let id = ganbare::post_question(&conn, new_qq, new_aas).err_500()?;
+    let id = manage::post_question(&conn, new_qq, new_aas).err_500()?;
         
     let new_url = format!("/api/questions/{}", id);
 

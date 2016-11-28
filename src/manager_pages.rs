@@ -2,11 +2,12 @@
 use super::*;
 use pencil::redirect;
 use pencil::abort;
-
+use ganbare::user;
+use ganbare::manage;
 
 pub fn fresh_install_form(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db_connect(&*DATABASE_URL).err_500()?;
-    if ganbare::is_installed(&conn).err_500()? { return abort(401) };
+    let conn = ganbare::db::connect(&*DATABASE_URL).err_500()?;
+    if ganbare::db::is_installed(&conn).err_500()? { return abort(401) };
     let context = new_template_context();
     req.app.render_template("fresh_install.html", &context)
 }
@@ -19,12 +20,12 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
     let new_password_check = err_400!(form.get("new_password_check"), "new_password_check missing");
     if new_password != new_password_check { return Ok(bad_request("passwords don't match")) };
 
-    let conn = ganbare::db_connect(&*DATABASE_URL).err_500()?;
-    if ganbare::is_installed(&conn).err_500()? { return abort(401) };
+    let conn = ganbare::db::connect(&*DATABASE_URL).err_500()?;
+    if ganbare::db::is_installed(&conn).err_500()? { return abort(401) };
 
-    let user = ganbare::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).err_500()?;
-    ganbare::join_user_group_by_name(&conn, &user, "admins").err_500()?;
-    ganbare::join_user_group_by_name(&conn, &user, "editors").err_500()?;
+    let user = user::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).err_500()?;
+    user::join_user_group_by_name(&conn, &user, "admins").err_500()?;
+    user::join_user_group_by_name(&conn, &user, "editors").err_500()?;
 
 
     match do_login(&user.email, &new_password, &*req).err_500()? {
@@ -45,7 +46,7 @@ pub fn manage(req: &mut Request) -> PencilResult {
     let (user, mut sess) = get_user(&conn, req).err_500()?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
-    if ! ganbare::check_user_group(&conn, &user, "editors").err_500()?
+    if ! user::check_user_group(&conn, &user, "editors").err_500()?
         { return abort(401); }
 
     let context = new_template_context();
@@ -68,7 +69,7 @@ pub fn add_quiz_form(req: &mut Request) -> PencilResult {
 
 pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
-    fn parse_form(req: &mut Request) -> Result<(ganbare::NewQuestion, Vec<ganbare::Fieldset>)> {
+    fn parse_form(req: &mut Request) -> Result<(manage::NewQuestion, Vec<manage::Fieldset>)> {
 
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
@@ -122,17 +123,17 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
             };
 
             let answer_text = parse!(form.get(&format!("choice_{}_answer_text", i)));
-            let fields = ganbare::Fieldset {q_variants: q_variants, answer_audio: answer_audio_path, answer_text: answer_text};
+            let fields = manage::Fieldset {q_variants: q_variants, answer_audio: answer_audio_path, answer_text: answer_text};
             fieldsets.push(fields);
         }
 
-        Ok((ganbare::NewQuestion{q_name, q_explanation, question_text, skill_nugget}, fieldsets))
+        Ok((manage::NewQuestion{q_name, q_explanation, question_text, skill_nugget}, fieldsets))
     }
 
     let (conn, _, mut sess) = auth_user(req, "editors")?;
 
     let form = parse_form(&mut *req).map_err(|ee| { error!("{:?}", ee); abort(400).unwrap_err()})?;
-    let result = ganbare::create_quiz(&conn, form.0, form.1);
+    let result = manage::create_quiz(&conn, form.0, form.1);
     result.map_err(|e| match e.kind() {
         &ErrorKind::FormParseError => abort(400).unwrap_err(),
         _ => abort(500).unwrap_err(),
@@ -154,7 +155,7 @@ pub fn add_word_form(req: &mut Request) -> PencilResult {
 
 pub fn add_word_post(req: &mut Request) -> PencilResult  {
 
-    fn parse_form(req: &mut Request) -> Result<ganbare::NewWordFromStrings> {
+    fn parse_form(req: &mut Request) -> Result<manage::NewWordFromStrings> {
 
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
@@ -183,7 +184,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult  {
             }
         }
 
-        Ok(ganbare::NewWordFromStrings{word, explanation, narrator: "".into(), nugget, files})
+        Ok(manage::NewWordFromStrings{word, explanation, narrator: "".into(), nugget, files})
     }
 
     let (conn, _, mut sess) = auth_user(req, "editors")?;
@@ -191,7 +192,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult  {
     let word = parse_form(req)
             .map_err(|_| abort(400).unwrap_err())?;
 
-    ganbare::create_word(&conn, word).err_500()?;
+    manage::create_word(&conn, word).err_500()?;
     
     redirect("/add_word", 303)
         .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
@@ -218,10 +219,10 @@ pub fn add_users(req: &mut Request) -> PencilResult {
         let email = err_400!(fields.next(), "email field missing?");
         let mut groups = vec![];
         for field in fields {
-            groups.push(try_or!(ganbare::get_group(&conn, &field.to_lowercase())
+            groups.push(try_or!(user::get_group(&conn, &field.to_lowercase())
                 .err_500()?, else return abort(400)).id);
         }
-        let secret = ganbare::add_pending_email_confirm(&conn, email, groups.as_ref())
+        let secret = ganbare::email::add_pending_email_confirm(&conn, email, groups.as_ref())
             .err_500()?;
         ganbare::email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &**req.app.handlebars_registry.read()
                 .expect("The registry is basically read-only after startup."))

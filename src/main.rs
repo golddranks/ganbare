@@ -45,8 +45,8 @@ pub fn main() {
     env_logger::init().unwrap();
     info!("Starting.");
     check_env_vars();
-    let conn = ganbare::db_connect(&*DATABASE_URL).expect("Can't connect to database!");
-    ganbare::check_db(&conn).expect("Something funny with the DB!");
+    let conn = ganbare::db::connect(&*DATABASE_URL).expect("Can't connect to database!");
+    ganbare::db::check(&conn).expect("Something funny with the DB!");
     info!("Database OK.");
 
     let mut app = Pencil::new(".");

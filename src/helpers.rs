@@ -3,7 +3,6 @@ use std;
 use std::env;
 use dotenv;
 use std::net::{SocketAddr, ToSocketAddrs};
-use ganbare;
 use ganbare::PgConnection;
 use hyper::header::{SetCookie, CookiePair, Cookie};
 use std::collections::BTreeMap;
@@ -14,6 +13,9 @@ use time;
 use std::result::Result as StdResult;
 use ganbare::errors::Result as Result;
 use rustc_serialize::base64::FromBase64;
+use ganbare::db;
+use ganbare::user;
+use ganbare::session;
 
 lazy_static! {
  
@@ -59,7 +61,7 @@ lazy_static! {
 }
 
 pub fn db_connect() -> Result<PgConnection> {
-    ganbare::db_connect(&*DATABASE_URL)
+    db::connect(&*DATABASE_URL)
 }
 
 
@@ -82,7 +84,7 @@ pub fn new_template_context() -> BTreeMap<String, String> {
 
 pub fn get_user(conn : &PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
     if let Some(sess_token) = req.cookies().and_then(get_cookie) {
-        Ok(ganbare::session::check(&conn, sess_token)?)
+        Ok(session::check(&conn, sess_token)?)
     } else {
         Ok(None)
     }
@@ -117,12 +119,12 @@ impl CookieProcessor for Response {
 
     fn refresh_cookie<I: IntoIp>(mut self, conn: &PgConnection, sess : &mut Session, req: I) -> PencilResult {
         let ip = req.into_ip();
-        ganbare::session::refresh(&conn, sess, ip).err_500()?;
+        session::refresh(&conn, sess, ip).err_500()?;
             // Erroring here despice having a valid Session struct means that the session has expired
             // WHILE we were handling the request. One-in-a-million change, but possible.
             // Or then the database suddenly went down.
     
-        let mut cookie = CookiePair::new("session_id".to_owned(), ganbare::session::to_hex(sess));
+        let mut cookie = CookiePair::new("session_id".to_owned(), session::to_hex(sess));
         cookie.path = Some("/".to_owned());
         cookie.domain = Some(SITE_DOMAIN.to_owned());
         cookie.expires = Some(time::now_utc() + time::Duration::weeks(2));
@@ -237,7 +239,7 @@ pub fn auth_user(req: &mut Request, required_group: &str)
 {
     match try_auth_user(req)? {
         Some((conn, user, sess)) => {
-            if ganbare::check_user_group(&conn, &user, required_group).err_500()? {
+            if user::check_user_group(&conn, &user, required_group).err_500()? {
                 Ok((conn, user, sess))
             } else {
                 Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
@@ -270,10 +272,10 @@ pub fn check_env_vars() { &*DATABASE_URL; &*EMAIL_SERVER; &*SITE_DOMAIN; }
 
 pub fn do_login<I: IntoIp>(email : &str, plaintext_pw : &str, ip: I) -> StdResult<Option<(User, Session)>, PencilError> {
     let conn = db_connect().err_500()?;
-    let user = try_or!(ganbare::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
+    let user = try_or!(user::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
             else return Ok(None));
 
-    let sess = ganbare::session::start(&conn, &user, ip.into_ip()).err_500()?;
+    let sess = session::start(&conn, &user, ip.into_ip()).err_500()?;
 
     Ok(Some((user, sess)))
 }
@@ -281,7 +283,7 @@ pub fn do_login<I: IntoIp>(email : &str, plaintext_pw : &str, ip: I) -> StdResul
 pub fn do_logout(sess_token: Option<&str>) -> StdResult<(), PencilError> {
     let conn = db_connect().err_500()?;
     if let Some(sess_token) = sess_token {
-        ganbare::session::end(&conn, &sess_token).err_500()?;
+        session::end(&conn, &sess_token).err_500()?;
     };
     Ok(())
 }

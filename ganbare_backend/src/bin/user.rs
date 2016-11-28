@@ -8,13 +8,16 @@ extern crate dotenv;
 extern crate rustc_serialize;
 #[macro_use]  extern crate lazy_static;
 
-use ganbare_backend::*;
 use ganbare_backend::models::User;
-use diesel::prelude::*;
+use ganbare_backend::PgConnection;
 use handlebars::Handlebars;
 use ganbare_backend::errors::*;
+use ganbare_backend::user::*;
+use ganbare_backend::db;
+use ganbare_backend::email;
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
+use diesel::LoadDsl;
 
 
 lazy_static! {
@@ -66,7 +69,7 @@ fn main() {
         .subcommand(SubCommand::with_name("force_add").about("Add a new user without email confirmation").arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("login").about("Login").arg(Arg::with_name("email").required(true)))
         .get_matches();
-    let conn = db_connect(&*DATABASE_URL).unwrap();
+    let conn = db::connect(&*DATABASE_URL).unwrap();
     match matches.subcommand() {
         ("passwd", Some(args)) => {
             let email = args.value_of("email").unwrap();
@@ -106,11 +109,11 @@ fn main() {
                 },
                 Ok(_) => { println!("Error: User already exists!"); return; },
             }
-            let secret = match ganbare_backend::add_pending_email_confirm(&conn, email, &[]) {
+            let secret = match email::add_pending_email_confirm(&conn, email, &[]) {
                 Ok(secret) => secret,
                 Err(e) => { println!("Error: {:?}", e); return; }
             };
-            match ganbare_backend::email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &handlebars) {
+            match email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &handlebars) {
                 Ok(u) => println!("Sent an email confirmation! {:?}", u),
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}\nCause: {:?}", err, err.cause ()) },
             }

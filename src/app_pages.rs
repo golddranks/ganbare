@@ -2,15 +2,19 @@
 use super::*;
 use pencil::redirect;
 use helpers;
+use ganbare::errors;
+use ganbare::event;
+use ganbare::user;
+use ganbare::email;
 
 fn dispatch_events(conn: &PgConnection, user: &User)
     -> StdResult<Option<PencilResult>, PencilError> {
 
-    let event_redirect = if ! ganbare::event::is_done(conn, "welcome", &user).err_500()? {
+    let event_redirect = if ! event::is_done(conn, "welcome", &user).err_500()? {
 
         Some(redirect("/welcome", 303))
 
-    } else if ! ganbare::event::is_done(conn, "survey", &user).err_500()? {
+    } else if ! event::is_done(conn, "survey", &user).err_500()? {
 
         Some(redirect("/survey", 303))
 
@@ -46,7 +50,7 @@ pub fn ok(req: &mut Request) -> PencilResult {
     let (conn, user, mut sess) = auth_user(req, "")?;
 
     let event_name = err_400!(req.form_mut().take("event_ok"), "Field event_ok is missing!");
-    let _ = err_400!(ganbare::event::set_done(&conn, &event_name, &user).err_500()?, "Event \"{}\" doesn't exist!", &event_name);
+    let _ = err_400!(event::set_done(&conn, &event_name, &user).err_500()?, "Event \"{}\" doesn't exist!", &event_name);
 
 
     redirect("/", 303).refresh_cookie(&conn, &mut sess, req)
@@ -54,7 +58,7 @@ pub fn ok(req: &mut Request) -> PencilResult {
 
 pub fn survey(req: &mut Request) -> PencilResult {
     let (conn, user, mut sess) = auth_user(req, "")?;
-    ganbare::event::initiate(&conn, "survey", &user).err_500()?;
+    event::initiate(&conn, "survey", &user).err_500()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "survey".into());
     req.app
@@ -64,7 +68,7 @@ pub fn survey(req: &mut Request) -> PencilResult {
 
 pub fn welcome(req: &mut Request) -> PencilResult { 
     let (conn, user, mut sess) = auth_user(req, "")?;
-    ganbare::event::initiate(&conn, "welcome", &user).err_500()?;
+    event::initiate(&conn, "welcome", &user).err_500()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "welcome".into());
     req.app
@@ -77,7 +81,7 @@ pub fn login_form(req: &mut Request) -> PencilResult {
     if let Some((_, mut sess)) = get_user(&conn, req).err_500()? {
         return redirect("/", 303).refresh_cookie(&conn, &mut sess, req)
     }
-    if ! ganbare::is_installed(&conn).err_500()? {
+    if ! ganbare::db::is_installed(&conn).err_500()? {
         return redirect("/fresh_install", 303)
     }
 
@@ -119,7 +123,7 @@ pub fn confirm_form(request: &mut Request) -> PencilResult {
 
     let secret = err_400!(request.args().get("secret"), "secret");
     let conn = db_connect().err_500()?;
-    let (email, _) = ganbare::check_pending_email_confirm(&conn, &secret).err_500()?;
+    let (email, _) = email::check_pending_email_confirm(&conn, &secret).err_500()?;
 
     let mut context = new_template_context();
     context.insert("email".to_string(), email);
@@ -134,11 +138,11 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
     let secret = err_400!(req.args().get("secret"), "secret missing").clone();
     let password = err_400!(req.form().expect("form data loaded.").get("password"), "password missing");
-    let user = match ganbare::complete_pending_email_confirm(&conn, &password, &secret, &*RUNTIME_PEPPER) {
+    let user = match email::complete_pending_email_confirm(&conn, &password, &secret, &*RUNTIME_PEPPER) {
         Ok(u) => u,
         Err(e) => match e.kind() {
-            &ganbare::errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
-            &ganbare::errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
+            &errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
+            &errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
             _ => return Err(internal_error(e)),
         }
     };
@@ -189,7 +193,7 @@ pub fn change_password(req: &mut Request) -> PencilResult {
 
     let (old_password, new_password) = err_400!(parse_form(req), "invalid form data");
 
-    match ganbare::auth_user(&conn, &user.email, &old_password, &*RUNTIME_PEPPER) {
+    match user::auth_user(&conn, &user.email, &old_password, &*RUNTIME_PEPPER) {
         Err(e) => return match e.kind() {
             &ErrorKind::AuthError => {
                 let mut context = new_template_context();
@@ -201,10 +205,10 @@ pub fn change_password(req: &mut Request) -> PencilResult {
             _ => Err(internal_error(e)),
         },
         Ok(_) => {
-            match ganbare::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER) {
+            match user::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER) {
                 Err(e) => match e.kind() {
-                    &ganbare::errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
-                    &ganbare::errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
+                    &errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
+                    &errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
                     _ => return Err(internal_error(e)),
                 },
                 _ => (),
