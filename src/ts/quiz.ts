@@ -283,8 +283,8 @@ function answerExercise(isCorrect, exercise) {
 	function postAnswerExercise() {
 		var jqxhr = $.post("/api/next_quiz", {
 			type: "exercise",
-			word_id: exercise.id,
-			correct: isCorrect,
+			asked_id: exercise.asked_id,
+			answer_level: isCorrect ? 1 : 0,
 			times_audio_played: timesAudioPlayed,
 			active_answer_time: activeAnswerTime - fullAnswerTime,
 			full_answer_time: Date.now() - fullAnswerTime,
@@ -314,7 +314,7 @@ function answerWord(word) {
 	function postAnswerWord() {
 		var jqxhr = $.post("/api/next_quiz", {
 			type: "word",
-			word_id: word.id,
+			asked_id: word.asked_id,
 			times_audio_played: timesAudioPlayed,
 			time: Date.now() - activeAnswerTime,
 		}, function(result) {
@@ -461,7 +461,13 @@ function showQuestion(question) {
 	setLoadError(qAudio, "questionAudio", question);
 	
 }
-
+/* pub struct WordJson {
+    quiz_type: &'static str,
+    asked_id: i32,
+    word: String,
+    explanation: String,
+    show_accents: bool,
+} */
 function showWord(word) {
 	wordSection.show();
 	console.log("showWord!");
@@ -473,7 +479,7 @@ function showWord(word) {
 		$(".accent img").show();
 	}
 	wordExplanation.html(word.explanation);
-	var wordAudio = new Howl({ src: ['/api/audio/'+word.audio_id+'.mp3']});
+	var wordAudio = new Howl({ src: ['/api/audio.mp3?'+word.asked_id]});
 
 	setLoadError(wordAudio, "wordAudio", word);
 	
@@ -490,6 +496,13 @@ function showWord(word) {
 	}, 200);
 }
 
+/* pub struct ExerciseJson {
+    quiz_type: &'static str,
+    asked_id: i32,
+    word: String,
+    explanation: String,
+} */
+
 function showExercise(exercise) {
 	wordSection.show();
 	console.log("showExercise!");
@@ -500,7 +513,7 @@ function showExercise(exercise) {
 	$(".accent img").hide();
 	wordExplanation.html(exercise.explanation);
 
-	var exerciseAudio = new Howl({ src: ['/api/audio/'+exercise.audio_id+'.mp3']});
+	var exerciseAudio = new Howl({ src: ['/api/audio.mp3?'+exercise.asked_id]});
 
 	setLoadError(exerciseAudio, "exerciseAudio", exercise);
 	setWordShowButton(exerciseAudio);

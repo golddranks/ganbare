@@ -35,80 +35,17 @@ macro_rules! try_or {
 pub mod schema;
 pub mod models;
 pub mod email;
-pub use models::*;
 pub mod password;
-pub mod errors {
+pub mod errors;
+pub mod user;
+pub mod session;
+pub mod audio;
+pub mod quiz;
+pub mod manage;
 
-    error_chain! {
-        foreign_links {
-            ::std::str::ParseBoolError, ParseBoolError;
-            ::std::env::VarError, VarError;
-            ::std::num::ParseIntError, ParseIntError;
-            ::std::num::ParseFloatError, ParseFloatError;
-            ::std::io::Error, StdIoError;
-            ::diesel::result::Error, DieselError;
-            ::diesel::migrations::RunMigrationsError, DieselMigrationError;
-        }
-        errors {
-            InvalidInput {
-                description("Provided input is invalid.")
-                display("Provided input is invalid.")
-            }
-            NoSuchUser(email: String) {
-                description("No such user exists")
-                display("No user with e-mail address {} exists.", email)
-            }
-            EmailAddressTooLong {
-                description("E-mail address too long")
-                display("A valid e-mail address can be 254 characters at maximum.")
-            }
-            EmailAddressNotValid {
-                description("E-mail address not valid")
-                display("An e-mail address must contain the character '@'.")
-            }
-            PasswordTooShort {
-                description("Password too short")
-                display("A valid password must be at least 8 characters (bytes).")
-            }
-            PasswordTooLong {
-                description("Password too long")
-                display("A valid password must be at maximum 1024 characters (bytes).")
-            }
-            PasswordDoesntMatch {
-                description("Password doesn't match")
-                display("Password doesn't match.")
-            }
-            AuthError {
-                description("Can't authenticate user")
-                display("Username (= e-mail) or password doesn't match.")
-            }
-            BadSessId {
-                description("Malformed session ID!")
-                display("Malformed session ID!")
-            }
-            NoSuchSess {
-                description("Session doesn't exist!")
-                display("Session doesn't exist!")
-            }
-            FormParseError {
-                description("Can't parse the HTTP form!")
-                display("Can't parse the HTTP form!")
-            }
-            FileNotFound {
-                description("Can't find that file!")
-                display("Can't find that file!")
-            }
-            DatabaseOdd {
-                description("There's something wrong with the contents of the DB vs. how it should be!")
-                display("There's something wrong with the contents of the DB vs. how it should be!")
-            }
-        }
-    }
-}
 
+pub use models::*;
 pub use errors::*;
-
-
 
 
 
@@ -170,25 +107,6 @@ pub fn connect(database_url: &str) -> Result<PgConnection> {
 
 
 
-
-
-
-
-
-pub mod user;
-
-
-
-
-pub mod session;
-
-
-
-
-
-
-
-pub mod audio;
 
 
 
@@ -272,16 +190,6 @@ pub fn log_by_id(conn : &PgConnection, user : &User, skill_id: i32, level_increm
 
 
 
-pub mod quiz;
-
-
-
-
-pub mod manage;
-
-
-
-
 
 
 
@@ -305,7 +213,7 @@ pub fn state(conn: &PgConnection, event_name: &str, user: &User) -> Result<Optio
 pub fn is_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<bool> {
     let state = state(conn, event_name, user)?;
     Ok(match state {
-        Some(e) => match e.1.event_time {
+        Some(e) => match e.1.event_finish {
             Some(_) => true,
             None => false,
         },
@@ -317,17 +225,41 @@ pub fn is_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<boo
 pub fn initiate(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences, events};
 
-    if let Some((ev, exp)) = state(conn, event_name, user)? { return Ok(Some((ev, exp))) };
+    if let Some((ev, exp)) = state(conn, event_name, user)? { 
+        return Ok(Some((ev, exp)))
+    };
 
     let ev: Event = events::table
         .filter(events::name.eq(event_name))
         .get_result(conn)?;
 
-    let exp: EventExperience = diesel::insert(&EventExperience {user_id: user.id, event_id: ev.id, event_time: None})
+    let exp: EventExperience = diesel::insert(&NewEventExperience {user_id: user.id, event_id: ev.id })
         .into(event_experiences::table)
         .get_result(conn)?;
 
     Ok(Some((ev, exp)))
+}
+
+pub fn require_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+
+    let ev_state = state(conn, event_name, user)?;
+
+    if let Some((_, EventExperience { event_finish: Some(_), .. })) = ev_state {
+        Ok(ev_state)
+    } else {
+        Err(ErrorKind::AccessDenied.to_err())
+    }
+}
+
+pub fn require_ongoing(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+
+    let ev_state = state(conn, event_name, user)?;
+
+    if let Some((_, EventExperience { event_finish: None, .. })) = ev_state {
+        Ok(ev_state)
+    } else {
+        Err(ErrorKind::AccessDenied.to_err())
+    }
 }
 
 
@@ -335,7 +267,7 @@ pub fn set_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Op
     use schema::{event_experiences};
 
     if let Some((ev, mut exp)) = state(conn, event_name, user)? {
-        exp.event_time = Some(chrono::UTC::now());
+        exp.event_finish = Some(chrono::UTC::now());
         diesel::update(
                 event_experiences::table
                     .filter(event_experiences::event_id.eq(ev.id))

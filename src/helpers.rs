@@ -171,11 +171,15 @@ pub fn bad_request<T: ToString>(err_msg: T) -> Response {
 
 pub trait ResultExt<T> {
     fn err_500(self) -> StdResult<T, PencilError>;
+    fn err_401(self) -> StdResult<T, PencilError>;
 }
 
 impl<T, E: std::fmt::Debug> ResultExt<T> for StdResult<T, E> {
     fn err_500(self) -> StdResult<T, PencilError> {
         self.map_err(|e| internal_error(e))
+    }
+    fn err_401(self) -> StdResult<T, PencilError> {
+        self.map_err(|_| PencilError::PenHTTPError(pencil::http_errors::HTTPError::Unauthorized))
     }
 }
 

@@ -4,7 +4,7 @@ CREATE TABLE due_items (
 	due_date TIMESTAMPTZ NOT NULL,
 	due_delay INTEGER NOT NULL,
 	correct_streak INTEGER NOT NULL DEFAULT 0,
-	item_type CHAR(8) NOT NULL
+	item_type VARCHAR NOT NULL
 );
 
 CREATE TABLE pending_items (
@@ -13,7 +13,7 @@ CREATE TABLE pending_items (
 	audio_file_id SERIAL REFERENCES audio_files,
 	asked_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	pending BOOLEAN NOT NULL DEFAULT true,
-	item_type CHAR(8) NOT NULL
+	item_type VARCHAR NOT NULL
 );
 
 CREATE TABLE q_asked_data (
@@ -30,24 +30,31 @@ CREATE TABLE q_answered_data (
 	full_answer_time_ms INTEGER NOT NULL
 );
 
-CREATE TABLE e_answer_data (
-	id SERIAL PRIMARY KEY,
-	user_id SERIAL REFERENCES users,
-	word_id SERIAL REFERENCES words,
+CREATE TABLE e_asked_data (
+	id SERIAL REFERENCES pending_items PRIMARY KEY,
+	word_id SERIAL REFERENCES words
+);
+
+CREATE TABLE e_answered_data (
+	id SERIAL REFERENCES e_asked_data PRIMARY KEY,
 	answered_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	active_answer_time_ms INTEGER NOT NULL,
 	full_answer_time_ms INTEGER NOT NULL,
 	audio_times INTEGER NOT NULL,
-	correct BOOLEAN
+	answer_level INTEGER
 );
 
-CREATE TABLE word_data (
-	user_id SERIAL REFERENCES users,
+CREATE TABLE w_asked_data (
+	id SERIAL REFERENCES pending_items PRIMARY KEY,
 	word_id SERIAL REFERENCES words,
+	show_accents BOOLEAN NOT NULL
+);
+
+CREATE TABLE w_answered_data (
+	id SERIAL REFERENCES w_asked_data PRIMARY KEY,
 	answer_time_ms INTEGER NOT NULL,
 	audio_times INTEGER NOT NULL,
-	checked_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
-	PRIMARY KEY(user_id, word_id)
+	checked_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 );
 
 CREATE TABLE question_data (
@@ -84,6 +91,7 @@ INSERT INTO user_metrics (id) SELECT id FROM users;
 CREATE TABLE event_experiences (
 	user_id SERIAL REFERENCES users,
 	event_id SERIAL REFERENCES events,
-	event_time TIMESTAMPTZ,
+	event_init TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	event_finish TIMESTAMPTZ,
 	PRIMARY KEY(user_id, event_id)
 );

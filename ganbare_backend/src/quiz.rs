@@ -1,61 +1,62 @@
-
-    use super::*;
-    use rand;
-    use diesel::expression::dsl::{all, any};
+use super::*;
+use rand;
+use diesel::expression::dsl::{all, any};
+use unicode_normalization::UnicodeNormalization;
 
 #[derive(Debug)]
 pub enum Answered {
-    Word(AnsweredWord),
+    W(WAnsweredData),
     Q(QAnsweredData),
-    Exercise(AnsweredExercise),
+    E(EAnsweredData),
+}
+
+pub enum QuizType {
+    Question(i32),
+    Exercise(i32),
+    Word(i32),
 }
 
 #[derive(Debug)]
-pub struct AnsweredWord {
-    pub word_id: i32,
-    pub time: i32,
-    pub times_audio_played: i32,
+pub enum Quiz {
+    W(WordJson),
+    E(ExerciseJson),
+    Q(QuestionJson),
+    F(FutureQuiz),
 }
 
-#[derive(Debug)]
-pub struct AnsweredExercise {
-    pub word_id: i32,
-    pub active_answer_time: i32,
-    pub full_answer_time: i32,
-    pub times_audio_played: i32,
-    pub correct: bool,
+#[derive(RustcEncodable, Debug)]
+pub struct FutureQuiz {
+    quiz_type: &'static str,
+    due_date: String,
 }
 
-fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) -> Result<()> {
-    use schema::{word_data, user_metrics, words};
-
-
-    let word: Word = words::table.filter(words::id.eq(answer.word_id)).get_result(conn)?;
-
-    // Insert the specifics of this answer event
-    let answerdata = WordData {
-        user_id: user.id,
-        word_id: answer.word_id,
-        audio_times: answer.times_audio_played,
-        answer_time_ms: answer.time,
-    };
-    diesel::insert(&answerdata)
-        .into(word_data::table)
-        .execute(conn)
-        .chain_err(|| "Couldn't save the answer data to database!")?;
-
-    let mut metrics : UserMetrics = user_metrics::table
-        .filter(user_metrics::id.eq(user.id))
-        .get_result(&*conn)?;
-
-    metrics.new_words_today += 1;
-    metrics.new_words_since_break += 1;
-    let _ : UserMetrics = metrics.save_changes(&*conn)?;
-
-    skill::log_by_id(conn, user, word.skill_nugget, 1)?;
-
-    Ok(())
+#[derive(RustcEncodable, Debug)]
+pub struct QuestionJson {
+    quiz_type: &'static str,
+    asked_id: i32,
+    explanation: String,
+    question: String,
+    right_a: i32,
+    answers: Vec<(i32, String)>,
 }
+
+#[derive(RustcEncodable, Debug)]
+pub struct ExerciseJson {
+    quiz_type: &'static str,
+    asked_id: i32,
+    word: String,
+    explanation: String,
+}
+
+#[derive(RustcEncodable, Debug)]
+pub struct WordJson {
+    quiz_type: &'static str,
+    asked_id: i32,
+    word: String,
+    explanation: String,
+    show_accents: bool,
+}
+
 
 fn new_pending_item(conn: &PgConnection, user_id: i32, quiz_n_audio: QuizType) -> Result<PendingItem> {
     use schema::pending_items;
@@ -78,6 +79,57 @@ fn register_future_q_answer(conn: &PgConnection, data: &QAskedData) -> Result<()
     diesel::insert(data)
         .into(q_asked_data::table)
         .execute(conn)?;
+    Ok(())
+}
+
+fn register_future_e_answer(conn: &PgConnection, data: &EAskedData) -> Result<()> {
+    use schema::e_asked_data;
+
+    diesel::insert(data)
+        .into(e_asked_data::table)
+        .execute(conn)?;
+    Ok(())
+}
+
+fn register_future_w_answer(conn: &PgConnection, data: &WAskedData) -> Result<()> {
+    use schema::w_asked_data;
+
+    diesel::insert(data)
+        .into(w_asked_data::table)
+        .execute(conn)?;
+    Ok(())
+}
+
+fn log_answer_word(conn : &PgConnection, user : &User, answered: &WAnsweredData) -> Result<()> {
+    use schema::{pending_items, w_asked_data, w_answered_data, user_metrics, words};
+
+    let (mut pending_item, asked): (PendingItem, WAskedData) = pending_items::table
+        .inner_join(w_asked_data::table)
+        .filter(pending_items::id.eq(answered.id))
+        .get_result(conn)?;
+
+    // This Q&A is now considered done
+    pending_item.pending = false;
+    let _ : PendingItem = pending_item.save_changes(conn)?;
+
+    diesel::insert(answered)
+        .into(w_answered_data::table)
+        .execute(conn)?;
+
+    let word: Word = words::table
+        .filter(words::id.eq(asked.word_id))
+        .get_result(conn)?;
+
+    let mut metrics : UserMetrics = user_metrics::table
+        .filter(user_metrics::id.eq(user.id))
+        .get_result(&*conn)?;
+
+    metrics.new_words_today += 1;
+    metrics.new_words_since_break += 1;
+    let _ : UserMetrics = metrics.save_changes(&*conn)?;
+
+    skill::log_by_id(conn, user, word.skill_nugget, 1)?;
+
     Ok(())
 }
 
@@ -170,35 +222,33 @@ fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredD
     })
 }
 
-fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExercise) -> Result<(ExerciseData, DueItem)> {
-    use schema::{e_answer_data, due_items, exercise_data, words};
+fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredData) -> Result<(ExerciseData, DueItem)> {
+    use schema::{pending_items, e_asked_data, e_answered_data, due_items, exercise_data, words};
     use std::cmp::max;
 
-    let correct = answer.correct;
+    let correct = answered.answer_level > 0;
 
-    // Insert the specifics of this answer event
-    let answerdata = NewEAnswerData {
-        user_id: user.id,
-        word_id: answer.word_id,
-        active_answer_time_ms: answer.active_answer_time,
-        full_answer_time_ms: answer.full_answer_time,
-        audio_times: answer.times_audio_played,
-        correct: correct,
-    };
+    let (mut pending_item, asked): (PendingItem, EAskedData) = pending_items::table
+        .inner_join(e_asked_data::table)
+        .filter(pending_items::id.eq(answered.id))
+        .get_result(conn)?;
 
-    diesel::insert(&answerdata)
-        .into(e_answer_data::table)
-        .execute(conn)
-        .chain_err(|| "Couldn't save the answer data to database!")?;
+    // This Q&A is now considered done
+    pending_item.pending = false;
+    let _ : PendingItem = pending_item.save_changes(conn)?;
+
+    diesel::insert(answered)
+        .into(e_answered_data::table)
+        .execute(conn)?;
 
     let w : Word = words::table
-                    .filter(words::id.eq(answer.word_id))
+                    .filter(words::id.eq(asked.word_id))
                     .get_result(conn)?;
 
     let exercisedata : Option<(ExerciseData, DueItem)> = exercise_data::table
                                         .inner_join(due_items::table)
                                         .filter(due_items::user_id.eq(user.id))
-                                        .filter(exercise_data::word_id.eq(answer.word_id))
+                                        .filter(exercise_data::word_id.eq(asked.word_id))
                                         .get_result(&*conn)
                                         .optional()?;
 
@@ -234,7 +284,7 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answer: &AnsweredExerci
             .get_result(conn)?;
         let exercisedata = ExerciseData {
             due: due_item.id,
-            word_id: answer.word_id,
+            word_id: asked.word_id,
         };
         let exercisedata = diesel::insert(&exercisedata)
             .into(exercise_data::table)
@@ -280,14 +330,8 @@ fn load_word(conn : &PgConnection, id: i32 ) -> Result<Option<(Word, Vec<AudioFi
     Ok(Some((ww, w_audio_files)))
 }
 
-pub enum QuizType {
-    Question(i32),
-    Exercise(i32),
-    Word(i32),
-}
-
 fn get_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<(PendingItem, Quiz)>> {
-    use schema::{pending_items, q_asked_data};
+    use schema::{pending_items, q_asked_data, e_asked_data, w_asked_data};
 
     let pending_item: Option<PendingItem> = pending_items::table
         .filter(pending_items::user_id.eq(user_id))
@@ -303,7 +347,7 @@ fn get_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<(Pending
                 .get_result(conn)?;
 
             let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
-                else return Err(ErrorKind::DatabaseOdd.to_err()) };
+                else return Err(ErrorKind::DatabaseOdd("Bug: If the item was set pending in the first place, it should exists!").to_err()) };
 
             Quiz::Q(QuestionJson {
                 quiz_type: "question",
@@ -315,9 +359,41 @@ fn get_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<(Pending
             })
 
         },
-        Some(ref pi) if pi.item_type == "exercise" => unimplemented!(), // FIXME
-        Some(ref pi) if pi.item_type == "word" => unimplemented!(),
-        Some(_) => return Err(ErrorKind::DatabaseOdd.to_err()),
+        Some(ref pi) if pi.item_type == "exercise" => {
+
+            let asked: EAskedData = e_asked_data::table
+                .filter(e_asked_data::id.eq(pi.id))
+                .get_result(conn)?;
+
+            let (word, _) = try_or!{ load_word(conn, asked.word_id)?,
+                else return Err(ErrorKind::DatabaseOdd("Bug: If the item was set pending in the first place, it should exists!").to_err()) };
+
+            Quiz::E(ExerciseJson {
+                quiz_type: "exercise",
+                asked_id: pi.id,
+                word: word.word.nfc().collect::<String>(),
+                explanation: word.explanation,
+            })
+
+        },
+        Some(ref pi) if pi.item_type == "word" => {
+
+            let asked: WAskedData = w_asked_data::table
+                .filter(w_asked_data::id.eq(pi.id))
+                .get_result(conn)?;
+
+            let (word, _) = try_or!{ load_word(conn, asked.word_id)?,
+                else return Err(ErrorKind::DatabaseOdd("Bug: If the item was set pending in the first place, it should exists!").to_err()) };
+
+            Quiz::W(WordJson {
+                quiz_type: "word",
+                asked_id: pi.id,
+                word: word.word.nfc().collect::<String>(),
+                explanation: word.explanation,
+                show_accents: asked.show_accents,
+            })
+        },
+        Some(_) => unreachable!("Bug: There is only three kinds of quiz types!"),
         None => return Ok(None),
     };
 
@@ -424,11 +500,12 @@ fn get_new_exercises(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
 
 fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
     use diesel::expression::dsl::*;
-    use schema::{words, word_data};
+    use schema::{pending_items, words, w_asked_data};
 
-    let seen = word_data::table
-        .select(word_data::word_id)
-        .filter(word_data::user_id.eq(user_id));
+    let seen = pending_items::table
+        .inner_join(w_asked_data::table)
+        .select(w_asked_data::word_id)
+        .filter(pending_items::user_id.eq(user_id));
 
     let new_words : Vec<Word> = words::table
         .filter(words::id.ne(all(seen)))
@@ -441,56 +518,25 @@ fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
     Ok(new_words)
 }
 
-#[derive(Debug)]
-pub enum Quiz {
-    Word((Word, Vec<AudioFile>, bool)),
-    Exercise(Exercise),
-    Q(QuestionJson),
-    F(FutureQuiz),
-}
-
-#[derive(RustcEncodable, Debug)]
-pub struct FutureQuiz {
-    quiz_type: &'static str,
-    due_date: String,
-}
-
-#[derive(RustcEncodable, Debug)]
-pub struct QuestionJson {
-    quiz_type: &'static str,
-    asked_id: i32,
-    explanation: String,
-    question: String,
-    right_a: i32,
-    answers: Vec<(i32, String)>,
-}
-
-#[derive(Debug)]
-pub struct Exercise {
-    pub word: Word,
-    pub audio_files: Vec<AudioFile>,
-    pub due_delay: i32,
-    pub due_date: Option<chrono::DateTime<chrono::UTC>>,
-}
-
 fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, Vec<Answer>, i32)> {
     use rand::Rng;
 
     let (question, answers, q_audio_bundles) = try_or!{ load_question(conn, id)?,
-                else return Err(ErrorKind::DatabaseOdd.to_err()) };
+                else return Err(ErrorKind::DatabaseOdd("This function was called on the premise that the data exists!").to_err()) };
     
     let mut rng = rand::thread_rng();
     let random_answer_index = rng.gen_range(0, answers.len());
     let right_answer_id = answers[random_answer_index].id;
     let q_audio_bundle = &q_audio_bundles[random_answer_index];
     let q_audio_file = try_or!{ rng.choose(q_audio_bundle),
-                else return Err(ErrorKind::DatabaseOdd.to_err()) };
+                else return Err(ErrorKind::DatabaseOdd("Bug: Audio bundles should always have more than zero members when created.").to_err()) };
 
     Ok((question, right_answer_id, answers, q_audio_file.id))
 }
 
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
     use schema::user_metrics;
+    use rand::Rng;
 
     // Pending item first (items that were asked, but not answered because of loss of connection, user closing the session etc.)
 
@@ -539,16 +585,31 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
             return Ok(Some(Quiz::Q(quiz_json)))
     
         },
-        Some((due, QuizType::Exercise(id))) => {
+        Some((_, QuizType::Exercise(id))) => {
 
-            let (due_delay, due_date) = if let Some(d) = due { (d.due_delay, Some(d.due_date)) } else { (0, None) };
+            let mut rng = rand::thread_rng();
+
             let (word, audio_files) = try_or!( load_word(conn, id)?, else return Ok(None));
+            let audio_file = try_or!{ rng.choose(&audio_files),
+                else return Err(ErrorKind::DatabaseOdd("Bug: Audio bundles should always have more than zero members when created.").to_err()) };
 
-            let quiz = Exercise{ word, audio_files, due_delay, due_date };
+            let pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_file.id))?;
 
-       //     register_future_e_answer(conn, user.id, quiz); // FIXME
+            let asked_data = EAskedData {
+                id: pending_item.id,
+                word_id: word.id,
+            };
 
-            return Ok(Some(Quiz::Exercise(quiz)))
+            register_future_e_answer(conn, &asked_data)?;
+
+            let quiz_json = ExerciseJson{
+                quiz_type: "exercise",
+                asked_id: pending_item.id,
+                word: word.word.nfc().collect::<String>(),
+                explanation: word.explanation,
+            };
+
+            return Ok(Some(Quiz::E(quiz_json)))
         },
         _ => (),
     };
@@ -560,15 +621,33 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
     if metrics.new_words_today <= 18 || metrics.new_words_since_break <= 6 {
         let mut words = get_new_words(&*conn, user.id)?;
         if words.len() > 0 {
+            let mut rng = rand::thread_rng();
+
             let the_word = words.swap_remove(0);
             let audio_files = audio::load_from_bundle(&*conn, the_word.audio_bundle)?;
+            let audio_file = try_or!{ rng.choose(&audio_files),
+                else return Err(ErrorKind::DatabaseOdd("Bug: Audio bundles should always have more than zero members when created.").to_err()) };
             let show_accents = user::check_user_group(conn, user, "output_group")?;
 
-            let quiz = (the_word, audio_files, show_accents);
+            let pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_file.id))?;
 
-       //     register_future_w_answer(conn, user.id, quiz);
+            let asked_data = WAskedData {
+                id: pending_item.id,
+                word_id: the_word.id,
+                show_accents,
+            };
 
-            return Ok(Some(Quiz::Word(quiz)));
+            register_future_w_answer(conn, &asked_data)?;
+
+            let quiz_json = WordJson{
+                quiz_type: "word",
+                word: the_word.word.nfc().collect::<String>(),
+                explanation: the_word.explanation,
+                asked_id: pending_item.id,
+                show_accents,
+            };
+
+            return Ok(Some(Quiz::W(quiz_json)));
         }
     }
 
@@ -589,10 +668,10 @@ pub fn get_next_quiz(conn : &PgConnection, user : &User, answer_enum: Answered)
     -> Result<Option<Quiz>>
 {
     match answer_enum {
-        Answered::Word(answer_word) => {
+        Answered::W(answer_word) => {
             log_answer_word(conn, user, &answer_word)?;
         },
-        Answered::Exercise(exercise) => {
+        Answered::E(exercise) => {
             log_answer_exercise(conn, user, &exercise)?;
         },
         Answered::Q(answer) => {

@@ -1,11 +1,13 @@
 DROP TABLE user_metrics;
 DROP TABLE q_answered_data;
 DROP TABLE q_asked_data;
+DROP TABLE e_answered_data;
+DROP TABLE e_asked_data;
+DROP TABLE w_answered_data;
+DROP TABLE w_asked_data;
 DROP TABLE pending_items;
-DROP TABLE e_answer_data;
 DROP TABLE question_data;
 DROP TABLE exercise_data;
-DROP TABLE word_data;
 DROP TABLE skill_data;
 DROP TABLE event_experiences;
 DROP TABLE due_items;

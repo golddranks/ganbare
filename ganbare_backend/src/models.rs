@@ -16,7 +16,7 @@ pub struct NewUser<'a> {
 #[has_many(event_experiences, foreign_key = "user_id")]
 #[has_many(group_memberships, foreign_key = "user_id")]
 #[has_many(anon_aliases, foreign_key = "user_id")]
-#[has_many(word_data, foreign_key = "user_id")]
+#[has_many(pending_items, foreign_key = "user_id")]
 #[has_many(due_items, foreign_key = "user_id")]
 #[derive(Identifiable, Queryable, Debug, Associations, AsChangeset, RustcEncodable)]
 pub struct User {
@@ -258,8 +258,8 @@ pub struct NewWord<'a> {
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[table_name="words"]
 #[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
-#[has_many(word_data, foreign_key = "word_id")]
-#[has_many(e_answer_data, foreign_key = "word_id")]
+#[has_many(w_asked_data, foreign_key = "word_id")]
+#[has_many(e_asked_data, foreign_key = "word_id")]
 #[has_many(exercise_data, foreign_key = "word_id")]
 pub struct Word {
     pub id: i32,
@@ -278,76 +278,6 @@ pub struct UpdateWord {
     pub audio_bundle: Option<i32>,
     pub skill_nugget: Option<i32>,
     pub published: Option<bool>,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
-#[table_name="pending_items"]
-#[belongs_to(User, foreign_key = "user_id")]
-#[belongs_to(AudioFile, foreign_key = "audio_file_id")]
-#[has_many(q_asked_data, foreign_key = "id")]
-pub struct PendingItem {
-    pub id: i32,
-    pub user_id: i32,
-    pub audio_file_id: i32,
-    pub asked_date: DateTime<UTC>,
-    pub pending: bool,
-    pub item_type: String,
-}
-
-#[derive(Insertable, Associations, Debug, AsChangeset)]
-#[table_name="pending_items"]
-pub struct NewPendingItem<'a> {
-    pub user_id: i32,
-    pub audio_file_id: i32,
-    pub item_type: &'a str,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
-#[table_name="q_asked_data"]
-#[belongs_to(PendingItem, foreign_key = "id")]
-#[belongs_to(User, foreign_key = "user_id")]
-#[belongs_to(QuizQuestion, foreign_key = "question_id")]
-pub struct QAskedData {
-    pub id: i32,
-    pub question_id: i32,
-    pub correct_qa_id: i32,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
-#[table_name="q_answered_data"]
-#[belongs_to(QAskedData, foreign_key = "id")]
-pub struct QAnsweredData {
-    pub id: i32,
-    pub answered_qa_id: Option<i32>,
-    pub answered_date: DateTime<UTC>,
-    pub active_answer_time_ms: i32,
-    pub full_answer_time_ms: i32,
-}
-
-#[derive(Insertable)]
-#[table_name="e_answer_data"]
-pub struct NewEAnswerData {
-    pub user_id: i32,
-    pub word_id: i32,
-    pub active_answer_time_ms: i32,
-    pub full_answer_time_ms: i32,
-    pub audio_times: i32,
-    pub correct: bool,
-}
-
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
-#[table_name="e_answer_data"]
-#[belongs_to(User, foreign_key = "user_id")]
-#[belongs_to(Word, foreign_key = "word_id")]
-pub struct EAnswerData {
-    pub id: i32,
-    pub user_id: i32,
-    pub word_id: i32,
-    pub answered_date: DateTime<UTC>,
-    pub active_answer_time_ms: i32,
-    pub full_answer_time_ms: i32,
-    pub audio_times: i32,
-    pub correct: bool,
 }
 
 #[derive(Insertable, Identifiable, Queryable, Associations, Debug, AsChangeset)]
@@ -374,6 +304,95 @@ pub struct NewDueItem {
     pub item_type: String,
 }
 
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[table_name="pending_items"]
+#[belongs_to(User, foreign_key = "user_id")]
+#[belongs_to(AudioFile, foreign_key = "audio_file_id")]
+#[has_many(q_asked_data, foreign_key = "id")]
+#[has_many(e_asked_data, foreign_key = "id")]
+#[has_many(w_asked_data, foreign_key = "id")]
+pub struct PendingItem {
+    pub id: i32,
+    pub user_id: i32,
+    pub audio_file_id: i32,
+    pub asked_date: DateTime<UTC>,
+    pub pending: bool,
+    pub item_type: String,
+}
+
+#[derive(Insertable, Associations, Debug, AsChangeset)]
+#[table_name="pending_items"]
+pub struct NewPendingItem<'a> {
+    pub user_id: i32,
+    pub audio_file_id: i32,
+    pub item_type: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[table_name="q_asked_data"]
+#[belongs_to(PendingItem, foreign_key = "id")]
+#[belongs_to(QuizQuestion, foreign_key = "question_id")]
+#[has_many(q_answered_data, foreign_key = "id")]
+pub struct QAskedData {
+    pub id: i32,
+    pub question_id: i32,
+    pub correct_qa_id: i32,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="q_answered_data"]
+#[belongs_to(QAskedData, foreign_key = "id")]
+pub struct QAnsweredData {
+    pub id: i32,
+    pub answered_qa_id: Option<i32>,
+    pub answered_date: DateTime<UTC>,
+    pub active_answer_time_ms: i32,
+    pub full_answer_time_ms: i32,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[table_name="e_asked_data"]
+#[belongs_to(PendingItem, foreign_key = "id")]
+#[belongs_to(Word, foreign_key = "word_id")]
+#[has_many(e_answered_data, foreign_key = "id")]
+pub struct EAskedData {
+    pub id: i32,
+    pub word_id: i32,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[table_name="e_answered_data"]
+#[belongs_to(EAskedData, foreign_key = "id")]
+pub struct EAnsweredData {
+    pub id: i32,
+    pub answered_date: DateTime<UTC>,
+    pub active_answer_time_ms: i32,
+    pub full_answer_time_ms: i32,
+    pub audio_times: i32,
+    pub answer_level: i32,
+}
+
+#[derive(Identifiable, Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[table_name="w_asked_data"]
+#[belongs_to(PendingItem, foreign_key = "id")]
+#[belongs_to(Word, foreign_key = "word_id")]
+#[has_many(w_answered_data, foreign_key = "id")]
+pub struct WAskedData {
+    pub id: i32,
+    pub word_id: i32,
+    pub show_accents: bool,
+}
+
+#[derive(Identifiable, Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[table_name="w_answered_data"]
+#[belongs_to(WAskedData, foreign_key = "id")]
+pub struct WAnsweredData {
+    pub id: i32,
+    pub answer_time_ms: i32,
+    pub audio_times: i32,
+    pub checked_date: DateTime<UTC>,
+}
+
 #[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
 #[table_name="question_data"]
 #[belongs_to(DueItem, foreign_key = "due")]
@@ -388,16 +407,6 @@ pub struct QuestionData {
 pub struct ExerciseData {
     pub word_id: i32,
     pub due: i32,
-}
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
-#[table_name="word_data"]
-#[belongs_to(User, foreign_key = "user_id")]
-#[belongs_to(Word, foreign_key = "word_id")]
-pub struct WordData {
-    pub user_id: i32,
-    pub word_id: i32,
-    pub answer_time_ms: i32,
-    pub audio_times: i32,
 }
 
 #[derive(Insertable)]
@@ -461,5 +470,13 @@ pub struct NewEvent<'a> {
 pub struct EventExperience {
     pub user_id: i32,
     pub event_id: i32,
-    pub event_time: Option<DateTime<UTC>>,
+    pub event_init: DateTime<UTC>,
+    pub event_finish: Option<DateTime<UTC>>,
+}
+
+#[derive(Insertable)]
+#[table_name="event_experiences"]
+pub struct NewEventExperience {
+    pub user_id: i32,
+    pub event_id: i32,
 }

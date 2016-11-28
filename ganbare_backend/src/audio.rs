@@ -119,7 +119,7 @@ pub fn load_from_bundles(conn : &PgConnection, bundles: &[AudioBundle]) -> Resul
 
     for q in &q_audio_files { // Sanity check
         if q.len() == 0 {
-            return Err(ErrorKind::DatabaseOdd.into());
+            return Err(ErrorKind::DatabaseOdd("Bug: Audio bundles should always have more than zero members when created.").into());
         }
     };
     Ok(q_audio_files)

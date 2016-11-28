@@ -31,7 +31,7 @@ fn token_to_bin(sessid : &str) -> Result<Vec<u8>> {
 }
 
 fn update_token(conn: &PgConnection, mut sess: Session) -> Result<Session> {
-    sess.sess_token = sess.proposed_token.ok_or(ErrorKind::DatabaseOdd.to_err())?;
+    sess.sess_token = sess.proposed_token.ok_or(ErrorKind::DatabaseOdd("Bug: This function shouldn't have been called if proposed token didn't exist.").to_err())?;
     sess.proposed_token = None;
     let new_sess = sess.save_changes(conn)?;
     Ok(new_sess)

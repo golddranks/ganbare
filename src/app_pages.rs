@@ -12,10 +12,12 @@ fn dispatch_events(conn: &PgConnection, user: &User)
 
     let event_redirect = if ! event::is_done(conn, "welcome", &user).err_500()? {
 
+        event::initiate(&conn, "welcome", &user).err_500()?;
         Some(redirect("/welcome", 303))
 
     } else if ! event::is_done(conn, "survey", &user).err_500()? {
 
+        event::initiate(&conn, "survey", &user).err_500()?;
         Some(redirect("/survey", 303))
 
     } else { None };
@@ -58,7 +60,7 @@ pub fn ok(req: &mut Request) -> PencilResult {
 
 pub fn survey(req: &mut Request) -> PencilResult {
     let (conn, user, mut sess) = auth_user(req, "")?;
-    event::initiate(&conn, "survey", &user).err_500()?;
+    event::require_ongoing(&conn, "survey", &user).err_401()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "survey".into());
     req.app
@@ -68,7 +70,7 @@ pub fn survey(req: &mut Request) -> PencilResult {
 
 pub fn welcome(req: &mut Request) -> PencilResult { 
     let (conn, user, mut sess) = auth_user(req, "")?;
-    event::initiate(&conn, "welcome", &user).err_500()?;
+    event::require_ongoing(&conn, "welcome", &user).err_401()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "welcome".into());
     req.app

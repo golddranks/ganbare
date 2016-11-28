@@ -2,11 +2,9 @@
 use super::*;
 use chrono::UTC;
 use pencil::{abort, jsonify, Response, redirect};
-use rand;
 use pencil::helpers::{send_file, send_from_directory};
 use rustc_serialize;
 use regex;
-use unicode_normalization::UnicodeNormalization;
 
 
 use ganbare::audio;
@@ -17,7 +15,7 @@ use ganbare::manage;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
-    let (conn, _, mut sess) = auth_user(req, "")?;
+    let (conn, _, mut sess) = auth_user(req, "editors")?;
 
     let mut audio_name = req.view_args.get("audio_name").expect("Pencil guarantees that Line ID should exist as an arg.").split('.');
     let audio_id = try_or!(audio_name.next(), else return abort(404));
@@ -93,60 +91,12 @@ pub fn get_image(req: &mut Request) -> PencilResult {
         })
 }
 
-#[derive(RustcEncodable)]
-struct WordJson {
-    quiz_type: String,
-    show_accents: bool,
-    id: i32,
-    word: String,
-    explanation: String,
-    audio_id: i32,
-}
-
-#[derive(RustcEncodable)]
-struct ExerciseJson {
-    quiz_type: String,
-    id: i32,
-    word: String,
-    explanation: String,
-    audio_id: i32,
-    due_delay: i32,
-    due_date: Option<String>,
-}
-
 pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
-    use rand::Rng;
     use ganbare::quiz::Quiz::*;
-    let mut rng = rand::thread_rng();
     match quiz {
         Q(q_json) => jsonify(&q_json),
-    Exercise(quiz::Exercise { word: models::Word { id, word, explanation, .. }, due_date, due_delay, audio_files }) => {
-
-        let chosen_audio = rng.choose(&audio_files).expect("Audio for a Exercise: Shouldn't be empty! Borked database?");
-
-        jsonify(&ExerciseJson {
-            quiz_type: "exercise".into(),
-            id,
-            word: word.nfc().collect::<String>(), // Unicode normalization, because "word" is going to be accented kana-by-kana.
-            explanation,
-            audio_id: chosen_audio.id,
-            due_delay,
-            due_date: due_date.map(|d| d.to_rfc3339()),
-        })
-    },
-    Word((models::Word { id, word, explanation, .. }, audio_files, show_accents)) => {
-
-        let chosen_audio = rng.choose(&audio_files).expect("Audio for a Word: Shouldn't be empty! Borked database?");
-
-        jsonify(&WordJson {
-            show_accents,
-            quiz_type: "word".into(),
-            id,
-            word: word.nfc().collect::<String>(), // Unicode normalization, because "word" is going to be accented kana-by-kana.
-            explanation,
-            audio_id: chosen_audio.id,
-        })
-    },
+        E(e_json) => jsonify(&e_json),
+        W(w_json) => jsonify(&w_json),
         F(future) => jsonify(&future),
     }
 }
@@ -174,20 +124,20 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
         let answer_type = &parse!(form.get("type"));
 
         if answer_type == "word" {
-            let word_id = str::parse::<i32>(&parse!(form.get("word_id")))?;
-            let times_audio_played = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
-            let time = str::parse::<i32>(&parse!(form.get("time")))?;
-            Ok(quiz::Answered::Word(
-                quiz::AnsweredWord{word_id, times_audio_played, time}
+            let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
+            let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
+            let answer_time_ms = str::parse::<i32>(&parse!(form.get("time")))?;
+            Ok(quiz::Answered::W(
+                models::WAnsweredData{id, audio_times, checked_date: UTC::now(), answer_time_ms}
             ))
         } else if answer_type == "exercise" {
-            let word_id = str::parse::<i32>(&parse!(form.get("word_id")))?;
-            let times_audio_played = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
-            let active_answer_time = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
-            let full_answer_time = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
-            let correct = str::parse::<bool>(&parse!(form.get("correct")))?;
-            Ok(quiz::Answered::Exercise(
-                quiz::AnsweredExercise{word_id, times_audio_played, active_answer_time, full_answer_time, correct}
+            let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
+            let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
+            let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
+            let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
+            let answer_level = str::parse::<i32>(&parse!(form.get("answer_level")))?;
+            Ok(quiz::Answered::E(
+                models::EAnsweredData{id, audio_times, active_answer_time_ms, answered_date: UTC::now(), full_answer_time_ms, answer_level}
             ))
         } else if answer_type == "question" {
             let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
