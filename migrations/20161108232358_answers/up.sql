@@ -7,14 +7,19 @@ CREATE TABLE due_items (
 	item_type CHAR(8) NOT NULL
 );
 
-CREATE TABLE q_asked_data (
+CREATE TABLE pending_items (
 	id SERIAL PRIMARY KEY,
 	user_id SERIAL REFERENCES users,
-	question_id SERIAL REFERENCES quiz_questions,
-	q_audio_id SERIAL REFERENCES audio_files,
-	correct_qa_id SERIAL REFERENCES question_answers,
+	audio_file_id SERIAL REFERENCES audio_files,
 	asked_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
-	pending BOOLEAN NOT NULL
+	pending BOOLEAN NOT NULL DEFAULT true,
+	item_type CHAR(8) NOT NULL
+);
+
+CREATE TABLE q_asked_data (
+	id SERIAL REFERENCES pending_items PRIMARY KEY,
+	question_id SERIAL REFERENCES quiz_questions,
+	correct_qa_id SERIAL REFERENCES question_answers
 );
 
 CREATE TABLE q_answered_data (

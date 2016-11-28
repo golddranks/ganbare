@@ -7,7 +7,6 @@ use pencil::helpers::{send_file, send_from_directory};
 use rustc_serialize;
 use regex;
 use unicode_normalization::UnicodeNormalization;
-use ganbare::QuizType;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
@@ -48,16 +47,10 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
     let (conn, user, mut sess) = auth_user(req, "")?;
 
     let asked_id = req.view_args.get("audio_name").expect("Pencil guarantees that Line ID should exist as an arg.");
-    let quiz_type = req.view_args.get("quiz_type").expect("Pencil guarantees that Line ID should exist as an arg.");
 
     let asked_id = asked_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
-    let typed_id = match quiz_type.as_str() {
-        "question" => QuizType::Question(asked_id),
-        "exercise" => QuizType::Exercise(asked_id),
-        "word" => QuizType::Word(asked_id),
-        _ => return Ok(bad_request("No such quiz type exists!")),
-    };
-    let (file_name, mime_type) = ganbare::get_audio_for_quiz(&conn, &user, typed_id)
+
+    let (file_name, mime_type) = ganbare::get_audio_for_quiz(&conn, &user, asked_id)
         .map_err(|e| {
             match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),

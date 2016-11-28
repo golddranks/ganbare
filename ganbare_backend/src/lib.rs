@@ -772,29 +772,23 @@ pub fn get_audio_file(conn : &PgConnection, line_id : i32) -> Result<(String, mi
     Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
 }
 
-pub fn get_audio_for_quiz(conn : &PgConnection, user: &User, audio_id: QuizType) -> Result<(String, mime::Mime)> {
+pub fn get_audio_for_quiz(conn : &PgConnection, user: &User, pending_id: i32) -> Result<(String, mime::Mime)> {
     use schema::audio_files;
-    use schema::q_asked_data;
+    use schema::pending_items;
     use diesel::result::Error::NotFound;
-    use QuizType::*;
 
-    match audio_id {
-        Question(id) => {
-            let (file, _) : (AudioFile, QAskedData) = audio_files::table
-                .inner_join(q_asked_data::table)
-                .filter(q_asked_data::id.eq(id))
-                .filter(q_asked_data::user_id.eq(user.id))
-                .filter(q_asked_data::pending.eq(true))
-                .get_result(&*conn)
-                .map_err(|e| match e {
-                        e @ NotFound => e.caused_err(|| ErrorKind::FileNotFound),
-                        e => e.caused_err(|| "Couldn't get the file!"),
-                })?;
-            Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
-        },
-        Exercise(_) => unimplemented!(),
-        Word(_) => unimplemented!(),
-    }   
+    let (file, _) : (AudioFile, PendingItem) = audio_files::table
+        .inner_join(pending_items::table)
+        .filter(pending_items::id.eq(pending_id))
+        .filter(pending_items::user_id.eq(user.id))
+        .filter(pending_items::pending.eq(true))
+        .get_result(&*conn)
+        .map_err(|e| match e {
+                e @ NotFound => e.caused_err(|| ErrorKind::FileNotFound),
+                e => e.caused_err(|| "Couldn't get the file!"),
+        })?;
+    Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
+       
 }
 
 
@@ -969,33 +963,70 @@ fn log_answer_word(conn : &PgConnection, user : &User, answer: &AnsweredWord) ->
     Ok(())
 }
 
-fn register_future_q_answer(conn: &PgConnection, data: &NewQAskedData) -> Result<i32> {
+fn new_pending_item(conn: &PgConnection, user_id: i32, quiz_n_audio: QuizType) -> Result<PendingItem> {
+    use schema::pending_items;
+    use QuizType::*;
+
+    let (item_type, audio_file_id) = match quiz_n_audio {
+        Question(id) => ("question", id),
+        Exercise(id) => ("exercise", id),
+        Word(id) => ("word", id),
+    };
+
+    Ok(diesel::insert(&NewPendingItem{user_id, audio_file_id, item_type})
+        .into(pending_items::table)
+        .get_result(conn)?)
+}
+
+fn register_future_q_answer(conn: &PgConnection, data: &QAskedData) -> Result<()> {
     use schema::q_asked_data;
 
-    let data: QAskedData = diesel::insert(data)
+    diesel::insert(data)
         .into(q_asked_data::table)
-        .get_result(conn)?;
-
-    Ok(data.id)
+        .execute(conn)?;
+    Ok(())
 }
 
 fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredData) -> Result<(QAskedData, QuestionData, DueItem)> {
-    use schema::{q_asked_data, q_answered_data, due_items, question_data, quiz_questions};
+    use schema::{pending_items, q_asked_data, q_answered_data, due_items, question_data, quiz_questions};
     use std::cmp::max;
 
-    let (mut asked, question): (QAskedData, QuizQuestion) = q_asked_data::table
-        .inner_join(quiz_questions::table)
-        .filter(q_asked_data::id.eq(answered.id))
+    let (mut pending_item, asked): (PendingItem, QAskedData) = pending_items::table
+        .inner_join(q_asked_data::table)
+        .filter(pending_items::id.eq(answered.id))
         .get_result(conn)?;
 
-    asked.pending = false;
-    let asked: QAskedData = asked.save_changes(conn)?;
-
     let correct = asked.correct_qa_id == answered.answered_qa_id.unwrap_or(-1);
+
+
+    // This Q&A is now considered done
+    pending_item.pending = false;
+    let _ : PendingItem = pending_item.save_changes(conn)?;
 
     diesel::insert(answered)
         .into(q_answered_data::table)
         .execute(conn)?;
+
+
+    // If the answer was wrong, register a new pending question with the same specs right away for a follow-up review
+    if !correct {
+
+        let pending_item = new_pending_item(conn, user.id, QuizType::Question(pending_item.audio_file_id))?;
+        let asked_data = QAskedData {
+            id: pending_item.id,
+            question_id: asked.question_id,
+            correct_qa_id: asked.correct_qa_id,
+        };
+        register_future_q_answer(conn, &asked_data)?;
+
+    }
+
+
+    // Update the data for the question (Diesel doesn't support UPSERT so we have to branch)
+
+    let question: QuizQuestion = quiz_questions::table
+        .filter(quiz_questions::id.eq(asked.question_id))
+        .get_result(conn)?;
 
     let questiondata : Option<(QuestionData, DueItem)> = question_data::table
                                         .inner_join(due_items::table)
@@ -1161,7 +1192,45 @@ pub enum QuizType {
     Word(i32),
 }
 
-fn get_due_items(conn : &PgConnection, user_id : i32, allow_peeking: bool) -> Result<Vec<(DueItem, QuizType)>> {
+fn get_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<(PendingItem, Quiz)>> {
+    use schema::{pending_items, q_asked_data};
+
+    let pending_item: Option<PendingItem> = pending_items::table
+        .filter(pending_items::user_id.eq(user_id))
+        .filter(pending_items::pending.eq(true))
+        .get_result(conn)
+        .optional()?;
+
+    let quiz_type = match pending_item {
+        Some(ref pi) if pi.item_type == "question" => {
+
+            let asked: QAskedData = q_asked_data::table
+                .filter(q_asked_data::id.eq(pi.id))
+                .get_result(conn)?;
+
+            let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
+                else return Err(ErrorKind::DatabaseOdd.to_err()) };
+
+            Quiz::Q(QuestionJson {
+                quiz_type: "question",
+                asked_id: pi.id,
+                explanation: question.q_explanation,
+                question: question.question_text,
+                right_a: asked.correct_qa_id,
+                answers: answers.into_iter().map(|a| (a.id, a.answer_text)).collect(),
+            })
+
+        },
+        Some(ref pi) if pi.item_type == "exercise" => unimplemented!(), // FIXME
+        Some(ref pi) if pi.item_type == "word" => unimplemented!(),
+        Some(_) => return Err(ErrorKind::DatabaseOdd.to_err()),
+        None => return Ok(None),
+    };
+
+    Ok(Some((pending_item.expect("Didn't match None just a moment ago."), quiz_type)))
+}
+
+fn get_due_items(conn : &PgConnection, user_id: i32, allow_peeking: bool) -> Result<Vec<(DueItem, QuizType)>> {
     use schema::{due_items, question_data, exercise_data};
 
     let due_questions: Vec<(DueItem, Option<QuestionData>)>;
@@ -1309,26 +1378,36 @@ pub struct Exercise {
     pub due_delay: i32,
     pub due_date: Option<chrono::DateTime<chrono::UTC>>,
 }
-#[derive(Debug)]
-pub struct Question {
-    pub question: QuizQuestion,
-    pub question_audio: Vec<AudioFile>,
-    pub right_answer_id: i32,
-    pub answers: Vec<Answer>,
-    pub due_date: Option<chrono::DateTime<chrono::UTC>>,
+
+fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, Vec<Answer>, i32)> {
+    use rand::Rng;
+
+    let (question, answers, q_audio_bundles) = try_or!{ load_question(conn, id)?,
+                else return Err(ErrorKind::DatabaseOdd.to_err()) };
+    
+    let mut rng = rand::thread_rng();
+    let random_answer_index = rng.gen_range(0, answers.len());
+    let right_answer_id = answers[random_answer_index].id;
+    let q_audio_bundle = &q_audio_bundles[random_answer_index];
+    let q_audio_file = try_or!{ rng.choose(q_audio_bundle),
+                else return Err(ErrorKind::DatabaseOdd.to_err()) };
+
+    Ok((question, right_answer_id, answers, q_audio_file.id))
 }
 
 pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> {
-    use rand::Rng;
     use schema::user_metrics;
 
-    // Checking due questions & exercises first
+    // Pending item first (items that were asked, but not answered because of loss of connection, user closing the session etc.)
+
+    if let Some((_, quiztype)) = get_pending_item(conn, user.id)? {
+        return Ok(Some(quiztype));
+    }
+
+    // After that, questions & exercises reviews that are overdue, after that new ones
 
     let quiz_data =
-    if let Some((due, quiztype)) = get_pending_items(conn, user.id, false)?.into_iter().next() {
-        Some((Some(due), quiztype))
-
-    } else if let Some((due, quiztype)) = get_due_items(conn, user.id, false)?.into_iter().next() {
+    if let Some((due, quiztype)) = get_due_items(conn, user.id, false)?.into_iter().next() {
         Some((Some(due), quiztype))
 
     } else if let Some(q) = get_new_questions(conn, user.id)?.into_iter().next() {
@@ -1342,30 +1421,24 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
     match quiz_data {
         Some((_, QuizType::Question(id))) => {
 
-            let (question, answers, q_audio_bundles) = try_or!{ load_question(conn, id)?, else return Ok(None) };
-            
-            let mut rng = rand::thread_rng();
-            let random_answer_index = rng.gen_range(0, answers.len());
-            let right_answer_id = answers[random_answer_index].id;
-            let q_audio_bundle = &q_audio_bundles[random_answer_index];
-            let q_audio_file = rng.choose(&q_audio_bundle).expect("Audio bundles should never be empty.");
+            let (question, right_a, answers, q_audio_id) = ask_new_question(conn, id)?;
 
-            let asked_data = NewQAskedData {
-                user_id: user.id,
+            let pending_item = new_pending_item(conn, user.id, QuizType::Question(q_audio_id))?;
+
+            let asked_data = QAskedData {
+                id: pending_item.id,
                 question_id: question.id,
-                q_audio_id: q_audio_file.id,
-                correct_qa_id: right_answer_id,
-                pending: true,
+                correct_qa_id: right_a,
             };
 
-            let asked_id = register_future_q_answer(conn, &asked_data)?;
+            register_future_q_answer(conn, &asked_data)?;
 
             let quiz_json = QuestionJson {
                 quiz_type: "question",
-                asked_id,
+                asked_id: pending_item.id,
                 explanation: question.q_explanation,
                 question: question.question_text,
-                right_a: right_answer_id,
+                right_a: right_a,
                 answers: answers.into_iter().map(|a| (a.id, a.answer_text)).collect(),
             };
 
@@ -1379,14 +1452,14 @@ pub fn get_new_quiz(conn : &PgConnection, user : &User) -> Result<Option<Quiz>> 
 
             let quiz = Exercise{ word, audio_files, due_delay, due_date };
 
-       //     register_future_e_answer(conn, user.id, quiz);
+       //     register_future_e_answer(conn, user.id, quiz); // FIXME
 
             return Ok(Some(Quiz::Exercise(quiz)))
         },
         _ => (),
     };
 
-    // No questions available ATM, checking words
+    // No questions & exercises available ATM, checking words
 
     let metrics : UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user.id)).get_result(&*conn)?;
     

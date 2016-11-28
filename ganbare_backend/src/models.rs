@@ -154,7 +154,7 @@ pub struct NewAudioFile<'a> {
 #[table_name="audio_files"]
 #[belongs_to(Narrator, foreign_key = "narrators_id")]
 #[belongs_to(AudioBundle, foreign_key = "bundle_id")]
-#[has_many(q_asked_data, foreign_key = "q_audio_id")]
+#[has_many(pending_items, foreign_key = "audio_file_id")]
 pub struct AudioFile {
     pub id: i32,
     pub narrators_id: i32,
@@ -281,28 +281,36 @@ pub struct UpdateWord {
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
-#[table_name="q_asked_data"]
+#[table_name="pending_items"]
 #[belongs_to(User, foreign_key = "user_id")]
-#[belongs_to(QuizQuestion, foreign_key = "question_id")]
-#[belongs_to(AudioFile, foreign_key = "q_audio_id")]
-pub struct QAskedData {
+#[belongs_to(AudioFile, foreign_key = "audio_file_id")]
+#[has_many(q_asked_data, foreign_key = "id")]
+pub struct PendingItem {
     pub id: i32,
     pub user_id: i32,
-    pub question_id: i32,
-    pub q_audio_id: i32,
-    pub correct_qa_id: i32,
+    pub audio_file_id: i32,
     pub asked_date: DateTime<UTC>,
     pub pending: bool,
+    pub item_type: String,
 }
 
-#[derive(Insertable)]
-#[table_name="q_asked_data"]
-pub struct NewQAskedData {
+#[derive(Insertable, Associations, Debug, AsChangeset)]
+#[table_name="pending_items"]
+pub struct NewPendingItem<'a> {
     pub user_id: i32,
+    pub audio_file_id: i32,
+    pub item_type: &'a str,
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[table_name="q_asked_data"]
+#[belongs_to(PendingItem, foreign_key = "id")]
+#[belongs_to(User, foreign_key = "user_id")]
+#[belongs_to(QuizQuestion, foreign_key = "question_id")]
+pub struct QAskedData {
+    pub id: i32,
     pub question_id: i32,
-    pub q_audio_id: i32,
     pub correct_qa_id: i32,
-    pub pending: bool
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug)]

@@ -431,7 +431,7 @@ function showQuestion(question) {
 		var isCorrect = (question.right_a === a[0])?true:false;
 		spawnAnswerButton(a[0], a[1], isCorrect, question);
 	});
-	var qAudio = new Howl({ src: ['/api/audio.mp3?quiz=question&id='+question.asked_id]});
+	var qAudio = new Howl({ src: ['/api/audio.mp3?'+question.asked_id]});
 
 	play_button.one('click', function() {
 	   	questionStatus.slideUp(normalSpeed);

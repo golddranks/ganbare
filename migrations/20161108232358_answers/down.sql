@@ -1,5 +1,7 @@
 DROP TABLE user_metrics;
-DROP TABLE q_answer_data;
+DROP TABLE q_answered_data;
+DROP TABLE q_asked_data;
+DROP TABLE pending_items;
 DROP TABLE e_answer_data;
 DROP TABLE question_data;
 DROP TABLE exercise_data;
