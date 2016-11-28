@@ -71,7 +71,7 @@ function drawList(nugget_resp, bundle_resp) {
 		bundle.files.forEach(function(file) {
 			var audio_button = $('<button class="compact"><img src="/static/images/speaker_teal.png" class="soundicon"></button>').appendTo(bundle_html);
 			audio_button.click(function() {
-				audioPlayer.prop("src", "/api/audio/"+file.id);
+				audioPlayer.prop("src", "/api/audio/"+file.id+".mp3");
 				(<HTMLAudioElement>audioPlayer[0]).play();
 			});
 		});
@@ -85,6 +85,10 @@ function drawList(nugget_resp, bundle_resp) {
 		bundle.files = files;
 		audio_bundles[bundle.id] = bundle;
 	});
+
+	if (nugget_resp.length === 0) {
+		n_list.append("<h2>No skill nuggets exist at the moment.</h2>");
+	}
 
 	nugget_resp.forEach(function(tuple, nugget_index) {
 
@@ -106,6 +110,7 @@ function drawList(nugget_resp, bundle_resp) {
 
 			var checkbox = $('<input type="checkbox" id="'+id+'">').prependTo(c_info);
 			if (word.published) {
+				console.log("joo");
 				checkbox.prop("checked", true);
 			};
 			checkbox.change(function() {

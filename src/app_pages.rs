@@ -33,14 +33,14 @@ fn main_quiz(req: &mut Request, _: &PgConnection, _: &User) -> PencilResult {
 
 pub fn hello(req: &mut Request) -> PencilResult {
 
-    if let Some((conn, user, mut sess)) = try_auth_user(req).err_500()? {
+    if let Some((conn, user, sess)) = try_auth_user(req).err_500()? {
 
         if let Some(event_redirect) = dispatch_events(&conn, &user)? {
             event_redirect
         } else {
             main_quiz(req, &conn, &user)
 
-        }.refresh_cookie(&conn, &mut sess, req)
+        }.refresh_cookie(&sess)
 
     } else {
         redirect("/login", 303)
@@ -49,39 +49,39 @@ pub fn hello(req: &mut Request) -> PencilResult {
 
 pub fn ok(req: &mut Request) -> PencilResult {
 
-    let (conn, user, mut sess) = auth_user(req, "")?;
+    let (conn, user, sess) = auth_user(req, "")?;
 
     let event_name = err_400!(req.form_mut().take("event_ok"), "Field event_ok is missing!");
     let _ = err_400!(event::set_done(&conn, &event_name, &user).err_500()?, "Event \"{}\" doesn't exist!", &event_name);
 
 
-    redirect("/", 303).refresh_cookie(&conn, &mut sess, req)
+    redirect("/", 303).refresh_cookie(&sess)
 }
 
 pub fn survey(req: &mut Request) -> PencilResult {
-    let (conn, user, mut sess) = auth_user(req, "")?;
+    let (conn, user, sess) = auth_user(req, "")?;
     event::require_ongoing(&conn, "survey", &user).err_401()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "survey".into());
     req.app
         .render_template("survey.html", &context)
-        .refresh_cookie(&conn, &mut sess, req)
+        .refresh_cookie(&sess)
 }
 
 pub fn welcome(req: &mut Request) -> PencilResult { 
-    let (conn, user, mut sess) = auth_user(req, "")?;
+    let (conn, user, sess) = auth_user(req, "")?;
     event::require_ongoing(&conn, "welcome", &user).err_401()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "welcome".into());
     req.app
         .render_template("welcome.html", &context)
-        .refresh_cookie(&conn, &mut sess, req)
+        .refresh_cookie(&sess)
 }
 
 pub fn login_form(req: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
-    if let Some((_, mut sess)) = get_user(&conn, req).err_500()? {
-        return redirect("/", 303).refresh_cookie(&conn, &mut sess, req)
+    if let Some((_, sess)) = get_user(&conn, req).err_500()? {
+        return redirect("/", 303).refresh_cookie(&sess)
     }
     if ! ganbare::db::is_installed(&conn).err_500()? {
         return redirect("/fresh_install", 303)
@@ -99,11 +99,9 @@ pub fn login_post(request: &mut Request) -> PencilResult {
     let email = login_form.take("email").unwrap_or_default();
     let plaintext_pw = login_form.take("password").unwrap_or_default();
 
-    let conn = db_connect().err_500()?;
-
     match do_login(&email, &plaintext_pw, ip).err_500()? {
-        Some((_, mut sess)) => {
-            redirect("/", 303).refresh_cookie(&conn, &mut sess, ip)
+        Some((_, sess)) => {
+            redirect("/", 303).refresh_cookie(&sess)
         },
         None => {
             warn!("Failed login.");
@@ -150,8 +148,8 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
     };
 
     match do_login(&user.email, &password, &*req).err_500()? {
-        Some((_, mut sess)) => {
-            redirect("/", 303).refresh_cookie(&conn, &mut sess, &*req)
+        Some((_, sess)) => {
+            redirect("/", 303).refresh_cookie(&sess)
         },
         None => { Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login them in. A bug?".to_string())))) },
     }
@@ -160,7 +158,7 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
 
 pub fn change_password_form(req: &mut Request) -> PencilResult {
 
-    let (conn, _, mut sess) = auth_user(req, "")?;
+    let (_, _, sess) = auth_user(req, "")?;
 
     let mut context = new_template_context();
 
@@ -172,7 +170,7 @@ pub fn change_password_form(req: &mut Request) -> PencilResult {
 
     req.app
         .render_template("change_password.html", &context)
-        .refresh_cookie(&conn, &mut sess, req)
+        .refresh_cookie(&sess)
 }
 
 pub fn change_password(req: &mut Request) -> PencilResult {
@@ -191,7 +189,7 @@ pub fn change_password(req: &mut Request) -> PencilResult {
         Ok((old_password, new_password))
     }
 
-    let (conn, user, mut sess) = auth_user(req, "")?;
+    let (conn, user, sess) = auth_user(req, "")?;
 
     let (old_password, new_password) = err_400!(parse_form(req), "invalid form data");
 
@@ -218,5 +216,5 @@ pub fn change_password(req: &mut Request) -> PencilResult {
         },
     };
 
-    redirect("/change_password?password_changed=true", 303).refresh_cookie(&conn, &mut sess, req)
+    redirect("/change_password?password_changed=true", 303).refresh_cookie(&sess)
 }

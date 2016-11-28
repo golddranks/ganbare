@@ -21,8 +21,10 @@ CREATE TABLE passwords (
 
 CREATE TABLE sessions (
 	id SERIAL PRIMARY KEY,
-	sess_token BYTEA NOT NULL UNIQUE,
-	proposed_token BYTEA UNIQUE,
+	proposed_token BYTEA NOT NULL UNIQUE,
+	current_token BYTEA NOT NULL UNIQUE,
+	retired_token BYTEA NOT NULL UNIQUE,
+	access_version INTEGER NOT NULL DEFAULT 0,
 	user_id SERIAL REFERENCES users ON DELETE CASCADE,
 	started TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	last_seen TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,

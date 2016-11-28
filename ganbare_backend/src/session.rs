@@ -1,7 +1,6 @@
 
 use super::*;
 use std::net::IpAddr;
-use std::mem;
 
 pub const SESSID_BITS : usize = 128;
 
@@ -14,11 +13,12 @@ pub fn fresh_token() -> Result<[u8; SESSID_BITS/8]> {
 
 pub fn to_hex(sess : &Session) -> String {
     use data_encoding::base16;
-    match sess.proposed_token {
-        Some(ref t) => base16::encode(t),
-        None => base16::encode(&sess.sess_token),
-    }
-    
+    base16::encode(&sess.proposed_token)
+}
+
+pub fn bin_to_hex(bin : &[u8]) -> String { // FIXME remove this debug-only function
+    use data_encoding::base16;
+    base16::encode(bin)
 }
 
 fn token_to_bin(sessid : &str) -> Result<Vec<u8>> {
@@ -30,62 +30,66 @@ fn token_to_bin(sessid : &str) -> Result<Vec<u8>> {
     }
 }
 
-fn update_token(conn: &PgConnection, mut sess: Session) -> Result<Session> {
-    sess.sess_token = sess.proposed_token.ok_or(ErrorKind::DatabaseOdd("Bug: This function shouldn't have been called if proposed token didn't exist.").to_err())?;
-    sess.proposed_token = None;
-    let new_sess = sess.save_changes(conn)?;
-    Ok(new_sess)
-}
-
-
-pub fn check(conn : &PgConnection, token_hex : &str) -> Result<Option<(User, Session)>> {
+pub fn check(conn : &PgConnection, token_hex : &str, ip : IpAddr) -> Result<Option<(User, Session)>> {
     use schema::{users, sessions};
     use diesel::ExpressionMethods;
 
     let token = token_to_bin(token_hex)?;
 
-    let user_sess: Option<(User, Session)> = users::table
-        .inner_join(sessions::table)
-        .filter(sessions::sess_token.eq(&token).or(sessions::proposed_token.eq(&token)))
-        .get_result(conn)
-        .optional()?;
+    loop { // CAS loop. Try to update the DB until it succeeds.
 
-    if let Some((user, mut sess)) = user_sess {
+        let user_sess: Option<(User, Session)> = users::table
+            .inner_join(sessions::table)
+            .filter(
+                sessions::current_token.eq(&token)
+                .or(sessions::proposed_token.eq(&token)
+                .or(sessions::retired_token.eq(&token)))
+            )
+            .get_result(conn)
+            .optional()?;
+    
+        if let Some((user, mut sess)) = user_sess {
 
-        if sess.proposed_token == Some(token) {
-            sess = update_token(conn, sess)?;
-        }
+            let expect_version = sess.access_version;
+    
+            if sess.proposed_token == token { // User seems to adopted the new, proposed token! Upgrading it to the current token.
             
-        Ok(Some((user, sess)))
-    } else {
-        Ok(None)
+                sess.access_version += 1;       // Only updating tokens will increment the access version.
+                                                // Note that this allows concurrent updates to last_ip and last_seen.
+                sess.retired_token.truncate(0);
+                sess.retired_token.extend(&sess.current_token);
+                sess.current_token.truncate(0);
+                sess.current_token.extend(&sess.proposed_token);
+                sess.proposed_token.truncate(0);
+                sess.proposed_token.extend(&fresh_token()?);
+            }
+    
+            sess.last_ip.truncate(0);
+            match ip {
+                IpAddr::V4(ip) => { sess.last_ip.extend(&ip.octets()[..]) },
+                IpAddr::V6(ip) => { sess.last_ip.extend(&ip.octets()[..]) },
+            };
+            sess.last_seen = chrono::UTC::now();
+    
+            let rows_updated = diesel::update(
+                    sessions::table
+                        .filter(sessions::id.eq(sess.id))
+                        .filter(sessions::access_version.eq(expect_version))
+                )
+                .set(&sess)
+                .execute(conn)?;
+
+            if rows_updated == 0 {
+                continue; // Failed to commit; some other connection commited new tokens
+            } else {
+                return Ok(Some((user, sess))); // Successfully commited
+            }
+            
+        } else {
+            return Ok(None)
+        }
     }
-} 
-
-pub fn refresh(conn : &PgConnection, sess : &mut Session, ip : IpAddr) -> Result<()> {
-    use diesel::SaveChangesDsl;
-
-    sess.last_ip.truncate(0);
-
-    match ip {
-        IpAddr::V4(ip) => { sess.last_ip.extend(&ip.octets()[..]) },
-        IpAddr::V6(ip) => { sess.last_ip.extend(&ip.octets()[..]) },
-    };
-
-    let proposed_token = fresh_token()?;
-
-    let mut vec = if let Some(mut vec) = sess.proposed_token.take() { vec.truncate(0); vec } else { vec![] };
-    vec.extend(proposed_token.as_ref());
-
-    sess.proposed_token = Some(vec);
-    sess.last_seen = chrono::UTC::now();
-
-    let updated_sess = sess.save_changes(conn)?;
-
-    mem::replace(sess, updated_sess);
-
-    Ok(())
-} 
+}
 
 pub fn end(conn : &PgConnection, token_hex : &str) -> Result<Option<()>> {
     use schema::sessions;
@@ -93,7 +97,7 @@ pub fn end(conn : &PgConnection, token_hex : &str) -> Result<Option<()>> {
     let token = token_to_bin(token_hex)?;
 
     let deleted = diesel::delete(sessions::table
-            .filter(sessions::sess_token.eq(&token).or(sessions::proposed_token.eq(&token)))
+            .filter(sessions::current_token.eq(&token))
         )
         .execute(conn)
         .optional()?;
@@ -103,7 +107,9 @@ pub fn end(conn : &PgConnection, token_hex : &str) -> Result<Option<()>> {
 pub fn start(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
     use schema::sessions;
 
-    let new_sessid = fresh_token()?;
+    let new_proposed_token = fresh_token()?;
+    let pseudo_current_token = fresh_token()?;
+    let pseudo_retired_token = fresh_token()?;
 
     let ip_as_bytes = match ip {
         IpAddr::V4(ip) => { ip.octets()[..].to_vec() },
@@ -111,12 +117,13 @@ pub fn start(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session>
     };
 
     let new_sess = NewSession {
-        sess_token: &new_sessid,
-        proposed_token: None,
+        proposed_token: &new_proposed_token,
+        current_token: &pseudo_retired_token,
+        retired_token: &pseudo_current_token,
         user_id: user.id,
         started: chrono::UTC::now(),
         last_seen: chrono::UTC::now(),
-        last_ip: ip_as_bytes,
+        last_ip: &ip_as_bytes,
     };
 
     diesel::insert(&new_sess)

@@ -334,6 +334,22 @@ input.wordShowKana {
 	}
 }
 
+#surveyBox {
+	.multilineButton {
+		line-height: 2em;
+		height: 5em;
+		width: 100%;
+		white-space: normal;
+	}
+	p {
+		margin-bottom: 0.5em;
+	}
+	*:last-child {
+		padding-bottom: 0;
+		margin-bottom: 0;
+	}
+}
+
 span.accent {
 	position: relative;
 	img {

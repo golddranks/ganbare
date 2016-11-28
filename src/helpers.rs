@@ -84,7 +84,7 @@ pub fn new_template_context() -> BTreeMap<String, String> {
 
 pub fn get_user(conn : &PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
     if let Some(sess_token) = req.cookies().and_then(get_cookie) {
-        Ok(session::check(&conn, sess_token)?)
+        Ok(session::check(&conn, sess_token, req.remote_addr().ip())?)
     } else {
         Ok(None)
     }
@@ -111,19 +111,13 @@ impl<'r, 'a, 'b, 'c> IntoIp for &'r Request<'a, 'b, 'c> {
 }
 
 pub trait CookieProcessor{
-    fn refresh_cookie<I: IntoIp>(self, &PgConnection, &mut Session, ip: I) -> PencilResult;
+    fn refresh_cookie(self, &Session) -> PencilResult;
     fn expire_cookie(self) -> Self;
 }
 
 impl CookieProcessor for Response {
 
-    fn refresh_cookie<I: IntoIp>(mut self, conn: &PgConnection, sess : &mut Session, req: I) -> PencilResult {
-        let ip = req.into_ip();
-        session::refresh(&conn, sess, ip).err_500()?;
-            // Erroring here despice having a valid Session struct means that the session has expired
-            // WHILE we were handling the request. One-in-a-million change, but possible.
-            // Or then the database suddenly went down.
-    
+    fn refresh_cookie(mut self, sess : &Session) -> PencilResult {
         let mut cookie = CookiePair::new("session_id".to_owned(), session::to_hex(sess));
         cookie.path = Some("/".to_owned());
         cookie.domain = Some(SITE_DOMAIN.to_owned());
@@ -144,8 +138,8 @@ impl CookieProcessor for Response {
 
 impl CookieProcessor for PencilResult {
 
-    fn refresh_cookie<I: IntoIp>(self, conn: &PgConnection, sess : &mut Session, req: I) -> PencilResult {
-        self.and_then(|resp| resp.refresh_cookie(conn, sess, req))
+    fn refresh_cookie(self, sess : &Session) -> PencilResult {
+        self.and_then(|resp| resp.refresh_cookie(sess))
     }
     
     fn expire_cookie(self) -> Self {

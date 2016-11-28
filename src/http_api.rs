@@ -15,7 +15,7 @@ use ganbare::manage;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
-    let (conn, _, mut sess) = auth_user(req, "editors")?;
+    let (conn, _, sess) = auth_user(req, "editors")?;
 
     let mut audio_name = req.view_args.get("audio_name").expect("Pencil guarantees that Line ID should exist as an arg.").split('.');
     let audio_id = try_or!(audio_name.next(), else return abort(404));
@@ -40,7 +40,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     let file_path = AUDIO_DIR.to_string() + "/" + &file_name;
 
     send_file(&file_path, mime_type, false, req.headers().get())
-        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+        .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
             _ => { internal_error(e) }
@@ -49,7 +49,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
 
 pub fn quiz_audio(req: &mut Request) -> PencilResult {
 
-    let (conn, user, mut sess) = auth_user(req, "")?;
+    let (conn, user, sess) = auth_user(req, "")?;
 
     let asked_id = req.view_args.get("audio_name").expect("Pencil guarantees that Line ID should exist as an arg.");
 
@@ -68,7 +68,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
     let file_path = AUDIO_DIR.to_string() + "/" + &file_name;
 
     send_file(&file_path, mime_type, false, req.headers().get())
-        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+        .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
             _ => { internal_error(e) }
@@ -77,14 +77,14 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
 
 pub fn get_image(req: &mut Request) -> PencilResult {
 
-    let (conn, _, mut sess) = auth_user(req, "")?;
+    let (_, _, sess) = auth_user(req, "")?;
 
     let file_name = req.view_args.get("filename").expect("Pencil guarantees that filename should exist as an arg.");
 
     use pencil::{PencilError, HTTPError};
 
     send_from_directory(&*IMAGES_DIR, &file_name, false, req.headers().get())
-        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+        .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Image file not found! {}", file_name); e },
             _ => { internal_error(e) }
@@ -102,7 +102,7 @@ pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
 }
 
 pub fn new_quiz(req: &mut Request) -> PencilResult {
-    let (conn, user, mut sess) = auth_user(req, "")?;
+    let (conn, user, sess) = auth_user(req, "")?;
 
     let new_quiz = quiz::get_new_quiz(&conn, &user).err_500()?;
 
@@ -112,11 +112,11 @@ pub fn new_quiz(req: &mut Request) -> PencilResult {
 
         None => jsonify(&()),
 
-    }.refresh_cookie(&conn, &mut sess, req)
+    }.refresh_cookie(&sess)
 }
 
 pub fn next_quiz(req: &mut Request) -> PencilResult {
-    let (conn, user, mut sess) = auth_user(req, "")?;
+    let (conn, user, sess) = auth_user(req, "")?;
 
     fn parse_answer(req : &mut Request) -> Result<quiz::Answered> {
         req.load_form_data();
@@ -165,12 +165,12 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
 
         None => jsonify(&()),
 
-    }.refresh_cookie(&conn, &mut sess, req)
+    }.refresh_cookie(&sess)
 }
 
 
 pub fn get_item(req: &mut Request) -> PencilResult {
-    let (conn, _, mut sess) = auth_user(req, "editors")?;
+    let (conn, _, sess) = auth_user(req, "editors")?;
 
     let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
     let id = id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
@@ -191,12 +191,12 @@ pub fn get_item(req: &mut Request) -> PencilResult {
         },
     };
 
-    json.refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+    json.refresh_cookie(&sess)
 }
 
 
 pub fn get_all(req: &mut Request) -> PencilResult {
-    let (conn, _, mut sess) = auth_user(req, "editors")?;
+    let (conn, _, sess) = auth_user(req, "editors")?;
 
     let endpoint = req.endpoint().expect("Pencil guarantees this");
     let json = match endpoint.as_ref() {
@@ -213,11 +213,11 @@ pub fn get_all(req: &mut Request) -> PencilResult {
         },
     };
 
-    json.refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+    json.refresh_cookie(&sess)
 }
 
 pub fn set_published(req: &mut Request) -> PencilResult {
-    let (conn, _, mut sess) = auth_user(req, "editors")?;
+    let (conn, _, sess) = auth_user(req, "editors")?;
 
     let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
     let id = id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
@@ -242,12 +242,12 @@ pub fn set_published(req: &mut Request) -> PencilResult {
     };
     let mut resp = Response::new_empty();
     resp.status_code = 204;
-    resp.refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+    resp.refresh_cookie(&sess)
 }
 
 pub fn update_item(req: &mut Request) -> PencilResult {
 
-    let (conn, _, mut sess) = auth_user(req, "editors")?;
+    let (conn, _, sess) = auth_user(req, "editors")?;
 
     let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.")
                 .parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
@@ -296,13 +296,13 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         _ => return abort(500),
     }
     
-    json.refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+    json.refresh_cookie(&sess)
 }
 
 
 pub fn post_question(req: &mut Request) -> PencilResult {
 
-    let (conn, _, mut sess) = auth_user(req, "editors")?;
+    let (conn, _, sess) = auth_user(req, "editors")?;
 
     use std::io::Read;
     let mut text = String::new();
@@ -348,6 +348,6 @@ pub fn post_question(req: &mut Request) -> PencilResult {
         
     let new_url = format!("/api/questions/{}", id);
 
-    redirect(&new_url, 303).refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+    redirect(&new_url, 303).refresh_cookie(&sess)
 }
 
