@@ -1,11 +1,13 @@
 
 use super::*;
+use chrono::UTC;
 use pencil::{abort, jsonify, Response, redirect};
 use rand;
 use pencil::helpers::{send_file, send_from_directory};
 use rustc_serialize;
 use regex;
 use unicode_normalization::UnicodeNormalization;
+use ganbare::QuizType;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
@@ -22,6 +24,40 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     }
     let audio_id = audio_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
     let (file_name, mime_type) = ganbare::get_audio_file(&conn, audio_id)
+        .map_err(|e| {
+            match e.kind() {
+                &ErrorKind::FileNotFound => abort(404).unwrap_err(),
+                _ => abort(500).unwrap_err(),
+            }
+        })?;
+
+    use pencil::{PencilError, HTTPError};
+
+    let file_path = AUDIO_DIR.to_string() + "/" + &file_name;
+
+    send_file(&file_path, mime_type, false, req.headers().get())
+        .refresh_cookie(&conn, &mut sess, req.remote_addr().ip())
+        .map_err(|e| match e {
+            PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
+            _ => { internal_error(e) }
+        })
+}
+
+pub fn quiz_audio(req: &mut Request) -> PencilResult {
+
+    let (conn, user, mut sess) = auth_user(req, "")?;
+
+    let asked_id = req.view_args.get("audio_name").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let quiz_type = req.view_args.get("quiz_type").expect("Pencil guarantees that Line ID should exist as an arg.");
+
+    let asked_id = asked_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let typed_id = match quiz_type.as_str() {
+        "question" => QuizType::Question(asked_id),
+        "exercise" => QuizType::Exercise(asked_id),
+        "word" => QuizType::Word(asked_id),
+        _ => return Ok(bad_request("No such quiz type exists!")),
+    };
+    let (file_name, mime_type) = ganbare::get_audio_for_quiz(&conn, &user, typed_id)
         .map_err(|e| {
             match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),
@@ -58,18 +94,6 @@ pub fn get_image(req: &mut Request) -> PencilResult {
 }
 
 #[derive(RustcEncodable)]
-struct QuestionJson {
-    quiz_type: String,
-    question_id: i32,
-    explanation: String,
-    question: (String, i32),
-    right_a: i32,
-    answers: Vec<(i32, String, Option<i32>)>,
-    due_delay: i32,
-    due_date: Option<String>,
-}
-
-#[derive(RustcEncodable)]
 struct WordJson {
     quiz_type: String,
     show_accents: bool,
@@ -95,31 +119,7 @@ pub fn quiz_to_json(quiz: ganbare::Quiz) -> PencilResult {
     use ganbare::Quiz::*;
     let mut rng = rand::thread_rng();
     match quiz {
-    Question(ganbare::Question{ question, question_audio, right_answer_id, answers, due_delay, due_date }) => {
-
-        let mut answers_json = Vec::with_capacity(answers.len());
-
-        let chosen_q_audio = rng.choose(&question_audio).expect("Audio for a Question: Shouldn't be empty! Borked database?");
-        
-
-        for a in answers {
-            answers_json.push((a.id, a.answer_text, a.a_audio_bundle));
-        }
-
-        rng.shuffle(&mut answers_json);
-        
-
-        jsonify(&QuestionJson {
-            quiz_type: "question".into(),
-            question_id: question.id,
-            explanation: question.q_explanation,
-            question: (question.question_text, chosen_q_audio.id),
-            right_a: right_answer_id,
-            answers: answers_json,
-            due_delay,
-            due_date: due_date.map(|d| d.to_rfc3339()),
-        })
-    },
+        Q(q_json) => jsonify(&q_json),
     Exercise(ganbare::Exercise { word: ganbare::models::Word { id, word, explanation, .. }, due_date, due_delay, audio_files }) => {
 
         let chosen_audio = rng.choose(&audio_files).expect("Audio for a Exercise: Shouldn't be empty! Borked database?");
@@ -147,6 +147,7 @@ pub fn quiz_to_json(quiz: ganbare::Quiz) -> PencilResult {
             audio_id: chosen_audio.id,
         })
     },
+        F(future) => jsonify(&future),
     }
 }
 
@@ -189,15 +190,13 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
                 ganbare::AnsweredExercise{word_id, times_audio_played, active_answer_time, full_answer_time, correct}
             ))
         } else if answer_type == "question" {
-            let question_id = str::parse::<i32>(&parse!(form.get("question_id")))?;
-            let right_answer_id = str::parse::<i32>(&parse!(form.get("right_a_id")))?;
-            let answered_id = str::parse::<i32>(&parse!(form.get("answered_id")))?;
-            let answered_id = if answered_id > 0 { Some(answered_id) } else { None }; // Negatives mean that question was unanswered (due to time limit)
-            let q_audio_id = str::parse::<i32>(&parse!(form.get("q_audio_id")))?;
-            let active_answer_time = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
-            let full_answer_time = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
-            Ok(ganbare::Answered::Question(
-                ganbare::AnsweredQuestion{question_id, right_answer_id, answered_id, q_audio_id, active_answer_time, full_answer_time}
+            let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
+            let answered_qa_id = str::parse::<i32>(&parse!(form.get("answered_qa_id")))?;
+            let answered_qa_id = if answered_qa_id > 0 { Some(answered_qa_id) } else { None }; // Negatives mean that question was unanswered (due to time limit)
+            let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
+            let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
+            Ok(ganbare::Answered::Q(
+                ganbare::models::QAnsweredData{id, answered_qa_id, answered_date: UTC::now(), active_answer_time_ms, full_answer_time_ms}      
             ))
         } else {
             Err(ErrorKind::FormParseError.into())

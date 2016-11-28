@@ -7,17 +7,22 @@ CREATE TABLE due_items (
 	item_type CHAR(8) NOT NULL
 );
 
-CREATE TABLE q_answer_data (
+CREATE TABLE q_asked_data (
 	id SERIAL PRIMARY KEY,
 	user_id SERIAL REFERENCES users,
 	question_id SERIAL REFERENCES quiz_questions,
 	q_audio_id SERIAL REFERENCES audio_files,
 	correct_qa_id SERIAL REFERENCES question_answers,
+	asked_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	pending BOOLEAN NOT NULL
+);
+
+CREATE TABLE q_answered_data (
+	id SERIAL REFERENCES q_asked_data PRIMARY KEY,
 	answered_qa_id INTEGER REFERENCES question_answers,
-	answered_date TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	answered_date TIMESTAMPTZ NOT NULL,
 	active_answer_time_ms INTEGER NOT NULL,
-	full_answer_time_ms INTEGER NOT NULL,
-	correct BOOLEAN
+	full_answer_time_ms INTEGER NOT NULL
 );
 
 CREATE TABLE e_answer_data (

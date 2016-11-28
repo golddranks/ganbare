@@ -154,6 +154,7 @@ pub struct NewAudioFile<'a> {
 #[table_name="audio_files"]
 #[belongs_to(Narrator, foreign_key = "narrators_id")]
 #[belongs_to(AudioBundle, foreign_key = "bundle_id")]
+#[has_many(q_asked_data, foreign_key = "q_audio_id")]
 pub struct AudioFile {
     pub id: i32,
     pub narrators_id: i32,
@@ -191,7 +192,7 @@ pub struct NewQuizQuestion<'a> {
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(question_answers, foreign_key = "question_id")]
 #[has_many(question_data, foreign_key = "question_id")]
-#[has_many(q_answer_data, foreign_key = "question_id")]
+#[has_many(q_asked_data, foreign_key = "question_id")]
 #[table_name="quiz_questions"]
 pub struct QuizQuestion {
     pub id: i32,
@@ -280,33 +281,39 @@ pub struct UpdateWord {
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
-#[table_name="q_answer_data"]
+#[table_name="q_asked_data"]
 #[belongs_to(User, foreign_key = "user_id")]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
-pub struct QAnswerData {
+#[belongs_to(AudioFile, foreign_key = "q_audio_id")]
+pub struct QAskedData {
     pub id: i32,
     pub user_id: i32,
     pub question_id: i32,
     pub q_audio_id: i32,
     pub correct_qa_id: i32,
-    pub answered_qa_id: Option<i32>,
-    pub answered_date: DateTime<UTC>,
-    pub active_answer_time_ms: i32,
-    pub full_answer_time_ms: i32,
-    pub correct: bool,
+    pub asked_date: DateTime<UTC>,
+    pub pending: bool,
 }
 
 #[derive(Insertable)]
-#[table_name="q_answer_data"]
-pub struct NewQAnswerData {
+#[table_name="q_asked_data"]
+pub struct NewQAskedData {
     pub user_id: i32,
     pub question_id: i32,
     pub q_audio_id: i32,
     pub correct_qa_id: i32,
+    pub pending: bool
+}
+
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[table_name="q_answered_data"]
+#[belongs_to(QAskedData, foreign_key = "id")]
+pub struct QAnsweredData {
+    pub id: i32,
     pub answered_qa_id: Option<i32>,
+    pub answered_date: DateTime<UTC>,
     pub active_answer_time_ms: i32,
     pub full_answer_time_ms: i32,
-    pub correct: bool,
 }
 
 #[derive(Insertable)]

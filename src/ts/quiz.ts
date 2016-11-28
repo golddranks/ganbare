@@ -65,7 +65,6 @@ var superFast = 100;
 var main = $("#main");
 var errorSection = $("#errorSection");
 var errorStatus = $("#errorStatus");
-var semaphore = 0;
 var breakTimeWaitHandle = null;
 let currentQuestion = null;
 var activeAnswerTime = null;
@@ -189,7 +188,7 @@ function breakTime(question) {
 		window.clearInterval(breakTimeWaitHandle);
 		breakTimeWaitHandle = null;
 		questionStatus.slideUp(normalSpeed);
-		showQuiz(question);
+		start();
 		return;
 	}
 
@@ -210,11 +209,22 @@ function breakTime(question) {
 	questionStatus.slideDown(normalSpeed);
 }
 
-function nextQuestion() {
-	semaphore--;
-	if (semaphore > 0) { return; };
-	showQuiz(currentQuestion);
-};
+function createTwiceSemaphoreToNextQuestion() {
+
+	var semaphore = 2;
+	var closureNextOne = null;
+
+	var nextQuestion = function(nextOne) {
+		if (closureNextOne === null && nextOne !== null) {
+			closureNextOne = nextOne;
+		};
+		semaphore--;
+		if (semaphore > 0) { return; };
+		showQuiz(closureNextOne);
+	};
+	return nextQuestion;
+}
+
 
 function setLoadError(audioElement, elementName, closureQuestion) {
 
@@ -258,10 +268,11 @@ function answerExercise(isCorrect, exercise) {
 	wordShowButton.off('click');
 	exerciseFailureButton.off('click');
 	exerciseSuccessButton.off('click');
+	var nextQuestion = createTwiceSemaphoreToNextQuestion();
 	setTimeout(function() {
 		wordExplanation.removeClass("imageLoaded");
 		wordSectionSlideContainer.slideUp(normalSpeed, function() {
-			nextQuestion();
+			nextQuestion(null);
 		});
 	}, bitSlow);
 	if (isCorrect) {
@@ -269,7 +280,6 @@ function answerExercise(isCorrect, exercise) {
 	} else {
 		bell.play();
 	}
-	semaphore = 2;
 	function postAnswerExercise() {
 		var jqxhr = $.post("/api/next_quiz", {
 			type: "exercise",
@@ -281,8 +291,7 @@ function answerExercise(isCorrect, exercise) {
 		}, function(result) {
 			clearError();
 			console.log("postAnswerExercise: got result");
-			currentQuestion = result;
-			nextQuestion();
+			nextQuestion(result);
 		});
 		jqxhr.fail(function(e) {
 			bugMessage(e);
@@ -292,27 +301,26 @@ function answerExercise(isCorrect, exercise) {
 	postAnswerExercise();
 };
 
-function answerWord() {
+function answerWord(word) {
 	wordExplanation.removeClass("imageLoaded");
 	wordShowButton.off('click');
+	var nextQuestion = createTwiceSemaphoreToNextQuestion();
 	setTimeout(function() {
 		wordSectionSlideContainer.slideUp(normalSpeed, function() {
 			wordShowButton.focusout();
-			nextQuestion();
+			nextQuestion(null);
 		});
 	}, normalSlow);
-	semaphore = 2;
 	function postAnswerWord() {
 		var jqxhr = $.post("/api/next_quiz", {
 			type: "word",
-			word_id: currentQuestion.id,
+			word_id: word.id,
 			times_audio_played: timesAudioPlayed,
 			time: Date.now() - activeAnswerTime,
 		}, function(result) {
 			clearError();
 			console.log("postAnswerWord: got result");
-			currentQuestion = result;
-			nextQuestion();
+			nextQuestion(result);
 		});
 		jqxhr.fail(function(e) {
 			bugMessage(e);
@@ -344,7 +352,7 @@ function answerQuestion(ansId, isCorrect, question, button) {
 	}
 	questionStatus.show();
 	questionExplanation.hide();
-	semaphore = 2;
+	var nextQuestion = createTwiceSemaphoreToNextQuestion();
 	var top = 0;
 	if (button === null) {
 		top = answerList.height()/2;
@@ -359,23 +367,20 @@ function answerQuestion(ansId, isCorrect, question, button) {
 		topmessage.fadeOut();
 		questionExplanation.text("Loading...");
 		questionExplanation.slideDown(normalSpeed);
-		nextQuestion();
+		nextQuestion(null);
 	}); }, 2200);
 
 	function postAnswerQuestion() {
 		var jqxhr = $.post("/api/next_quiz", {
 			type: "question",
-			answered_id: ansId,
-			right_a_id: question.right_a,
-			question_id: question.question_id,
-			q_audio_id: question.question[1],
+			asked_id: question.asked_id,
+			answered_qa_id: ansId,
 			active_answer_time: activeATime,
 			full_answer_time: fullATime,
 		}, function(result) {
 			clearError();
 			console.log("postAnswerQuestion: got result");
-			currentQuestion = result;
-			nextQuestion();
+			nextQuestion(result);
 		});
 		jqxhr.fail(function(e) {
 			bugMessage(e);
@@ -385,13 +390,14 @@ function answerQuestion(ansId, isCorrect, question, button) {
 	postAnswerQuestion();
 }
 
-function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
+function spawnAnswerButton(ansId, text, isCorrect, question) {
 	var newAnswerButton = prototypeAnswer.clone();
 	var aAudio = null;
+	/*
 	if (ansAudioId !== null) {
 		aAudio = new Howl({ src: ['/api/audio/'+ansAudioId+'.mp3']});
 		setLoadError(aAudio, "answerAudio", question);
-	}
+	}*/
 	newAnswerButton.children("button")
 		.html(text)
 		.one('click', function() {
@@ -401,7 +407,18 @@ function spawnAnswerButton(ansId, text, ansAudioId, isCorrect, question) {
 	answerList.append(newAnswerButton);
 };
 
+
+/* pub struct QuestionJson {
+    quiz_type: &'static str,
+    asked_id: i32,
+    explanation: String,
+    question: String,
+    right_a: i32,
+    answers: Vec<(i32, String)>,
+} */
+
 function showQuestion(question) {
+	console.log(question);
 	questionSectionFlexContainer.show();
 	questionSection.show();
 	questionExplanation.text(question.explanation);
@@ -412,9 +429,9 @@ function showQuestion(question) {
 
 	question.answers.forEach(function(a, i) {
 		var isCorrect = (question.right_a === a[0])?true:false;
-		spawnAnswerButton(a[0], a[1], a[2], isCorrect, question);
+		spawnAnswerButton(a[0], a[1], isCorrect, question);
 	});
-	var qAudio = new Howl({ src: ['/api/audio/'+question.question[1]+'.mp3']});
+	var qAudio = new Howl({ src: ['/api/audio.mp3?quiz=question&id='+question.asked_id]});
 
 	play_button.one('click', function() {
 	   	questionStatus.slideUp(normalSpeed);
@@ -426,7 +443,7 @@ function showQuestion(question) {
 			activeAnswerTime = Date.now();
 			topmessage.text("Vastausaikaa 8 s");
 			topmessage.fadeIn();
-			questionText.text(currentQuestion.question[0]);
+			questionText.text(question.question);
 		
 			answerList.slideDown(normalSpeed);
 			window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
@@ -449,7 +466,7 @@ function showWord(word) {
 	wordSection.show();
 	console.log("showWord!");
 	wordOkButton.show()
-	wordOkButton.one('click', answerWord);
+	wordOkButton.one('click', function() { answerWord(word); });
 	buttonSection.show();
 	wordShowKana.html(accentuate(word.word));
 	if (word.show_accents) {
@@ -551,6 +568,8 @@ function showQuiz(question) {
 		showWord(question);
 	} else if (question.quiz_type === "exercise") {
 		showExercise(question);
+	} else if (question.quiz_type === "future") {
+		start();
 	} else {
 		bugMessage(question);
 	}
