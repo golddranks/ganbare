@@ -4,8 +4,10 @@ version = "0.1.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [dependencies]
-ganbare_backend = { path = "ganbare_backend" }
+
+diesel_codegen = {version = "0.8", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
+ganbare_backend = { path = "ganbare_backend" }
 chrono = { version = "0.2", features = ["rustc-serialize"]}
 rand = "0.3"
 rustc-serialize = "0.3"
@@ -18,3 +20,6 @@ time = "*"
 handlebars = "0.16"
 unicode-normalization = "*"
 regex = "0.1"
+
+[replace]
+"pq-sys:0.2.4" = { git = "https://github.com/golddranks/pq-sys.git", rev = "af7d3a9b87298289422eb2e2919948902bdc0e80"}

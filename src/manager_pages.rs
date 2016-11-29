@@ -209,6 +209,8 @@ pub fn add_users_form(req: &mut Request) -> PencilResult {
 }
 
 pub fn add_users(req: &mut Request) -> PencilResult {
+    use ganbare::email;
+
     let (conn, _, sess) = auth_user(req, "admins")?;
 
     req.load_form_data();
@@ -219,12 +221,10 @@ pub fn add_users(req: &mut Request) -> PencilResult {
         let email = err_400!(fields.next(), "email field missing?");
         let mut groups = vec![];
         for field in fields {
-            groups.push(try_or!(user::get_group(&conn, &field.to_lowercase())
-                .err_500()?, else return abort(400)).id);
+            groups.push(err_400!(user::get_group(&conn, &field.to_lowercase()).err_500()?, "No such group?").id);
         }
-        let secret = ganbare::email::add_pending_email_confirm(&conn, email, groups.as_ref())
-            .err_500()?;
-        ganbare::email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &**req.app.handlebars_registry.read()
+        let secret = email::add_pending_email_confirm(&conn, email, groups.as_ref()).err_500()?;
+        email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &**req.app.handlebars_registry.read()
                 .expect("The registry is basically read-only after startup."))
             .err_500()?;
     }

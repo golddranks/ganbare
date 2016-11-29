@@ -1,6 +1,6 @@
 FROM scratch
 
-ADD target/x86_64-unknown-linux-musl/release/server /ganbare/server
+ADD target/x86_64-unknown-linux-musl/release/ganbare /ganbare/ganbare
 ADD static /ganbare/static
 VOLUME /ganbare/audio /ganbare/images
 ENV GANBARE_DATABASE_URL=postgres://drasa@172.17.0.2/ganbare_testing \
@@ -11,4 +11,4 @@ ENV GANBARE_DATABASE_URL=postgres://drasa@172.17.0.2/ganbare_testing \
 	GANBARE_JQUERY=https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
 WORKDIR /ganbare
 EXPOSE 8080
-ENTRYPOINT ["/ganbare/server"]
+ENTRYPOINT ["/ganbare/ganbare"]

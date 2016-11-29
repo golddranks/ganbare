@@ -1,8 +1,7 @@
 #![recursion_limit = "512"]
 #![feature(inclusive_range_syntax)]
-#![feature(proc_macro)]
 #![feature(field_init_shorthand)]
-#![feature(custom_derive, custom_attribute, plugin)]
+#![feature(proc_macro, custom_derive, custom_attribute, plugin)]
 #![plugin(diesel_codegen, binary_macros, dotenv_macros)]
 
 
