@@ -1,7 +1,10 @@
 .git
+.sass-cache
 audio
 images
 backups
 dev_assets
 target/debug
 target/release
+ganbare_backend/target/debug
+ganbare_backend/target/release

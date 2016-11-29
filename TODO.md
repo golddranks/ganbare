@@ -1,7 +1,9 @@
 # To Do list
 
 Today
-- Desgin a survey
+- Ensure the words are introduced in pairs
+- Check the group when giving new quizes
+- Impl the test tool (asks questions from both groups)
 - Do a group view, add anonymous groups and anonymous aliases
 - Refine the timing algorithms, especially w.r.t breaks and higher-level questions
 
@@ -9,8 +11,8 @@ Today
 Plan:
 - Assign the group test_subjecs to the subects
 - Impl a tool that then splits the group into half and assigns them to different groups
-- Check the group when giving new quizes
-- Impl the test tool (asks questions from both groups)
+
+
 
 
 Stretch goals:

@@ -1,16 +1,24 @@
 {{#partial main_section}}
 	<header>
-	<h1>Kysely</h1>
+	<h1>Kysely <span id="progressMeter"></span></h1>
 	<p>Kysymme alkuun lyhyesti siitä, millä tavalla olet yleensä tekemisissä japanin kielen kanssa.</p>
 	</header>
-	<form method="post">
 		<div id="surveyBox">
-			<h2 id="questionText"></h2>
+			<h2 id="questionText" style="height: 3.7em;"></h2>
 			<div id="answerButtons">
 			</div>
 		</div>
 
 		<script>
+
+		function surveyReady() {
+			$("#questionText").text("Kiitos vastauksista! Nyt japanin harjoittelun pariin.");
+			$('<form action="/ok" method="POST">\
+				<input type="hidden" value="survey" name="event_ok">\
+				<input type="submit" value="Ok" style="min-width: 50%; margin-top: 1em;">\
+			</form>').appendTo("#answerButtons");
+		};
+
 		function incrementFactory() {
 
 			var answers_1 = [
@@ -42,6 +50,7 @@
 			var questions = [
 			{q: "Juttelen japaniksi verkossa, esimerkiksi Facebookissa, Twitterissä tai Linessä.", a: answers_1},
 			{q: "Luen japanilaisia blogeja.", a: answers_1},
+			{q: "Katson YouTubesta ym. videopalveluista japaninkielisiä v-blogeja tai let's play -videoita.", a: answers_1},
 			{q: "Kuuntelen japanilaisia radio-ohjelmia tai podcasteja.", a: answers_1},
 			{q: "Kuuntelen japanilaista musiikkia niin intensiivisesti, että kuuntelen tai selvitän, mitä sanat tarkoittavat.", a: answers_1},
 			{q: "Katson animea.", a: answers_1},
@@ -59,46 +68,90 @@
 			];
 
 			var i = 0;
+			var main = $("#main");
 			var surveyBox = $("#surveyBox");
 			var answerButtons = $("#answerButtons");
+			var questionText = $("#questionText");
+			var progressMeter = $("#progressMeter");
+
+			var answered = [];
+
+			function answerQuestion(answerData) {
+				main.css("min-height", main.css("height"));
+				$.ajax({
+					type: "POST",
+					url: "/api/eventdata/survey",
+					contentType : "application/json",
+					data: JSON.stringify(answerData),
+				});
+				surveyBox.slideUp(400, function() {
+					increment();
+					surveyBox.fadeIn();
+				});
+			}
 
 			function increment() {
-				i++;
+				answerButtons.empty();
+				if (i === questions.length) {
+					return surveyReady();
+				}
+				progressMeter.text("("+(i+1)+"/"+questions.length+")");
 				var question = questions[i].q;
 				var answers = questions[i].a;
-				$("#questionText").html(question);
-				answerButtons.empty();
+				questionText.html(question);
 				if (Array.isArray(answers)) {
+
 					answers.forEach(function(a, j) {
-						answerButtons.append('<p><button class="multilineButton">'+a+'</button></p>');
+						var button = $('<button class="multilineButton">'+a+'</button>');
+
+						button.appendTo($('<p></p>').appendTo(answerButtons));
+						button.click(function() { answerQuestion({q: question, a: button.html()})});
 					});
+
 				} else if (answers === "textfield") {
-					answerButtons.append('<textarea></textarea><button style="min-width: 60%; margin-top: 1em;">Ok</button>');
+
+					var textarea = $('<textarea></textarea>');
+
+					textarea.appendTo(answerButtons);
+
+					$('<button style="min-width: 50%; margin-top: 1em;">Ok</button>')
+						.appendTo(answerButtons)
+						.click(function() { answerQuestion({q: question, a: textarea.val()}) });
+
 				} else if (answers === "fourfold") {
-					answerButtons.append('<div></div>\
-						<button style="min-width: 60%; margin-top: 1em;">Ok</button>');
+
+					var fourfold = $('<div></div>').appendTo(answerButtons);
+					var answerData = {q: question, a: null};
+
+					$('<button style="min-width: 60%; margin-top: 1em;">Ok</button>')
+						.appendTo(answerButtons)
+						.click(function() { answerQuestion({q: question, a: null}) });
+
 				} else if (answers === "languages") {
-					answerButtons.append('<input type="checkbox"><label>suomea</label><input type="checkbox"><label>ruotsia</label>\
+					$(' <input type="checkbox" id="suomea"><label for="suomea">suomea</label>\
+						<input type="checkbox" id="ruotsia"><label for="ruotsia">ruotsia</label>\
 						<label>jotain muuta, mitä?</label>\
-						<input type="text">\
-						<button style="min-width: 60%; margin-top: 1em;">Ok</button>');
+						<input type="text" id="muutakielta">').appendTo(answerButtons);
+
+					$('<button style="min-width: 50%; margin-top: 1em;">Ok</button>')
+						.appendTo(answerButtons)
+						.click(function() {
+							var answerData = {q: question, a:
+								{	suomea: $("#suomea").is(":checked"),
+									ruotsia: $("#ruotsia").is(":checked"),
+									muuta: $("#muutakielta").val(),
+								}
+							};
+							answerQuestion(answerData);
+						});
 				};
-				$("#answerButtons button").click(function(ev) {
-					console.log(this);
-					ev.preventDefault();
-					surveyBox.css("min-height", surveyBox.css("height"));
-					surveyBox.fadeOut(400, function() {
-						increment();
-						surveyBox.fadeIn();
-					});
-				});
+				i++;
 			};
 			return increment;
 		}
 		var increment = incrementFactory();
 		increment();
 		</script>
-	</form>
 
 {{/partial}}
 

@@ -483,3 +483,32 @@ pub struct NewEventExperience {
     pub user_id: i32,
     pub event_id: i32,
 }
+
+#[derive(Insertable, Queryable, Identifiable, Associations, Debug, AsChangeset, RustcEncodable)]
+#[belongs_to(User, foreign_key = "user_id")]
+#[belongs_to(Event, foreign_key = "event_id")]
+#[changeset_options(treat_none_as_null = "true")]
+#[table_name="event_userdata"]
+pub struct EventUserdata {
+    pub id: i32,
+    pub user_id: i32,
+    pub event_id: i32,
+    pub created: DateTime<UTC>,
+    pub key: Option<String>,
+    pub data: String,
+}
+
+#[derive(Insertable)]
+#[table_name="event_userdata"]
+pub struct NewEventUserdata<'a> {
+    pub user_id: i32,
+    pub event_id: i32,
+    pub key: Option<&'a str>,
+    pub data: &'a str,
+}
+
+#[derive(AsChangeset)]
+#[table_name="event_userdata"]
+pub struct UpdateEventUserdata<'a> {
+    pub data: &'a str,
+}

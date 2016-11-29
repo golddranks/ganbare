@@ -501,20 +501,20 @@ fn get_new_exercises(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
 fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
     use diesel::expression::dsl::*;
     use schema::{pending_items, words, w_asked_data};
+    use rand::{thread_rng, Rng};
 
     let seen = pending_items::table
         .inner_join(w_asked_data::table)
         .select(w_asked_data::word_id)
         .filter(pending_items::user_id.eq(user_id));
 
-    let new_words : Vec<Word> = words::table
+    let mut new_words : Vec<Word> = words::table
         .filter(words::id.ne(all(seen)))
         .filter(words::published.eq(true))
-        .limit(5)
-        .order(words::id.asc())
         .get_results(conn)
         .chain_err(|| "Can't get new words!")?;
 
+    thread_rng().shuffle(&mut new_words);
     Ok(new_words)
 }
 

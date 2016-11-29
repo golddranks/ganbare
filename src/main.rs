@@ -99,6 +99,8 @@ pub fn main() {
     app.get("/api/audio/<audio_name:string>", "get_audio", http_api::get_audio);
     app.get("/api/audio.mp3?<audio_name:string>", "quiz_audio", http_api::quiz_audio);
     app.get("/api/images/<filename:string>", "get_image", http_api::get_image);
+    app.post("/api/eventdata/<eventname:string>", "post_eventdata", http_api::save_eventdata);
+    app.put("/api/eventdata/<eventname:string>/<key:string>", "put_eventdata", http_api::save_eventdata);
 
 
     info!("Ready. Running on {}, serving at {}", *SERVER_BINDING, *SITE_DOMAIN);

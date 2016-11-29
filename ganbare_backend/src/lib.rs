@@ -240,23 +240,23 @@ pub fn initiate(conn: &PgConnection, event_name: &str, user: &User) -> Result<Op
     Ok(Some((ev, exp)))
 }
 
-pub fn require_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+pub fn require_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<(Event, EventExperience)> {
 
     let ev_state = state(conn, event_name, user)?;
 
-    if let Some((_, EventExperience { event_finish: Some(_), .. })) = ev_state {
-        Ok(ev_state)
+    if let  Some(ev_exp@(_, EventExperience { event_finish: Some(_), .. })) = ev_state {
+        Ok(ev_exp)
     } else {
         Err(ErrorKind::AccessDenied.to_err())
     }
 }
 
-pub fn require_ongoing(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
+pub fn require_ongoing(conn: &PgConnection, event_name: &str, user: &User) -> Result<(Event, EventExperience)> {
 
     let ev_state = state(conn, event_name, user)?;
 
-    if let Some((_, EventExperience { event_finish: None, .. })) = ev_state {
-        Ok(ev_state)
+    if let Some(ev_exp@(_, EventExperience { event_finish: None, .. })) = ev_state {
+        Ok(ev_exp)
     } else {
         Err(ErrorKind::AccessDenied.to_err())
     }
@@ -278,6 +278,34 @@ pub fn set_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Op
         Ok(Some((ev, exp)))
     } else {
         Ok(None)
+    }
+}
+
+pub fn save_userdata(conn: &PgConnection, event: &Event, user: &User, key: Option<&str>, data: &str) -> Result<EventUserdata> {
+    use schema::event_userdata;
+
+    match key {
+        None => Ok(diesel::insert(&NewEventUserdata { event_id: event.id, user_id: user.id, key, data })
+                    .into(event_userdata::table)
+                    .get_result(conn)?),
+        Some(k) => {
+            let result = diesel::update(
+                        event_userdata::table
+                            .filter(event_userdata::event_id.eq(event.id))
+                            .filter(event_userdata::user_id.eq(user.id))
+                            .filter(event_userdata::key.eq(k))
+                    )
+                    .set(&UpdateEventUserdata { data })
+                    .get_result(conn)
+                    .optional()?;
+            if let Some(userdata) = result {
+                Ok(userdata)
+            } else {
+                Ok(diesel::insert(&NewEventUserdata { event_id: event.id, user_id: user.id, key, data })
+                    .into(event_userdata::table)
+                    .get_result(conn)?)
+            }
+        },
     }
 }
 

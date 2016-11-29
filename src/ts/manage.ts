@@ -110,7 +110,6 @@ function drawList(nugget_resp, bundle_resp) {
 
 			var checkbox = $('<input type="checkbox" id="'+id+'">').prependTo(c_info);
 			if (word.published) {
-				console.log("joo");
 				checkbox.prop("checked", true);
 			};
 			checkbox.change(function() {

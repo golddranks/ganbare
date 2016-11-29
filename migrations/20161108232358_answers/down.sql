@@ -1,3 +1,4 @@
+DROP TABLE event_userdata;
 DROP TABLE user_metrics;
 DROP TABLE q_answered_data;
 DROP TABLE q_asked_data;

@@ -95,3 +95,12 @@ CREATE TABLE event_experiences (
 	event_finish TIMESTAMPTZ,
 	PRIMARY KEY(user_id, event_id)
 );
+
+CREATE TABLE event_userdata (
+	id SERIAL PRIMARY KEY,
+	user_id SERIAL REFERENCES users,
+	event_id SERIAL REFERENCES events,
+	created TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	key VARCHAR,
+	data TEXT NOT NULL
+);

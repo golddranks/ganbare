@@ -12,6 +12,7 @@ use ganbare::quiz;
 use ganbare::models;
 use ganbare::skill;
 use ganbare::manage;
+use ganbare::event;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
@@ -351,3 +352,18 @@ pub fn post_question(req: &mut Request) -> PencilResult {
     redirect(&new_url, 303).refresh_cookie(&sess)
 }
 
+pub fn save_eventdata(req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "")?;
+
+    let eventname = req.view_args.remove("eventname").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let key = req.view_args.remove("key");
+    let (event, _) = event::require_ongoing(&conn, &eventname, &user).err_401()?;
+
+    use std::io::Read;
+    let mut text = String::new();
+    req.read_to_string(&mut text).err_500()?;
+
+    event::save_userdata(&conn, &event, &user, key.as_ref().map(|s|&**s), &text).err_500()?;
+
+    Response::from("OK.").refresh_cookie(&sess)
+}
