@@ -4,7 +4,6 @@
 #![feature(proc_macro, custom_derive, custom_attribute, plugin)]
 #![plugin(diesel_codegen, binary_macros, dotenv_macros)]
 
-
 #[macro_use] pub extern crate diesel;
 #[macro_use] extern crate diesel_codegen;
 #[macro_use] extern crate error_chain;

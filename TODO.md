@@ -1,14 +1,18 @@
 # To Do list
 
 Today
-- Ensure the words are introduced in pairs
-- Check the group when giving new quizes
+- Ensure the words are introduced in pairs; skill-based new_word
+- Introducing new words is rate-limited
+- Check the group when giving new quizes: tester_input, tester_output, tester_nosurvey
+- Refine the timing algorithms
+
+
+- Introduce higher-level questions
 - Impl the test tool (asks questions from both groups)
-- Do a group view, add anonymous groups and anonymous aliases
-- Refine the timing algorithms, especially w.r.t breaks and higher-level questions
 
 
 Plan:
+- Do a group view, add anonymous groups and anonymous aliases
 - Assign the group test_subjecs to the subects
 - Impl a tool that then splits the group into half and assigns them to different groups
 

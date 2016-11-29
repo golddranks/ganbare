@@ -498,7 +498,7 @@ fn get_new_exercises(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
     Ok(new_questions)
 }
 
-fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
+fn get_new_random_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
     use diesel::expression::dsl::*;
     use schema::{pending_items, words, w_asked_data};
     use rand::{thread_rng, Rng};
@@ -511,11 +511,45 @@ fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
     let mut new_words : Vec<Word> = words::table
         .filter(words::id.ne(all(seen)))
         .filter(words::published.eq(true))
-        .get_results(conn)
-        .chain_err(|| "Can't get new words!")?;
+        .get_results(conn)?;
 
     thread_rng().shuffle(&mut new_words);
     Ok(new_words)
+}
+
+fn get_new_paired_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
+    use diesel::expression::dsl::*;
+    use schema::{pending_items, words, w_asked_data, skill_nuggets, skill_data};
+    use rand::{thread_rng, Rng};
+
+    let seen = pending_items::table
+        .inner_join(w_asked_data::table)
+        .select(w_asked_data::word_id)
+        .filter(pending_items::user_id.eq(user_id));
+
+    let other_pair_seen = skill_nuggets::table
+        .inner_join(skill_data::table)
+        .select(skill_nuggets::id)
+        .filter(skill_data::user_id.eq(user_id))
+        .filter(skill_data::skill_level.gt(0));
+
+    let mut new_words : Vec<Word> = words::table
+        .filter(words::id.ne(all(seen)))
+        .filter(words::published.eq(true))
+        .filter(words::skill_nugget.eq(any(other_pair_seen)))
+        .get_results(conn)?;
+
+    thread_rng().shuffle(&mut new_words);
+    Ok(new_words)
+}
+
+fn get_new_words(conn : &PgConnection, user_id : i32) -> Result<Vec<Word>> {
+    let pairs = get_new_paired_words(conn, user_id)?;
+    if pairs.len() > 0 {
+        Ok(pairs)
+    } else {
+        get_new_random_words(conn, user_id)
+    }
 }
 
 fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, Vec<Answer>, i32)> {
