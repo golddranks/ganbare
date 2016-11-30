@@ -516,7 +516,8 @@ fn choose_new_exercise(conn : &PgConnection, user_id : i32) -> Result<Option<Exe
 fn choose_cooldown_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Result<Option<QuizType>> {
 
     if metrics.quizes_since_break >= metrics.max_quizes_since_break
-    || metrics.quizes_today >= metrics.max_quizes_today {
+    || metrics.quizes_today >= metrics.max_quizes_today
+    || metrics.break_until > chrono::UTC::now() {
         return Ok(None)
     }
 
@@ -527,17 +528,7 @@ fn choose_cooldown_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetric
     Ok(None)
 }
 
-fn choose_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Result<Option<QuizType>> {
-
-    if metrics.quizes_since_break >= metrics.max_quizes_since_break
-    || metrics.quizes_today >= metrics.max_quizes_today {
-        return Ok(None)
-    }
-
-
-    if let Some(quiztype) = choose_random_overdue_item(conn, user.id)? {
-        return Ok(Some(quiztype))
-    }
+fn choose_new_q_or_e(conn: &PgConnection, user: &User) -> Result<Option<QuizType>> {
 
     if user::check_user_group(conn, user, "input_group")? {
         if let Some(q) = choose_new_question(conn, user.id)? {
@@ -549,6 +540,25 @@ fn choose_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Res
         if let Some(e) = choose_new_exercise(conn, user.id)? {
             return Ok(Some(QuizType::Exercise(e.id)))
         }
+    }
+    Ok(None)
+}
+
+fn choose_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Result<Option<QuizType>> {
+
+    if metrics.quizes_since_break >= metrics.max_quizes_since_break
+    || metrics.quizes_today >= metrics.max_quizes_today
+    || metrics.break_until > chrono::UTC::now() {
+        return Ok(None)
+    }
+
+
+    if let Some(quiztype) = choose_random_overdue_item(conn, user.id)? {
+        return Ok(Some(quiztype))
+    }
+
+    if let Some(quiztype) = choose_new_q_or_e(conn, user)? {
+        return Ok(Some(quiztype))
     }
 
     Ok(None)
@@ -603,7 +613,8 @@ fn choose_new_word(conn : &PgConnection, metrics: &mut UserMetrics) -> Result<Op
 
 
     if metrics.new_words_since_break >= metrics.max_words_since_break
-    || metrics.new_words_today >= metrics.max_words_today {
+    || metrics.new_words_today >= metrics.max_words_today
+    || metrics.break_until > chrono::UTC::now() {
         return Ok(None)
     }
 
@@ -619,71 +630,89 @@ fn choose_new_word(conn : &PgConnection, metrics: &mut UserMetrics) -> Result<Op
     Ok(word)
 }
 
+fn clear_limits(metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
 
-fn check_break(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
-    use std::cmp::{max};
-    use chrono::Duration;
+    if chrono::UTC::now() < metrics.break_until {
+        let due_string = metrics.break_until.to_rfc3339();
+        return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
+    }
 
-    let user_id = metrics.id;
-
+    // This is important because we have to zero the counts once every day even though we wouldn't break a single time!
     // We are having 1 AM as the change point of the day
     // (That's 3 AM in Finland, where the users of this app are likely to reside)
-    if chrono::UTC::now() > (metrics.today.date().and_hms(1, 0, 0) + Duration::hours(24)) {
+    if chrono::UTC::now() > (metrics.today.date().and_hms(1, 0, 0) + chrono::Duration::hours(24)) {
         metrics.today = chrono::UTC::today().and_hms(1, 0, 0);
         metrics.new_words_since_break = 0;
         metrics.quizes_since_break = 0;
         metrics.new_words_today = 0;
         metrics.quizes_today = 0;
     }
+    Ok(None)
+}
 
-    // Start a break:
 
-    if metrics.new_words_since_break >= metrics.max_words_since_break
-        && metrics.quizes_since_break >= metrics.max_quizes_since_break
+fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
+    use std::cmp::{max};
+    use chrono::Duration;
+
+    let user_id = user.id;
+
+    let next_due = choose_next_due_item(conn, user_id)?.map(|(due_item, _)| due_item.due_date);
+    let no_new_words = choose_new_random_word(conn, user_id)?.is_none();
+    let no_new_quizes =  choose_new_q_or_e(conn, user)?.is_none();
+
+    if no_new_words && no_new_quizes && next_due.is_none() {
+        return Ok(None) // No words to study
+    }
+
+    let words = metrics.new_words_since_break >= metrics.max_words_since_break || no_new_words;
+    let new_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || no_new_quizes;
+    let due_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || next_due.is_none();
+
+    // Start a break if the limits are full.
+
+    if words && new_quizes && due_quizes
     {
-        let time_since_last_break = chrono::UTC::now() - metrics.break_until;
 
+        let time_since_last_break = chrono::UTC::now() - metrics.break_until;
+    
         let discounted_breaktime = max(Duration::seconds(0),
                 Duration::seconds(metrics.break_length as i64) - time_since_last_break);
 
-        metrics.new_words_since_break = 0;
-        metrics.quizes_since_break = 0;
         metrics.break_until = chrono::UTC::now()
                                 + discounted_breaktime;
+
+        if no_new_words && no_new_quizes { // Nothing else left but due items – so no use breaking until there is some available
+            metrics.break_until = max(metrics.break_until, next_due.unwrap_or(chrono::date::MAX.and_hms(0,0,0,)));
+        }
+
+        metrics.new_words_since_break = 0;
+        metrics.quizes_since_break = 0;
+
+        let due_string = metrics.break_until.to_rfc3339();
+        return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
     }
 
-    if metrics.new_words_today >= metrics.max_words_today
-        && metrics.quizes_today >= metrics.max_quizes_today
+    let words = metrics.new_words_today >= metrics.max_words_today || no_new_words;
+    let new_quizes = metrics.quizes_today >= metrics.max_quizes_today || no_new_quizes;
+    let due_quizes = metrics.quizes_today >= metrics.max_quizes_today || next_due.is_none();
+
+    if words && new_quizes && due_quizes
     {
         metrics.new_words_since_break = 0;
         metrics.quizes_since_break = 0;
         metrics.new_words_today = 0;
         metrics.quizes_today = 0;
         metrics.break_until = metrics.today + Duration::hours(24);
-    }
 
+        if no_new_words && no_new_quizes { // Nothing else left but due items – so no use breaking until there is some available
+            metrics.break_until = max(metrics.break_until, next_due.unwrap_or(chrono::date::MAX.and_hms(0,0,0,)));
+        }
 
-    if chrono::UTC::now() > metrics.break_until { return Ok(None) } // Not on break
-
-    // Peeking for the future
-
-    if let Some(_) = choose_new_random_word(conn, user_id)? { // There's still new words to learn
-
-        let due_date = metrics.break_until;
-
-        let due_string = due_date.to_rfc3339();
+        let due_string = metrics.break_until.to_rfc3339();
         return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
     }
-
-    if let Some((due, _)) = choose_next_due_item(conn, user_id)? { // Only quizes left, so their due dates affect the next due.
-
-        let due_date = max(due.due_date, metrics.break_until);
-
-        let due_string = due_date.to_rfc3339();
-        return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
-
-    } 
-    Ok(None)
+    unreachable!();
 }
 
 
@@ -886,20 +915,18 @@ fn return_word(conn: &PgConnection, user: &User, the_word: Word, metrics: &mut U
 
 fn get_new_quiz_inner(conn : &PgConnection, user : &User, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
 
+
     // Pending item first (items that were asked, but not answered because of loss of connection, user closing the session etc.)
 
     if let Some(pending_quiz) = return_pending_item(conn, user.id)? {
         return Ok(Some(pending_quiz));
     }
 
-    
-    // If the user is on break, just return a future due item and stop.
-
-    if let Some(future) = check_break(conn, metrics)? {
+     // Clear the per-day limits if it's tomorrow already and stop if we are in the middle of a break
+    if let Some(future) = clear_limits(metrics)? {
         return Ok(Some(future));
     }
-
-
+    
     // After that, question & exercise reviews that are overdue (except if they are on a cooldown period), and after that, new ones
 
     if let Some(quiztype) = choose_q_or_e(conn, user, metrics)? {
@@ -918,6 +945,12 @@ fn get_new_quiz_inner(conn : &PgConnection, user : &User, metrics: &mut UserMetr
 
     if let Some(quiztype) = choose_cooldown_q_or_e(conn, user, metrics)? {
         return return_q_or_e(conn, user, quiztype, metrics)
+    }
+
+    // There seems to be nothig to do?! Either there is no more words to study or the limits are full.
+
+    if let Some(future) = check_break(conn, user, metrics)? {
+        return Ok(Some(future));
     }
 
     Ok(None) // No words left to study
