@@ -40,6 +40,7 @@ CREATE TABLE user_groups (
 CREATE TABLE group_memberships (
 	user_id SERIAL REFERENCES users,
 	group_id SERIAL REFERENCES user_groups,
+	anonymous BOOLEAN NOT NULL default false,
 	PRIMARY KEY(user_id, group_id)
 );
 
@@ -50,4 +51,4 @@ CREATE TABLE anon_aliases (
 	group_id INTEGER REFERENCES user_groups
 );
 
-INSERT INTO user_groups VALUES (1, 'admins'), (2, 'editors'), (3, 'betatesters'), (4, 'subjects'), (5, 'input_group'), (6, 'output_group');
+INSERT INTO user_groups VALUES (1, 'admins'), (2, 'editors'), (3, 'betatesters'), (4, 'subjects'), (5, 'input_group'), (6, 'output_group'), (7, 'survey');

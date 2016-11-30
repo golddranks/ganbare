@@ -206,6 +206,7 @@ function breakTime(question) {
 			+ dur_seconds_remainder +" sekunnin päästä");
 	}
 	questionSection.show();
+	questionSectionFlexContainer.show();
 	questionStatus.slideDown(normalSpeed);
 }
 

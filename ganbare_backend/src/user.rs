@@ -1,5 +1,16 @@
    use super::*;
 
+/* TODO FIXME this can be a full-blown typed group system some day 
+enum Group {
+    Admins,
+    Editors,
+    Betatesters,
+    Subjects,
+    InputGroup,
+    OutputGroup,
+    ShowAccent,
+    Other(String),
+}*/
 
 pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<User> {
     use schema::users::dsl::*;
@@ -134,7 +145,7 @@ pub fn join_user_group_by_id(conn: &PgConnection, user: &User, group_id: i32) ->
         .filter(user_groups::id.eq(group_id))
         .first(conn)?;
 
-    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id})
+    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id, anonymous: false})
                 .into(group_memberships::table)
                 .execute(conn)?;
     Ok(())
@@ -147,7 +158,7 @@ pub fn join_user_group_by_name(conn: &PgConnection, user: &User, group_name: &st
         .filter(user_groups::group_name.eq(group_name))
         .first(conn)?;
 
-    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id})
+    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id, anonymous: false})
                 .into(group_memberships::table)
                 .execute(conn)?;
     Ok(())

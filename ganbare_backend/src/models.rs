@@ -101,6 +101,7 @@ pub struct UserGroup {
 pub struct GroupMembership {
     pub user_id: i32,
     pub group_id: i32,
+    pub anonymous: bool,
 }
 
 #[derive(Queryable, Debug, Insertable, Associations, AsChangeset)]
@@ -293,18 +294,22 @@ pub struct DueItem {
     pub user_id: i32,
     pub due_date: DateTime<UTC>,
     pub due_delay: i32,
-    pub correct_streak: i32,
+    pub cooldown_delay: DateTime<UTC>,
+    pub correct_streak_overall: i32,
+    pub correct_streak_this_time: i32,
     pub item_type: String,
 }
 
 #[derive(Insertable)]
 #[table_name="due_items"]
-pub struct NewDueItem {
+pub struct NewDueItem<'a> {
     pub user_id: i32,
     pub due_date: DateTime<UTC>,
     pub due_delay: i32,
-    pub correct_streak: i32,
-    pub item_type: String,
+    pub cooldown_delay: DateTime<UTC>,
+    pub correct_streak_overall: i32,
+    pub correct_streak_this_time: i32,
+    pub item_type: &'a str,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
@@ -436,11 +441,21 @@ pub struct SkillData {
 pub struct UserMetrics {
     pub id: i32,
     pub new_words_since_break: i32,
-    pub new_sentences_since_break: i32,
     pub new_words_today: i32,
-    pub new_sentences_today: i32,
+    pub quizes_since_break: i32,
+    pub quizes_today: i32,
     pub break_until:  DateTime<UTC>,
     pub today:  DateTime<UTC>,
+    pub max_words_since_break: i32,
+    pub max_words_today: i32,
+    pub max_quizes_since_break: i32,
+    pub max_quizes_today: i32,
+
+    pub break_length: i32,
+    pub delay_multiplier: i32,
+    pub initial_delay: i32,
+    pub streak_limit: i32,
+    pub cooldown_delay: i32,
 }
 
 

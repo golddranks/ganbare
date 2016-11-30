@@ -15,7 +15,7 @@ fn dispatch_events(conn: &PgConnection, user: &User)
         event::initiate(&conn, "welcome", &user).err_500()?;
         Some(redirect("/welcome", 303))
 
-    } else if ! event::is_done(conn, "survey", &user).err_500()? {
+    } else if user::check_user_group(conn, user, "survey").err_500()? && ! event::is_done(conn, "survey", &user).err_500()? {
 
         event::initiate(&conn, "survey", &user).err_500()?;
         Some(redirect("/survey", 303))

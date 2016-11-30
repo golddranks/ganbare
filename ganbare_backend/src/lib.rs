@@ -47,10 +47,9 @@ pub use errors::*;
 
 
 
-
-
-
-
+pub mod sql {
+    no_arg_sql_function!(random, ::diesel::types::Numeric);
+}
 
 
 
@@ -156,23 +155,23 @@ pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<
     Ok(all)
 }
 
-pub fn log_by_id(conn : &PgConnection, user : &User, skill_id: i32, level_increment: i32) -> Result<SkillData> {
+pub fn log_by_id(conn : &PgConnection, user_id : i32, skill_id: i32, level_increment: i32) -> Result<SkillData> {
     use schema::{skill_data};
 
     let skill_data : Option<SkillData> = skill_data::table
-                                        .filter(skill_data::user_id.eq(user.id))
+                                        .filter(skill_data::user_id.eq(user_id))
                                         .filter(skill_data::skill_nugget.eq(skill_id))
                                         .get_result(conn)
                                         .optional()?;
     Ok(if let Some(skill_data) = skill_data {
         diesel::update(skill_data::table
-                            .filter(skill_data::user_id.eq(user.id))
+                            .filter(skill_data::user_id.eq(user_id))
                             .filter(skill_data::skill_nugget.eq(skill_id)))
                 .set(skill_data::skill_level.eq(skill_data.skill_level + level_increment))
                 .get_result(conn)?
     } else {
         diesel::insert(&SkillData {
-            user_id: user.id,
+            user_id: user_id,
             skill_nugget: skill_id,
             skill_level: level_increment,
         }).into(skill_data::table)

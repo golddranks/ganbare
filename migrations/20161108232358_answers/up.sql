@@ -3,7 +3,9 @@ CREATE TABLE due_items (
 	user_id SERIAL REFERENCES users,
 	due_date TIMESTAMPTZ NOT NULL,
 	due_delay INTEGER NOT NULL,
-	correct_streak INTEGER NOT NULL DEFAULT 0,
+	cooldown_delay TIMESTAMPTZ NOT NULL,
+	correct_streak_overall INTEGER NOT NULL DEFAULT 0,
+	correct_streak_this_time INTEGER NOT NULL DEFAULT 0,
 	item_type VARCHAR NOT NULL
 );
 
@@ -79,11 +81,20 @@ CREATE TABLE skill_data (
 CREATE TABLE user_metrics (
 	id SERIAL PRIMARY KEY REFERENCES users,
 	new_words_since_break INTEGER NOT NULL DEFAULT 0,
-	new_sentences_since_break INTEGER NOT NULL DEFAULT 0,
 	new_words_today INTEGER NOT NULL DEFAULT 0,
-	new_sentences_today INTEGER NOT NULL DEFAULT 0,
+	quizes_since_break INTEGER NOT NULL DEFAULT 0,
+	quizes_today INTEGER NOT NULL DEFAULT 0,
 	break_until TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
-	today TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+	today TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	max_words_since_break INTEGER NOT NULL DEFAULT 6,
+	max_words_today INTEGER NOT NULL DEFAULT 18,
+	max_quizes_since_break INTEGER NOT NULL DEFAULT 12,
+	max_quizes_today INTEGER NOT NULL DEFAULT 36,
+	break_length INTEGER NOT NULL DEFAULT 14400,
+	delay_multiplier INTEGER NOT NULL DEFAULT 2,
+	initial_delay INTEGER NOT NULL DEFAULT 10000,
+	streak_limit INTEGER NOT NULL DEFAULT 4,
+	cooldown_delay INTEGER NOT NULL DEFAULT 15
 );
 
 INSERT INTO user_metrics (id) SELECT id FROM users;

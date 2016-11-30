@@ -110,7 +110,7 @@ pub fn save(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &mu
     Ok(audio_file)
 }
 
-pub fn load_from_bundles(conn : &PgConnection, bundles: &[AudioBundle]) -> Result<Vec<Vec<AudioFile>>> {
+pub fn load_all_from_bundles(conn : &PgConnection, bundles: &[AudioBundle]) -> Result<Vec<Vec<AudioFile>>> {
 
     let q_audio_files : Vec<Vec<AudioFile>> = AudioFile::belonging_to(&*bundles)
         .load(&*conn)
@@ -125,7 +125,7 @@ pub fn load_from_bundles(conn : &PgConnection, bundles: &[AudioBundle]) -> Resul
     Ok(q_audio_files)
 }
 
-pub fn load_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<Vec<AudioFile>> {
+pub fn load_all_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<Vec<AudioFile>> {
     use schema::audio_files;
 
     let q_audio_files : Vec<AudioFile> = audio_files::table
@@ -133,6 +133,20 @@ pub fn load_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<Vec<Audi
         .get_results(&*conn)
         .chain_err(|| "Can't load quiz!")?;
     Ok(q_audio_files)
+}
+
+pub fn load_random_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<AudioFile> {
+    use schema::audio_files;
+    use rand::{Rng, thread_rng};
+
+    let mut q_audio_files : Vec<AudioFile> = audio_files::table
+        .filter(audio_files::bundle_id.eq(bundle_id))
+        .get_results(&*conn)
+        .chain_err(|| "Can't load quiz!")?;
+    
+    let random_index = thread_rng().gen_range(0, q_audio_files.len()); // Panics if q_audio_files.len() == 0
+    let audio_file = q_audio_files.swap_remove(random_index);
+    Ok(audio_file)
 }
 
 pub fn get_bundles(conn : &PgConnection) -> Result<Vec<(AudioBundle, Vec<AudioFile>)>> {
