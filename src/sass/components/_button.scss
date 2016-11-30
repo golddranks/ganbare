@@ -48,6 +48,8 @@
 		&:enabled:active {
 			border-color: _palette(highlight);
 			color: _palette(highlight) !important;
+		}
+		&:enabled:active {
 			@include vendor('transform', 'scale(0.95)');
 			@include vendor('transition', (
 				'transform #{_duration(fast)} ease-out'

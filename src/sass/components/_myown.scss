@@ -9,9 +9,6 @@
     filter: blur(4px);
 }
 
-button:focus {outline:0;}
-* { -webkit-tap-highlight-color: rgba(0, 0, 0, 0); }
-
 #main {
 
 
@@ -179,6 +176,32 @@ button:focus {outline:0;}
 
 }
 
+/* This fixes the blue outline on Chrome */
+button:focus,
+input[type="submit"]:focus,
+input[type="reset"]:focus,
+input[type="button"]:focus, {
+	outline:0;
+}
+
+/* This fixes the ugly button background color on mobile Chrome */
+* { -webkit-tap-highlight-color: rgba(0, 0, 0, 0); }
+
+
+/* This fixes the flashing on Webkit */
+input[type="submit"],
+input[type="reset"],
+input[type="button"],
+button,
+.answerButton
+.button {
+
+	-webkit-backface-visibility: hidden;
+	-moz-backface-visibility:    hidden;
+	-ms-backface-visibility:     hidden;
+
+}
+
 .answerList {
 	padding: 0;
 	margin: 0;
@@ -203,17 +226,6 @@ button:focus {outline:0;}
 		img {
 			max-width: 23em;
 			max-height: 12em;
-		}
-
-		@include vendor('transition', (
-			'transform #{_duration(transition)} ease'
-		));
-
-		&:enabled:active {
-			@include vendor('transform', 'scale(0.95)');
-			@include vendor('transition', (
-				'transform #{_duration(fast)} ease-out'
-			));
 		}
 
 		@include breakpoint(xxsmall) {
@@ -277,7 +289,7 @@ button:focus {outline:0;}
 
 #wordExplanation:not(.imageLoaded) img {
 	opacity: 0;
-	max-height: 17em;
+	max-height: 15em;
 }
 
 #wordExplanation,
