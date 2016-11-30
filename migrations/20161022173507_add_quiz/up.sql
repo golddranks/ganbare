@@ -21,6 +21,15 @@ CREATE TABLE audio_files (
 	mime VARCHAR NOT NULL
 );
 
+CREATE TABLE words (
+	id SERIAL PRIMARY KEY,
+	word VARCHAR NOT NULL,
+	explanation VARCHAR NOT NULL,
+	audio_bundle SERIAL REFERENCES audio_bundles,
+	skill_nugget SERIAL REFERENCES skill_nuggets,
+	published BOOLEAN NOT NULL DEFAULT false
+);
+
 CREATE TABLE quiz_questions (
 	id SERIAL PRIMARY KEY,
 	skill_id SERIAL REFERENCES skill_nuggets,
@@ -39,13 +48,16 @@ CREATE TABLE question_answers (
 	answer_text VARCHAR NOT NULL
 );
 
-CREATE TABLE words (
+CREATE TABLE exercises (
 	id SERIAL PRIMARY KEY,
-	word VARCHAR NOT NULL,
-	explanation VARCHAR NOT NULL,
-	audio_bundle SERIAL REFERENCES audio_bundles,
-	skill_nugget SERIAL REFERENCES skill_nuggets,
-	published BOOLEAN NOT NULL DEFAULT false
+	skill_id SERIAL REFERENCES skill_nuggets,
+	published BOOLEAN NOT NULL DEFAULT false,
+	skill_level INTEGER NOT NULL
+);
+
+CREATE TABLE exercise_variants (
+	id SERIAL PRIMARY KEY REFERENCES words,
+	exercise_id SERIAL REFERENCES exercises
 );
 
 CREATE TABLE events (

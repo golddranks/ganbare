@@ -66,5 +66,9 @@
                 description("Access denied")
                 display("Access denied")
             }
+            NoneResult {
+                description("Option::None")
+                display("Option::None")
+            }
         }
     }

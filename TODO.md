@@ -6,15 +6,15 @@ Today
 
 - Fix the annoying UI bug where buttons ignore clicks sometimes
 - More words to DB
-
-- Introduce higher-level questions
-- Impl the test tool (asks questions from both groups)
 - Do a group/user editor
 
+Tomorrow
+- Introduce higher-level questions
+- Impl the test tool (asks questions from both groups)
 
-Plan:
-- Edd anonymous groups and anonymous aliases
-- Assign the group test_subjecs to the subects
+
+Weekend:
+- Implement anonymous groups and anonymous aliases
 - Impl a tool that then splits the group into half and assigns them to different groups
 
 

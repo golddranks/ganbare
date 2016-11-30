@@ -16,6 +16,7 @@ use rustc_serialize::base64::FromBase64;
 use ganbare::db;
 use ganbare::user;
 use ganbare::session;
+use ganbare::errors;
 
 lazy_static! {
  
@@ -156,7 +157,8 @@ pub fn internal_error<T: std::fmt::Debug>(err: T) -> PencilError {
     PencilError::PenHTTPError(pencil::http_errors::HTTPError::InternalServerError)
 }
 
-pub fn bad_request<T: ToString>(err_msg: T) -> Response {
+pub fn bad_request<T: ToString + std::fmt::Debug>(err_msg: T) -> Response {
+        warn!("Error 400: Bad request. {:?}", err_msg.to_string());
         let body = err_msg.to_string();
         let mut resp = pencil::Response::new(body);
         resp.status_code = 400;
@@ -181,11 +183,11 @@ pub trait CarrierInternal<T, E> where E: std::fmt::Debug {
     fn ok_or(self) -> std::result::Result<T, E>;
 }
 
-impl<T> CarrierInternal<T, ()> for Option<T> {
-    fn ok_or(self) -> std::result::Result<T, ()> {
+impl<T> CarrierInternal<T, errors::Error> for Option<T> {
+    fn ok_or(self) -> std::result::Result<T, errors::Error> {
         match self {
             Some(a) => Ok(a),
-            None => Err(()),
+            None => Err(errors::ErrorKind::NoneResult.into()),
         }
     }
 }
@@ -202,8 +204,9 @@ macro_rules! err_400 {
     ($t:expr , $format_string:expr $(, $param:expr)* ) => { match CarrierInternal::ok_or($t) {
         Ok(a) => { a },
         Err(e) => {
+            use std::error::Error;
             return Ok(bad_request(
-                format!(concat!("<h1>HTTP 400 Bad Request {:?}: ", $format_string, "</h1>"), e $(, $param)*)
+                format!(concat!("<h1>HTTP 400 Bad Request {:?}: ", $format_string, "</h1>"), e.description() $(, $param)*)
             ))
         },
     } }

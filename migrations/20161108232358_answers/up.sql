@@ -34,7 +34,8 @@ CREATE TABLE q_answered_data (
 
 CREATE TABLE e_asked_data (
 	id SERIAL REFERENCES pending_items PRIMARY KEY,
-	word_id SERIAL REFERENCES words
+	exercise_id SERIAL REFERENCES exercises,
+	word_id SERIAL REFERENCES exercise_variants
 );
 
 CREATE TABLE e_answered_data (
@@ -66,9 +67,9 @@ CREATE TABLE question_data (
 );
 
 CREATE TABLE exercise_data (
-	word_id SERIAL REFERENCES words,
+	exercise_id SERIAL REFERENCES exercises,
 	due SERIAL REFERENCES due_items,
-	PRIMARY KEY(due, word_id)
+	PRIMARY KEY(due, exercise_id)
 );
 
 CREATE TABLE skill_data (

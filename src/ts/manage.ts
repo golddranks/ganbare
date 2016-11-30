@@ -100,6 +100,7 @@ function drawList(nugget_resp, bundle_resp) {
 
 		var words = tuple[1][0];
 		var questions = tuple[1][1];
+		var exercises = tuple[1][2];
 		
 		words.forEach(function(word, index) {
 			var c_item = $("<li></li>").appendTo(c_list);
@@ -323,6 +324,32 @@ function drawList(nugget_resp, bundle_resp) {
 		};
 		questions.forEach(createQuestionEntry);
 
+		function createExerciseEntry(tuple, index) {
+			var exercise = tuple[0];
+			var words = tuple[1];
+
+			var c_item = $("<li><h3>Exercise: " + nugget.skill_summary + "</h3></li>").appendTo(c_list);
+
+			var id = "n"+nugget_index+"e"+index;
+			var c_info = $("<div><label for=\""+id+"\">public</label></div>").appendTo(c_item);
+
+			var checkbox = $('<input type="checkbox" id="'+id+'">').prependTo(c_info);
+			if (exercise.published) {
+				checkbox.prop("checked", true);
+			};
+			checkbox.change(function() {
+				var request= { type: 'PUT', url: null };
+				if (this.checked) {
+					request.url = '/api/exercises/'+exercise.id+'?publish';
+				} else {
+					request.url = '/api/exercises/'+exercise.id+'?unpublish';
+				};
+				$.ajax(request);
+			});
+
+		};
+		exercises.forEach(createExerciseEntry);
+
 		if (words.length == 2 && questions.length === 0) {
 			var c_item = $("<li></li>").appendTo(c_list);
 			var c_header = $('<h3>(No questions)</h3>').appendTo(c_item);
@@ -330,7 +357,7 @@ function drawList(nugget_resp, bundle_resp) {
 			c_body.appendTo(c_item);
 			var c_button = $('<input type="button" value="autocreate" class="linklike">');
 			c_button.appendTo(c_body);
-			var data = [{
+			let question_data = [{
 						q_name: nugget.skill_summary,
 						q_explanation: "Kuuntele ja vastaa kysymykseen",
 						question_text: "Mistä asiasta on kyse?",
@@ -355,10 +382,44 @@ function drawList(nugget_resp, bundle_resp) {
 					url: "/api/question",
 					contentType: "application/json",
 					type: "POST",
-					data: JSON.stringify(data),
+					data: JSON.stringify(question_data),
 					success: function(resp) {
 						c_item.remove();
 						createQuestionEntry(resp, 2);
+					},
+				});
+			});
+
+		}
+
+		if (words.length == 2 && exercises.length === 0) {
+			var c_item = $("<li></li>").appendTo(c_list);
+			var c_header = $('<h3>(No exercises)</h3>').appendTo(c_item);
+			var c_body = $('<div></div>');
+			c_body.appendTo(c_item);
+			var c_button = $('<input type="button" value="autocreate" class="linklike">');
+			c_button.appendTo(c_body);
+			var exercise_data = [{
+						skill_id: nugget.id,
+						skill_level: 2,
+						},
+						[{
+							exercise_id: 0,
+							id: words[0].id,
+						},
+						{
+							exercise_id: 0,
+							id: words[1].id,
+						}]];
+			c_button.click(function() {
+				$.ajax({
+					url: "/api/exercise",
+					contentType: "application/json",
+					type: "POST",
+					data: JSON.stringify(exercise_data),
+					success: function(resp) {
+						c_item.remove();
+						createExerciseEntry(resp, 2);
 					},
 				});
 			});

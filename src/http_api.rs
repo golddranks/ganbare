@@ -187,6 +187,11 @@ pub fn get_item(req: &mut Request) -> PencilResult {
                 .ok_or_else(|| abort(404).unwrap_err())?;
             jsonify(&item)
         },
+        "get_exercise" => {
+            let item = manage::get_exercise(&conn, id).err_500()?
+                .ok_or_else(|| abort(404).unwrap_err())?;
+            jsonify(&item)
+        },
         _ => {
             return abort(500)
         },
@@ -231,11 +236,17 @@ pub fn set_published(req: &mut Request) -> PencilResult {
         "publish_questions" => {
             manage::publish_question(&conn, id, true).err_500()?;
         },
+        "publish_exercises" => {
+            manage::publish_exercise(&conn, id, true).err_500()?;
+        },
         "unpublish_words" => {
             manage::publish_word(&conn, id, false).err_500()?;
         },
         "unpublish_questions" => {
             manage::publish_question(&conn, id, false).err_500()?;
+        },
+        "unpublish_exercises" => {
+            manage::publish_exercise(&conn, id, false).err_500()?;
         },
         _ => {
             return abort(500)
@@ -348,6 +359,50 @@ pub fn post_question(req: &mut Request) -> PencilResult {
     let id = manage::post_question(&conn, new_qq, new_aas).err_500()?;
         
     let new_url = format!("/api/questions/{}", id);
+
+    redirect(&new_url, 303).refresh_cookie(&sess)
+}
+
+pub fn post_exercise(req: &mut Request) -> PencilResult {
+
+    let (conn, _, sess) = auth_user(req, "editors")?;
+
+    use std::io::Read;
+    let mut text = String::new();
+    req.read_to_string(&mut text).err_500()?;
+
+    use ganbare::models::{UpdateExercise, UpdateExerciseVariant, NewExercise, ExerciseVariant};
+
+    let (qq, aas) : (UpdateExercise, Vec<UpdateExerciseVariant>) = err_400!(rustc_serialize::json::decode(&text),
+            "Error when parsing the JSON.");
+
+    fn parse_qq(qq: &UpdateExercise) -> Result<NewExercise> {
+        let qq = NewExercise {
+            skill_id: qq.skill_id.ok_or(ErrorKind::FormParseError.to_err())?,
+            skill_level: qq.skill_level.ok_or(ErrorKind::FormParseError.to_err())?,
+        };
+        Ok(qq)
+    }
+
+    fn parse_aa(aa: &UpdateExerciseVariant) -> Result<ExerciseVariant> {
+        let aa = ExerciseVariant {
+            id: aa.id.ok_or(ErrorKind::FormParseError.to_err())?,
+            exercise_id: aa.exercise_id.ok_or(ErrorKind::FormParseError.to_err())?,
+        };
+        Ok(aa)
+    }
+
+    let new_qq = err_400!(parse_qq(&qq), "Fields missing from UpdateExercise");
+
+    let mut new_aas = vec![];
+    for aa in &aas {
+        let new_aa = err_400!(parse_aa(aa), "Fields missing from UpdateExerciseVariant");
+        new_aas.push(new_aa);
+    }
+
+    let id = manage::post_exercise(&conn, new_qq, new_aas).err_500()?;
+        
+    let new_url = format!("/api/exercises/{}", id);
 
     redirect(&new_url, 303).refresh_cookie(&sess)
 }

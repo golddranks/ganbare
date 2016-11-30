@@ -89,12 +89,16 @@ pub fn main() {
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/bundles", "get_bundles", http_api::get_all);
     app.get("/api/questions/<id:int>", "get_question", http_api::get_item);
+    app.get("/api/exercises/<id:int>", "get_exercise", http_api::get_item);
     app.get("/api/words/<id:int>", "get_word", http_api::get_item);
-    app.put("/api/questions/<id:int>?publish", "publish_questions", http_api::set_published);
     app.post("/api/question", "post_question", http_api::post_question);
-    app.put("/api/words/<id:int>?publish", "publish_words", http_api::set_published);
+    app.post("/api/exercise", "post_exercise", http_api::post_exercise);
+    app.put("/api/questions/<id:int>?publish", "publish_questions", http_api::set_published);
     app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", http_api::set_published);
+    app.put("/api/words/<id:int>?publish", "publish_words", http_api::set_published);
     app.put("/api/words/<id:int>?unpublish", "unpublish_words", http_api::set_published);
+    app.put("/api/exercises/<id:int>?publish", "publish_exercises", http_api::set_published);
+    app.put("/api/exercises/<id:int>?unpublish", "unpublish_exercises", http_api::set_published);
     app.put("/api/words/<id:int>", "update_word", http_api::update_item);
     app.put("/api/questions/<id:int>", "update_question", http_api::update_item);
     app.put("/api/questions/answers/<id:int>", "update_answer", http_api::update_item);

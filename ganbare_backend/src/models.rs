@@ -250,6 +250,50 @@ pub struct UpdateAnswer {
     pub answer_text: Option<String>,
 }
 
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, RustcDecodable)]
+#[belongs_to(SkillNugget, foreign_key = "skill_id")]
+#[has_many(exercise_variants, foreign_key = "exercise_id")]
+#[has_many(exercise_data, foreign_key = "exercise_id")]
+#[has_many(e_asked_data, foreign_key = "exercise_id")]
+#[table_name="exercises"]
+pub struct Exercise {
+    pub id: i32,
+    pub skill_id: i32,
+    pub published: bool,
+    pub skill_level: i32,
+}
+
+#[derive(Queryable, Debug, AsChangeset, RustcEncodable, RustcDecodable)]
+#[table_name="exercises"]
+pub struct UpdateExercise {
+    pub skill_id: Option<i32>,
+    pub published: Option<bool>,
+    pub skill_level: Option<i32>,
+}
+
+#[derive(Insertable)]
+#[table_name="exercises"]
+pub struct NewExercise {
+    pub skill_id: i32,
+    pub skill_level: i32,
+}
+
+#[derive(Insertable, Identifiable, Queryable, Associations, Debug, RustcEncodable, RustcDecodable)]
+#[belongs_to(Exercise, foreign_key = "exercise_id")]
+#[belongs_to(Word, foreign_key = "id")]
+#[table_name="exercise_variants"]
+pub struct ExerciseVariant {
+    pub id: i32,
+    pub exercise_id: i32,
+}
+
+#[derive(Queryable, Debug, AsChangeset, RustcEncodable, RustcDecodable)]
+#[table_name="exercise_variants"]
+pub struct UpdateExerciseVariant {
+    pub id: Option<i32>,
+    pub exercise_id: Option<i32>,
+}
+
 #[derive(Insertable)]
 #[table_name="words"]
 pub struct NewWord<'a> {
@@ -263,8 +307,7 @@ pub struct NewWord<'a> {
 #[table_name="words"]
 #[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
 #[has_many(w_asked_data, foreign_key = "word_id")]
-#[has_many(e_asked_data, foreign_key = "word_id")]
-#[has_many(exercise_data, foreign_key = "word_id")]
+#[has_many(exercise_variants, foreign_key = "id")]
 pub struct Word {
     pub id: i32,
     pub word: String,
@@ -340,6 +383,7 @@ pub struct NewPendingItem<'a> {
 #[table_name="q_asked_data"]
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
+#[belongs_to(Answer, foreign_key = "correct_qa_id")]
 #[has_many(q_answered_data, foreign_key = "id")]
 pub struct QAskedData {
     pub id: i32,
@@ -361,10 +405,12 @@ pub struct QAnsweredData {
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
 #[table_name="e_asked_data"]
 #[belongs_to(PendingItem, foreign_key = "id")]
+#[belongs_to(Exercise, foreign_key = "exercise_id")]
 #[belongs_to(Word, foreign_key = "word_id")]
 #[has_many(e_answered_data, foreign_key = "id")]
 pub struct EAskedData {
     pub id: i32,
+    pub exercise_id: i32,
     pub word_id: i32,
 }
 
@@ -412,8 +458,9 @@ pub struct QuestionData {
 #[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
 #[table_name="exercise_data"]
 #[belongs_to(DueItem, foreign_key = "due")]
+#[belongs_to(Exercise, foreign_key = "exercise_id")]
 pub struct ExerciseData {
-    pub word_id: i32,
+    pub exercise_id: i32,
     pub due: i32,
 }
 

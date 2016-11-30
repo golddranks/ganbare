@@ -1,5 +1,7 @@
 DROP TABLE question_answers;
 DROP TABLE quiz_questions;
+DROP TABLE exercise_variants;
+DROP TABLE exercises;
 DROP TABLE words;
 DROP TABLE skill_nuggets;
 DROP TABLE audio_files;

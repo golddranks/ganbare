@@ -124,6 +124,14 @@ pub fn get_question(conn : &PgConnection, id : i32) -> Result<Option<(QuizQuesti
     }
 }
 
+pub fn get_exercise(conn : &PgConnection, id : i32) -> Result<Option<(Exercise, Vec<ExerciseVariant>)>> {
+    if let Some((qq, aas, _)) = quiz::load_exercise(conn, id)? {
+        Ok(Some((qq, aas)))
+    } else {
+        Ok(None)
+    }
+}
+
 pub fn get_word(conn : &PgConnection, id : i32) -> Result<Option<Word>> {
     Ok(schema::words::table.filter(schema::words::id.eq(id)).get_result(conn).optional()?)
 }
@@ -133,6 +141,15 @@ pub fn publish_question(conn : &PgConnection, id: i32, published: bool) -> Resul
     diesel::update(quiz_questions::table
         .filter(quiz_questions::id.eq(id)))
         .set(quiz_questions::published.eq(published))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn publish_exercise(conn : &PgConnection, id: i32, published: bool) -> Result<()> {
+    use schema::exercises;
+    diesel::update(exercises::table
+        .filter(exercises::id.eq(id)))
+        .set(exercises::published.eq(published))
         .execute(conn)?;
     Ok(())
 }
@@ -188,6 +205,22 @@ pub fn post_question(conn : &PgConnection, question: NewQuizQuestion, mut answer
         aa.question_id = q.id;
         diesel::insert(aa)
             .into(question_answers::table)
+            .execute(conn)?;
+    }
+    Ok(q.id)
+}
+
+pub fn post_exercise(conn : &PgConnection, exercise: NewExercise, mut answers: Vec<ExerciseVariant>) -> Result<i32> {
+    use schema::{exercises, exercise_variants};
+
+    let q: Exercise = diesel::insert(&exercise)
+                .into(exercises::table)
+                .get_result(conn)?;
+
+    for aa in &mut answers {
+        aa.exercise_id = q.id;
+        diesel::insert(aa)
+            .into(exercise_variants::table)
             .execute(conn)?;
     }
     Ok(q.id)
