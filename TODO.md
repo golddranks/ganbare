@@ -4,6 +4,7 @@ Today
 
 - RELEASE 0.2
 
+- Fix the annoying UI bug where buttons ignore clicks sometimes
 - More words to DB
 
 - Introduce higher-level questions
