@@ -9,10 +9,11 @@ Today
 
 - Introduce higher-level questions
 - Impl the test tool (asks questions from both groups)
+- Do a group/user editor
 
 
 Plan:
-- Do a group view, add anonymous groups and anonymous aliases
+- Edd anonymous groups and anonymous aliases
 - Assign the group test_subjecs to the subects
 - Impl a tool that then splits the group into half and assigns them to different groups
 

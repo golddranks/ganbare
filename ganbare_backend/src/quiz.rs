@@ -874,7 +874,6 @@ fn get_new_quiz_inner(conn : &PgConnection, user : &User, metrics: &mut UserMetr
         return return_q_or_e(conn, user, quiztype, metrics)
     }
 
-
     Ok(None) // No words left to study
 }
 

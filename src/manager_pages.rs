@@ -26,6 +26,8 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
     let user = user::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).err_500()?;
     user::join_user_group_by_name(&conn, &user, "admins").err_500()?;
     user::join_user_group_by_name(&conn, &user, "editors").err_500()?;
+    user::join_user_group_by_name(&conn, &user, "input_group").err_500()?;
+    user::join_user_group_by_name(&conn, &user, "output_group").err_500()?;
 
 
     match do_login(&user.email, &new_password, &*req).err_500()? {
