@@ -67,17 +67,19 @@ pub fn add_pending_email_confirm(conn : &PgConnection, email : &str, groups: &[i
     Ok(secret)
 }
 
-pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Result<(String, Vec<i32>)> {
-    let confirm : PendingEmailConfirm = pending_email_confirms::table
+pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Result<Option<(String, Vec<i32>)>> {
+    let confirm : Option<PendingEmailConfirm> = pending_email_confirms::table
         .filter(pending_email_confirms::secret.eq(secret))
         .first(conn)
-        .chain_err(|| "No such secret/email found :(")?;
-    Ok((confirm.email, confirm.groups))
+        .optional()?;
+
+    Ok(confirm.map(|c| (c.email, c.groups)))
 }
 
 pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, secret : &str, pepper: &[u8]) -> Result<User> {
 
-    let (email, group_ids) = check_pending_email_confirm(&*conn, secret)?;
+    let (email, group_ids) = try_or!(check_pending_email_confirm(&*conn, secret)?,
+        else return Err(ErrorKind::NoSuchSess.into()));
     let user = user::add_user(&*conn, &email, password, pepper)?;
 
     for g in group_ids {

@@ -119,7 +119,7 @@ pub fn login_post(request: &mut Request) -> PencilResult {
 
 pub fn logout(request: &mut Request) -> PencilResult {
     helpers::do_logout(request.cookies().and_then(get_cookie))?;
-    redirect("/", 303).expire_cookie()
+    return redirect("/", 303).expire_cookie()
 }
 
 
@@ -127,7 +127,10 @@ pub fn confirm_form(request: &mut Request) -> PencilResult {
 
     let secret = err_400!(request.args().get("secret"), "secret");
     let conn = db_connect().err_500()?;
-    let (email, _) = email::check_pending_email_confirm(&conn, &secret).err_500()?;
+    let email = match email::check_pending_email_confirm(&conn, &secret).err_500()? {
+        Some((email, _)) => email,
+        None => return redirect("/", 303),
+    };
 
     let mut context = new_template_context();
     context.insert("email".to_string(), email);
@@ -141,10 +144,18 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
  //   let ip = req.request.remote_addr.ip();
     let conn = db_connect().err_500()?;
     let secret = err_400!(req.args().get("secret"), "secret missing").clone();
+    let email = err_400!(req.form().expect("form data loaded.").get("email"), "email field missing");
     let password = err_400!(req.form().expect("form data loaded.").get("password"), "password missing");
     let user = match email::complete_pending_email_confirm(&conn, &password, &secret, &*RUNTIME_PEPPER) {
         Ok(u) => u,
         Err(e) => match e.kind() {
+            &errors::ErrorKind::NoSuchSess => {
+                if user::get_user_by_email(&conn, email).err_500()?.is_some() {
+                    return Ok(bad_request("The user account already exists?"))
+                } else {
+                    return Ok(bad_request(""))
+                }
+            },
             &errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
             &errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
             _ => return Err(internal_error(e)),
@@ -152,10 +163,10 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
     };
 
     match do_login(&user.email, &password, &*req).err_500()? {
-        Some((_, sess)) => {
-            redirect("/", 303).refresh_cookie(&sess)
-        },
-        None => { Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login them in. A bug?".to_string())))) },
+        Some((_, sess)) =>
+            redirect("/", 303).refresh_cookie(&sess),
+        None => 
+            Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login them in. A bug?".to_string())))),
     }
 }
 

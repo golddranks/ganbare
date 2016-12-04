@@ -12,17 +12,13 @@ enum Group {
     Other(String),
 }*/
 
-pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<User> {
+pub fn get_user_by_email(conn : &PgConnection, user_email : &str) -> Result<Option<User>> {
     use schema::users::dsl::*;
-    use diesel::result::Error::NotFound;
 
-    users
+    Ok(users
         .filter(email.eq(user_email))
         .first(conn)
-        .map_err(|e| match e {
-                e @ NotFound => e.caused_err(|| ErrorKind::NoSuchUser(user_email.into())),
-                e => e.caused_err(|| "Error when trying to retrieve user!"),
-        })
+        .optional()?)
 }
 
 fn get_user_pass_by_email(conn : &PgConnection, user_email : &str) -> Result<(User, Password)> {
