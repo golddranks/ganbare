@@ -1,6 +1,6 @@
 [root]
 name = "ganbare"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel_codegen 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -9,7 +9,7 @@ dependencies = [
  "ganbare_backend 0.1.0",
  "handlebars 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.12 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "pencil 0.3.0 (git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",

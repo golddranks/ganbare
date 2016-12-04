@@ -116,7 +116,7 @@ pub fn get_create_by_name(conn : &PgConnection, skill_summary: &str) -> Result<S
 
     let skill_nugget : Option<SkillNugget> = skill_nuggets::table
         .filter(skill_nuggets::skill_summary.eq(skill_summary))
-        .get_result(&*conn)
+        .get_result(conn)
         .optional()
         .chain_err(|| "Database error with skill_nuggets!")?;
 
@@ -125,7 +125,7 @@ pub fn get_create_by_name(conn : &PgConnection, skill_summary: &str) -> Result<S
         None => {
             diesel::insert(&NewSkillNugget{ skill_summary })
                 .into(skill_nuggets::table)
-                .get_result(&*conn)
+                .get_result(conn)
                 .chain_err(|| "Database error!")?
         }
     })

@@ -152,6 +152,16 @@
 	transform: scale(3);
 }
 
+.userTable td {
+	border-right: 1px solid _palette(border);
+	padding: 0.3em;
+	text-align: center;
+}
+
+.userTable thead {
+	border-bottom: 1px solid _palette(border);
+}
+
 .bordered {
 		border-radius: _size(border-radius);
 		border: solid 1px _palette(border);

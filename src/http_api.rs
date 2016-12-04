@@ -32,7 +32,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
         .map_err(|e| {
             match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),
-                _ => abort(500).unwrap_err(),
+                e => internal_error(e),
             }
         })?;
 
@@ -44,7 +44,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
         .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
-            _ => { internal_error(e) }
+            _ => internal_error(e),
         })
 }
 
@@ -60,7 +60,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
         .map_err(|e| {
             match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),
-                _ => abort(500).unwrap_err(),
+                e => internal_error(e),
             }
         })?;
 
@@ -72,7 +72,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
         .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
-            _ => { internal_error(e) }
+            _ => internal_error(e),
         })
 }
 
@@ -88,7 +88,7 @@ pub fn get_image(req: &mut Request) -> PencilResult {
         .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Image file not found! {}", file_name); e },
-            _ => { internal_error(e) }
+            _ => internal_error(e),
         })
 }
 
@@ -154,11 +154,9 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
         }
     };
 
-    let answer = parse_answer(req)
-        .map_err(|_| abort(400).unwrap_err())?;
+    let answer = err_400!(parse_answer(req), "Can't parse form data?");
 
-    let new_quiz = quiz::get_next_quiz(&conn, &user, answer)
-        .err_500()?;
+    let new_quiz = quiz::get_next_quiz(&conn, &user, answer).err_500()?;
 
     match new_quiz {
 
@@ -192,9 +190,7 @@ pub fn get_item(req: &mut Request) -> PencilResult {
                 .ok_or_else(|| abort(404).unwrap_err())?;
             jsonify(&item)
         },
-        _ => {
-            return abort(500)
-        },
+        _ => return Err(internal_error("no such endpoint!")),
     };
 
     json.refresh_cookie(&sess)
@@ -214,9 +210,11 @@ pub fn get_all(req: &mut Request) -> PencilResult {
             let items = audio::get_bundles(&conn).err_500()?;
             jsonify(&items)
         },
-        _ => {
-            return abort(500)
+        "get_users" => {
+            let items = ganbare::user::get_all(&conn).err_500()?;
+            jsonify(&items)
         },
+        _ => return Err(internal_error("no such endpoint!")),
     };
 
     json.refresh_cookie(&sess)
@@ -248,9 +246,7 @@ pub fn set_published(req: &mut Request) -> PencilResult {
         "unpublish_exercises" => {
             manage::publish_exercise(&conn, id, false).err_500()?;
         },
-        _ => {
-            return abort(500)
-        },
+        _ => return Err(internal_error("no such endpoint!")),
     };
     let mut resp = Response::new_empty();
     resp.status_code = 204;
@@ -305,7 +301,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
 
             json = jsonify(&updated_item);
         },
-        _ => return abort(500),
+        _ => return Err(internal_error("no such endpoint!")),
     }
     
     json.refresh_cookie(&sess)
@@ -422,3 +418,32 @@ pub fn save_eventdata(req: &mut Request) -> PencilResult {
 
     Response::from("OK.").refresh_cookie(&sess)
 }
+
+pub fn user(req: &mut Request) -> PencilResult {
+    let (conn, _, sess) = auth_user(req, "admins")?;
+
+    let group_id = req.view_args.remove("group_id").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let group_id = group_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+
+    let user_id = req.view_args.remove("user_id").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let user_id = user_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+    let json = match endpoint.as_ref() {
+        "add_group" => {
+            ganbare::user::join_user_group_by_id(&conn, user_id, group_id).err_500()?;
+            jsonify(&())
+                },
+        "remove_group" => {
+            ganbare::user::remove_user_group_by_id(&conn, user_id, group_id).err_500()?;
+            jsonify(&())
+                },
+        _ => {
+            return Err(internal_error("no such endpoint!"))
+        },
+    };
+
+    json.refresh_cookie(&sess)
+}
+
+

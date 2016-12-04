@@ -1,0 +1,23 @@
+{{#partial page_script_link}}
+	<script src="static/ts/users.js"></script>
+{{/partial}}
+
+{{#partial main_section}}
+
+	<h1>Users</h1>
+
+	<table class="userTable">
+		<thead>
+			<tr id="groupHeader"><td>Users</td></tr>
+		</thead>
+		<tbody id="usersList">
+
+		</tbody>
+	</table>
+	<br>
+	<h2>Pending e-mail confirms</h2>
+	<ul id="pendingUsersList"></ul>
+
+{{/partial}}
+
+{{~> base.html main_class=fullwidth ~}}

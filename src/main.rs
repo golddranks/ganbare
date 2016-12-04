@@ -57,7 +57,7 @@ pub fn main() {
    
     include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html",
-        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html");
+        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "users.html");
     
     app.enable_static_file_handling();
 
@@ -84,15 +84,19 @@ pub fn main() {
     app.get("/add_word", "add_word_form", manager_pages::add_word_form);
     app.post("/add_word", "add_word_post", manager_pages::add_word_post);
     app.get("/manage", "manage", manager_pages::manage);
+    app.get("/users", "users", manager_pages::users);
 
     // HTTP API
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
+    app.get("/api/users", "get_users", http_api::get_all);
     app.get("/api/bundles", "get_bundles", http_api::get_all);
     app.get("/api/questions/<id:int>", "get_question", http_api::get_item);
     app.get("/api/exercises/<id:int>", "get_exercise", http_api::get_item);
     app.get("/api/words/<id:int>", "get_word", http_api::get_item);
     app.post("/api/question", "post_question", http_api::post_question);
     app.post("/api/exercise", "post_exercise", http_api::post_exercise);
+    app.put("/api/users/<user_id:int>?add_group=<group_id:int>", "add_group", http_api::user);
+    app.put("/api/users/<user_id:int>?remove_group=<group_id:int>", "remove_group", http_api::user);
     app.put("/api/questions/<id:int>?publish", "publish_questions", http_api::set_published);
     app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", http_api::set_published);
     app.put("/api/words/<id:int>?publish", "publish_words", http_api::set_published);

@@ -93,7 +93,7 @@ pub fn save(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &mu
             bundle_id
         };
 
-    let file_path = file.0.to_str().expect("this is an ascii path");
+    let file_path = file.0.file_name().expect("We just set the file name").to_str().expect("this is an ascii path");
     let mime = &format!("{}", file.2);
     let narrators_id = default_narrator_id(&*conn, &mut narrator)?;
     let new_q_audio = NewAudioFile {narrators_id, bundle_id, file_path, mime};

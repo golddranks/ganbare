@@ -2,11 +2,12 @@
 
 Today
 
-- RELEASE 0.2
-
-- Fix the annoying UI bug where buttons ignore clicks sometimes
 - More words to DB
+- Devise a method to group-convert wav -> mp3, m4a, ogg, opus
+- Support multiple file formats
+- Support additional features in importer (like number suffixes?)
 - Do a group/user editor
+- FEATURE: download images server-side and replace the outbound links with links to the own static folder
 
 Tomorrow
 - Introduce higher-level questions
@@ -21,10 +22,10 @@ Weekend:
 
 
 Stretch goals:
+- FIX: the annoying UI bug on safare where scale-animated buttons ignore clicks sometimes, if that's even possible
 - FIX: prevent multiple sessions having the quiz open at the same time (possible ear-mark answers with session-id, think a bit about concurrency!)
 - FIX: unpublishing doesn't have effect on things showing up on due list. This needs filtering the source query BEFORE left_outer_join (in get_due_items()), but that's impossible with the current Diesel.
 - Test with different browsers
 - FIX: contenteditable adds <br> at the end
-- FEATURE: download images server-side and replace the outbound links with links to the own static folder
 - FEATURE: add answers in the manager screen
 - IMPROVEMENT: check if group names and event names are possible to enumify

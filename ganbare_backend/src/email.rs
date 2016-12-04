@@ -81,7 +81,7 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     let user = user::add_user(&*conn, &email, password, pepper)?;
 
     for g in group_ids {
-        user::join_user_group_by_id(&*conn, &user, g)?
+        user::join_user_group_by_id(&*conn, user.id, g)?
     }
 
     diesel::delete(pending_email_confirms::table

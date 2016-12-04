@@ -138,16 +138,27 @@ pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str,
 }
 
 
-pub fn join_user_group_by_id(conn: &PgConnection, user: &User, group_id: i32) -> Result<()> {
-    use schema::{user_groups, group_memberships};
+pub fn join_user_group_by_id(conn: &PgConnection, user_id: i32, group_id: i32) -> Result<()> {
+    use schema::{group_memberships};
 
-    let group: UserGroup = user_groups::table
-        .filter(user_groups::id.eq(group_id))
-        .first(conn)?;
-
-    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id, anonymous: false})
+    diesel::insert(&GroupMembership{ user_id, group_id, anonymous: false})
                 .into(group_memberships::table)
                 .execute(conn)?;
+    Ok(())
+}
+
+
+pub fn remove_user_group_by_id(conn: &PgConnection, user_id: i32, group_id: i32) -> Result<()> {
+    use schema::{group_memberships};
+
+    diesel::delete(group_memberships::table
+            .filter(
+                group_memberships::user_id.eq(user_id)
+                .and(group_memberships::group_id.eq(group_id))
+            )
+        )
+        .execute(conn)?;
+
     Ok(())
 }
 
@@ -180,13 +191,44 @@ pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -
     Ok(exists.is_some())
 }
 
-pub fn get_group(conn : &PgConnection, group_name: &str )  -> Result<Option<UserGroup>> {
+pub fn get_group(conn : &PgConnection, group_name: &str ) -> Result<Option<UserGroup>> {
     use schema::user_groups;
 
     let group : Option<(UserGroup)> = user_groups::table
         .filter(user_groups::group_name.eq(group_name))
-        .get_result(&*conn)
+        .get_result(conn)
         .optional()?;
 
     Ok(group)
+}
+
+pub fn all_groups(conn: &PgConnection) -> Result<Vec<UserGroup>> {
+    use schema::user_groups;
+
+    let groups = user_groups::table
+        .order(user_groups::id)
+        .get_results(conn)?;
+
+    Ok(groups)
+}
+
+pub fn get_all(conn: &PgConnection) -> Result<(Vec<UserGroup>, Vec<(User, Vec<GroupMembership>)>, Vec<PendingEmailConfirm>)> {
+    use schema::{users, pending_email_confirms, group_memberships};
+
+    let groups = all_groups(conn)?;
+
+    let users: Vec<User> = users::table
+        .get_results(conn)?;
+
+    let user_groups : Vec<Vec<GroupMembership>> = group_memberships::table
+        .get_results(conn)?
+        .grouped_by(&users);
+
+    let users_groups = users.into_iter().zip(user_groups.into_iter()).collect();
+
+    let confirms: Vec<PendingEmailConfirm> = pending_email_confirms::table
+        .get_results(conn)?;
+
+    
+    Ok((groups, users_groups, confirms))
 }

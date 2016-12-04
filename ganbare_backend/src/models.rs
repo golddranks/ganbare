@@ -68,7 +68,7 @@ pub struct Session {
 }
 
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Debug, RustcEncodable, RustcDecodable)]
 pub struct PendingEmailConfirm {
     pub secret: String,
     pub email: String,
@@ -84,7 +84,7 @@ pub struct NewPendingEmailConfirm<'a> {
     pub groups: &'a [i32],
 }
 
-#[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset)]
+#[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="user_groups"]
 #[has_many(group_memberships, foreign_key = "group_id")]
 #[has_many(anon_aliases, foreign_key = "group_id")]
@@ -94,7 +94,7 @@ pub struct UserGroup {
     pub anonymous: bool,
 }
 
-#[derive(Queryable, Debug, Insertable, Associations, AsChangeset)]
+#[derive(Queryable, Debug, Insertable, Associations, AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="group_memberships"]
 #[belongs_to(UserGroup, foreign_key = "group_id")]
 #[belongs_to(User, foreign_key = "user_id")]

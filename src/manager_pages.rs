@@ -236,3 +236,13 @@ pub fn add_users(req: &mut Request) -> PencilResult {
         .render_template("add_users.html", &context)
         .refresh_cookie(&sess)
 }
+
+pub fn users(req: &mut Request) -> PencilResult {
+    let (_, _, sess) = auth_user(req, "admins")?;
+
+    let context =  new_template_context();
+
+    req.app
+        .render_template("users.html", &context)
+        .refresh_cookie(&sess)
+}
