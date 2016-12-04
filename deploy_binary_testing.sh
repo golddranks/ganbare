@@ -6,9 +6,7 @@ DEPLOY_LOCAL_PEPPERFILE=.env.ganbare_testing_runtime_pepper
 
 rsync -r images $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
 rsync -r audio $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
-rsync -r backups $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
 ssh $DEPLOY_SERVER <<EOF
-NEWEST_BACKUP=\$( find $DEPLOY_STATIC_DIR/backups/*/db_dump -type d | tail -n 1 )
 docker pull golddranks/ganbare_run
 docker stop ganbare_runner_testing && docker rm ganbare_runner_testing
 docker run -d --restart=unless-stopped \

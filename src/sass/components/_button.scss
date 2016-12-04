@@ -14,7 +14,7 @@
 	input[type="reset"],
 	input[type="button"],
 	button,
-	.answerButton
+	.answerButton,
 	.button {
 		@include vendor('appearance', 'none');
 		@include vendor('transition', (
@@ -35,7 +35,7 @@
 		text-decoration: none;
 		white-space: nowrap;
 
-	.hover
+		.hover,
 		&:hover {
 			border-color: _palette(highlight);
 			color: _palette(highlight) !important;
