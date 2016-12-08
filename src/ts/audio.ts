@@ -184,8 +184,8 @@ function accentuate(word: string) {
 					var cell = $('<td class="narrator'+narr.id+'"></td>').appendTo(bundleRow);
 					narr_files[narr.id].forEach(function(f) {
 						var speaker_button = $('<button class="compact"><img src="/static/images/speaker_teal.png" class="soundicon"></button><br>').appendTo(cell);
-						var audio = new Howl({ src: ['/api/audio/'+f.id+'.mp3']});
 						speaker_button.click(function () {
+							var audio = new Howl({ src: ['/api/audio/'+f.id+'.mp3']});
 							audio.play();
 						});
 					});
