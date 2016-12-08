@@ -17,6 +17,7 @@ use ganbare::db;
 use ganbare::user;
 use ganbare::session;
 use ganbare::errors;
+use std::path::PathBuf;
 
 lazy_static! {
  
@@ -46,11 +47,11 @@ lazy_static! {
     pub static ref FONT_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_FONT_URL")
         .unwrap_or_else(|_| "/static/fonts/default.css".into()) };
 
-    pub static ref AUDIO_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_AUDIO_DIR")
-        .unwrap_or_else(|_| "audio".into()) };
+    pub static ref AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_AUDIO_DIR")
+        .unwrap_or_else(|_| "audio".into())) };
 
-    pub static ref IMAGES_DIR : String = { dotenv::dotenv().ok(); env::var("GANBARE_IMAGES_DIR")
-        .unwrap_or_else(|_| "images".into()) };
+    pub static ref IMAGES_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_IMAGES_DIR")
+        .unwrap_or_else(|_| "images".into())) };
 
     pub static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
         let pepper = env::var("GANBARE_RUNTIME_PEPPER")

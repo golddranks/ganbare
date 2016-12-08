@@ -55,8 +55,8 @@ pub fn main() {
 
     let mut app = Pencil::new(".");
    
-    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html",
-        "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html",
+    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html",
+        "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html",
         "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "users.html");
     
     app.enable_static_file_handling();
@@ -69,6 +69,8 @@ pub fn main() {
     app.get("/login", "login_form", app_pages::login_form);
     app.post("/login", "login_post", app_pages::login_post);
     app.post("/logout", "logout", app_pages::logout);
+    app.get("/join", "join", app_pages::join_form);
+    app.post("/join", "join", app_pages::join_post);
     app.get("/confirm", "confirm_form", app_pages::confirm_form);
     app.post("/confirm", "confirm_post", app_pages::confirm_post);
     app.get("/change_password", "change_password_form", app_pages::change_password_form);
@@ -85,11 +87,17 @@ pub fn main() {
     app.post("/add_word", "add_word_post", manager_pages::add_word_post);
     app.get("/manage", "manage", manager_pages::manage);
     app.get("/users", "users", manager_pages::users);
+    app.get("/audio", "audio", manager_pages::audio);
 
     // HTTP API
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
     app.get("/api/bundles", "get_bundles", http_api::get_all);
+    app.delete("/api/bundles/<id:int>", "del_bundle", http_api::del_item);
+    app.put("/api/bundles/<id:int>", "update_bundle", http_api::update_item);
+    app.get("/api/narrators", "get_narrators", http_api::get_all);
+    app.delete("/api/narrators/<id:int>", "del_narrator", http_api::del_item);
+    app.put("/api/narrators/<id:int>", "update_narrator", http_api::update_item);
     app.get("/api/questions/<id:int>", "get_question", http_api::get_item);
     app.get("/api/exercises/<id:int>", "get_exercise", http_api::get_item);
     app.get("/api/words/<id:int>", "get_word", http_api::get_item);

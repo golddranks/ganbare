@@ -12,7 +12,7 @@ $(function() {
 		var pending_users = resp[2];
 
 		groups.forEach(function(group) {
-			var group_header = $('<td>'+group.group_name+'</td>').appendTo(groupHeader);
+			var group_header = $('<th scope="col">'+group.group_name+'</th>').appendTo(groupHeader);
 		});
 
 		users.forEach(function(u) {
@@ -20,7 +20,7 @@ $(function() {
 			var group_memberships = u[1];
 
 			var user_list_tr = $('<tr></tr>').appendTo(usersList);
-			$('<td>'+user.email+'</td>').appendTo(user_list_tr);
+			$('<th scope="row">'+user.email+'</th>').appendTo(user_list_tr);
 
 			var user_groups = new Array();
 			groups.forEach(function(group) {

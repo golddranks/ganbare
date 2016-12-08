@@ -1,6 +1,16 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
+/// <reference path="typings/globals/howler/index.d.ts" />
 
 $(function() {
+
+function getRandomColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var i = 0; i < 6; i++ ) {
+        color += letters[Math.floor(Math.random() * 8 + 8)];
+    }
+    return color;
+}
 
 function accentuate(word: string) {
 
@@ -61,21 +71,8 @@ $("body").click(function() {
 
 var main = $("#main");
 var n_list = $("#main ul");
-var audioPlayer = $("#audioPlayer");
 
-function drawList(nugget_resp, bundle_resp) {
-
-	function createBundle(id, element) {
-		var bundle = audio_bundles[id];
-		var bundle_html = $('<div class="bordered weak" style="display: inline-block;">ID '+id+'</div>').appendTo(element);
-		bundle.files.forEach(function(file) {
-			var audio_button = $('<button class="compact"><img src="/static/images/speaker_teal.png" class="soundicon"></button>').appendTo(bundle_html);
-			audio_button.click(function() {
-				audioPlayer.prop("src", "/api/audio/"+file.id+".mp3");
-				(<HTMLAudioElement>audioPlayer[0]).play();
-			});
-		});
-	};
+function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 	var audio_bundles = {};
 
@@ -85,6 +82,30 @@ function drawList(nugget_resp, bundle_resp) {
 		bundle.files = files;
 		audio_bundles[bundle.id] = bundle;
 	});
+
+	var narrators = {};
+
+	narrator_resp.forEach(function(n) {
+		n.color = getRandomColor();
+		narrators[n.id] = n;
+	});
+
+	function createBundle(id, element) {
+		var bundle = audio_bundles[id];
+		var listname = bundle.listname;
+		var bundle_html = $('<div class="bordered weak" style="display: inline-block;" title="Name: '+listname
+			+'">ID '+id+'</div>').appendTo(element);
+		bundle.files.forEach(function(file) {
+			var narrator_name = narrators[file.narrators_id].name;
+			var narrator_color = narrators[file.narrators_id].color;
+			var audio_button = $('<button class="compact" style="background-color: '+narrator_color+';"><img src="/static/images/speaker_teal.png" title="Narrator: '
+				+narrator_name+'" class="soundicon"></button>').appendTo(bundle_html);
+			var audio = new Howl({ src: ['/api/audio/'+file.id+'.mp3']});
+			audio_button.click(function() {
+				audio.play();
+			});
+		});
+	};
 
 	if (nugget_resp.length === 0) {
 		n_list.append("<h2>No skill nuggets exist at the moment.</h2>");
@@ -431,15 +452,21 @@ function drawList(nugget_resp, bundle_resp) {
 
 var nugget_resp = null;
 var bundle_resp = null;
+var narrator_resp = null;
 
 $.getJSON("/api/bundles", function(resp) {
 	bundle_resp = resp;
-	if (nugget_resp !== null && bundle_resp !== null) { drawList(nugget_resp, bundle_resp); }
+	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) { drawList(nugget_resp, bundle_resp, narrator_resp); }
+});
+
+$.getJSON("/api/narrators", function(resp) {
+	narrator_resp = resp;
+	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) { drawList(nugget_resp, bundle_resp, narrator_resp); }
 });
 
 $.getJSON("/api/nuggets", function(resp) {
 	nugget_resp = resp;
-	if (nugget_resp !== null && bundle_resp !== null) { drawList(nugget_resp, bundle_resp); }
+	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) { drawList(nugget_resp, bundle_resp, narrator_resp); }
 });
 
 });

@@ -137,7 +137,7 @@ pub struct NewNarrator<'a> {
     pub name: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, RustcDecodable)]
 #[table_name="narrators"]
 #[has_many(audio_files, foreign_key = "narrators_id")]
 pub struct Narrator {
@@ -167,10 +167,11 @@ pub struct AudioFile {
     pub mime: String,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, RustcDecodable)]
 #[table_name="audio_bundles"]
 #[has_many(audio_files, foreign_key = "bundle_id")]
 #[has_many(question_answers, foreign_key = "q_audio_bundle")]
+#[has_many(words, foreign_key = "audio_bundle")]
 pub struct AudioBundle {
     pub id: i32,
     pub listname: String,
@@ -306,6 +307,7 @@ pub struct NewWord<'a> {
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
 #[table_name="words"]
 #[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
+#[belongs_to(AudioBundle, foreign_key = "audio_bundle")]
 #[has_many(w_asked_data, foreign_key = "word_id")]
 #[has_many(exercise_variants, foreign_key = "id")]
 pub struct Word {

@@ -1,0 +1,39 @@
+{{#partial main_section}}
+
+	<header>
+		<h1>{{ title }}</h1>
+		<p>Tieteellinen koe japanin ääntämyksestä</p>
+	</header>
+	<hr />
+	<h2>Tunnuksen luonti</h2>
+	<form method="post" id="createuser" action="/join">
+		<p>Sähköpostiosoitteesi:<span id="email_error" class="error" style="display: none;"></span></p>
+
+		<p><input type="email" name="email" id="email" value=""></p>
+		<p>Ryhmä<select>
+		<option>Japani 1</option>
+		<option>Japani 2</option>
+		<option>Japani 3</option>
+		<option>Japani 4</option>
+		</select></p>
+		<div class="field">
+			<input type="submit" class="button" value="Vahvista">
+		</div>
+	</form>
+
+{{/partial}}
+
+{{#partial page_script_inline}}
+	
+	var email = $("#email");
+	$("#createuser").submit(function( event ) {
+		if (email.val().indexOf("@") === -1) {
+	 		event.preventDefault();
+	 		$("#email_error").text("@-merkki puuttuu!").show();
+			email.addClass("buttonHilight");
+		}
+	});
+
+{{/partial}}
+
+{{~> base.html ~}}

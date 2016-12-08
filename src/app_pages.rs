@@ -233,3 +233,19 @@ pub fn change_password(req: &mut Request) -> PencilResult {
 
     redirect("/change_password?password_changed=true", 303).refresh_cookie(&sess)
 }
+
+pub fn join_form(req: &mut Request) -> PencilResult {
+
+    let context = new_template_context();
+
+    req.app
+        .render_template("join.html", &context)
+}
+
+pub fn join_post(req: &mut Request) -> PencilResult {
+
+    let context = new_template_context();
+
+    req.app
+        .render_template("join.html", &context)
+}

@@ -135,7 +135,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
     let (conn, _, sess) = auth_user(req, "editors")?;
 
     let form = parse_form(&mut *req).map_err(|ee| { error!("{:?}", ee); abort(400).unwrap_err()})?;
-    let result = manage::create_quiz(&conn, form.0, form.1);
+    let result = manage::create_quiz(&conn, form.0, form.1, &*AUDIO_DIR);
     result.map_err(|e| match e.kind() {
         &ErrorKind::FormParseError => abort(400).unwrap_err(),
         _ => abort(500).unwrap_err(),
@@ -157,7 +157,7 @@ pub fn add_word_form(req: &mut Request) -> PencilResult {
 
 pub fn add_word_post(req: &mut Request) -> PencilResult  {
 
-    fn parse_form(req: &mut Request) -> Result<manage::NewWordFromStrings> {
+    fn parse_form<'a>(req: &'a mut Request) -> Result<manage::NewWordFromStrings<'a>> {
 
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
@@ -186,7 +186,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult  {
             }
         }
 
-        Ok(manage::NewWordFromStrings{word, explanation, narrator: "".into(), nugget, files})
+        Ok(manage::NewWordFromStrings{word, explanation, narrator: "", nugget, files})
     }
 
     let (conn, _, sess) = auth_user(req, "editors")?;
@@ -194,7 +194,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult  {
     let word = parse_form(req)
             .map_err(|_| abort(400).unwrap_err())?;
 
-    manage::create_word(&conn, word).err_500()?;
+    manage::create_or_update_word(&conn, word, &*AUDIO_DIR).err_500()?;
     
     redirect("/add_word", 303)
         .refresh_cookie(&sess)
@@ -244,5 +244,15 @@ pub fn users(req: &mut Request) -> PencilResult {
 
     req.app
         .render_template("users.html", &context)
+        .refresh_cookie(&sess)
+}
+
+pub fn audio(req: &mut Request) -> PencilResult {
+    let (_, _, sess) = auth_user(req, "editors")?;
+
+    let context =  new_template_context();
+
+    req.app
+        .render_template("audio.html", &context)
         .refresh_cookie(&sess)
 }

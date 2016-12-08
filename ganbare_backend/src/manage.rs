@@ -3,6 +3,7 @@ use super::*;
 use mime;
 
 use std::path::PathBuf;
+use std::path::Path;
 
 
 #[derive(Debug)]
@@ -19,7 +20,7 @@ pub struct NewQuestion {
     pub skill_nugget: String,
 }
 
-pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fieldset>) -> Result<QuizQuestion> {
+pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fieldset>, audio_dir: &Path) -> Result<QuizQuestion> {
     use schema::{quiz_questions, question_answers};
 
     info!("Creating quiz!");
@@ -56,13 +57,13 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
     for fieldset in &mut answers {
         let mut a_bundle = None;
         let a_audio_id = match fieldset.answer_audio {
-            Some(ref mut a) => { Some(audio::save(&*conn, &mut narrator, a, &mut a_bundle)?.id) },
+            Some(ref mut a) => { Some(audio::save(&*conn, &mut narrator, a, &mut a_bundle, audio_dir)?.id) },
             None => { None },
         };
         
         let mut q_bundle = None;
         for mut q_audio in &mut fieldset.q_variants {
-            audio::save(&*conn, &mut narrator, &mut q_audio, &mut q_bundle)?;
+            audio::save(&*conn, &mut narrator, &mut q_audio, &mut q_bundle, audio_dir)?;
         }
         let q_bundle = q_bundle.expect("The audio bundle is initialized now.");
 
@@ -81,39 +82,73 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
 }
 
 #[derive(Debug)]
-pub struct NewWordFromStrings {
+pub struct NewWordFromStrings<'a> {
     pub word: String,
     pub explanation: String,
     pub nugget: String,
-    pub narrator: String,
+    pub narrator: &'a str,
     pub files: Vec<(PathBuf, Option<String>, mime::Mime)>,
 }
 
-pub fn create_word(conn : &PgConnection, w: NewWordFromStrings) -> Result<Word> {
+#[derive(Debug)]
+pub struct NewAudio<'a> {
+    pub word: String,
+    pub narrator: &'a str,
+    pub files: Vec<(PathBuf, Option<String>, mime::Mime)>,
+}
+
+
+pub fn add_audio(conn : &PgConnection, w: NewAudio, audio_dir: &Path) -> Result<AudioBundle> {
+
+    info!("Add audio {:?}", w);
+
+    let mut narrator = Some(audio::get_create_narrator(conn, &w.narrator)?);
+    let mut bundle = Some(audio::get_create_bundle(conn, &w.word)?);
+
+    for mut file in w.files {
+        audio::save(&*conn, &mut narrator, &mut file, &mut bundle, audio_dir)?;
+    } 
+    let bundle = bundle.expect("The audio bundle is initialized by now.");
+
+    Ok(bundle)
+}
+
+pub fn create_or_update_word(conn : &PgConnection, w: NewWordFromStrings, audio_dir: &Path) -> Result<Word> {
     use schema::{words};
+
+    info!("Create word {:?}", w);
 
     let nugget = skill::get_create_by_name(&*conn, &w.nugget)?;
 
     let mut narrator = Some(audio::get_create_narrator(&*conn, &w.narrator)?);
-    let mut bundle = Some(audio::new_bundle(&*conn, &w.word)?);
+    let mut bundle = Some(audio::get_create_bundle(&*conn, &w.word)?);
+
     for mut file in w.files {
-        audio::save(&*conn, &mut narrator, &mut file, &mut bundle)?;
+        audio::save(&*conn, &mut narrator, &mut file, &mut bundle, audio_dir)?;
     } 
-    let bundle = bundle.expect("The audio bundle is initialized now.");
+    let bundle = bundle.expect("The audio bundle is initialized by now.");
 
-    let new_word = NewWord {
-        word: &w.word,
-        explanation: &w.explanation,
-        audio_bundle: bundle.id,
-        skill_nugget: nugget.id,
-    };
-
-    let word = diesel::insert(&new_word)
-        .into(words::table)
+    let word = words::table
+        .filter(words::word.eq(&w.word))
         .get_result(conn)
-        .chain_err(|| "Can't insert a new word!")?;
+        .optional()?;
 
-    Ok(word)
+    if let Some(word) = word {
+        return Ok(word);
+    } else {
+        let new_word = NewWord {
+            word: &w.word,
+            explanation: &w.explanation,
+            audio_bundle: bundle.id,
+            skill_nugget: nugget.id,
+        };
+    
+        let word = diesel::insert(&new_word)
+            .into(words::table)
+            .get_result(conn)?;
+        return Ok(word);
+    }
+
 }
 
 pub fn get_question(conn : &PgConnection, id : i32) -> Result<Option<(QuizQuestion, Vec<Answer>)>> {
@@ -210,7 +245,7 @@ pub fn post_question(conn : &PgConnection, question: NewQuizQuestion, mut answer
     Ok(q.id)
 }
 
-pub fn post_exercise(conn : &PgConnection, exercise: NewExercise, mut answers: Vec<ExerciseVariant>) -> Result<i32> {
+pub fn post_exercise(conn: &PgConnection, exercise: NewExercise, mut answers: Vec<ExerciseVariant>) -> Result<i32> {
     use schema::{exercises, exercise_variants};
 
     let q: Exercise = diesel::insert(&exercise)
@@ -224,4 +259,44 @@ pub fn post_exercise(conn : &PgConnection, exercise: NewExercise, mut answers: V
             .execute(conn)?;
     }
     Ok(q.id)
+}
+
+pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
+    use schema::{words, question_answers};
+    use diesel::result::TransactionError::*;
+
+    info!("Replacing old bundle references (id {}) with new ones (id {}).", bundle_id, new_bundle_id);
+
+    match conn.transaction(|| {
+
+        let count = diesel::update(
+                words::table.filter(words::audio_bundle.eq(bundle_id))
+            ).set(words::audio_bundle.eq(new_bundle_id))
+            .execute(conn)?;
+
+        info!("{} audio bundles in words replaced with a new audio bundle.", count);
+    
+        let count = diesel::update(
+                question_answers::table.filter(question_answers::a_audio_bundle.eq(bundle_id))
+            ).set(question_answers::a_audio_bundle.eq(new_bundle_id))
+            .execute(conn)?;
+            
+        info!("{} audio bundles in question_answers::a_audio_bundle replaced with a new audio bundle.", count);
+
+        let count = diesel::update(
+                question_answers::table.filter(question_answers::q_audio_bundle.eq(bundle_id))
+            ).set(question_answers::q_audio_bundle.eq(new_bundle_id))
+            .execute(conn)?;
+
+        info!("{} audio bundles in question_answers::q_audio_bundle replaced with a new audio bundle.", count);
+
+        Ok(())
+    
+    }) {
+        Ok(b) => Ok(b),
+        Err(e) => match e {
+            CouldntCreateTransaction(e) => Err(e.into()),
+            UserReturnedError(e) => Err(e),
+        },
+    }
 }

@@ -152,13 +152,28 @@
 	transform: scale(3);
 }
 
-.userTable td {
-	border-right: 1px solid _palette(border);
-	padding: 0.3em;
-	text-align: center;
+.userTable {
+	td, th {
+		border-right: 1px solid _palette(border);
+		padding: 0.3em;
+		text-align: center;
+	}
 }
 
 .userTable thead {
+	border-bottom: 1px solid _palette(border);
+}
+
+.audioTable {
+	td, th {
+		border-right: 1px solid _palette(border);
+		border-top: 1px solid _palette(border);
+		padding: 0.3em;
+		text-align: center;
+	}
+}
+
+.audioTable thead {
 	border-bottom: 1px solid _palette(border);
 }
 
@@ -388,4 +403,18 @@ span.accent {
 	vertical-align: -20%;
 	width: 2em;
 	height: auto;
+}
+
+.vertical{
+    writing-mode:tb-rl;
+    -webkit-transform:rotate(90deg);
+    -moz-transform:rotate(90deg);
+    -o-transform: rotate(90deg);
+    -ms-transform:rotate(90deg);
+    transform: rotate(90deg);
+    white-space:nowrap;
+    display:block;
+    bottom:0;
+    width:20px;
+    height:20px;
 }

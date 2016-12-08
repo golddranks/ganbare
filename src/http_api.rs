@@ -38,12 +38,13 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
 
     use pencil::{PencilError, HTTPError};
 
-    let file_path = AUDIO_DIR.to_string() + "/" + &file_name;
+    let mut file_path = AUDIO_DIR.clone();
+    file_path.push(&file_name);
 
-    send_file(&file_path, mime_type, false, req.headers().get())
+    send_file(&file_path.to_str().expect("The path SHOULD be valid unicode!"), mime_type, false, req.headers().get())
         .refresh_cookie(&sess)
         .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
+            PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {:?}", file_path); internal_error(e) },
             _ => internal_error(e),
         })
 }
@@ -66,12 +67,13 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
 
     use pencil::{PencilError, HTTPError};
 
-    let file_path = AUDIO_DIR.to_string() + "/" + &file_name;
+    let mut file_path = AUDIO_DIR.clone();
+    file_path.push(&file_name);
 
-    send_file(&file_path, mime_type, false, req.headers().get())
+    send_file(&file_path.to_str().expect("The saved file path SHOULD be valid unicode!"), mime_type, false, req.headers().get())
         .refresh_cookie(&sess)
         .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {}", file_path); internal_error(e) },
+            PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {:?}", file_path); internal_error(e) },
             _ => internal_error(e),
         })
 }
@@ -84,7 +86,7 @@ pub fn get_image(req: &mut Request) -> PencilResult {
 
     use pencil::{PencilError, HTTPError};
 
-    send_from_directory(&*IMAGES_DIR, &file_name, false, req.headers().get())
+    send_from_directory(IMAGES_DIR.to_str().expect("The image dir path should be valid unicode!"), &file_name, false, req.headers().get())
         .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Image file not found! {}", file_name); e },
@@ -196,6 +198,32 @@ pub fn get_item(req: &mut Request) -> PencilResult {
     json.refresh_cookie(&sess)
 }
 
+pub fn del_item(req: &mut Request) -> PencilResult {
+    let (conn, _, sess) = auth_user(req, "editors")?;
+
+
+    let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let id = id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+    let json = match endpoint.as_ref() {
+        "del_narrator" => {
+            if !audio::del_narrator(&conn, id).err_500()? {
+                 return abort(404);
+            }
+            jsonify(&())
+        },
+        "del_bundle" => {
+            if !audio::del_bundle(&conn, id).err_500()? {
+                 return abort(404);
+            }
+            jsonify(&())
+        },
+        _ => return Err(internal_error("no such endpoint!")),
+    };
+
+
+    json.refresh_cookie(&sess)
+}
 
 pub fn get_all(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "editors")?;
@@ -207,11 +235,15 @@ pub fn get_all(req: &mut Request) -> PencilResult {
             jsonify(&items)
         },
         "get_bundles" => {
-            let items = audio::get_bundles(&conn).err_500()?;
+            let items = audio::get_all_bundles(&conn).err_500()?;
             jsonify(&items)
         },
         "get_users" => {
             let items = ganbare::user::get_all(&conn).err_500()?;
+            jsonify(&items)
+        },
+        "get_narrators" => {
+            let items = audio::get_narrators(&conn).err_500()?;
             jsonify(&items)
         },
         _ => return Err(internal_error("no such endpoint!")),
@@ -298,6 +330,28 @@ pub fn update_item(req: &mut Request) -> PencilResult {
                             .map_err(|_| abort(400).unwrap_err())?;
         
             let updated_item = try_or!(manage::update_answer(&conn, id, item).err_500()?, else return abort(404));
+
+            json = jsonify(&updated_item);
+        },
+        "update_bundle" => {
+
+            let item: ganbare::models::AudioBundle = rustc_serialize::json::decode(&text)
+                            .map_err(|_| abort(400).unwrap_err())?;
+            if item.id != id {
+                return abort(400);
+            }
+            let updated_item = try_or!(audio::change_bundle_name(&conn, id, &item.listname).err_500()?, else return abort(404));
+
+            json = jsonify(&updated_item);
+        },
+        "update_narrator" => {
+
+            let item: ganbare::models::Narrator = rustc_serialize::json::decode(&text)
+                            .map_err(|_| abort(400).unwrap_err())?;
+            if item.id != id {
+                return abort(400);
+            }
+            let updated_item = try_or!(audio::change_narrator_name(&conn, id, &item.name).err_500()?, else return abort(404));
 
             json = jsonify(&updated_item);
         },
@@ -445,5 +499,4 @@ pub fn user(req: &mut Request) -> PencilResult {
 
     json.refresh_cookie(&sess)
 }
-
 
