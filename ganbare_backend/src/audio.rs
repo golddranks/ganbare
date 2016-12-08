@@ -342,6 +342,20 @@ pub fn get_file(conn : &PgConnection, line_id : i32) -> Result<(String, mime::Mi
     Ok((file.file_path, file.mime.parse().expect("The mimetype from the database should be always valid.")))
 }
 
+pub fn get_all_files(conn : &PgConnection) -> Result<Vec<(String, mime::Mime)>> {
+    use schema::audio_files::dsl::*;
+
+    let files : Vec<AudioFile> = audio_files
+        .get_results(conn)?;
+
+    let files = files
+        .into_iter()
+        .map(|f| (f.file_path, f.mime.parse().expect("The mimetype from the database should be always valid.")))
+        .collect();
+
+    Ok(files)
+}
+
 pub fn for_quiz(conn : &PgConnection, user: &User, pending_id: i32) -> Result<(String, mime::Mime)> {
     use schema::audio_files;
     use schema::pending_items;
