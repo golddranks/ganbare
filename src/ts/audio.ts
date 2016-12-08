@@ -65,7 +65,7 @@ function accentuate(word: string) {
 	$.getJSON("/api/narrators", function(resp){
 		resp.forEach(function(narrator) { // These might be in any order
 			narrators[narrator.id] = narrator;
-		};
+		});
 		narrators.forEach(function(narrator) {
 			var narr_header = $('<th></th>').appendTo(narratorColumns);
 
