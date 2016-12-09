@@ -229,7 +229,7 @@ pub struct NewAnswer<'a> {
     pub answer_text: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, AsChangeset)]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
 #[belongs_to(AudioBundle, foreign_key = "q_audio_bundle")]
 #[table_name="question_answers"]

@@ -111,7 +111,7 @@ pub fn merge_narrator(conn: &PgConnection, narrator_id: i32, new_narrator_id: i3
 }
 
 pub fn merge_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
-    use schema::{audio_files, audio_bundles};
+    use schema::{audio_files, audio_bundles,};
     use diesel::result::TransactionError::*;
 
     info!("Replacing old bundle references (id {}) with new ones (id {}).", bundle_id, new_bundle_id);

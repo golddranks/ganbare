@@ -55,7 +55,9 @@ fn clean_audio() {
 fn clean_images() {
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    manage::clean_urls(&conn, &*IMAGE_DIR).unwrap();
+    for line in manage::clean_urls(&conn, &*IMAGE_DIR).unwrap() {
+        println!("{}", line);
+    };
 }
 
 fn main() {

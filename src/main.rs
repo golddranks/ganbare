@@ -2,9 +2,7 @@
 #![feature(proc_macro)]
 #![feature(field_init_shorthand)]
 #![feature(custom_derive, custom_attribute, plugin)]
-#![plugin(diesel_codegen)]
 
-#[macro_use] extern crate diesel_codegen;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 
