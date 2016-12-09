@@ -5,13 +5,14 @@ authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [dependencies]
 
+diesel_codegen = {version = "0.9", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
 ganbare_backend = { path = "ganbare_backend" }
 chrono = { version = "0.2", features = ["rustc-serialize"]}
 rand = "0.3"
 rustc-serialize = "0.3"
 pencil = { git = "https://github.com/golddranks/pencil", branch = "modifications_for_ganbare" }
-hyper = "0.9"
+hyper = { version = "0.9" , default-features = false }
 env_logger = "0.3"
 log = "*"
 lazy_static = "*"

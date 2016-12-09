@@ -2,6 +2,9 @@
 
 Today
 
+- Implement forgot password feature
+- Implement nag emails
+- Implement user metrics viewing GUI
 - Fix the answer button UI bug on IE
 - Fix the survey UI bug on mobile
 
@@ -19,6 +22,7 @@ Weekend:
 
 
 Stretch goals:
+- Redirect to login page on 401 and when not logged in
 - Support multiple audio file formats
 - FIX: the annoying UI bug on SafarI where scale-animated buttons ignore clicks sometimes, if that's even possible
 - FIX: prevent multiple sessions having the quiz open at the same time (possible ear-mark answers with session-id, think a bit about concurrency!)

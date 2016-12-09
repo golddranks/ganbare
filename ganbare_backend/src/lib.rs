@@ -18,7 +18,6 @@ extern crate rustc_serialize;
 extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;
-extern crate reqwest;
 
 type DateTimeUTC = chrono::DateTime<chrono::UTC>;
 
