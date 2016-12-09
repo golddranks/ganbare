@@ -4,6 +4,10 @@ use mime;
 
 use std::path::PathBuf;
 use std::path::Path;
+use regex;
+use reqwest;
+use time;
+use std;
 
 
 #[derive(Debug)]
@@ -299,4 +303,55 @@ pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: 
             UserReturnedError(e) => Err(e),
         },
     }
+}
+
+pub fn clean_urls(conn: &PgConnection, image_dir: &Path) -> Result<()> {
+    use schema::{words};
+    use rand::{thread_rng, Rng};
+    use reqwest::header::ContentType;
+    use mime::{Mime};
+    use mime::TopLevel::{Image};
+    use mime::SubLevel::{Png, Jpeg, Gif};
+
+    let outbounds: Vec<Word> = words::table
+        .filter(words::explanation.like("%http://%").or(words::explanation.like("%https://%")))
+        .get_results(conn)?;
+
+    let r = regex::Regex::new(r#"['"](https?://.*?(\.[a-zA-Z0-9]{1,4})?)['"]"#).expect("<- that is a valid regex there");
+
+    for mut w in outbounds {
+        let explanation = w.explanation.clone();
+        for url_match in r.captures_iter(&explanation) {
+            
+            let url = url_match.at(1).expect("SQL should find stuff that contains this expression");
+            let mut resp = reqwest::get(url).map_err(|_| Error::from("Couldn't load the URL"))?;
+
+            let file_extension = url_match.at(2).unwrap_or(".noextension");
+
+            let extension = match resp.headers().get::<ContentType>() {
+                Some(&ContentType(Mime(Image, Png, _))) => ".png",
+                Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
+                Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
+                Some(_) => file_extension,
+                None => file_extension,
+            };
+            
+            let mut new_path = image_dir.to_owned();
+            let mut filename = "%FT%H-%M-%SZ".to_string();
+            filename.extend(thread_rng().gen_ascii_chars().take(10));
+            filename.push_str(extension);
+            filename = time::strftime(&filename, &time::now()).unwrap();
+            new_path.push(&filename);
+
+            let mut file = std::fs::File::create(new_path)?;
+            std::io::copy(&mut resp, &mut file)?;
+
+            w.explanation = w.explanation.replace(url, &(String::from("/static/images/")+&filename))
+
+
+        }
+        let _ : Word = w.save_changes(conn)?;
+    }
+
+    Ok(())
 }

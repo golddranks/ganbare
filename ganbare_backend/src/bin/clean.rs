@@ -25,6 +25,9 @@ lazy_static! {
     pub static ref AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(std::env::var("GANBARE_AUDIO_DIR")
         .unwrap_or_else(|_| "../audio".into())) };
 
+    pub static ref IMAGE_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(std::env::var("GANBARE_IMAGE_DIR")
+        .unwrap_or_else(|_| "../images".into())) };
+
 }
 
 fn clean_audio() {
@@ -34,15 +37,25 @@ fn clean_audio() {
 
     let db_files: HashSet<String> = audio::get_all_files(&conn).unwrap().into_iter().map(|f| f.0).collect();
 
+    let mut trash_dir = AUDIO_DIR.clone();
+    trash_dir.push("trash");
+
     for f in fs_files {
         let f = f.unwrap();
         let f_name = f.file_name();
-        if db_files.contains(f_name.to_str().unwrap()) {
-            println!("CONTAINS {:?}", f);
-        } else {
-            std::fs::remove_file(f.path()).unwrap();
+        if ! db_files.contains(f_name.to_str().unwrap()) && f_name != *"trash" {
+            trash_dir.push(&f_name);
+            info!("Moving a unneeded file {:?} to the trash directory.", &f_name);
+            std::fs::rename(f.path(), &trash_dir).expect("Create \"trash\" directory for cleaning up!");
+            trash_dir.pop();
         }
     }
+}
+
+fn clean_images() {
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    manage::clean_urls(&conn, &*IMAGE_DIR).unwrap();
 }
 
 fn main() {
@@ -55,4 +68,5 @@ fn main() {
         .version(crate_version!());
     
     clean_audio();
+    clean_images();
 }

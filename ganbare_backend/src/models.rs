@@ -304,7 +304,7 @@ pub struct NewWord<'a> {
     pub skill_nugget: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, AsChangeset)]
 #[table_name="words"]
 #[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
 #[belongs_to(AudioBundle, foreign_key = "audio_bundle")]

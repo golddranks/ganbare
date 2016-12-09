@@ -1,4 +1,3 @@
-
     error_chain! {
         foreign_links {
             ::std::str::ParseBoolError, ParseBoolError;
