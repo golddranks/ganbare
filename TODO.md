@@ -2,13 +2,10 @@
 
 Today
 
-- Implement a way to merge narrators and merge bundles
 - Fix the answer button UI bug on IE
 - Fix the survey UI bug on mobile
-- Publish more words
-- Support multiple file formats
-- FEATURE: download images server-side and replace the outbound links with links to the own static folder
 
+- Publish more words
 Tomorrow
 - Introduce higher-level questions
 - Impl the test tool (asks questions from both groups)
@@ -22,6 +19,7 @@ Weekend:
 
 
 Stretch goals:
+- Support multiple audio file formats
 - FIX: the annoying UI bug on SafarI where scale-animated buttons ignore clicks sometimes, if that's even possible
 - FIX: prevent multiple sessions having the quiz open at the same time (possible ear-mark answers with session-id, think a bit about concurrency!)
 - FIX: unpublishing doesn't have effect on things showing up on due list. This needs filtering the source query BEFORE left_outer_join (in get_due_items()), but that's impossible with the current Diesel.

@@ -54,6 +54,7 @@ pub fn del_narrator(conn : &PgConnection, id: i32) -> Result<bool> {
     use diesel::result::TransactionError::*;
 
     match conn.transaction(|| {
+
         info!("Deleting audio_files with narrators_id {:?}", id);
 
         let audio_files_count = diesel::delete(audio_files::table
@@ -81,13 +82,72 @@ pub fn del_narrator(conn : &PgConnection, id: i32) -> Result<bool> {
     }
 }
 
+pub fn merge_narrator(conn: &PgConnection, narrator_id: i32, new_narrator_id: i32) -> Result<()> {
+    use schema::{audio_files, narrators};
+    use diesel::result::TransactionError::*;
+
+    info!("Replacing old narrator references (id {}) with new ones (id {}).", narrator_id, new_narrator_id);
+
+    match conn.transaction(|| {
+
+        let count = diesel::update(
+                audio_files::table.filter(audio_files::narrators_id.eq(narrator_id))
+            ).set(audio_files::narrators_id.eq(new_narrator_id))
+            .execute(conn)?;
+
+        info!("{} narrators in audio files replaced with a new audio bundle.", count);
+
+        diesel::delete(narrators::table.filter(narrators::id.eq(narrator_id))).execute(conn)?;
+
+        Ok(())
+    
+    }) {
+        Ok(b) => Ok(b),
+        Err(e) => match e {
+            CouldntCreateTransaction(e) => Err(e.into()),
+            UserReturnedError(e) => Err(e),
+        },
+    }
+}
+
+pub fn merge_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
+    use schema::{audio_files, audio_bundles};
+    use diesel::result::TransactionError::*;
+
+    info!("Replacing old bundle references (id {}) with new ones (id {}).", bundle_id, new_bundle_id);
+
+    match conn.transaction(|| {
+
+        // updating audio_files
+        let count = diesel::update(
+                audio_files::table.filter(audio_files::bundle_id.eq(bundle_id))
+            ).set(audio_files::bundle_id.eq(new_bundle_id))
+            .execute(conn)?;
+
+        info!("{} bundles in audio files replaced with a new audio bundle.", count);
+
+        // updating words & questions
+        manage::replace_audio_bundle(conn, bundle_id, new_bundle_id)?;
+
+        diesel::delete(audio_bundles::table.filter(audio_bundles::id.eq(bundle_id))).execute(conn)?;
+        Ok(())
+    
+    }) {
+        Ok(b) => Ok(b),
+        Err(e) => match e {
+            CouldntCreateTransaction(e) => Err(e.into()),
+            UserReturnedError(e) => Err(e),
+        },
+    }
+}
+
 pub fn del_bundle(conn : &PgConnection, id: i32) -> Result<bool> {
     use schema::{audio_bundles, audio_files, question_answers, words};
     use diesel::result::TransactionError::*;
 
     match conn.transaction(|| {
 
-        // To avoid deleting stuff, let's find a replacement bundle for all the things that depend on this!
+        // To avoid deleting words and questions, let's find a replacement bundle for all the things that depend on this!
 
         let bundle: AudioBundle = audio_bundles::table
             .filter(audio_bundles::id.eq(id))
@@ -237,6 +297,19 @@ pub fn get_bundles_by_name(conn : &PgConnection, listname: &str) -> Result<Vec<A
 
     Ok(bundle)
 }
+
+pub fn get_narrators_by_name(conn : &PgConnection, name: &str) -> Result<Vec<Narrator>> {
+    use schema::narrators;
+
+    let narr : Vec<Narrator> = {
+         narrators::table
+            .filter(narrators::name.eq(name))
+            .get_results(conn)?
+    };
+
+    Ok(narr)
+}
+
 
 pub fn save(conn : &PgConnection, mut narrator: &mut Option<Narrator>, file: &mut (PathBuf, Option<String>, mime::Mime), bundle: &mut Option<AudioBundle>, audio_dir: &Path)
     -> Result<AudioFile> {

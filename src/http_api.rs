@@ -201,6 +201,7 @@ pub fn get_item(req: &mut Request) -> PencilResult {
 pub fn del_item(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "editors")?;
 
+    info!("del_item");
 
     let id = req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
     let id = id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
@@ -216,6 +217,32 @@ pub fn del_item(req: &mut Request) -> PencilResult {
             if !audio::del_bundle(&conn, id).err_500()? {
                  return abort(404);
             }
+            jsonify(&())
+        },
+        _ => return Err(internal_error("no such endpoint!")),
+    };
+
+
+    json.refresh_cookie(&sess)
+}
+
+pub fn merge_item(req: &mut Request) -> PencilResult {
+    let (conn, _, sess) = auth_user(req, "editors")?;
+
+    info!("merge_item");
+
+    let id_from = req.view_args.get("id_from").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let id_from = id_from.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let id_to = req.view_args.get("id_to").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let id_to = id_to.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+    let json = match endpoint.as_ref() {
+        "merge_narrator" => {
+            audio::merge_narrator(&conn, id_from, id_to).err_500()?;
+            jsonify(&())
+        },
+        "merge_bundle" => {
+            audio::merge_audio_bundle(&conn, id_from, id_to).err_500()?;
             jsonify(&())
         },
         _ => return Err(internal_error("no such endpoint!")),

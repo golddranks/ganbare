@@ -93,9 +93,11 @@ pub fn main() {
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
     app.get("/api/bundles", "get_bundles", http_api::get_all);
+    app.delete("/api/bundles/<id_from:int>?merge_with=<id_to:int>", "merge_bundle", http_api::merge_item);
     app.delete("/api/bundles/<id:int>", "del_bundle", http_api::del_item);
     app.put("/api/bundles/<id:int>", "update_bundle", http_api::update_item);
     app.get("/api/narrators", "get_narrators", http_api::get_all);
+    app.delete("/api/narrators/<id_from:int>?merge_with=<id_to:int>", "merge_narrator", http_api::merge_item);
     app.delete("/api/narrators/<id:int>", "del_narrator", http_api::del_item);
     app.put("/api/narrators/<id:int>", "update_narrator", http_api::update_item);
     app.get("/api/questions/<id:int>", "get_question", http_api::get_item);
