@@ -137,30 +137,19 @@ pub fn get_create_by_name(conn : &PgConnection, skill_summary: &str) -> Result<S
 pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<Word>, Vec<(QuizQuestion, Vec<Answer>)>, Vec<(Exercise, Vec<ExerciseVariant>)>))>> {
     use schema::{skill_nuggets, quiz_questions, question_answers, words, exercises, exercise_variants};
 
-    let nuggets: Vec<SkillNugget> = skill_nuggets::table.get_results(conn)?;
-    let questions = if nuggets.len() > 0 {
-        QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?
-    } else { vec![] };
+    let nuggets: Vec<SkillNugget> = skill_nuggets::table.order(skill_nuggets::skill_summary.asc()).get_results(conn)?;
 
-    // FIXME checking this special case until the panicking bug in Diesel is fixed
-    let words = if nuggets.len() > 0 {
-        Word::belonging_to(&nuggets).order(words::id.asc()).load::<Word>(conn)?.grouped_by(&nuggets)
-    } else { vec![] };
+    let questions = QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?;
 
-    // FIXME checking this special case until the panicking bug in Diesel is fixed
-    let q_answers = if questions.len() > 0 {
-        Answer::belonging_to(&questions).order(question_answers::id.asc()).load::<Answer>(conn)?.grouped_by(&questions)
-    } else { vec![] };
+    let words = Word::belonging_to(&nuggets).order(words::id.asc()).load::<Word>(conn)?.grouped_by(&nuggets);
+
+    let q_answers = Answer::belonging_to(&questions).order(question_answers::id.asc()).load::<Answer>(conn)?.grouped_by(&questions) ;
 
     let qs_and_as = questions.into_iter().zip(q_answers.into_iter()).collect::<Vec<_>>().grouped_by(&nuggets);
 
-    let exercises = if nuggets.len() > 0 {
-        Exercise::belonging_to(&nuggets).order(exercises::id.asc()).load::<Exercise>(conn)?
-    } else { vec![] };
+    let exercises = Exercise::belonging_to(&nuggets).order(exercises::id.asc()).load::<Exercise>(conn)?;
 
-    let e_answers = if exercises.len() > 0 {
-        ExerciseVariant::belonging_to(&exercises).order(exercise_variants::id.asc()).load::<ExerciseVariant>(conn)?.grouped_by(&exercises)
-    } else { vec![] };
+    let e_answers = ExerciseVariant::belonging_to(&exercises).order(exercise_variants::id.asc()).load::<ExerciseVariant>(conn)?.grouped_by(&exercises);
 
     let es_and_as = exercises.into_iter().zip(e_answers.into_iter()).collect::<Vec<_>>().grouped_by(&nuggets);
 

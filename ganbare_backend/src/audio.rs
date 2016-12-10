@@ -384,12 +384,12 @@ pub fn load_random_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<A
 
 pub fn get_all_bundles(conn : &PgConnection) -> Result<Vec<(AudioBundle, Vec<AudioFile>)>> {
     use schema::{audio_bundles};
-    let bundles: Vec<AudioBundle> = audio_bundles::table.get_results(conn)?;
+    let bundles: Vec<AudioBundle> = audio_bundles::table
+        .order(audio_bundles::listname.asc())
+        .get_results(conn)?;
 
-    // FIXME checking this special case until the panicking bug in Diesel is fixed
-    let audio_files = if bundles.len() > 0 {
-        AudioFile::belonging_to(&bundles).load::<AudioFile>(conn)?.grouped_by(&bundles)
-    } else { vec![] };
+    let audio_files =  AudioFile::belonging_to(&bundles).load::<AudioFile>(conn)?.grouped_by(&bundles);
+
     let all = bundles.into_iter().zip(audio_files).collect();
     Ok(all)
 }

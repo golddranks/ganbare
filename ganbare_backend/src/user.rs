@@ -1,4 +1,5 @@
    use super::*;
+   use std::time::Instant;
 
 /* TODO FIXME this can be a full-blown typed group system some day 
 enum Group {
@@ -46,6 +47,7 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str, pepper
         ok => ok,
     }?;
 
+    let time_before = Instant::now();
     match password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper) {
         Err(err) => match err.kind() {
             &ErrorKind::PasswordDoesntMatch => return Ok(None),
@@ -53,6 +55,9 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str, pepper
         },
         ok => ok,
     }?;
+    let time_after = Instant::now();
+    info!("Checked password. Time spent: {} ms",
+        (time_after - time_before).as_secs()*1000 + (time_after - time_before).subsec_nanos() as u64/1_000_000);
     
     Ok(Some(user))
 }

@@ -2,14 +2,14 @@
 
 Today
 
-- Ad-blockes block outbound links
 - Make manager + audio texts searchable
-- Make the texts in order
-- Implement forgot password feature
-- Implement nag emails
 - Implement user metrics viewing GUI
+- Implement removing users
 - Fix the answer button UI bug on IE
 - Fix the survey UI bug on mobile
+
+- Implement forgot password feature
+- Implement nag emails
 
 - Publish more words
 Tomorrow

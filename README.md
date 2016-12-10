@@ -1,14 +1,9 @@
 # Ganbare
 A web service that helps me to do what I do. (Protip: Something related to Japanese language and language learning. And science.) I license the server code itself as copyleft open source for now, but the contents of the app (example sentences, audio, images etc.) are not licensed, and they are not in this repository. The `static` folder contains some CC 3.0 BY licensed assets that are not by me. If you use this code, kindly inform me too.
 
-## How to start (1. setup a database 2. set an admin account 3. create an .env file 4. start the server)
+## How to start (1. setup a database 2. create an .env file 3. start the server)
 
-    $ docker run --name ganbare-postgres -d --restart=unless-stopped -e POSTGRES_USER=$USER -p 127.0.0.1:5432:5432 postgres
-    $ diesel setup
-
-An "admin" account is created automatically. You have to set the password for that account using the `user` CLI tool found in the bin folder.
-
-    $ cargo run --bin user -- passwd admin
+    $ docker run --name ganbare-postgres -d --restart=unless-stopped -e POSTGRES_USER=$USER -e POSTGRES_DB=ganbare_dev -p 127.0.0.1:5432:5432 golddranks/ganbare_database
 
 The server is configured using environmental variables, or an `.env` file in the project directory. The following are required:
 
@@ -32,7 +27,7 @@ During build, you need the following:
 
 After creating an `.env` file, start the server:
 
-    $ cargo run --bin server
+    $ cargo run
 
 Navigate to localhost:8080 with your browser. For debug builds, directories `static`, `migrations` and `templates`, `audio` and `images` are used runtime.
 For release builds, only `static`, `audio` and `images` are used, as `migrations` and `templates` are compiled statically inside the binary.
