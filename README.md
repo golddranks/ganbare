@@ -32,6 +32,10 @@ After creating an `.env` file, start the server:
 Navigate to localhost:8080 with your browser. For debug builds, directories `static`, `migrations` and `templates`, `audio` and `images` are used runtime.
 For release builds, only `static`, `audio` and `images` are used, as `migrations` and `templates` are compiled statically inside the binary.
 
+## How to build & deploy easily
+Just do
+
+    $ ./build_musl && ./deploy_binary_testing
 
 ## How to build a distributable, statically linked MUSL binary
 
