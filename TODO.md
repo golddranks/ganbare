@@ -2,7 +2,6 @@
 
 Today
 
-- Make manager + audio texts searchable
 - Implement user metrics viewing GUI
 - Implement removing users
 - Fix the answer button UI bug on IE

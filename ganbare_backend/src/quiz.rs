@@ -549,17 +549,22 @@ fn choose_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Res
     if metrics.quizes_since_break >= metrics.max_quizes_since_break
     || metrics.quizes_today >= metrics.max_quizes_today
     || metrics.break_until > chrono::UTC::now() {
+        debug!("Enough quizes for today. The break/daily limits are full.");
         return Ok(None)
     }
 
 
     if let Some(quiztype) = choose_random_overdue_item(conn, user.id)? {
+        debug!("There is an overdue quiz item; presenting that.");
         return Ok(Some(quiztype))
     }
 
     if let Some(quiztype) = choose_new_q_or_e(conn, user)? {
+        debug!("No overdue quiz items; presenting a new quiz.");
         return Ok(Some(quiztype))
     }
+    
+    debug!("No quiz items at all; returning.");
 
     Ok(None)
 }
@@ -657,22 +662,28 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
 
     let user_id = user.id;
 
-    let next_due = choose_next_due_item(conn, user_id)?.map(|(due_item, _)| due_item.due_date);
+    let next_existing_due = choose_next_due_item(conn, user_id)?.map(|(due_item, _)| due_item.due_date);
     let no_new_words = choose_new_random_word(conn, user_id)?.is_none();
     let no_new_quizes =  choose_new_q_or_e(conn, user)?.is_none();
 
-    if no_new_words && no_new_quizes && next_due.is_none() {
+    debug!("No new quizes available: {:?} (either limited by lack of new words or by lack of... new quizes)", no_new_quizes);
+    debug!("No due quizes available: {:?}", next_existing_due.is_none());
+
+    if no_new_words && no_new_quizes && next_existing_due.is_none() {
         return Ok(None) // No words to study
     }
 
+    let current_overdue = choose_random_overdue_item(conn, user_id)?;
+
     let words = metrics.new_words_since_break >= metrics.max_words_since_break || no_new_words;
     let new_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || no_new_quizes;
-    let due_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || next_due.is_none();
+    let due_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || current_overdue.is_none();
 
     // Start a break if the limits are full.
 
     if words && new_quizes && due_quizes
     {
+        debug!("Starting a break because the break limits are full.");
 
         let time_since_last_break = chrono::UTC::now() - metrics.break_until;
     
@@ -683,7 +694,7 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
                                 + discounted_breaktime;
 
         if no_new_words && no_new_quizes { // Nothing else left but due items – so no use breaking until there is some available
-            metrics.break_until = max(metrics.break_until, next_due.unwrap_or(chrono::date::MAX.and_hms(0,0,0,)));
+            metrics.break_until = max(metrics.break_until, next_existing_due.unwrap_or(chrono::date::MAX.and_hms(0,0,0,)));
         }
 
         metrics.new_words_since_break = 0;
@@ -695,10 +706,12 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
 
     let words = metrics.new_words_today >= metrics.max_words_today || no_new_words;
     let new_quizes = metrics.quizes_today >= metrics.max_quizes_today || no_new_quizes;
-    let due_quizes = metrics.quizes_today >= metrics.max_quizes_today || next_due.is_none();
+    let due_quizes = metrics.quizes_today >= metrics.max_quizes_today || current_overdue.is_none();
 
     if words && new_quizes && due_quizes
     {
+        debug!("Starting a break because the daily limits are full.");
+
         metrics.new_words_since_break = 0;
         metrics.quizes_since_break = 0;
         metrics.new_words_today = 0;
@@ -706,13 +719,13 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
         metrics.break_until = metrics.today + Duration::hours(24);
 
         if no_new_words && no_new_quizes { // Nothing else left but due items – so no use breaking until there is some available
-            metrics.break_until = max(metrics.break_until, next_due.unwrap_or(chrono::date::MAX.and_hms(0,0,0,)));
+            metrics.break_until = max(metrics.break_until, next_existing_due.unwrap_or(chrono::date::MAX.and_hms(0,0,0,)));
         }
 
         let due_string = metrics.break_until.to_rfc3339();
         return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
     }
-    unreachable!();
+    unreachable!("check_break. Either the break limits or daily limits should be full and those code paths return, so this should never happen.");
 }
 
 
