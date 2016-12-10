@@ -102,16 +102,18 @@ pub fn check_password( plaintext_pw : &str, pw_from_db : HashedPassword, pepper:
 
 #[test]
 fn test_set_check_password1() {
-    let pepper = [0_u8; 32];
-    rand::StdRng.fill_bytes(&mut pepper);
+    use rand::{StdRng, Rng};
+    let mut pepper = [0_u8; 32];
+    StdRng::new().unwrap().fill_bytes(&mut pepper);
     let pw = set_password("password", &pepper).unwrap();
     check_password("password", pw, &pepper).expect("Passwords should match!");
 }
 
 #[test]
 fn test_set_check_password2() {
-    let pepper = [0_u8; 32];
-    rand::StdRng.fill_bytes(&mut pepper);
+    use rand::{StdRng, Rng};
+    let mut pepper = [0_u8; 32];
+    StdRng::new().unwrap().fill_bytes(&mut pepper);
     let pw = set_password("password1", &pepper).unwrap();
     if let Ok(()) = check_password("password2", pw, &pepper) {
         panic!("Passwords shouldn't match!");
@@ -120,8 +122,9 @@ fn test_set_check_password2() {
 
 #[test]
 fn test_set_stretch_password1() {
-    let pepper = [0_u8; 32];
-    rand::StdRng.fill_bytes(&mut pepper);
+    use rand::{StdRng, Rng};
+    let mut pepper = [0_u8; 32];
+    StdRng::new().unwrap().fill_bytes(&mut pepper);
 
     let init_pw = set_password("daggerfish", &pepper).unwrap();
     println!("hashed init_hash.");
@@ -141,8 +144,9 @@ fn test_set_stretch_password1() {
 
 #[test]
 fn test_set_stretch_password2() {
-    let pepper = [0_u8; 32];
-    rand::StdRng.fill_bytes(&mut pepper);
+    use rand::{StdRng, Rng};
+    let mut pepper = [0_u8; 32];
+    StdRng::new().unwrap().fill_bytes(&mut pepper);
     
     let init_pw_1 = set_password("swordfish", &pepper).unwrap();
     println!("hashed init_hash.");
@@ -156,8 +160,9 @@ fn test_set_stretch_password2() {
 
 #[test]
 fn test_set_stretch_password3() {
-    let pepper = [0_u8; 32];
-    rand::StdRng.fill_bytes(&mut pepper);
+    use rand::{StdRng, Rng};
+    let mut pepper = [0_u8; 32];
+    StdRng::new().unwrap().fill_bytes(&mut pepper);
     
     let init_pw = set_password("schwertfisch", &pepper).unwrap();
     println!("hashed init_hash.");
@@ -175,8 +180,9 @@ fn test_set_stretch_password3() {
 
 #[test]
 fn test_set_stretch_check_password1() {
-    let pepper = [0_u8; 32];
-    rand::StdRng.fill_bytes(&mut pepper);
+    use rand::{StdRng, Rng};
+    let mut pepper = [0_u8; 32];
+    StdRng::new().unwrap().fill_bytes(&mut pepper);
     
     let init_pw = set_password("miekkakala", &pepper).unwrap();
     println!("hashed init_hash.");
@@ -188,8 +194,9 @@ fn test_set_stretch_check_password1() {
 
 #[test]
 fn test_set_stretch_check_password2() {
-    let pepper = [0_u8; 32];
-    rand::StdRng.fill_bytes(&mut pepper);
+    use rand::{StdRng, Rng};
+    let mut pepper = [0_u8; 32];
+    StdRng::new().unwrap().fill_bytes(&mut pepper);
     
     let init_pw = set_password("miekkakala", &pepper).unwrap();
     println!("hashed init_hash.");

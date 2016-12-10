@@ -20,6 +20,4 @@ time = "*"
 handlebars = "0.16"
 unicode-normalization = "*"
 regex = "0.1"
-
-[replace]
-"pq-sys:0.2.4" = { git = "https://github.com/golddranks/pq-sys.git", rev = "af7d3a9b87298289422eb2e2919948902bdc0e80"}
+tempdir = "0.3"

@@ -9,7 +9,9 @@
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate log;
 #[macro_use] extern crate mime;
+#[macro_use] extern crate lazy_static;
 
+extern crate tempdir;
 extern crate time;
 extern crate crypto;
 pub extern crate chrono;
@@ -18,6 +20,7 @@ extern crate rustc_serialize;
 extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;
+extern crate hyper;
 
 type DateTimeUTC = chrono::DateTime<chrono::UTC>;
 
@@ -29,7 +32,6 @@ pub use diesel::pg::PgConnection;
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
 }
-
 
 pub mod schema;
 pub mod models;

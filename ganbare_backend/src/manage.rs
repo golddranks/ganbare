@@ -198,8 +198,11 @@ pub fn publish_word(conn : &PgConnection, id: i32, published: bool) -> Result<()
     Ok(())
 }
 
-pub fn update_word(conn : &PgConnection, id: i32, item: UpdateWord) -> Result<Option<Word>> {
+pub fn update_word(conn : &PgConnection, id: i32, mut item: UpdateWord, image_dir: &Path) -> Result<Option<Word>> {
     use schema::words;
+
+    item.explanation = item.explanation.and_then(|s| sanitize_links(&s, image_dir).ok() ); // FIXME silently ignores errors
+
     let item = diesel::update(words::table
         .filter(words::id.eq(id)))
         .set(&item)
@@ -219,8 +222,11 @@ pub fn update_question(conn : &PgConnection, id: i32, item: UpdateQuestion) -> R
 }
 
 
-pub fn update_answer(conn : &PgConnection, id: i32, item: UpdateAnswer) -> Result<Option<Answer>> {
+pub fn update_answer(conn : &PgConnection, id: i32, mut item: UpdateAnswer, image_dir: &Path) -> Result<Option<Answer>> {
     use schema::question_answers;
+
+    item.answer_text = item.answer_text.and_then(|s| sanitize_links(&s, image_dir).ok() ); // FIXME silently ignores errors
+
     let item = diesel::update(question_answers::table
         .filter(question_answers::id.eq(id)))
         .set(&item)
@@ -299,4 +305,100 @@ pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: 
             UserReturnedError(e) => Err(e),
         },
     }
+}
+
+use regex::Regex;
+use hyper::Client;
+use std::collections::HashMap;
+use std::sync::RwLock;
+
+lazy_static! {
+
+    static ref URL_REGEX: Regex = Regex::new(r#"['"](https?://.*?(\.[a-zA-Z0-9]{1,4})?)['"]"#)
+        .expect("<- that is a valid regex there");
+
+    static ref CONVERTED_LINKS: RwLock<HashMap<String, String>> = RwLock::new(HashMap::<String, String>::new());
+
+    static ref HTTP_CLIENT: Client = Client::new();
+}
+
+pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
+    use time;
+    use rand::{thread_rng, Rng};
+    use hyper::header::ContentType;
+    use mime::{Mime};
+    use mime::TopLevel::{Image};
+    use mime::SubLevel::{Png, Jpeg, Gif};
+    use std::fs;
+    use std::io;
+    use hyper::header::Connection as HttpConnection;
+
+    info!("Sanitizing text: {}", text);
+
+    let mut result = text.to_string();
+    for url_match in URL_REGEX.captures_iter(text) {
+
+        let url = url_match.at(1).expect("The whole match won't match without this submatch.");
+
+        info!("Outbound link found: {}", url);
+
+        if CONVERTED_LINKS.read().expect("If the lock is poisoned, we're screwed anyway").contains_key(url) {
+            let ref new_url = CONVERTED_LINKS.read().expect("If the lock is poisoned, we're screwed anyway")[url];
+            result = result.replace(url, new_url);
+        } else {
+
+            info!("Downloading the link target.");
+
+            let mut resp = HTTP_CLIENT.get(url).header(HttpConnection::close()).send().map_err(|_| Error::from("Couldn't load the URL"))?;
+    
+            let file_extension = url_match.at(2).unwrap_or(".noextension");
+    
+            let extension = match resp.headers.get::<ContentType>() {
+                Some(&ContentType(Mime(Image, Png, _))) => ".png",
+                Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
+                Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
+                Some(_) => file_extension,
+                None => file_extension,
+            };
+            
+            let mut new_path = image_dir.to_owned();
+            let mut filename = "%FT%H-%M-%SZ".to_string();
+            filename.extend(thread_rng().gen_ascii_chars().take(10));
+            filename.push_str(extension);
+            filename = time::strftime(&filename, &time::now()).unwrap();
+            new_path.push(&filename);
+    
+            let mut file = fs::File::create(new_path)?;
+            io::copy(&mut resp, &mut file)?;
+            let new_url = String::from("/api/images/")+&filename;
+    
+            result = result.replace(url, &new_url);
+            CONVERTED_LINKS.write().expect("If the lock is poisoned, we're screwed anyway").insert(url.to_string(), new_url);
+        }
+        info!("Sanitized to: {}", &result);
+    }
+    Ok(result)
+}
+
+#[test]
+fn test_sanitize_links() {
+    use tempdir;
+    use std::fs;
+
+    let tempdir = tempdir::TempDir::new("").unwrap();
+    assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 0);
+    let result = sanitize_links("Testing \"http://static4.depositphotos.com/1016045/326/i/950/depositphotos_3267906-stock-photo-cool-emoticon.jpg\" testing",
+        tempdir.path()).unwrap();
+    assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 1);
+    let result2 = sanitize_links("Testing \"http://static4.depositphotos.com/1016045/326/i/950/depositphotos_3267906-stock-photo-cool-emoticon.jpg\" testing",
+        tempdir.path()).unwrap();
+    assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 1);
+    assert_eq!(result.len(), 64);
+    assert_eq!(result, result2);
+    let result3 = sanitize_links("Testing \"https://c2.staticflickr.com/2/1216/1408154388_b34a66bdcf.jpg\" testing",
+        tempdir.path()).unwrap();
+    assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 2);
+    assert_eq!(result3.len(), 64);
+    assert_ne!(result, result3);
+    tempdir.close().unwrap();
 }

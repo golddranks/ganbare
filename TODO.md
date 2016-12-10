@@ -2,6 +2,9 @@
 
 Today
 
+- Ad-blockes block outbound links
+- Make manager + audio texts searchable
+- Make the texts in order
 - Implement forgot password feature
 - Implement nag emails
 - Implement user metrics viewing GUI

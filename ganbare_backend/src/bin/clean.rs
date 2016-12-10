@@ -1,7 +1,7 @@
 #![feature(field_init_shorthand)]
 
 extern crate ganbare_backend;
-extern crate reqwest;
+extern crate hyper;
 #[macro_use]
 extern crate clap;
 extern crate dotenv;
@@ -17,7 +17,7 @@ extern crate regex;
 extern crate time;
 
 use ganbare_backend::*;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::collections::HashSet;
 
 lazy_static! {
@@ -33,63 +33,10 @@ lazy_static! {
 
 }
 
-pub fn clean_urls(conn: &PgConnection, image_dir: &Path) -> Result<Vec<String>> {
+pub fn clean_urls(conn: &PgConnection) -> Result<Vec<String>> {
     use ganbare_backend::schema::{words, question_answers};
-    use rand::{thread_rng, Rng};
-    use reqwest::header::ContentType;
-    use mime::{Mime};
-    use mime::TopLevel::{Image};
-    use mime::SubLevel::{Png, Jpeg, Gif};
+    use ganbare_backend::manage::sanitize_links;
 
-    let mut already_converted = std::collections::HashMap::<String, String>::new();
-
-    let r = regex::Regex::new(r#"['"](https?://.*?(\.[a-zA-Z0-9]{1,4})?)['"]"#).expect("<- that is a valid regex there");
-
-    let mut outbound_to_inbound = |text: &str| -> Result<String> {
-
-        let mut result = text.to_string();
-
-        for url_match in r.captures_iter(text) {
-
-            let url = url_match.at(1).expect("SQL should find stuff that contains this expression");
-
-            if already_converted.contains_key(url) {
-                let ref new_url = already_converted[url];
-                result = result.replace(url, new_url);
-
-            } else {
-
-                let mut resp = reqwest::get(url).map_err(|_| Error::from("Couldn't load the URL"))?;
-        
-                let file_extension = url_match.at(2).unwrap_or(".noextension");
-        
-                let extension = match resp.headers().get::<ContentType>() {
-                    Some(&ContentType(Mime(Image, Png, _))) => ".png",
-                    Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
-                    Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
-                    Some(_) => file_extension,
-                    None => file_extension,
-                };
-                
-                let mut new_path = image_dir.to_owned();
-                let mut filename = "%FT%H-%M-%SZ".to_string();
-                filename.extend(thread_rng().gen_ascii_chars().take(10));
-                filename.push_str(extension);
-                filename = time::strftime(&filename, &time::now()).unwrap();
-                new_path.push(&filename);
-        
-                let mut file = std::fs::File::create(new_path)?;
-                std::io::copy(&mut resp, &mut file)?;
-
-                let new_url = String::from("/api/images/")+&filename;
-        
-                result = result.replace(url, &new_url);
-                already_converted.insert(url.to_string(), new_url);
-            }
-
-        }
-        Ok(result)
-    };
 
     let mut logger = vec![];
 
@@ -99,7 +46,7 @@ pub fn clean_urls(conn: &PgConnection, image_dir: &Path) -> Result<Vec<String>> 
 
     for mut w in words {
         let before = format!("{:?}", w);
-        w.explanation = outbound_to_inbound(&w.explanation)?;
+        w.explanation =  sanitize_links(&w.explanation, &*IMAGE_DIR)?;
         logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n", before, w));
 
         let _ : Word = w.save_changes(conn)?;
@@ -129,7 +76,7 @@ pub fn clean_urls(conn: &PgConnection, image_dir: &Path) -> Result<Vec<String>> 
 
     for mut a in answers {
         let before = format!("{:?}", a);
-        a.answer_text = outbound_to_inbound(&a.answer_text)?;
+        a.answer_text =  sanitize_links(&a.answer_text, &*IMAGE_DIR)?;
         logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n", before, a));
 
         let _ : Answer = a.save_changes(conn)?;
@@ -178,12 +125,64 @@ fn clean_audio() {
     }
 }
 
+use regex::Regex;
+
+lazy_static! {
+
+    static ref IMG_REGEX: Regex = Regex::new(r#"<img[^>]* src="[^"]*/([^"]*)"[^>]*>"#)
+        .expect("<- that is a valid regex there");
+
+}
+
 fn clean_images() {
+    use ganbare_backend::schema::{question_answers, words};
+
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    for line in clean_urls(&conn, &*IMAGE_DIR).unwrap() {
+    let fs_files = std::fs::read_dir(&*IMAGE_DIR).unwrap();
+
+    let mut db_files: HashSet<String> = HashSet::new();
+
+    for line in clean_urls(&conn).unwrap() {
         println!("{}", line);
     };
+
+    let words: Vec<Word> = words::table
+        .filter(words::explanation.like("%<img%"))
+        .get_results(&conn).unwrap();
+
+    for w in words {
+
+        for img_match in IMG_REGEX.captures_iter(&w.explanation) {
+            let img = img_match.at(1).expect("The whole match won't match without this submatch.");
+            db_files.insert(img.to_string());
+        }
+    }
+
+    let answers: Vec<Answer> = question_answers::table
+        .filter(question_answers::answer_text.like("%<img%"))
+        .get_results(&conn).unwrap();
+
+    for a in answers {
+        for img_match in IMG_REGEX.captures_iter(&a.answer_text) {
+            let img = img_match.at(1).expect("The whole match won't match without this submatch.");
+            db_files.insert(img.to_string());
+        }
+    }
+
+    let mut trash_dir = IMAGE_DIR.clone();
+    trash_dir.push("trash");
+
+    for f in fs_files {
+        let f = f.unwrap();
+        let f_name = f.file_name();
+        if ! db_files.contains(f_name.to_str().unwrap()) && f_name != *"trash" {
+            trash_dir.push(&f_name);
+            info!("Moving a unneeded file {:?} to the trash directory.", &f_name);
+            std::fs::rename(f.path(), &trash_dir).expect("Create \"trash\" directory for cleaning up!");
+            trash_dir.pop();
+        }
+    }
 }
 
 fn main() {
