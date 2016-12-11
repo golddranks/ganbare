@@ -5,10 +5,11 @@ $(function() {
 	var groupHeader = $("#groupHeader");
 	var usersList = $("#usersList");
 	var pendingUsersList = $("#pendingUsersList");
+	var userActivityRows = $("#userActivityRows");
 	
 	$.getJSON("/api/users", function(resp){
-		var groups = resp[0];
-		var users = resp[1];
+		var users = resp[0];
+		var groups = resp[1];
 		var pending_users = resp[2];
 
 		groups.forEach(function(group) {
@@ -17,7 +18,12 @@ $(function() {
 
 		users.forEach(function(u) {
 			var user = u[0];
-			var group_memberships = u[1];
+			if (user.email === null) {
+				return;
+			}
+			var user_metrics = u[1];
+			var user_stats = u[2];
+			var group_memberships = u[3];
 
 			var user_list_tr = $('<tr></tr>').appendTo(usersList);
 			$('<th scope="row">'+user.email+'</th>').appendTo(user_list_tr);
@@ -57,6 +63,75 @@ $(function() {
 
 				});
 			});
+
+			var user_item = $('<tr></tr>').appendTo(userActivityRows);
+			var user_email_cell = $('<th>'+user.email+'</th>').appendTo(user_item);
+			$('<button class="compact narrDelButton"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+				.appendTo(user_email_cell)
+				.click(function() {
+					var request = {
+						type: 'DELETE',
+						url: "/api/users/"+user.id,
+						contentType: "application/json",
+						data: "",
+						success: function() {
+							user_item.remove();
+							user_list_tr.remove();
+						}, 
+					};
+					$.ajax(request);
+				});
+			$('<td>'+user_stats.days_used+'</td>').appendTo(user_item);
+			$('<td>'+Math.floor(Math.round(user_stats.all_time_ms/1000)/60)+' min '+Math.round(user_stats.all_time_ms/1000)%60+' s</td>').appendTo(user_item);
+			$('<td>'+user_stats.all_words+'</td>').appendTo(user_item);
+			$('<td>'+user_stats.quiz_all_times+'</td>').appendTo(user_item);
+			$('<td>'+Math.round(user_stats.quiz_correct_times/user_stats.quiz_all_times*100)+' %</td>').appendTo(user_item);
+
+			function put_user_settings(type, settings) {
+					var url = "/api/users/"+user.id+"?settings="+type;
+					settings.id = user.id;
+					var request = {
+						type: 'PUT',
+						url: url,
+						contentType: "application/json",
+						data: JSON.stringify(settings),
+						success: function() {
+							console.log("User settings changed!");
+						}, 
+					};
+					$.ajax(request);
+			}
+
+			$('<td></td>').appendTo(user_item)
+				.append(
+					$('<input style="width: 5em;" type="text" value="'+user_metrics.max_words_since_break+'">')
+						.change(function(){
+							put_user_settings("metrics", {max_words_since_break: $(this).val()});
+						})
+				);
+			$('<td></td>').appendTo(user_item)
+				.append(
+					$('<input style="width: 5em;" type="text" value="'+user_metrics.max_words_today+'">')
+						.change(function(){
+							put_user_settings("metrics", {max_words_today: $(this).val()});
+						})
+					);
+			$('<td></td>').appendTo(user_item)
+				.append(
+					$('<input style="width: 5em;" type="text" value="'+user_metrics.max_quizes_since_break+'">')
+						.change(function(){
+							put_user_settings("metrics", {max_quizes_since_break: $(this).val()});
+						})
+					);
+			$('<td></td>').appendTo(user_item)
+				.append(
+					$('<input style="width: 5em;" type="text" value="'+user_metrics.max_quizes_today+'">')
+						.change(function(){
+							put_user_settings("metrics", {max_quizes_today: $(this).val()});
+						})
+					);
+
+
 		});
 
 		if (pending_users.length === 0) {

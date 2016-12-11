@@ -158,7 +158,7 @@ fn log_answer_new_due_item(conn: &PgConnection, user_id: i32, item_type: &str, s
 }
 
 fn log_answer_word(conn : &PgConnection, user : &User, answered: &WAnsweredData) -> Result<()> {
-    use schema::{pending_items, w_asked_data, w_answered_data, words};
+    use schema::{user_stats, pending_items, w_asked_data, w_answered_data, words};
 
     let (mut pending_item, asked): (PendingItem, WAskedData) = pending_items::table
         .inner_join(w_asked_data::table)
@@ -177,13 +177,21 @@ fn log_answer_word(conn : &PgConnection, user : &User, answered: &WAnsweredData)
         .filter(words::id.eq(asked.word_id))
         .get_result(conn)?;
 
+    let mut stats: UserStats = user_stats::table
+        .filter(user_stats::id.eq(user.id))
+        .get_result(conn)?;
+
+    stats.all_time_ms += answered.answer_time_ms as i64;
+    stats.all_words += 1;
+    let _: UserStats = stats.save_changes(conn)?;
+
     skill::log_by_id(conn, user.id, word.skill_nugget, 1)?;
 
     Ok(())
 }
 
 fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredData, metrics: &UserMetrics) -> Result<(QAskedData, QuestionData, DueItem)> {
-    use schema::{pending_items, q_asked_data, q_answered_data, due_items, question_data, quiz_questions};
+    use schema::{user_stats, pending_items, q_asked_data, q_answered_data, due_items, question_data, quiz_questions};
 
     let (mut pending_item, asked): (PendingItem, QAskedData) = pending_items::table
         .inner_join(q_asked_data::table)
@@ -200,6 +208,17 @@ fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredD
     diesel::insert(answered)
         .into(q_answered_data::table)
         .execute(conn)?;
+
+    let mut stats: UserStats = user_stats::table
+        .filter(user_stats::id.eq(user.id))
+        .get_result(conn)?;
+
+    stats.all_time_ms += answered.full_answer_time_ms as i64;
+    stats.quiz_all_times += 1;
+    if correct {
+        stats.quiz_correct_times += 1;
+    }
+    let _: UserStats = stats.save_changes(conn)?;
 
 
     // If the answer was wrong, register a new pending question with the same specs right away for a follow-up review
@@ -253,7 +272,7 @@ fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredD
 }
 
 fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredData, metrics: &UserMetrics) -> Result<(ExerciseData, DueItem)> {
-    use schema::{pending_items, e_asked_data, e_answered_data, due_items, exercise_data, exercises};
+    use schema::{user_stats, pending_items, e_asked_data, e_answered_data, due_items, exercise_data, exercises};
 
     let correct = answered.answer_level > 0;
 
@@ -269,6 +288,17 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredDat
     diesel::insert(answered)
         .into(e_answered_data::table)
         .execute(conn)?;
+
+    let mut stats: UserStats = user_stats::table
+        .filter(user_stats::id.eq(user.id))
+        .get_result(conn)?;
+
+    stats.all_time_ms += answered.full_answer_time_ms as i64;
+    stats.quiz_all_times += 1;
+    if answered.answer_level > 0 {
+        stats.quiz_correct_times += 1;
+    }
+    let _: UserStats = stats.save_changes(conn)?;
 
 
     // If the answer was wrong, register a new pending question with the same specs right away for a follow-up review
@@ -635,7 +665,8 @@ fn choose_new_word(conn : &PgConnection, metrics: &mut UserMetrics) -> Result<Op
     Ok(word)
 }
 
-fn clear_limits(metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
+fn clear_limits(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
+    use schema::user_stats;
 
     if chrono::UTC::now() < metrics.break_until {
         let due_string = metrics.break_until.to_rfc3339();
@@ -646,6 +677,14 @@ fn clear_limits(metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
     // We are having 1 AM as the change point of the day
     // (That's 3 AM in Finland, where the users of this app are likely to reside)
     if chrono::UTC::now() > (metrics.today.date().and_hms(1, 0, 0) + chrono::Duration::hours(24)) {
+
+        let mut stats: UserStats = user_stats::table
+            .filter(user_stats::id.eq(metrics.id))
+            .get_result(conn)?;
+    
+        stats.days_used += 1;
+        let _: UserStats = stats.save_changes(conn)?;
+    
         metrics.today = chrono::UTC::today().and_hms(1, 0, 0);
         metrics.new_words_since_break = 0;
         metrics.quizes_since_break = 0;
@@ -936,7 +975,7 @@ fn get_new_quiz_inner(conn : &PgConnection, user : &User, metrics: &mut UserMetr
     }
 
      // Clear the per-day limits if it's tomorrow already and stop if we are in the middle of a break
-    if let Some(future) = clear_limits(metrics)? {
+    if let Some(future) = clear_limits(conn, metrics)? {
         return Ok(Some(future));
     }
     

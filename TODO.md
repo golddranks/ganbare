@@ -1,17 +1,21 @@
 # To Do list
 
-Today
+Today:
 
-- Implement user metrics viewing GUI
-- Implement removing users
+- Don't count time when viewing a word in a inactive tab.
+- Add canceling a break setting to the user page
+
 - Fix the answer button UI bug on IE
 - Fix the survey UI bug on mobile
+
 
 - Implement forgot password feature
 - Implement nag emails
 
 - Publish more words
-Tomorrow
+
+
+Tomorrow:
 - Introduce higher-level questions
 - Impl the test tool (asks questions from both groups)
 

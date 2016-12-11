@@ -162,7 +162,7 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
         }
     };
 
-    match do_login(&user.email, &password, &*req).err_500()? {
+    match do_login(&user.email.expect("The email address was just provent to exits."), &password, &*req).err_500()? {
         Some((_, sess)) =>
             redirect("/", 303).refresh_cookie(&sess),
         None => 
@@ -208,7 +208,12 @@ pub fn change_password(req: &mut Request) -> PencilResult {
 
     let (old_password, new_password) = err_400!(parse_form(req), "invalid form data");
 
-    match user::auth_user(&conn, &user.email, &old_password, &*RUNTIME_PEPPER) {
+    let user_email = match user.email {
+        Some(email) => email,
+        None => return Ok(bad_request("User account is deactivated!? Cannot change password.")),
+    };
+
+    match user::auth_user(&conn, &user_email, &old_password, &*RUNTIME_PEPPER) {
         Err(e) => return match e.kind() {
             &ErrorKind::AuthError => {
                 let mut context = new_template_context();

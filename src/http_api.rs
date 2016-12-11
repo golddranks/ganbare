@@ -13,6 +13,7 @@ use ganbare::models;
 use ganbare::skill;
 use ganbare::manage;
 use ganbare::event;
+use ganbare::user;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
@@ -137,10 +138,12 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
             let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
             let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
             let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
+            let reflected_time_ms = str::parse::<i32>(&parse!(form.get("reflected_time")))?;
             let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
+            let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
             let answer_level = str::parse::<i32>(&parse!(form.get("answer_level")))?;
             Ok(quiz::Answered::E(
-                models::EAnsweredData{id, audio_times, active_answer_time_ms, answered_date: UTC::now(), full_answer_time_ms, answer_level}
+                models::EAnsweredData{id, audio_times, active_answer_time_ms, answered_date: UTC::now(), reflected_time_ms, full_answer_time_ms, answer_level, full_spent_time_ms}
             ))
         } else if answer_type == "question" {
             let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
@@ -148,15 +151,16 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
             let answered_qa_id = if answered_qa_id > 0 { Some(answered_qa_id) } else { None }; // Negatives mean that question was unanswered (due to time limit)
             let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
             let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
+            let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
             Ok(quiz::Answered::Q(
-                models::QAnsweredData{id, answered_qa_id, answered_date: UTC::now(), active_answer_time_ms, full_answer_time_ms}      
+                models::QAnsweredData{id, answered_qa_id, answered_date: UTC::now(), active_answer_time_ms, full_answer_time_ms, full_spent_time_ms}      
             ))
         } else {
             Err(ErrorKind::FormParseError.into())
         }
     };
 
-    let answer = err_400!(parse_answer(req), "Can't parse form data?");
+    let answer = err_400!(parse_answer(req), "Can't parse form data? {:?}", req.form());
 
     let new_quiz = quiz::get_next_quiz(&conn, &user, answer).err_500()?;
 
@@ -215,6 +219,12 @@ pub fn del_item(req: &mut Request) -> PencilResult {
         },
         "del_bundle" => {
             if !audio::del_bundle(&conn, id).err_500()? {
+                 return abort(404);
+            }
+            jsonify(&())
+        },
+        "del_user" => {
+            if user::deactivate_user(&conn, id).err_500()?.is_none() {
                  return abort(404);
             }
             jsonify(&())
@@ -503,20 +513,41 @@ pub fn save_eventdata(req: &mut Request) -> PencilResult {
 pub fn user(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "admins")?;
 
-    let group_id = req.view_args.remove("group_id").expect("Pencil guarantees that Line ID should exist as an arg.");
-    let group_id = group_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
-
     let user_id = req.view_args.remove("user_id").expect("Pencil guarantees that Line ID should exist as an arg.");
     let user_id = user_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
 
     let endpoint = req.endpoint().expect("Pencil guarantees this");
     let json = match endpoint.as_ref() {
         "add_group" => {
+
+            let group_id = req.view_args.remove("group_id").expect("Pencil guarantees that Line ID should exist as an arg.");
+            let group_id = group_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+
             ganbare::user::join_user_group_by_id(&conn, user_id, group_id).err_500()?;
             jsonify(&())
                 },
         "remove_group" => {
+
+            let group_id = req.view_args.remove("group_id").expect("Pencil guarantees that Line ID should exist as an arg.");
+            let group_id = group_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+
             ganbare::user::remove_user_group_by_id(&conn, user_id, group_id).err_500()?;
+            jsonify(&())
+                },
+        "set_metrics" => {
+
+            use std::io::Read;
+            use ganbare::models::UpdateUserMetrics;
+
+            let mut text = String::new();
+            req.read_to_string(&mut text).err_500()?;
+            let metrics: UpdateUserMetrics = err_400!(rustc_serialize::json::decode(&text), "Can't decode JSON: {:?}", &text);
+
+            if user_id != metrics.id {
+                return Ok(bad_request("user id in the URL must be the same as in the JSON content!"));
+            }
+        
+            ganbare::user::set_metrics(&conn, &metrics).err_500()?;
             jsonify(&())
                 },
         _ => {

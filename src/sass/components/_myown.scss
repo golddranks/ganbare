@@ -15,6 +15,9 @@
 		max-width: 40em;
 		&.fullwidth {
 			max-width: 100%;
+			ul li {
+				list-style-type: none;
+			}
 		}
 
 		.error {
@@ -153,15 +156,14 @@
 }
 
 .userTable {
+	thead {
+		border-bottom: 1px solid _palette(border);
+	}
 	td, th {
 		border-right: 1px solid _palette(border);
 		padding: 0.3em;
 		text-align: center;
 	}
-}
-
-.userTable thead {
-	border-bottom: 1px solid _palette(border);
 }
 
 .audioTable {

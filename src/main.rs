@@ -107,6 +107,8 @@ pub fn main() {
     app.post("/api/exercise", "post_exercise", http_api::post_exercise);
     app.put("/api/users/<user_id:int>?add_group=<group_id:int>", "add_group", http_api::user);
     app.put("/api/users/<user_id:int>?remove_group=<group_id:int>", "remove_group", http_api::user);
+    app.put("/api/users/<user_id:int>?settings=metrics", "set_metrics", http_api::user);
+    app.delete("/api/users/<id:int>", "del_user", http_api::del_item);
     app.put("/api/questions/<id:int>?publish", "publish_questions", http_api::set_published);
     app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", http_api::set_published);
     app.put("/api/words/<id:int>?publish", "publish_words", http_api::set_published);

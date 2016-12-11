@@ -64,7 +64,7 @@ pub fn auth_user(conn : &PgConnection, email : &str, plaintext_pw : &str, pepper
 
 
 pub fn add_user(conn : &PgConnection, email : &str, password : &str, pepper: &[u8]) -> Result<User> {
-    use schema::{users, passwords, user_metrics};
+    use schema::{users, passwords, user_metrics, user_stats};
 
     if email.len() > 254 { return Err(ErrorKind::EmailAddressTooLong.into()) };
     if !email.contains("@") { return Err(ErrorKind::EmailAddressNotValid.into()) };
@@ -77,18 +77,19 @@ pub fn add_user(conn : &PgConnection, email : &str, password : &str, pepper: &[u
 
     let user : User = diesel::insert(&new_user)
         .into(users::table)
-        .get_result(conn)
-        .chain_err(|| "Couldn't create a new user!")?;
+        .get_result(conn)?;
 
     diesel::insert(&pw.into_db(user.id))
         .into(passwords::table)
-        .execute(conn)
-        .chain_err(|| "Couldn't insert the new password into database!")?;
+        .execute(conn)?;
 
     diesel::insert(&NewUserMetrics{ id: user.id })
         .into(user_metrics::table)
-        .execute(conn)
-        .chain_err(|| "Couldn't insert the new password into user metrics!")?;
+        .execute(conn)?;
+
+    diesel::insert(&NewUserStats{ id: user.id })
+        .into(user_stats::table)
+        .execute(conn)?;
 
     info!("Created a new user, with email {:?}.", email);
     Ok(user)
@@ -117,7 +118,7 @@ pub fn set_password(conn : &PgConnection, user_email : &str, password: &str, pep
     }
 }
 
-pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<User> {
+pub fn remove_user_by_email(conn: &PgConnection, rm_email: &str) -> Result<User> {
     use schema::users::dsl::*;
     use diesel::result::Error::NotFound;
 
@@ -127,6 +128,51 @@ pub fn remove_user(conn : &PgConnection, rm_email : &str) -> Result<User> {
                 e @ NotFound => e.caused_err(|| ErrorKind::NoSuchUser(rm_email.into())),
                 e => e.caused_err(|| "Couldn't remove the user!"),
         })
+}
+
+pub fn deactivate_user(conn: &PgConnection, id: i32) -> Result<Option<User>> {
+    use schema::users;
+
+    let user = match users::table.filter(users::id.eq(id))
+        .get_result::<User>(conn)
+        .optional()?
+        {
+            Some(u) => u,
+            None => return Ok(None),
+        };
+
+    let no_email: Option<String> = None;
+
+    diesel::delete(schema::passwords::table.filter(schema::passwords::id.eq(id))).execute(conn)?;
+    diesel::update(users::table.filter(users::id.eq(id))).set(users::email.eq(no_email)).execute(conn)?;
+
+    Ok(Some(user))
+}
+
+pub fn remove_user_completely(conn: &PgConnection, id: i32) -> Result<Option<User>> {
+    use schema::users;
+
+    let user = match users::table.filter(users::id.eq(id))
+        .get_result::<User>(conn)
+        .optional()?
+        {
+            Some(u) => u,
+            None => return Ok(None),
+        };
+
+    diesel::delete(schema::passwords::table.filter(schema::passwords::id.eq(id))).execute(conn)?;
+    diesel::delete(schema::user_metrics::table.filter(schema::user_metrics::id.eq(id))).execute(conn)?;
+    diesel::delete(schema::user_stats::table.filter(schema::user_stats::id.eq(id))).execute(conn)?;
+    diesel::delete(schema::sessions::table.filter(schema::sessions::user_id.eq(id))).execute(conn)?;
+    diesel::delete(schema::skill_data::table.filter(schema::skill_data::user_id.eq(id))).execute(conn)?;
+    diesel::delete(schema::event_experiences::table.filter(schema::event_experiences::user_id.eq(id))).execute(conn)?;
+    diesel::delete(schema::group_memberships::table.filter(schema::group_memberships::user_id.eq(id))).execute(conn)?;
+    diesel::delete(schema::anon_aliases::table.filter(schema::anon_aliases::user_id.eq(id))).execute(conn)?;
+    diesel::delete(schema::pending_items::table.filter(schema::pending_items::user_id.eq(id))).execute(conn)?;
+    diesel::delete(schema::due_items::table.filter(schema::due_items::user_id.eq(id))).execute(conn)?;
+    diesel::delete(schema::users::table.filter(schema::users::id.eq(id))).execute(conn)?;
+
+    Ok(Some(user))
 }
 
 pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str, pepper: &[u8]) -> Result<()> {
@@ -213,23 +259,41 @@ pub fn all_groups(conn: &PgConnection) -> Result<Vec<UserGroup>> {
     Ok(groups)
 }
 
-pub fn get_all(conn: &PgConnection) -> Result<(Vec<UserGroup>, Vec<(User, Vec<GroupMembership>)>, Vec<PendingEmailConfirm>)> {
-    use schema::{users, pending_email_confirms, group_memberships};
+pub fn get_all(conn: &PgConnection) -> Result<(Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>)>, Vec<UserGroup>, Vec<PendingEmailConfirm>)> {
+    use schema::{users, user_metrics, pending_email_confirms, group_memberships, user_stats};
 
     let groups = all_groups(conn)?;
 
     let users: Vec<User> = users::table
         .get_results(conn)?;
 
+    let users_metrics: Vec<UserMetrics> = user_metrics::table
+        .get_results(conn)?;
+
+    let user_stats: Vec<UserStats> = user_stats::table
+        .get_results(conn)?;
+
     let user_groups : Vec<Vec<GroupMembership>> = group_memberships::table
         .get_results(conn)?
         .grouped_by(&users);
 
-    let users_groups = users.into_iter().zip(user_groups.into_iter()).collect();
+    let users_groups = users.into_iter().zip(users_metrics.into_iter().zip(user_stats.into_iter().zip(user_groups.into_iter()))).map(|(u, (m, (s, g)))| (u, m, s, g)).collect();
 
     let confirms: Vec<PendingEmailConfirm> = pending_email_confirms::table
         .get_results(conn)?;
 
     
-    Ok((groups, users_groups, confirms))
+    Ok((users_groups, groups, confirms))
+}
+
+pub fn set_metrics(conn: &PgConnection, metrics: &UpdateUserMetrics) -> Result<Option<UserMetrics>> {
+    use schema::user_metrics;
+
+    let item = diesel::update(user_metrics::table
+        .filter(user_metrics::id.eq(metrics.id)))
+        .set(metrics)
+        .get_result(conn)
+        .optional()?;
+        
+    Ok(item)
 }

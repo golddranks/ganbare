@@ -30,7 +30,7 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
     user::join_user_group_by_name(&conn, &user, "output_group").err_500()?;
 
 
-    match do_login(&user.email, &new_password, &*req).err_500()? {
+    match do_login(&user.email.expect("The email is known to exist."), &new_password, &*req).err_500()? {
         Some((_, sess)) => {
             let mut context = new_template_context();
             context.insert("install_success".into(), "success".into());

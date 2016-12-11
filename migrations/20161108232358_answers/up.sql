@@ -97,7 +97,6 @@ CREATE TABLE user_metrics (
 	streak_limit INTEGER NOT NULL DEFAULT 4,
 	cooldown_delay INTEGER NOT NULL DEFAULT 15
 );
-
 INSERT INTO user_metrics (id) SELECT id FROM users;
 
 CREATE TABLE event_experiences (

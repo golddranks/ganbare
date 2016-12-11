@@ -10,7 +10,8 @@ pub struct NewUser<'a> {
 }
 
 #[has_many(passwords, foreign_key = "id")] // actually, the relationship is one-to-1..0
-#[has_many(user_metrics, foreign_key = "id")] // the same
+#[has_many(user_metrics, foreign_key = "id")] // actually, the relationship is one-to-1..0
+#[has_many(user_stats, foreign_key = "id")] // actually, the relationship is one-to-1..0
 #[has_many(sessions, foreign_key = "user_id")]
 #[has_many(skill_data, foreign_key = "user_id")]
 #[has_many(event_experiences, foreign_key = "user_id")]
@@ -21,7 +22,7 @@ pub struct NewUser<'a> {
 #[derive(Identifiable, Queryable, Debug, Associations, AsChangeset, RustcEncodable)]
 pub struct User {
     pub id: i32,
-    pub email: String,
+    pub email: Option<String>,
     pub joined: DateTime<UTC>,
 }
 
@@ -402,6 +403,7 @@ pub struct QAnsweredData {
     pub answered_date: DateTime<UTC>,
     pub active_answer_time_ms: i32,
     pub full_answer_time_ms: i32,
+    pub full_spent_time_ms: i32,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
@@ -426,6 +428,8 @@ pub struct EAnsweredData {
     pub full_answer_time_ms: i32,
     pub audio_times: i32,
     pub answer_level: i32,
+    pub full_spent_time_ms: i32,
+    pub reflected_time_ms: i32,
 }
 
 #[derive(Identifiable, Insertable, Queryable, Associations, Debug, AsChangeset)]
@@ -484,7 +488,7 @@ pub struct SkillData {
     pub skill_level: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable)]
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable, RustcEncodable, RustcDecodable)]
 #[belongs_to(User, foreign_key = "id")]
 #[table_name="user_metrics"]
 pub struct UserMetrics {
@@ -507,11 +511,50 @@ pub struct UserMetrics {
     pub cooldown_delay: i32,
 }
 
+#[derive(Debug, AsChangeset, Identifiable, RustcEncodable, RustcDecodable)]
+#[table_name="user_metrics"]
+pub struct UpdateUserMetrics {
+    pub id: i32,
+    pub new_words_since_break: Option<i32>,
+    pub new_words_today: Option<i32>,
+    pub quizes_since_break: Option<i32>,
+    pub quizes_today: Option<i32>,
+    pub break_until:  Option<DateTime<UTC>>,
+    pub today:  Option<DateTime<UTC>>,
+    pub max_words_since_break: Option<i32>,
+    pub max_words_today: Option<i32>,
+    pub max_quizes_since_break: Option<i32>,
+    pub max_quizes_today: Option<i32>,
+
+    pub break_length: Option<i32>,
+    pub delay_multiplier: Option<i32>,
+    pub initial_delay: Option<i32>,
+    pub streak_limit: Option<i32>,
+    pub cooldown_delay: Option<i32>,
+}
 
 #[derive(Insertable)]
 #[table_name="user_metrics"]
 pub struct NewUserMetrics {
     pub id: i32,
+}
+
+#[derive(Insertable)]
+#[table_name="user_stats"]
+pub struct NewUserStats {
+    pub id: i32,
+}
+
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable, RustcEncodable, RustcDecodable)]
+#[belongs_to(User, foreign_key = "id")]
+#[table_name="user_stats"]
+pub struct UserStats {
+    pub id: i32,
+    pub days_used: i32,
+    pub all_time_ms: i64,
+    pub all_words: i32,
+    pub quiz_all_times: i32,
+    pub quiz_correct_times: i32,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable)]
