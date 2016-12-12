@@ -90,21 +90,45 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		narrators[n.id] = n;
 	});
 
-	function createBundle(id, element) {
-		var bundle = audio_bundles[id];
-		var listname = bundle.listname;
+	function createBundle(id, element, update_value_cb) {
+		var listname = audio_bundles[id].listname;
 		var bundle_html = $('<div class="bordered weak" style="display: inline-block;" title="Name: '+listname
-			+'">ID '+id+'</div>').appendTo(element);
-		bundle.files.forEach(function(file) {
-			var narrator_name = narrators[file.narrators_id].name;
-			var narrator_color = narrators[file.narrators_id].color;
-			var audio_button = $('<button class="compact" style="background-color: '+narrator_color+';"><img src="/static/images/speaker_teal.png" title="Narrator: '
-				+narrator_name+'" class="soundicon"></button>').appendTo(bundle_html);
-			audio_button.click(function() {
-				var audio = new Howl({ src: ['/api/audio/'+file.id+'.mp3']});
-				audio.play();
+			+'"></div>').appendTo(element);
+
+		function init_ui(id) {
+			bundle_html.empty();
+			var id_span = $('<span></span>')
+				.appendTo(bundle_html)
+				.text('ID '+id);
+
+			function setup_editor() {
+				id_span.one('click', function(ev) {
+					id_span.empty();
+					$('<input type="text" value="'+id+'" style="display: inline-block; width: 4em;">')
+						.appendTo(id_span)
+						.focus()
+						.blur(function() {
+							id_span.html('<i class="fa fa-spinner fa-spin fa-fw"></i>');
+							setup_editor();
+							update_value_cb($(this).val(), init_ui);
+						});
+				});
+			}
+			setup_editor();
+
+			audio_bundles[id].files.forEach(function(file) {
+				var narrator_name = narrators[file.narrators_id].name;
+				var narrator_color = narrators[file.narrators_id].color;
+				var audio_button = $('<button class="compact" style="background-color: '+narrator_color+';"><img src="/static/images/speaker_teal.png" title="Narrator: '
+					+narrator_name+'" class="soundicon"></button>').appendTo(bundle_html);
+				audio_button.click(function() {
+					var audio = new Howl({ src: ['/api/audio/'+file.id+'.mp3']});
+					audio.play();
+				});
 			});
-		});
+		}
+
+		init_ui(id);
 	};
 
 	if (nugget_resp.length === 0) {
@@ -114,8 +138,25 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 	nugget_resp.forEach(function(tuple, nugget_index) {
 
 		var nugget = tuple[0];
-		var n_item = $('<li><hr></li>').appendTo(n_list);
-		$("<h2>Skill nugget: " + nugget.skill_summary + "</h2>").appendTo(n_item);
+		var n_item = $('<li style="width: 100%"><hr></li>').appendTo(n_list);
+		var skill_nugget_header = $("<h2>Skill nugget: " + nugget.skill_summary + "</h2>")
+			.appendTo(n_item);
+		var trash_button = $('　<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+			.appendTo(skill_nugget_header)
+			.click(function() {
+				$.ajax({
+					type: 'DELETE',
+					url: "/api/skills/"+nugget.id,
+					contentType: "application/json",
+					data: "",
+					success: function() {
+						n_item.remove();
+					}, 
+					error: function() {
+						alert("Can't remove this! (Try removing things that depend on it first.)");
+					},
+				});
+			});
 
 		var c_list = $("<ul></ul>").appendTo(n_item);
 
@@ -124,8 +165,25 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		var exercises = tuple[1][2];
 		
 		words.forEach(function(word, index) {
-			var c_item = $("<li></li>").appendTo(c_list);
+			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
 			var c_header = $('<h3></h3>').html('Word: ' + accentuate(word.word)).appendTo(c_item);
+
+			var trash_button = $('　<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+				.appendTo(c_header)
+				.click(function() {
+					$.ajax({
+						type: 'DELETE',
+						url: "/api/words/"+word.id,
+						contentType: "application/json",
+						data: "",
+						success: function() {
+							words.splice(index, 1);
+							c_item.remove();
+							check_init_autocreate_buttons();
+						}, 
+					});
+				});
+
 
 			var id = "n"+nugget_index+"w"+index;
 			var c_info = $('<div><label for="'+id+'">public</label></div>').appendTo(c_item);
@@ -146,7 +204,19 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 			var c_edit = $('<input type="button" value="show" class="linklike">').appendTo(c_info);
 
-			createBundle(word.audio_bundle, c_info);
+			createBundle(word.audio_bundle, c_info, function(updated_value, update_bundle_cb) {
+				$.ajax({
+					type: 'PUT',
+					url: "/api/words/"+word.id,
+					contentType: "application/json",
+					data: JSON.stringify({audio_bundle: updated_value}),
+					success: function(resp) {
+						word.audio_bundle = updated_value;
+						update_bundle_cb(updated_value);
+						console.log("Updated audio bundle!");
+					},
+				});
+			});
 
 			var wordLatestResp = word;
 
@@ -225,7 +295,24 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			var question = tuple[0];
 			var answers = tuple[1];
 
-			var c_item = $("<li><h3>Question: " + question.q_name + "</h3></li>").appendTo(c_list);
+			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
+			var c_header = $('<h3>Question: ' + question.q_name + '</h3>').appendTo(c_item);
+			var trash_button = $('　<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+				.appendTo(c_header)
+				.click(function() {
+					$.ajax({
+						type: 'DELETE',
+						url: "/api/questions/"+question.id,
+						contentType: "application/json",
+						data: "",
+						success: function() {
+							c_item.remove();
+							questions.splice(index, 1);
+							check_init_autocreate_buttons();
+						}, 
+					});
+				});
+
 
 			var id = "n"+nugget_index+"q"+index;
 			var c_info = $("<div><label for=\""+id+"\">public</label></div>").appendTo(c_item);
@@ -248,7 +335,20 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			var c_edit = $('<input type="button" value="show" class="linklike">').appendTo(c_info);
 
 			answers.forEach(function(ans) {
-				createBundle(ans.q_audio_bundle, c_info);
+				createBundle(ans.q_audio_bundle, c_info, function(updated_value, update_bundle_cb) {
+					$.ajax({
+						type: 'PUT',
+						url: "/api/questions/answers/"+ans.id,
+						contentType: "application/json",
+						data: JSON.stringify({q_audio_bundle: updated_value}),
+						success: function(resp) {
+							ans.q_audio_bundle = updated_value;
+							update_bundle_cb(updated_value);
+							console.log("Updated audio bundle!");
+						},
+					});
+				});
+	
 			});
 
 			var c_body = $('<section class="bordered" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
@@ -307,7 +407,19 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			answers.forEach(function(ans) {
 				var q_answer = $('<div class="answer bordered weak"></div>').appendTo(a_list);
 				var q_bundle = $('<p></p>').appendTo(q_answer);
-				createBundle(ans.q_audio_bundle, q_bundle);
+				createBundle(ans.q_audio_bundle, q_bundle, function(updated_value, update_bundle_cb) {
+					$.ajax({
+						type: 'PUT',
+						url: "/api/questions/answers/"+ans.id,
+						contentType: "application/json",
+						data: JSON.stringify({q_audio_bundle: updated_value}),
+						success: function(resp) {
+							ans.q_audio_bundle = updated_value;
+							update_bundle_cb(updated_value);
+							console.log("Updated audio bundle!");
+						},
+					});
+				});
 				var qa_button = $('<div class="answerButton" contenteditable="true"></div>').appendTo(q_answer);
 				qa_button.html(ans.answer_text);
 				var answer_latestResp;
@@ -349,7 +461,24 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			var exercise = tuple[0];
 			var words = tuple[1];
 
-			var c_item = $("<li><h3>Exercise: " + nugget.skill_summary + "</h3></li>").appendTo(c_list);
+			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
+			var c_header = $("<h3>Exercise: " + nugget.skill_summary + "</h3>").appendTo(c_item);
+			var trash_button = $('<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+				.appendTo(c_header)
+				.click(function() {
+					$.ajax({
+						type: 'DELETE',
+						url: "/api/exercises/"+exercise.id,
+						contentType: "application/json",
+						data: "",
+						success: function() {
+							c_item.remove();
+							exercises.splice(index, 1);
+							check_init_autocreate_buttons();
+						}, 
+					});
+				});
+
 
 			var id = "n"+nugget_index+"e"+index;
 			var c_info = $("<div><label for=\""+id+"\">public</label></div>").appendTo(c_item);
@@ -371,8 +500,14 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		};
 		exercises.forEach(createExerciseEntry);
 
+		function check_init_autocreate_buttons() {
+		n_item.find(".autocreate_q").remove();
+		n_item.find(".autocreate_e").remove();
+
 		if (words.length == 2 && questions.length === 0) {
-			var c_item = $("<li></li>").appendTo(c_list);
+			(function() {
+
+			var c_item = $('<li class="autocreate_q"></li>').appendTo(c_list);
 			var c_header = $('<h3>(No questions)</h3>').appendTo(c_item);
 			var c_body = $('<div></div>');
 			c_body.appendTo(c_item);
@@ -400,21 +535,25 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						}]];
 			c_button.click(function() {
 				$.ajax({
-					url: "/api/question",
+					url: "/api/questions",
 					contentType: "application/json",
 					type: "POST",
 					data: JSON.stringify(question_data),
 					success: function(resp) {
 						c_item.remove();
-						createQuestionEntry(resp, 2);
+						questions.push(resp);
+						createQuestionEntry(resp, 0);
 					},
 				});
 			});
 
+			})();
 		}
 
 		if (words.length == 2 && exercises.length === 0) {
-			var c_item = $("<li></li>").appendTo(c_list);
+			(function() {
+
+			var c_item = $('<li class="autocreate_e"></li>').appendTo(c_list);
 			var c_header = $('<h3>(No exercises)</h3>').appendTo(c_item);
 			var c_body = $('<div></div>');
 			c_body.appendTo(c_item);
@@ -434,21 +573,25 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						}]];
 			c_button.click(function() {
 				$.ajax({
-					url: "/api/exercise",
+					url: "/api/exercises",
 					contentType: "application/json",
 					type: "POST",
 					data: JSON.stringify(exercise_data),
 					success: function(resp) {
 						c_item.remove();
-						createExerciseEntry(resp, 2);
+						exercises.push(resp);
+						createExerciseEntry(resp, 0);
 					},
 				});
 			});
 
+			})();
 		}
+		}
+		check_init_autocreate_buttons();
 		
-	});
-};
+	}); // forEach nugget ends
+}; // function drawList ends
 
 var nugget_resp = null;
 var bundle_resp = null;

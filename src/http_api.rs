@@ -230,6 +230,30 @@ pub fn del_item(req: &mut Request) -> PencilResult {
             }
             jsonify(&())
         },
+        "del_skill" => {
+            if skill::remove(&conn, id).err_500()?.is_none() {
+                 return abort(404);
+            }
+            jsonify(&())
+        },
+        "del_word" => {
+            if manage::remove_word(&conn, id).err_500()?.is_none() {
+                 return abort(404);
+            }
+            jsonify(&())
+        },
+        "del_question" => {
+            if !manage::remove_question(&conn, id).err_500()? {
+                 return abort(404);
+            }
+            jsonify(&())
+        },
+        "del_exercise" => {
+            if !manage::remove_exercise(&conn, id).err_500()?{
+                 return abort(404);
+            }
+            jsonify(&())
+        },
         _ => return Err(internal_error("no such endpoint!")),
     };
 

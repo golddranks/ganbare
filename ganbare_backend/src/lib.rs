@@ -185,6 +185,16 @@ pub fn log_by_id(conn : &PgConnection, user_id : i32, skill_id: i32, level_incre
 
 }
 
+pub fn remove(conn: &PgConnection, id: i32) -> Result<Option<SkillNugget>> {
+    use schema::skill_nuggets;
+
+    let skill: Option<SkillNugget> = diesel::delete(skill_nuggets::table.filter(skill_nuggets::id.eq(id)))
+        .get_result(conn)
+        .optional()?;
+
+    Ok(skill)
+}
+
 }
 
 

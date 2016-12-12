@@ -2,9 +2,6 @@
 
 Today:
 
-- Ability to change audio bundle
-- Ability to delete word
-- Autocreate button doesn't disappear
 - Fix the answer button UI bug on IE
 - Fix the survey UI bug on mobile
 

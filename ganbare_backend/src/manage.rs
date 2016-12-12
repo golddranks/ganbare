@@ -27,10 +27,12 @@ pub fn create_quiz(conn : &PgConnection, new_q: NewQuestion, mut answers: Vec<Fi
 
     // Sanity check
     if answers.len() == 0 {
+        warn!("Can't create a question with 0 answers!");
         return Err(ErrorKind::FormParseError.into());
     }
     for a in &answers {
         if a.q_variants.len() == 0 {
+            warn!("Can't create a question with 0 audio files for question!");
             return Err(ErrorKind::FormParseError.into());
         }
     }
@@ -235,6 +237,40 @@ pub fn update_answer(conn : &PgConnection, id: i32, mut item: UpdateAnswer, imag
         .get_result(conn)
         .optional()?;
     Ok(item)
+}
+
+pub fn remove_word(conn: &PgConnection, id: i32) -> Result<Option<Word>> {
+    use schema::words;
+
+    let word: Option<Word> = diesel::delete(words::table.filter(words::id.eq(id)))
+        .get_result(conn)
+        .optional()?;
+
+    Ok(word)
+}
+
+pub fn remove_question(conn: &PgConnection, id: i32) -> Result<bool> {
+    use schema::{quiz_questions, question_answers};
+
+    diesel::delete(question_answers::table.filter(question_answers::question_id.eq(id)))
+        .execute(conn)?;
+
+    let count = diesel::delete(quiz_questions::table.filter(quiz_questions::id.eq(id)))
+        .execute(conn)?;
+
+    Ok(count == 1)
+}
+
+pub fn remove_exercise(conn: &PgConnection, id: i32) -> Result<bool> {
+    use schema::{exercises, exercise_variants};
+
+    diesel::delete(exercise_variants::table.filter(exercise_variants::exercise_id.eq(id)))
+        .execute(conn)?;
+
+    let count = diesel::delete(exercises::table.filter(exercises::id.eq(id)))
+        .execute(conn)?;
+
+    Ok(count == 1)
 }
 
 pub fn post_question(conn : &PgConnection, question: NewQuizQuestion, mut answers: Vec<NewAnswer>) -> Result<i32> {

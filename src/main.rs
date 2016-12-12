@@ -104,12 +104,16 @@ pub fn main() {
     app.get("/api/questions/<id:int>", "get_question", http_api::get_item);
     app.get("/api/exercises/<id:int>", "get_exercise", http_api::get_item);
     app.get("/api/words/<id:int>", "get_word", http_api::get_item);
-    app.post("/api/question", "post_question", http_api::post_question);
-    app.post("/api/exercise", "post_exercise", http_api::post_exercise);
+    app.post("/api/questions", "post_question", http_api::post_question);
+    app.post("/api/exercises", "post_exercise", http_api::post_exercise);
+    app.delete("/api/words/<id:int>", "del_word", http_api::del_item);
+    app.delete("/api/questions/<id:int>", "del_question", http_api::del_item);
+    app.delete("/api/exercises/<id:int>", "del_exercise", http_api::del_item);
     app.put("/api/users/<user_id:int>?add_group=<group_id:int>", "add_group", http_api::user);
     app.put("/api/users/<user_id:int>?remove_group=<group_id:int>", "remove_group", http_api::user);
     app.put("/api/users/<user_id:int>?settings=metrics", "set_metrics", http_api::user);
     app.delete("/api/users/<id:int>", "del_user", http_api::del_item);
+    app.delete("/api/skills/<id:int>", "del_skill", http_api::del_item);
     app.put("/api/questions/<id:int>?publish", "publish_questions", http_api::set_published);
     app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", http_api::set_published);
     app.put("/api/words/<id:int>?publish", "publish_words", http_api::set_published);

@@ -106,6 +106,9 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
                     );
                 }
             }
+            if q_variants.len() == 0 {
+                return Err(Error::from("Can't create a question with 0 audio files for question!"));
+            }
             let answer_audio = files.get(&format!("choice_{}_answer_audio", i));
             let answer_audio_path;
             if let Some(path) = answer_audio {
@@ -134,7 +137,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult  {
 
     let (conn, _, sess) = auth_user(req, "editors")?;
 
-    let form = parse_form(&mut *req).map_err(|ee| { error!("{:?}", ee); abort(400).unwrap_err()})?;
+    let form = err_400!(parse_form(&mut *req), "Error with parsing form!");
     let result = manage::create_quiz(&conn, form.0, form.1, &*AUDIO_DIR);
     result.map_err(|e| match e.kind() {
         &ErrorKind::FormParseError => abort(400).unwrap_err(),
