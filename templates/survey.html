@@ -90,7 +90,7 @@
 			{q: "Mikä on äidinkielesi?", a: languages},
 			];
 
-			var i = 0;
+			var i = parseInt("{{ answered_questions }}") || 0;
 			var main = $("#main");
 			var surveyBox = $("#surveyBox");
 			var answerButtons = $("#answerButtons");
@@ -99,17 +99,27 @@
 
 			var answered = [];
 
-			function answerQuestion(answerData) {
+			function answerQuestion(answerData, q_number) {
 				main.css("min-height", main.css("height"));
 				$.ajax({
 					type: "POST",
 					url: "/api/eventdata/survey",
 					contentType : "application/json",
 					data: JSON.stringify(answerData),
-				});
-				surveyBox.slideUp(400, function() {
-					increment();
-					surveyBox.fadeIn();
+					success: function() {
+						$.ajax({
+							type: "PUT",
+							url: "/api/eventdata/survey/answered_questions",
+							contentType : "application/json",
+							data: JSON.stringify(q_number),
+							success: function() {
+								surveyBox.slideUp(400, function() {
+									increment();
+									surveyBox.fadeIn();
+								});
+							}
+						});
+					}
 				});
 			}
 
@@ -128,7 +138,7 @@
 						var button = $('<button class="multilineButton">'+a+'</button>');
 
 						button.appendTo($('<p></p>').appendTo(answerButtons));
-						button.click(function() { answerQuestion({q: question, a: button.html()})});
+						button.one('click', function() { answerQuestion({q: question, a: button.html()}, i)});
 					});
 
 				} else if (answers === "textfield") {
@@ -139,7 +149,7 @@
 
 					$('<button style="min-width: 50%; margin-top: 1em;">Ok</button>')
 						.appendTo(answerButtons)
-						.click(function() { answerQuestion({q: question, a: textarea.val()}) });
+						.one('click', function() { answerQuestion({q: question, a: textarea.val()}, i) });
 
 				} else if (answers === "fourfold") {
 
@@ -169,7 +179,7 @@
 
 					$('<button style="min-width: 60%; margin-top: 1em;">Ok</button>')
 						.appendTo(answerButtons)
-						.click(function() { answerQuestion({q: question, a: null}) });
+						.one('click', function() { answerQuestion({q: question, a: answerData}, i) });
 
 				} else if (answers === "languages") {
 					$(' <input type="checkbox" id="suomi"><label for="suomi">suomi</label>\
@@ -179,14 +189,14 @@
 
 					$('<button style="min-width: 50%; margin-top: 1em;">Ok</button>')
 						.appendTo(answerButtons)
-						.click(function() {
+						.one('click', function() {
 							var answerData = {q: question, a:
 								{	suomea: $("#suomi").is(":checked"),
 									ruotsia: $("#ruotsi").is(":checked"),
 									muuta: $("#muukieli").val(),
 								}
 							};
-							answerQuestion(answerData);
+							answerQuestion(answerData, i);
 						});
 				};
 				i++;

@@ -3,8 +3,6 @@
 Today:
 
 - Fix the answer button UI bug on IE
-- Fix the survey UI bug on mobile
-
 
 - Implement forgot password feature
 - Implement nag emails

@@ -64,9 +64,14 @@ pub fn ok(req: &mut Request) -> PencilResult {
 
 pub fn survey(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
-    event::require_ongoing(&conn, "survey", &user).err_401()?;
+    let (event, _) = event::require_ongoing(&conn, "survey", &user).err_401()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), "survey".into());
+    let answered_questions = event::get_userdata(&conn, &event, &user, "answered_questions")
+        .err_500()?
+        .map(|d| d.data)
+        .unwrap_or_else(|| "".to_string());
+    context.insert("answered_questions".into(), answered_questions);
     req.app
         .render_template("survey.html", &context)
         .refresh_cookie(&sess)

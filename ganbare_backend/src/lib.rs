@@ -321,4 +321,17 @@ pub fn save_userdata(conn: &PgConnection, event: &Event, user: &User, key: Optio
     }
 }
 
+pub fn get_userdata(conn: &PgConnection, event: &Event, user: &User, key: &str) -> Result<Option<EventUserdata>> {
+    use schema::event_userdata;
+
+    let result: Option<EventUserdata> = event_userdata::table
+        .filter(event_userdata::key.eq(key))
+        .filter(event_userdata::user_id.eq(user.id))
+        .filter(event_userdata::event_id.eq(event.id))
+        .get_result(conn)
+        .optional()?;
+
+    Ok(result)
+}
+
 }
