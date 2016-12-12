@@ -71,6 +71,7 @@ pub fn survey(req: &mut Request) -> PencilResult {
         .err_500()?
         .map(|d| d.data)
         .unwrap_or_else(|| "".to_string());
+
     context.insert("answered_questions".into(), answered_questions);
     req.app
         .render_template("survey.html", &context)

@@ -98,29 +98,48 @@
 			var progressMeter = $("#progressMeter");
 
 			var answered = [];
+			var alreadyAnswered = false;
 
 			function answerQuestion(answerData, q_number) {
+				if (alreadyAnswered === true) {
+					return;
+				}
+				alreadyAnswered = true;
 				main.css("min-height", main.css("height"));
+				function postAnswer() {
 				$.ajax({
 					type: "POST",
 					url: "/api/eventdata/survey",
 					contentType : "application/json",
 					data: JSON.stringify(answerData),
-					success: function() {
+					success: function putQuestionNumber() {
+						console.log("Successfully posted the answer.");
 						$.ajax({
 							type: "PUT",
 							url: "/api/eventdata/survey/answered_questions",
 							contentType : "application/json",
 							data: JSON.stringify(q_number),
 							success: function() {
+								console.log("Successfully saved the answer! Next question!");
+								alreadyAnswered = false;
 								surveyBox.slideUp(400, function() {
 									increment();
 									surveyBox.fadeIn();
 								});
+							},
+							error: function() {
+								console.log("connection error, trying again in 3 secs");
+								setTimeout(putQuestionNumber, 3000);
 							}
 						});
+					},
+					error: function() {
+						console.log("connection error, trying again in 3 secs");
+						setTimeout(postAnswer, 3000);
 					}
 				});
+				}
+				postAnswer();
 			}
 
 			function increment() {
