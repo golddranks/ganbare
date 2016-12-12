@@ -22,7 +22,7 @@ extern crate rand;
 extern crate chrono;
 extern crate regex;
 extern crate unicode_normalization;
-
+extern crate mime;
 
 #[macro_use]
 mod helpers;
@@ -42,6 +42,11 @@ pub use ganbare::errors::ErrorKind::Msg as ErrMsg;
 pub use ganbare::errors::Result as Result;
 pub use ganbare::errors::{Error, ErrorKind};
 
+
+pub fn favicon(_: &mut Request) -> PencilResult {
+    use pencil::helpers::send_file;
+    send_file("static/images/speaker_pink.png", "image/x-icon".parse().unwrap(), false, None)
+}
 
 
 use pencil::Pencil;
@@ -63,6 +68,7 @@ pub fn main() {
     app.enable_static_file_handling();
 
     // BASIC FUNCTIONALITY
+    app.get("/favicon.ico", "favicon", favicon);
     app.get("/", "hello", app_pages::hello);
     app.get("/welcome", "welcome", app_pages::welcome);
     app.get("/survey", "survey", app_pages::survey);

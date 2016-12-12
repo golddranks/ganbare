@@ -10,10 +10,11 @@ The server is configured using environmental variables, or an `.env` file in the
     GANBARE_DATABASE_URL=postgres://drasa@localhost/ganbare_dev
     GANBARE_RUNTIME_PEPPER=some 32-byte random value encoded with Base64 (usually 44 ASCII characters) for peppering the password hashes.
     GANBARE_EMAIL_SERVER=mail.yourisp.net:25
+    GANBARE_SITE_DOMAIN Set this right for production for cookies etc. to work.
 
 The following have defaults, and you may omit them:
 
-    GANBARE_SITE_DOMAIN defaults to empty string, which may work for testing, but for set this right for production for cookies etc. to work.
+    GANBARE_SITE_LINK defaults to http://$GANBARE_SITE_DOMAIN:8081
     GANBARE_EMAIL_DOMAIN defaults to $GANBARE_SITE_DOMAIN
     GANBARE_SERVER_BINDING defaults to localhost:8080. When running inside a container, change this to 0.0.0.0:8080 for the site to be accessible from host.
     GANBARE_JQUERY defaults to /static/js/jquery.min.js. For production, try https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js

@@ -201,6 +201,13 @@
 		@include vendor('justify-content', 'center');
 	}
 
+	h1 {
+		margin-bottom: (_size(element-margin) * 0.2);
+	}
+
+	p {
+		margin-bottom: (_size(element-margin) * 0.4);
+	}
 }
 
 /* This fixes the blue outline on Chrome */
@@ -374,6 +381,18 @@ input.wordShowKana {
 }
 
 #surveyBox {
+
+	.smallscreen {
+		display: none;
+	}
+
+	textarea {
+		height: 10em;
+	}
+
+	#questionText {
+		min-height: 3.7em;
+	}
 	.multilineButton {
 		line-height: 2em;
 		height: 5em;
@@ -387,6 +406,23 @@ input.wordShowKana {
 		padding-bottom: 0;
 		margin-bottom: 0;
 	}
+
+	@include breakpoint(xxsmall) {
+		#questionText {
+			min-height: 5.5em;
+		}
+		.multilineButton {
+			line-height: 1.7em;
+			height: 5.3em;
+			width: 100%;
+			white-space: normal;
+			margin-bottom: 0.25em;
+		}
+		.smallscreen {
+			display: inline;
+		}
+	}
+
 }
 
 span.accent {
@@ -414,3 +450,4 @@ span.accent {
     width:20px;
     height:20px;
 }
+

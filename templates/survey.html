@@ -1,10 +1,9 @@
 {{#partial main_section}}
 	<header>
 	<h1>Kysely <span id="progressMeter"></span></h1>
-	<p>Kysymme alkuun lyhyesti siitä, millä tavalla olet yleensä tekemisissä japanin kielen kanssa.</p>
 	</header>
 		<div id="surveyBox">
-			<h2 id="questionText" style="height: 3.7em;"></h2>
+			<h2 id="questionText"></h2>
 			<div id="answerButtons">
 			</div>
 		</div>
@@ -21,12 +20,16 @@
 
 		function incrementFactory() {
 
+			var answers_0 = [
+				"Aloita kysely!",
+			];
+
 			var answers_1 = [
-				"satunnaisesti; joitakin kertoja<br>vuodessa tai harvemmin",
-				"silloin tällöin, mutta joskus on viikkojen<br>tai kuukausien taukoja",
-				"viikoittain tai ainakin<br>monta kertaa kuussa",
-				"monta kertaa viikossa",
-				"päivittäin",
+				'satunnaisesti; <br class="smallscreen">joitakin kertoja<br>vuodessa tai harvemmin',
+				'silloin tällöin, mutta <br class="smallscreen">joskus on viikkojen<br>tai kuukausien taukoja',
+				'viikoittain tai ainakin<br>monta kertaa kuussa',
+				'monta kertaa viikossa',
+				'päivittäin',
 			];
 
 			var answers_2 = [
@@ -40,20 +43,23 @@
 			var answers_3 = [
 				"käyn monta tuntia viikossa",
 				"käyn kerran viikossa",
-				"olen käynyt satunnaisesti/lyhytkestoisesti",
+				"olen käynyt satunnaisesti/<wbr>lyhytkestoisesti",
 				"en ole käynyt",
 			];
 
-			var answers_4 = "textfield";
-			var answers_5 = "fourfold";
-			var answers_6 = "languages";
+			var textfield = "textfield";
+			var fourfold = "fourfold";
+			var languages = "languages";
 
 			var questions = [
+
+			{q: "Mitkä uskot olevan vahvuutesi japanin kielitaidossasi?", a: fourfold},
+			{q: "Kysymme alkuun lyhyesti siitä, millä tavalla olet yleensä tekemisissä japanin kielen kanssa.", a: answers_0},
 			{q: "Juttelen japaniksi verkossa, esimerkiksi Facebookissa, Twitterissä tai Linessä.", a: answers_1},
 			{q: "Luen japanilaisia blogeja.", a: answers_1},
 			{q: "Katson YouTubesta ym. videopalveluista japaninkielisiä v-blogeja tai let's play -videoita.", a: answers_1},
 			{q: "Kuuntelen japanilaisia radio-ohjelmia tai podcasteja.", a: answers_1},
-			{q: "Kuuntelen japanilaista musiikkia niin intensiivisesti, että kuuntelen tai selvitän, mitä sanat tarkoittavat.", a: answers_1},
+			{q: "Kuuntelen japanilaista musiikkia intensiivisesti; kuuntelen tai selvitän, mitä sanat tarkoittavat.", a: answers_1},
 			{q: "Katson animea.", a: answers_1},
 			{q: "Puhun japania livenä japanilaisten<br/>tuttavien kanssa", a: answers_1},
 			{q: "Katson japanilaisia draamasarjoja tai näytelmäelokuvia.", a: answers_1},
@@ -62,10 +68,9 @@
 			{q: "Luen japanilaisia romaaneja, nuortenkirjoja ym. proosaa.", a: answers_1},
 			{q: "Matkustan Japaniin.", a: answers_2},
 			{q: "Opiskelen japania käymällä kursseilla.", a: answers_3},
-			{q: "Opiskelen japania jollain muulla tavalla, millä?", a: answers_4},
-			{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: answers_4},
-			{q: "Mitkä uskot olevan vahvuutesi japanin kielitaidossasi?", a: answers_5},
-			{q: "Mitä kieliä osaat äidinkielisesti tai lähes-äidinkielisesti? (esim. äidinkielestä poikkeava koulukieli, tai ns. peritty kieli)", a: answers_6},
+			{q: "Opiskelen japania jollain muulla tavalla, millä?", a: textfield},
+			{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
+			{q: "Mikä on äidinkielesi?", a: languages},
 			];
 
 			var i = 0;
@@ -121,26 +126,47 @@
 
 				} else if (answers === "fourfold") {
 
-					var fourfold = $('<div>FIXME: Tähän tulee nelikenttä jota ei ole vielä toteutettu :(</div>').appendTo(answerButtons);
-					var answerData = {q: question, a: null};
+					var suullinen_kirjallinen = 50;
+					var ymmarrtaminen_tuottaminen = 50;
+
+					var fourfold = $('<div style="border: 1px solid grey; position: relative; margin: auto; margin-bottom: 1em; width: 16em; height: 16em;">\
+						<span style="position: absolute; left: -14%; top: -12%;">kuuntelu</span>\
+						<span style="position: absolute; left: -14%; bottom: -12%;">puhuminen</span>\
+						<span style="position: absolute; right: -14%; top: -12%;">lukeminen</span>\
+						<span style="position: absolute; right: -14%; bottom: -12%;">kirjoittaminen</span>\
+						<span style="position: absolute; text-align: center; right: 0; left: 0; top: 0.1em;">ymmärtäminen</span>\
+						<span style="position: absolute; text-align: center; right: 0; left: 0; bottom: 0.1em;">tuottaminen</span>\
+						<span style="position: absolute; transform: translate(-7em, 7em) rotate(90deg);text-align: center; left: 0; right: 0;">suullinen</span>\
+						<span style="position: absolute; transform: translate(7em, 7em) rotate(-90deg);text-align: center; left: 0; right: 0;">kirjallinen</span>\
+						<span id="fourfoldSpot" style="border: 1em solid red; border-radius: 1em; position: absolute; margin: -1em; left: 50%; top: 50%;"></span>\
+						<div id="fourfoldTouchpad" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0;"></div>\
+						</div>').appendTo(answerButtons);
+					$("#fourfoldTouchpad").click(function(ev) {
+						suullinen_kirjallinen = ev.offsetX/$(this).width()*100;
+						ymmarrtaminen_tuottaminen = ev.offsetY/$(this).height()*100;
+						console.log(suullinen_kirjallinen, ymmarrtaminen_tuottaminen);
+						$("#fourfoldSpot").css("left", suullinen_kirjallinen+"%");
+						$("#fourfoldSpot").css("top", ymmarrtaminen_tuottaminen+"%");
+					});
+					var answerData = {q: question, a: {suullinen_kirjallinen: suullinen_kirjallinen, ymmarrtaminen_tuottaminen: ymmarrtaminen_tuottaminen} };
 
 					$('<button style="min-width: 60%; margin-top: 1em;">Ok</button>')
 						.appendTo(answerButtons)
 						.click(function() { answerQuestion({q: question, a: null}) });
 
 				} else if (answers === "languages") {
-					$(' <input type="checkbox" id="suomea"><label for="suomea">suomea</label>\
-						<input type="checkbox" id="ruotsia"><label for="ruotsia">ruotsia</label>\
-						<label>jotain muuta, mitä?</label>\
-						<input type="text" id="muutakielta">').appendTo(answerButtons);
+					$(' <input type="checkbox" id="suomi"><label for="suomi">suomi</label>\
+						<input type="checkbox" id="ruotsi"><label for="ruotsi">ruotsi</label>\
+						<label>muu, mikä?</label>\
+						<input type="text" id="muukieli">').appendTo(answerButtons);
 
 					$('<button style="min-width: 50%; margin-top: 1em;">Ok</button>')
 						.appendTo(answerButtons)
 						.click(function() {
 							var answerData = {q: question, a:
-								{	suomea: $("#suomea").is(":checked"),
-									ruotsia: $("#ruotsia").is(":checked"),
-									muuta: $("#muutakielta").val(),
+								{	suomea: $("#suomi").is(":checked"),
+									ruotsia: $("#ruotsi").is(":checked"),
+									muuta: $("#muukieli").val(),
 								}
 							};
 							answerQuestion(answerData);

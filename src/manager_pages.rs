@@ -229,7 +229,7 @@ pub fn add_users(req: &mut Request) -> PencilResult {
             groups.push(err_400!(user::get_group(&conn, &field.to_lowercase()).err_500()?, "No such group?").id);
         }
         let secret = email::add_pending_email_confirm(&conn, email, groups.as_ref()).err_500()?;
-        email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &**req.app.handlebars_registry.read()
+        email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &*SITE_LINK, &**req.app.handlebars_registry.read()
                 .expect("The registry is basically read-only after startup."))
             .err_500()?;
     }

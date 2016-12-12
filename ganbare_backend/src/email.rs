@@ -18,26 +18,26 @@ use schema::pending_email_confirms;
 use super::*;
 
 #[derive(RustcEncodable)]
-struct EmailData<'a> { secret: &'a str, site_domain: &'a str }
+struct EmailData<'a> { secret: &'a str, site_link: &'a str }
 
 pub fn send_confirmation<SOCK: ToSocketAddrs>(email : &str, secret : &str, mail_server: SOCK,
-    email_origin_domain: &str, site_name: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
+    email_origin_domain: &str, site_name: &str, site_link: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
     
     impl<'a> ToJson for EmailData<'a> {
         fn to_json(&self) -> Json {
             let mut m: BTreeMap<String, Json> = BTreeMap::new();
             m.insert("secret".to_string(), self.secret.to_json());
-            m.insert("site_domain".to_string(), self.site_domain.to_json());
+            m.insert("site_link".to_string(), self.site_link.to_json());
             m.to_json()
         }
     }
 
-    let data = EmailData { secret: secret, site_domain: site_name };
+    let data = EmailData { secret, site_link };
     let from_addr = format!("noreply@{}", email_origin_domain);
     let email = EmailBuilder::new()
         .to(email)
         .from(Mailbox {name: Some("gamba.re 応援団".into()), address: from_addr})
-        .subject(&format!("[{}] Tervetuloa!", site_name))
+        .subject(&format!("【{}】Tervetuloa!", site_name))
         .html(hb_registry.render("email_confirm_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
             .as_ref())

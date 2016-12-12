@@ -28,6 +28,10 @@ lazy_static! {
     pub static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
         .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
 
+    pub static ref SITE_LINK : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_LINK")
+        .unwrap_or_else(|_|  format!("http://{}:8081", env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())))};
+        
+
     pub static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
         let binding = env::var("GANBARE_EMAIL_SERVER")
         .expect("GANBARE_EMAIL_SERVER: Specify an outbound email server, like this: mail.yourisp.com:25");
