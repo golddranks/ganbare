@@ -11,6 +11,7 @@
 #[macro_use] extern crate mime;
 #[macro_use] extern crate lazy_static;
 
+extern crate try_map;
 extern crate tempdir;
 extern crate time;
 extern crate crypto;
@@ -26,6 +27,7 @@ type DateTimeUTC = chrono::DateTime<chrono::UTC>;
 
 pub use diesel::prelude::*;
 
+pub use try_map::FallibleMapExt;
 pub use diesel::pg::PgConnection;
 
 
@@ -139,9 +141,9 @@ pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<
 
     let nuggets: Vec<SkillNugget> = skill_nuggets::table.order(skill_nuggets::skill_summary.asc()).get_results(conn)?;
 
-    let questions = QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?;
-
     let words = Word::belonging_to(&nuggets).order(words::id.asc()).load::<Word>(conn)?.grouped_by(&nuggets);
+
+    let questions = QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc()).load::<QuizQuestion>(conn)?;
 
     let q_answers = Answer::belonging_to(&questions).order(question_answers::id.asc()).load::<Answer>(conn)?.grouped_by(&questions) ;
 

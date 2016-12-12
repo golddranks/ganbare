@@ -259,7 +259,7 @@ pub fn all_groups(conn: &PgConnection) -> Result<Vec<UserGroup>> {
     Ok(groups)
 }
 
-pub fn get_all(conn: &PgConnection) -> Result<(Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>)>, Vec<UserGroup>, Vec<PendingEmailConfirm>)> {
+pub fn get_all(conn: &PgConnection) -> Result<(Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>, i64)>, Vec<UserGroup>, Vec<PendingEmailConfirm>)> {
     use schema::{users, user_metrics, pending_email_confirms, group_memberships, user_stats};
 
     let groups = all_groups(conn)?;
@@ -267,17 +267,28 @@ pub fn get_all(conn: &PgConnection) -> Result<(Vec<(User, UserMetrics, UserStats
     let users: Vec<User> = users::table
         .get_results(conn)?;
 
-    let users_metrics: Vec<UserMetrics> = user_metrics::table
-        .get_results(conn)?;
+    let mut overdues = vec![];
 
-    let user_stats: Vec<UserStats> = user_stats::table
-        .get_results(conn)?;
+    for u in &users {
+        overdues.push(quiz::count_overdue_items(conn, u.id)?);
+    }
+
+    let users_metrics: Vec<Vec<UserMetrics>> = user_metrics::table
+        .get_results(conn)?
+        .grouped_by(&users);
+
+    let user_stats: Vec<Vec<UserStats>> = user_stats::table
+        .get_results(conn)?
+        .grouped_by(&users);
 
     let user_groups : Vec<Vec<GroupMembership>> = group_memberships::table
         .get_results(conn)?
         .grouped_by(&users);
 
-    let users_groups = users.into_iter().zip(users_metrics.into_iter().zip(user_stats.into_iter().zip(user_groups.into_iter()))).map(|(u, (m, (s, g)))| (u, m, s, g)).collect();
+    let users_groups: Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>, i64)>
+        = users.into_iter().zip(
+            users_metrics.into_iter().zip(user_stats.into_iter().zip(user_groups.into_iter().zip(overdues.into_iter())))
+        ).map(|(u, (mut m, (mut s, (g, o))))| (u, m.remove(0), s.remove(0), g, o)).collect();
 
     let confirms: Vec<PendingEmailConfirm> = pending_email_confirms::table
         .get_results(conn)?;
@@ -294,6 +305,6 @@ pub fn set_metrics(conn: &PgConnection, metrics: &UpdateUserMetrics) -> Result<O
         .set(metrics)
         .get_result(conn)
         .optional()?;
-        
+
     Ok(item)
 }

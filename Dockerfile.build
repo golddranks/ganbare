@@ -69,8 +69,9 @@ ENV PATH=$PREFIX/bin:/root/.cargo/bin:$PATH \
     PKG_CONFIG_ALLOW_CROSS=true \
     PKG_CONFIG_ALL_STATIC=true \
     PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig \
-    LD_LIBRARY_PATH=$PREFIX/lib
-
+    LD_LIBRARY_PATH=$PREFIX/lib \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    SSL_CERT_DIR=/etc/ssl/certs
 
 # MAKE AND INSTALL NATIVE DEPENDENCIES
 

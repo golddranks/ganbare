@@ -18,6 +18,7 @@ docker run -d --restart=unless-stopped \
 -e "GANBARE_DATABASE_URL=postgres://\$(whoami)@ganbare-postgres/$DEPLOY_DB_NAME" \
 -e "GANBARE_RUNTIME_PEPPER=$(cat $DEPLOY_LOCAL_PEPPERFILE)" \
 -e "GANBARE_SITE_DOMAIN=$DEPLOY_DOMAIN" \
+-e "RUST_LOG=ganbare=debug,ganbare_backend=debug" \
 -v $DEPLOY_STATIC_DIR/audio:/ganbare/audio \
 -v $DEPLOY_STATIC_DIR/images:/ganbare/images \
 golddranks/ganbare_run

@@ -18,6 +18,7 @@ use ganbare::user;
 use ganbare::session;
 use ganbare::errors;
 use std::path::PathBuf;
+pub use try_map::FallibleMapExt;
 
 lazy_static! {
  

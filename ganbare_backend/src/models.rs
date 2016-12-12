@@ -1,7 +1,7 @@
 use super::schema::*;
 use diesel::ExpressionMethods;
-
 use chrono::{DateTime, UTC};
+use try_map::FallibleMapExt;
 
 #[derive(Insertable)]
 #[table_name="users"]
@@ -488,7 +488,7 @@ pub struct SkillData {
     pub skill_level: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable)]
 #[belongs_to(User, foreign_key = "id")]
 #[table_name="user_metrics"]
 pub struct UserMetrics {
@@ -511,7 +511,33 @@ pub struct UserMetrics {
     pub cooldown_delay: i32,
 }
 
-#[derive(Debug, AsChangeset, Identifiable, RustcEncodable, RustcDecodable)]
+use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+
+impl Encodable for UserMetrics {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_struct("UserMetrics", 16, |s| {
+            s.emit_struct_field("id", 0, |s| { s.emit_i32(self.id) })?;
+            s.emit_struct_field("new_words_since_break", 1, |s| { s.emit_i32(self.new_words_since_break) })?;
+            s.emit_struct_field("new_words_today", 2, |s| { s.emit_i32(self.new_words_today) })?;
+            s.emit_struct_field("quizes_since_break", 3, |s| { s.emit_i32(self.quizes_since_break) })?;
+            s.emit_struct_field("quizes_today", 4, |s| { s.emit_i32(self.quizes_today) })?;
+            s.emit_struct_field("break_until", 5, |s| { s.emit_str(&self.break_until.to_rfc3339()) })?;
+            s.emit_struct_field("today", 6, |s| { s.emit_str(&self.today.to_rfc3339()) })?;
+            s.emit_struct_field("max_words_since_break", 7, |s| { s.emit_i32(self.max_words_since_break) })?;
+            s.emit_struct_field("max_words_today", 8, |s| { s.emit_i32(self.max_words_today) })?;
+            s.emit_struct_field("max_quizes_since_break", 9, |s| { s.emit_i32(self.max_quizes_since_break) })?;
+            s.emit_struct_field("max_quizes_today", 10, |s| { s.emit_i32(self.max_quizes_today) })?;
+            s.emit_struct_field("break_length", 11, |s| { s.emit_i32(self.break_length) })?;
+            s.emit_struct_field("delay_multiplier", 12, |s| { s.emit_i32(self.delay_multiplier) })?;
+            s.emit_struct_field("initial_delay", 13, |s| { s.emit_i32(self.initial_delay) })?;
+            s.emit_struct_field("streak_limit", 14, |s| { s.emit_i32(self.streak_limit) })?;
+            s.emit_struct_field("cooldown_delay", 15, |s| { s.emit_i32(self.cooldown_delay) })?;
+            Ok(())
+        })
+    }
+}
+
+#[derive(Debug, AsChangeset, Identifiable)]
 #[table_name="user_metrics"]
 pub struct UpdateUserMetrics {
     pub id: i32,
@@ -531,6 +557,33 @@ pub struct UpdateUserMetrics {
     pub initial_delay: Option<i32>,
     pub streak_limit: Option<i32>,
     pub cooldown_delay: Option<i32>,
+}
+
+impl Decodable for UpdateUserMetrics {
+    fn decode<D: Decoder>(d: &mut D) -> Result<UpdateUserMetrics, D::Error> {
+        d.read_struct("UserMetrics", 16, |d| {
+            Ok(UpdateUserMetrics{
+                id: d.read_struct_field("id", 0, Decodable::decode)?,
+                new_words_since_break: d.read_struct_field("new_words_since_break", 1, Decodable::decode)?,
+                new_words_today: d.read_struct_field("new_words_today", 2, Decodable::decode)?,
+                quizes_since_break: d.read_struct_field("quizes_since_break", 3, Decodable::decode)?,
+                quizes_today: d.read_struct_field("quizes_today", 4, Decodable::decode)?,
+                break_until: d.read_struct_field("break_until", 5, <Option<String> as Decodable>::decode)?
+                    .try_map(|s| DateTime::parse_from_rfc3339(&s).map_err(|_| d.error("Can't decode a date from rfc3339!")))?.map(|t| t.with_timezone(&UTC)),
+                today: d.read_struct_field("today", 6, <Option<String> as Decodable>::decode)?
+                    .try_map(|s| DateTime::parse_from_rfc3339(&s).map_err(|_| d.error("Can't decode a date from rfc3339!")))?.map(|t| t.with_timezone(&UTC)),
+                max_words_since_break: d.read_struct_field("max_words_since_break", 7, Decodable::decode)?,
+                max_words_today: d.read_struct_field("max_words_today", 8, Decodable::decode)?,
+                max_quizes_since_break: d.read_struct_field("max_quizes_since_break", 9, Decodable::decode)?,
+                max_quizes_today: d.read_struct_field("max_quizes_today", 10, Decodable::decode)?,
+                break_length: d.read_struct_field("break_length", 11, Decodable::decode)?,
+                delay_multiplier: d.read_struct_field("delay_multiplier", 12, Decodable::decode)?,
+                initial_delay: d.read_struct_field("initial_delay", 13, Decodable::decode)?,
+                streak_limit: d.read_struct_field("streak_limit", 14, Decodable::decode)?,
+                cooldown_delay: d.read_struct_field("cooldown_delay", 15, Decodable::decode)?,
+            })
+        })
+    }
 }
 
 #[derive(Insertable)]

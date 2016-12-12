@@ -3,8 +3,9 @@
 Today:
 
 - Don't count time when viewing a word in a inactive tab.
-- Add canceling a break setting to the user page
-
+- Ability to change audio bundle
+- Ability to delete word
+- Autocreate button doesn't disappear
 - Fix the answer button UI bug on IE
 - Fix the survey UI bug on mobile
 
@@ -16,11 +17,9 @@ Today:
 
 
 Tomorrow:
+- Event status on user management page
 - Introduce higher-level questions
 - Impl the test tool (asks questions from both groups)
-
-
-Weekend:
 - Implement anonymous groups and anonymous aliases
 - Impl a tool that then splits the group into half and assigns them to different groups
 

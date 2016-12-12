@@ -24,6 +24,7 @@ $(function() {
 			var user_metrics = u[1];
 			var user_stats = u[2];
 			var group_memberships = u[3];
+			var overdues = u[4];
 
 			var user_list_tr = $('<tr></tr>').appendTo(usersList);
 			$('<th scope="row">'+user.email+'</th>').appendTo(user_list_tr);
@@ -86,8 +87,9 @@ $(function() {
 			$('<td>'+user_stats.all_words+'</td>').appendTo(user_item);
 			$('<td>'+user_stats.quiz_all_times+'</td>').appendTo(user_item);
 			$('<td>'+Math.round(user_stats.quiz_correct_times/user_stats.quiz_all_times*100)+' %</td>').appendTo(user_item);
+			$('<td>'+overdues+'</td>').appendTo(user_item);
 
-			function put_user_settings(type, settings) {
+			function put_user_settings(type, settings, success_fn) {
 					var url = "/api/users/"+user.id+"?settings="+type;
 					settings.id = user.id;
 					var request = {
@@ -95,43 +97,111 @@ $(function() {
 						url: url,
 						contentType: "application/json",
 						data: JSON.stringify(settings),
-						success: function() {
-							console.log("User settings changed!");
-						}, 
+						success: function() { console.log("Success!"); success_fn() }, 
 					};
 					$.ajax(request);
 			}
 
-			$('<td></td>').appendTo(user_item)
-				.append(
-					$('<input style="width: 5em;" type="text" value="'+user_metrics.max_words_since_break+'">')
-						.change(function(){
-							put_user_settings("metrics", {max_words_since_break: $(this).val()});
-						})
-				);
-			$('<td></td>').appendTo(user_item)
-				.append(
-					$('<input style="width: 5em;" type="text" value="'+user_metrics.max_words_today+'">')
-						.change(function(){
-							put_user_settings("metrics", {max_words_today: $(this).val()});
-						})
+			$('<td></td>').text(user_metrics.new_words_since_break+'/'+user_metrics.max_words_since_break).appendTo(user_item)
+				.click(function(ev) {
+					ev.stopPropagation();
+					var cell = $(this);
+					$("body").click(function(ev) {
+						cell.text(user_metrics.new_words_since_break+'/'+user_metrics.max_words_since_break);
+					})
+					cell.empty().append(
+						$('<input style="width: 5em;" type="text" value="'+user_metrics.max_words_since_break+'">')
+							.change(function(){
+								var new_val = $(this).val();
+								put_user_settings("metrics", {max_words_since_break: new_val}, function() {
+									user_metrics.max_words_since_break = new_val;
+									cell.text(user_metrics.new_words_since_break+'/'+user_metrics.max_words_since_break);
+								});
+							})
+							.click(function(ev) {
+								ev.stopPropagation();
+							})
 					);
-			$('<td></td>').appendTo(user_item)
-				.append(
-					$('<input style="width: 5em;" type="text" value="'+user_metrics.max_quizes_since_break+'">')
-						.change(function(){
-							put_user_settings("metrics", {max_quizes_since_break: $(this).val()});
-						})
-					);
-			$('<td></td>').appendTo(user_item)
-				.append(
-					$('<input style="width: 5em;" type="text" value="'+user_metrics.max_quizes_today+'">')
-						.change(function(){
-							put_user_settings("metrics", {max_quizes_today: $(this).val()});
-						})
-					);
+				});
 
+			$('<td></td>').text(user_metrics.new_words_today+'/'+user_metrics.max_words_today).appendTo(user_item)
+				.click(function(ev) {
+					ev.stopPropagation();
+					var cell = $(this);
+					$("body").click(function(ev) {
+						cell.text(user_metrics.new_words_today+'/'+user_metrics.max_words_today);
+					})
+					cell.empty().append(
+						$('<input style="width: 5em;" type="text" value="'+user_metrics.max_words_today+'">')
+							.change(function(){
+								var new_val = $(this).val();
+								put_user_settings("metrics", {max_words_today: new_val}, function() {
+									user_metrics.max_words_today = new_val;
+									cell.text(user_metrics.new_words_today+'/'+user_metrics.max_words_today);
+								});
+							})
+							.click(function(ev) {
+								ev.stopPropagation();
+							})
+					);
+				});
 
+			$('<td></td>').text(user_metrics.quizes_since_break+'/'+user_metrics.max_quizes_since_break).appendTo(user_item)
+				.click(function(ev) {
+					ev.stopPropagation();
+					var cell = $(this);
+					$("body").click(function(ev) {
+						cell.text(user_metrics.quizes_since_break+'/'+user_metrics.max_quizes_since_break);
+					})
+					cell.empty().append(
+						$('<input style="width: 5em;" type="text" value="'+user_metrics.max_quizes_since_break+'">')
+							.change(function(){
+								var new_val = $(this).val();
+								put_user_settings("metrics", {max_quizes_since_break: new_val}, function() {
+									user_metrics.max_quizes_since_break = new_val;
+									cell.text(user_metrics.quizes_since_break+'/'+user_metrics.max_quizes_since_break);
+								});
+							})
+							.click(function(ev) {
+								ev.stopPropagation();
+							})
+					);
+				});
+			
+			$('<td></td>').text(user_metrics.quizes_today+'/'+user_metrics.max_quizes_today).appendTo(user_item)
+				.click(function(ev) {
+					ev.stopPropagation();
+					var cell = $(this);
+					$("body").click(function(ev) {
+						cell.text(user_metrics.quizes_today+'/'+user_metrics.max_quizes_today);
+					})
+					cell.empty().append(
+						$('<input style="width: 5em;" type="text" value="'+user_metrics.max_quizes_today+'">')
+							.change(function(){
+								var new_val = $(this).val();
+								put_user_settings("metrics", {max_quizes_today: new_val}, function() {
+									user_metrics.max_quizes_today = new_val;
+									cell.text(user_metrics.quizes_today+'/'+user_metrics.max_quizes_today);
+								});
+							})
+							.click(function(ev) {
+								ev.stopPropagation();
+							})
+					);
+				});
+			var break_button = $('<td></td>').appendTo(user_item)
+			if (new Date(user_metrics.break_until) > new Date()) {
+				$('<button>stop</button>')
+					.appendTo(break_button)
+					.click(function(){
+						user_metrics.break_until = new Date().toISOString();
+						put_user_settings("metrics", {break_until: user_metrics.break_until}, function() {
+							location.reload();
+						});
+					});
+			} else {
+				break_button.text("no");
+			}
 		});
 
 		if (pending_users.length === 0) {

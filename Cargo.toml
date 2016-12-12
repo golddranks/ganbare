@@ -21,3 +21,4 @@ handlebars = "0.16"
 unicode-normalization = "*"
 regex = "0.1"
 tempdir = "0.3"
+try_map = { git = "https://github.com/golddranks/try_map.git", branch="master" }

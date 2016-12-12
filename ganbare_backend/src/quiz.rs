@@ -1,5 +1,5 @@
 use super::*;
-use rand;
+use rand::{Rng, thread_rng};
 use diesel::expression::dsl::{all, any};
 use unicode_normalization::UnicodeNormalization;
 
@@ -436,6 +436,18 @@ fn choose_next_due_item(conn : &PgConnection, user_id: i32) -> Result<Option<(Du
     Ok(due_item)
 }
 
+pub fn count_overdue_items(conn : &PgConnection, user_id: i32) -> Result<i64> {
+    use schema::{due_items};
+
+    let count: i64 = due_items::table
+        .filter(due_items::user_id.eq(user_id))
+        .filter(due_items::due_date.lt(chrono::UTC::now()))
+        .count()
+        .get_result(conn)?;
+
+    Ok(count)
+}
+
 fn choose_random_overdue_item(conn : &PgConnection, user_id: i32) -> Result<Option<QuizType>> {
     use schema::{due_items, question_data, exercise_data};
 
@@ -561,12 +573,14 @@ fn choose_cooldown_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetric
 fn choose_new_q_or_e(conn: &PgConnection, user: &User) -> Result<Option<QuizType>> {
 
     if user::check_user_group(conn, user, "input_group")? {
+        debug!("This user is a part of the input group so let's give them questions.");
         if let Some(q) = choose_new_question(conn, user.id)? {
             return Ok(Some(QuizType::Question(q.id)))
         }
     }
 
     if user::check_user_group(conn, user, "output_group")? {
+        debug!("This user is a part of the output group so let's give them exercises.");
         if let Some(e) = choose_new_exercise(conn, user.id)? {
             return Ok(Some(QuizType::Exercise(e.id)))
         }
@@ -650,19 +664,24 @@ fn choose_new_word(conn : &PgConnection, metrics: &mut UserMetrics) -> Result<Op
     if metrics.new_words_since_break >= metrics.max_words_since_break
     || metrics.new_words_today >= metrics.max_words_today
     || metrics.break_until > chrono::UTC::now() {
+        debug!("Enough words for today. The break/daily limits are full.");
         return Ok(None)
     }
 
     let user_id = metrics.id;
 
-    let paired_word = choose_new_paired_word(conn, user_id)?;
+    if let Some(paired_word) = choose_new_paired_word(conn, user_id)? {
+        debug!("There is a yet-unintroduced pair word; presenting that.");
+        return Ok(Some(paired_word));
+    }
     
-    let word = match paired_word {
-        None => choose_new_random_word(conn, user_id)?,
-        some => some,
-    };
+    if let Some(rand_word) = choose_new_random_word(conn, user_id)? {
+        debug!("No paired words, returning a randomly chosen word.");
+        return Ok(Some(rand_word));
+    }
 
-    Ok(word)
+    debug!("No words at all; returning.");
+    Ok(None)
 }
 
 fn clear_limits(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
@@ -705,7 +724,7 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
     let no_new_words = choose_new_random_word(conn, user_id)?.is_none();
     let no_new_quizes =  choose_new_q_or_e(conn, user)?.is_none();
 
-    debug!("No new quizes available: {:?} (either limited by lack of new words or by lack of... new quizes)", no_new_quizes);
+    debug!("No new quizes available: {:?} (either limited by lack of new words or by lack of quizes themselves)", no_new_quizes);
     debug!("No due quizes available: {:?}", next_existing_due.is_none());
 
     if no_new_words && no_new_quizes && next_existing_due.is_none() {
@@ -713,6 +732,28 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
     }
 
     let current_overdue = choose_random_overdue_item(conn, user_id)?;
+
+    let words = metrics.new_words_today >= metrics.max_words_today || no_new_words;
+    let new_quizes = metrics.quizes_today >= metrics.max_quizes_today || no_new_quizes;
+    let due_quizes = metrics.quizes_today >= metrics.max_quizes_today || current_overdue.is_none();
+
+    if words && new_quizes && due_quizes
+    {
+        debug!("Starting a break because the daily limits are full.");
+
+        metrics.new_words_since_break = 0;
+        metrics.quizes_since_break = 0;
+        metrics.new_words_today = 0;
+        metrics.quizes_today = 0;
+        metrics.break_until = metrics.today + Duration::hours(24);
+
+        if no_new_words && no_new_quizes { // Nothing else left but due items – so no use breaking until there is some available
+            metrics.break_until = max(metrics.break_until, next_existing_due.unwrap_or(chrono::date::MAX.and_hms(0,0,0,)));
+        }
+
+        let due_string = metrics.break_until.to_rfc3339();
+        return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
+    }
 
     let words = metrics.new_words_since_break >= metrics.max_words_since_break || no_new_words;
     let new_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || no_new_quizes;
@@ -743,27 +784,6 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
         return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
     }
 
-    let words = metrics.new_words_today >= metrics.max_words_today || no_new_words;
-    let new_quizes = metrics.quizes_today >= metrics.max_quizes_today || no_new_quizes;
-    let due_quizes = metrics.quizes_today >= metrics.max_quizes_today || current_overdue.is_none();
-
-    if words && new_quizes && due_quizes
-    {
-        debug!("Starting a break because the daily limits are full.");
-
-        metrics.new_words_since_break = 0;
-        metrics.quizes_since_break = 0;
-        metrics.new_words_today = 0;
-        metrics.quizes_today = 0;
-        metrics.break_until = metrics.today + Duration::hours(24);
-
-        if no_new_words && no_new_quizes { // Nothing else left but due items – so no use breaking until there is some available
-            metrics.break_until = max(metrics.break_until, next_existing_due.unwrap_or(chrono::date::MAX.and_hms(0,0,0,)));
-        }
-
-        let due_string = metrics.break_until.to_rfc3339();
-        return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
-    }
     unreachable!("check_break. Either the break limits or daily limits should be full and those code paths return, so this should never happen.");
 }
 
@@ -774,7 +794,7 @@ fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, 
     let (question, answers, q_audio_bundles) = try_or!{ load_question(conn, id)?,
                 else return Err(ErrorKind::DatabaseOdd("This function was called on the premise that the data exists!").to_err()) };
     
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
     let random_answer_index = rng.gen_range(0, answers.len());
     let right_answer_id = answers[random_answer_index].id;
     let q_audio_bundle = &q_audio_bundles[random_answer_index];
@@ -785,8 +805,6 @@ fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, 
 }
 
 fn ask_new_exercise(conn: &PgConnection, id: i32) -> Result<(Exercise, Word, i32)> {
-    use rand::{Rng, thread_rng};
-
     let (exercise, _, mut words) = try_or!( load_exercise(conn, id)?,
                 else return Err(ErrorKind::DatabaseOdd("This function was called on the premise that the data exists!").to_err()) );
 
@@ -817,13 +835,16 @@ fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>
             let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
                 else return Err(ErrorKind::DatabaseOdd("Bug: If the item was set pending in the first place, it should exists!").to_err()) };
 
+            let mut answer_choices: Vec<_> = answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
+            thread_rng().shuffle(&mut answer_choices);
+
             Quiz::Q(QuestionJson {
                 quiz_type: "question",
                 asked_id: pi.id,
                 explanation: question.q_explanation,
                 question: question.question_text,
                 right_a: asked.correct_qa_id,
-                answers: answers.into_iter().map(|a| (a.id, a.answer_text)).collect(),
+                answers: answer_choices,
             })
 
         },
@@ -878,15 +899,18 @@ fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType, metrics: 
     match quiztype {
             QuizType::Question(id) => {
     
-                let (question, right_a, answers, q_audio_id) = ask_new_question(conn, id)?;
+                let (question, right_a_id, answers, q_audio_id) = ask_new_question(conn, id)?;
     
                 let pending_item = new_pending_item(conn, user.id, QuizType::Question(q_audio_id))?;
     
                 let asked_data = QAskedData {
                     id: pending_item.id,
                     question_id: question.id,
-                    correct_qa_id: right_a,
+                    correct_qa_id: right_a_id,
                 };
+
+                let mut answer_choices: Vec<_> = answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
+                thread_rng().shuffle(&mut answer_choices);
     
                 register_future_q_answer(conn, &asked_data)?;
     
@@ -895,8 +919,8 @@ fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType, metrics: 
                     asked_id: pending_item.id,
                     explanation: question.q_explanation,
                     question: question.question_text,
-                    right_a: right_a,
-                    answers: answers.into_iter().map(|a| (a.id, a.answer_text)).collect(),
+                    right_a: right_a_id,
+                    answers: answer_choices,
                 };
                 
                 return Ok(Some(Quiz::Q(quiz_json)))

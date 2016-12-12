@@ -201,7 +201,8 @@ pub fn publish_word(conn : &PgConnection, id: i32, published: bool) -> Result<()
 pub fn update_word(conn : &PgConnection, id: i32, mut item: UpdateWord, image_dir: &Path) -> Result<Option<Word>> {
     use schema::words;
 
-    item.explanation = item.explanation.and_then(|s| sanitize_links(&s, image_dir).ok() ); // FIXME silently ignores errors
+    item.explanation = item.explanation
+        .try_map(|s| sanitize_links(&s, image_dir) )?;
 
     let item = diesel::update(words::table
         .filter(words::id.eq(id)))
@@ -225,7 +226,8 @@ pub fn update_question(conn : &PgConnection, id: i32, item: UpdateQuestion) -> R
 pub fn update_answer(conn : &PgConnection, id: i32, mut item: UpdateAnswer, image_dir: &Path) -> Result<Option<Answer>> {
     use schema::question_answers;
 
-    item.answer_text = item.answer_text.and_then(|s| sanitize_links(&s, image_dir).ok() ); // FIXME silently ignores errors
+    item.answer_text = item.answer_text
+        .try_map(|s| sanitize_links(&s, image_dir) )?;
 
     let item = diesel::update(question_answers::table
         .filter(question_answers::id.eq(id)))
@@ -349,7 +351,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
 
             info!("Downloading the link target.");
 
-            let mut resp = HTTP_CLIENT.get(url).header(HttpConnection::close()).send().map_err(|_| Error::from("Couldn't load the URL"))?;
+            let mut resp = HTTP_CLIENT.get(url).header(HttpConnection::close()).send().map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
     
             let file_extension = url_match.at(2).unwrap_or(".noextension");
     
@@ -370,6 +372,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
     
             let mut file = fs::File::create(new_path)?;
             io::copy(&mut resp, &mut file)?;
+            info!("Saved the file to {:?}", file);
             let new_url = String::from("/api/images/")+&filename;
     
             result = result.replace(url, &new_url);

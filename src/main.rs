@@ -11,6 +11,7 @@
 
 pub extern crate ganbare_backend;
 
+extern crate try_map;
 extern crate pencil;
 extern crate dotenv;
 extern crate env_logger;

@@ -388,7 +388,9 @@ pub fn get_all_bundles(conn : &PgConnection) -> Result<Vec<(AudioBundle, Vec<Aud
         .order(audio_bundles::listname.asc())
         .get_results(conn)?;
 
-    let audio_files =  AudioFile::belonging_to(&bundles).load::<AudioFile>(conn)?.grouped_by(&bundles);
+    let audio_files =  AudioFile::belonging_to(&bundles)
+        .load::<AudioFile>(conn)?
+        .grouped_by(&bundles);
 
     let all = bundles.into_iter().zip(audio_files).collect();
     Ok(all)

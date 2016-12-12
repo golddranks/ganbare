@@ -77,14 +77,14 @@ var speakerIconPink = $("#speakerIconPink");
 /* question-related things */
 var prototypeAnswer = $(".answer").remove();
 prototypeAnswer.show();
-var avatar = $("#quiz .avatar");
+var avatar = $("#qAvatar");
 var questionSection = $("#questionSection");
 var questionSectionFlexContainer = $("#questionSectionFlexContainer");
 var answerList = $(".answerList");
 var questionText = $(".questionText");
 var questionExplanation = $("#questionExplanation");
 var questionStatus = $("#questionStatus");
-var play_button = $("#quiz .avatar .imgbutton");
+var play_button = $("#qStartButton");
 var maru = $("#maru");
 var batsu = $("#batsu");
 var answerMarks = $(".answerMark");
@@ -95,8 +95,11 @@ var topmessage = $(".topmessageparagraph");
 var wordSection = $("#wordSection");
 var wordSectionSlideContainer = $("#wordSectionSlideContainer");
 var wordShowButton = $("#wordShowButton");
+var wordShowSection = $(".wordShowSection");
 var wordShowKana = $("#wordShowKana");
 var wordStatus = $("#wordStatus");
+var word_avatar = $("#wordAvatar");
+var word_play_button = $("#wordStartButton");
 var wordExplanation = $("#wordExplanation");
 var soundIcon = $(".soundicon");
 var wordOkButton = $("#wordOkButton");
@@ -264,6 +267,9 @@ function setWordShowButton(audio) {
 }
 
 function answerExercise(isCorrect, exercise) {
+	if (exercise.sent) { return; };
+	exercise.sent = true;
+	console.log("answerExercise! isCorrect: ", isCorrect, " exercise: ", exercise);
 	wordShowButton.off('click');
 	exerciseFailureButton.off('click');
 	exerciseSuccessButton.off('click');
@@ -281,6 +287,7 @@ function answerExercise(isCorrect, exercise) {
 	}
 	var answeredInstant = Date.now();
 	function postAnswerExercise() {
+		console.log("postAnswerExercise", exercise);
 		var jqxhr = $.post("/api/next_quiz", {
 			type: "exercise",
 			asked_id: exercise.asked_id,
@@ -289,12 +296,14 @@ function answerExercise(isCorrect, exercise) {
 			active_answer_time: exercise.pronouncedInstant - exercise.askedInstant,
 			reflected_time: answeredInstant - exercise.pronouncedInstant,
 			full_answer_time: answeredInstant - exercise.askedInstant,
+			full_spent_time: answeredInstant - exercise.startedInstant,
 		}, function(result) {
 			clearError();
 			console.log("postAnswerExercise: got result");
 			nextQuestion(result);
 		});
 		jqxhr.fail(function(e) {
+			console.log("postAnswerExercise: failed")
 			bugMessage(e);
 			setTimeout(postAnswerExercise, 3000);
 		});
@@ -509,11 +518,19 @@ function showWord(word) {
 function showExercise(exercise) {
 	wordSection.show();
 	console.log("showExercise!");
+	word_avatar.show();
+	word_avatar.css('opacity', '0');
+	wordStatus.text("Äännä parhaasi mukaan!").show();
+	wordShowSection.hide();
+	wordStatus.slideDown(normalSpeed, function() { word_avatar.fadeTo(normalSpeed, 1); });
+	exercise.startedInstant = Date.now();
+	word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
+
+
+	wordShowSection.slideDown();
 	exerciseOkButton.show();
-	wordStatus.text("Äännä parhaasi mukaan:").show();
 	buttonSection.show();
-	wordShowKana.html(accentuate(exercise.word));
-	$(".accent img").hide();
+	wordShowKana.html(exercise.word.replace("・", "").replace("*", ""));
 	wordExplanation.html(exercise.explanation);
 
 	var exerciseAudio = new Howl({ src: ['/api/audio.mp3?'+exercise.asked_id]});
@@ -539,7 +556,7 @@ function showExercise(exercise) {
 	exercise.answered = false;
 	exerciseOkButton.one("click", function() {
 		exercise.answered = true;
-		$(".accent img").fadeIn();
+		wordShowKana.html(accentuate(exercise.word));
 		exerciseAudio.play();
 		timesAudioPlayed++;
 		exercise.pronouncedInstant = Date.now();
@@ -551,22 +568,26 @@ function showExercise(exercise) {
 
 	topmessage.text("Vastausaikaa 8 s");
 	topmessage.fadeIn();
-	
+
 	window.setTimeout(function() { if (exercise.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
 	window.setTimeout(function() { if (exercise.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
 	window.setTimeout(function() { if (exercise.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
 	window.setTimeout(function() {
 		if (exercise.answered) {return};
 		topmessage.fadeOut(); 
+		exercise.pronouncedInstant = Date.now();
 		answerExercise(false, exercise);
 	}, 8000);
 	
 	exercise.askedInstant = Date.now();
-
 	setTimeout(function() {
 		wordExplanation.addClass("imageLoaded");
-		wordSectionSlideContainer.slideDown(normalSpeed);
 	}, 200);
+	})});
+
+
+	wordSectionSlideContainer.slideDown(normalSpeed);
+
 }
 
 function showQuiz(quiz) {
@@ -582,7 +603,7 @@ function showQuiz(quiz) {
 		avatar.fadeOut(superFast);
 		return;
 	} else if (new Date(quiz.due_date) > new Date()) {
-		console.log("BreakTime!");
+		console.log("BreakTime! Breaking until: ", new Date(quiz.due_date));
 		avatar.fadeOut(superFast);
 		breakTime(quiz);
 		breakTimeWaitHandle = window.setInterval(function() { breakTime(quiz); }, 1000);

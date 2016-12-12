@@ -30,3 +30,4 @@ email = "*"
 pq-sys = "0.2.4"
 unicode-normalization = "*"
 hyper = "*"
+try_map = { git = "https://github.com/golddranks/try_map.git", branch="master" }

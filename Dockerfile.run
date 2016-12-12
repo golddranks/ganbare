@@ -2,13 +2,16 @@ FROM scratch
 
 ADD target/x86_64-unknown-linux-musl/release/ganbare /ganbare/ganbare
 ADD static /ganbare/static
+ADD certs_temp /etc/ssl/certs
 VOLUME /ganbare/audio /ganbare/images
 ENV GANBARE_DATABASE_URL=postgres://drasa@172.17.0.2/ganbare_testing \
 	GANBARE_RUNTIME_PEPPER= \
 	GANBARE_SITE_DOMAIN=localhost \
 	GANBARE_EMAIL_SERVER=mail.inet.fi:25 \
 	GANBARE_SERVER_BINDING=0.0.0.0:8080 \
-	GANBARE_JQUERY=https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
+	GANBARE_JQUERY=https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    SSL_CERT_DIR=/etc/ssl/certs
 WORKDIR /ganbare
 EXPOSE 8080
 ENTRYPOINT ["/ganbare/ganbare"]
