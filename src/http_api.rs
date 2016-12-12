@@ -130,9 +130,10 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
         if answer_type == "word" {
             let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
             let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
-            let answer_time_ms = str::parse::<i32>(&parse!(form.get("time")))?;
+            let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
+            let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
             Ok(quiz::Answered::W(
-                models::WAnsweredData{id, audio_times, checked_date: UTC::now(), answer_time_ms}
+                models::WAnsweredData{id, audio_times, checked_date: UTC::now(), active_answer_time_ms, full_spent_time_ms}
             ))
         } else if answer_type == "exercise" {
             let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;

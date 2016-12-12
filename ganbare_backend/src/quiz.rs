@@ -181,7 +181,8 @@ fn log_answer_word(conn : &PgConnection, user : &User, answered: &WAnsweredData)
         .filter(user_stats::id.eq(user.id))
         .get_result(conn)?;
 
-    stats.all_time_ms += answered.answer_time_ms as i64;
+    stats.all_active_time_ms += answered.active_answer_time_ms as i64;
+    stats.all_spent_time_ms += answered.full_spent_time_ms as i64;
     stats.all_words += 1;
     let _: UserStats = stats.save_changes(conn)?;
 
@@ -213,7 +214,8 @@ fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredD
         .filter(user_stats::id.eq(user.id))
         .get_result(conn)?;
 
-    stats.all_time_ms += answered.full_answer_time_ms as i64;
+    stats.all_active_time_ms += answered.full_answer_time_ms as i64;
+    stats.all_spent_time_ms += answered.full_spent_time_ms as i64;
     stats.quiz_all_times += 1;
     if correct {
         stats.quiz_correct_times += 1;
@@ -293,7 +295,8 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredDat
         .filter(user_stats::id.eq(user.id))
         .get_result(conn)?;
 
-    stats.all_time_ms += answered.full_answer_time_ms as i64;
+    stats.all_active_time_ms += answered.active_answer_time_ms as i64;
+    stats.all_spent_time_ms += answered.full_spent_time_ms as i64;
     stats.quiz_all_times += 1;
     if answered.answer_level > 0 {
         stats.quiz_correct_times += 1;

@@ -2,7 +2,6 @@
 
 Today:
 
-- Don't count time when viewing a word in a inactive tab.
 - Ability to change audio bundle
 - Ability to delete word
 - Autocreate button doesn't disappear
@@ -17,11 +16,11 @@ Today:
 
 
 Tomorrow:
-- Event status on user management page
-- Introduce higher-level questions
 - Impl the test tool (asks questions from both groups)
 - Implement anonymous groups and anonymous aliases
 - Impl a tool that then splits the group into half and assigns them to different groups
+- Event status on user management page
+- Introduce higher-level questions
 
 
 

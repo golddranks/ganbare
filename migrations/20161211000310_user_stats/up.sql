@@ -1,16 +1,25 @@
+
+ALTER TABLE w_answered_data RENAME COLUMN answer_time_ms TO full_spent_time_ms;
+
+ALTER TABLE w_answered_data ADD COLUMN active_answer_time_ms INTEGER NOT NULL DEFAULT 0;
+
+
+
 CREATE TABLE user_stats (
 	id SERIAL PRIMARY KEY REFERENCES users,
 	days_used INTEGER NOT NULL DEFAULT 0,
-	all_time_ms BIGINT NOT NULL DEFAULT 0,
+	all_active_time_ms BIGINT NOT NULL DEFAULT 0,
+	all_spent_time_ms BIGINT NOT NULL DEFAULT 0,
 	all_words INTEGER NOT NULL DEFAULT 0,
 	quiz_all_times INTEGER NOT NULL DEFAULT 0,
 	quiz_correct_times INTEGER NOT NULL DEFAULT 0
 );
 
-INSERT INTO user_stats (id, all_time_ms, days_used, all_words, quiz_all_times, quiz_correct_times) (
+INSERT INTO user_stats (id, all_spent_time_ms, all_active_time_ms, days_used, all_words, quiz_all_times, quiz_correct_times) (
 	SELECT
 		id,
-		COALESCE(all_time_ms, 0) AS all_time_ms,
+		COALESCE(all_spent_time_ms, 0) AS all_spent_time_ms,
+		COALESCE(all_active_time_ms, 0) AS all_active_time_ms,
 		COALESCE(days_used, 0) AS days_used,
 		COALESCE(all_words, 0) AS all_words,
 		COALESCE(quiz_all_times, 0) AS quiz_all_times,
@@ -22,14 +31,27 @@ INSERT INTO user_stats (id, all_time_ms, days_used, all_words, quiz_all_times, q
 					(
 						COALESCE(SUM(q_ans.full_answer_time_ms), 0) +
 						COALESCE(SUM(e_ans.full_answer_time_ms), 0) +
-						COALESCE(SUM(w_ans.answer_time_ms), 0)
-					) AS all_time_ms
+						COALESCE(SUM(w_ans.full_spent_time_ms), 0)
+					) AS all_spent_time_ms
 				FROM pending_items AS items
 				LEFT JOIN q_answered_data AS q_ans ON q_ans.id=items.id
 				LEFT JOIN e_answered_data AS e_ans ON e_ans.id=items.id
 				LEFT JOIN w_answered_data AS w_ans ON w_ans.id=items.id
 				GROUP BY user_id
-			) AS all_time ON all_time.user_id=id
+			) AS all_spent_time ON all_spent_time.user_id=id
+		LEFT JOIN (
+			SELECT	user_id,
+					(
+						COALESCE(SUM(q_ans.active_answer_time_ms), 0) +
+						COALESCE(SUM(e_ans.active_answer_time_ms), 0) +
+						COALESCE(SUM(w_ans.active_answer_time_ms), 0)
+					) AS all_active_time_ms
+				FROM pending_items AS items
+				LEFT JOIN q_answered_data AS q_ans ON q_ans.id=items.id
+				LEFT JOIN e_answered_data AS e_ans ON e_ans.id=items.id
+				LEFT JOIN w_answered_data AS w_ans ON w_ans.id=items.id
+				GROUP BY user_id
+			) AS all_active_time ON all_active_time.user_id=id
 		LEFT JOIN (
 			SELECT	user_id, COUNT(DISTINCT a_date) AS days_used
 				FROM pending_items AS items

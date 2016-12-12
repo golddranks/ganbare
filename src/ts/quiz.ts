@@ -3,7 +3,11 @@
 
 $(function() {
 
-function accentuate(word: string) {
+function accentuate(word: string, showAccent) {
+
+	if (!showAccent) {
+		return word.replace("・", "").replace("*", "");
+	}
 
 	var empty = '<span class="accent">';
 	var middle = '<span class="accent" style="background-image: url(/static/images/accent_middle.png);">';
@@ -327,7 +331,8 @@ function answerWord(word) {
 			type: "word",
 			asked_id: word.asked_id,
 			times_audio_played: timesAudioPlayed,
-			time: wordAnsweredInstant - word.wordShownInstant,
+			active_answer_time: word.active_answer_time,
+			full_spent_time: wordAnsweredInstant - word.wordShownInstant,
 		}, function(result) {
 			clearError();
 			console.log("postAnswerWord: got result");
@@ -445,6 +450,7 @@ function showQuestion(question) {
 	var qAudio = new Howl({ src: ['/api/audio.mp3?'+question.asked_id]});
 
 	play_button.one('click', function() {
+		console.log("question started");
 		question.playbackStartedInstant = Date.now();
 	   	questionStatus.slideUp(normalSpeed);
 		questionSection.css("min-height", questionSection.css("height")); // For mobile/xxsmall (questionSection is centered in a flexbox)
@@ -482,16 +488,43 @@ function showQuestion(question) {
 } */
 function showWord(word) {
 	wordSection.show();
+	word_avatar.hide();
 	console.log("showWord!");
-	wordOkButton.show()
-	wordOkButton.one('click', function() { answerWord(word); });
 	buttonSection.show();
-	wordShowKana.html(accentuate(word.word));
-	if (word.show_accents) {
-		$(".accent img").show();
-	}
+	wordShowKana.html(accentuate(word.word, word.show_accents));
 	wordExplanation.html(word.explanation);
 	var wordAudio = new Howl({ src: ['/api/audio.mp3?'+word.asked_id]});
+
+	word.wordShownInstant = Date.now();
+
+	var activityStarted = Date.now();
+	var activeNow = true;
+	var activityThreshold_ms = 8000;
+	word.active_answer_time = 0;
+
+	function userInactivated() {
+		activeNow = false;
+		word.active_answer_time += Date.now() - activityStarted;
+	}
+
+	var userInactiveTimer = setTimeout(userInactivated, activityThreshold_ms);
+	$("body").mousemove( function() {
+		if (!activeNow) {
+			activeNow = true;
+			activityStarted = Date.now();
+		}
+		clearTimeout(userInactiveTimer);
+		userInactiveTimer = setTimeout(userInactivated, activityThreshold_ms);
+	});
+
+	wordOkButton.show()
+	wordOkButton.one('click', function() {
+		$("body").off('mousemove');
+		word.active_answer_time += Date.now() - activityStarted;
+		console.log("Active answer time was!", word.active_answer_time);
+		clearTimeout(userInactiveTimer);
+		answerWord(word);
+	});
 
 	setLoadError(wordAudio, "wordAudio", word);
 	
@@ -500,7 +533,6 @@ function showWord(word) {
 	setTimeout(function() { setWordShowButton(wordAudio); wordShowButton.trigger('click');}, 1100);
 
 	timesAudioPlayed++;
-	word.wordShownInstant = Date.now();
 
 	setTimeout(function() {
 		wordExplanation.addClass("imageLoaded");
@@ -526,11 +558,11 @@ function showExercise(exercise) {
 	exercise.startedInstant = Date.now();
 	word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
 
-
+	console.log("exercise started");
 	wordShowSection.slideDown();
 	exerciseOkButton.show();
 	buttonSection.show();
-	wordShowKana.html(exercise.word.replace("・", "").replace("*", ""));
+	wordShowKana.html(accentuate(exercise.word, false));
 	wordExplanation.html(exercise.explanation);
 
 	var exerciseAudio = new Howl({ src: ['/api/audio.mp3?'+exercise.asked_id]});
@@ -556,7 +588,7 @@ function showExercise(exercise) {
 	exercise.answered = false;
 	exerciseOkButton.one("click", function() {
 		exercise.answered = true;
-		wordShowKana.html(accentuate(exercise.word));
+		wordShowKana.html(accentuate(exercise.word, true));
 		exerciseAudio.play();
 		timesAudioPlayed++;
 		exercise.pronouncedInstant = Date.now();

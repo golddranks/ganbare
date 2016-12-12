@@ -448,9 +448,10 @@ pub struct WAskedData {
 #[belongs_to(WAskedData, foreign_key = "id")]
 pub struct WAnsweredData {
     pub id: i32,
-    pub answer_time_ms: i32,
+    pub full_spent_time_ms: i32,
     pub audio_times: i32,
     pub checked_date: DateTime<UTC>,
+    pub active_answer_time_ms: i32,
 }
 
 #[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
@@ -604,7 +605,8 @@ pub struct NewUserStats {
 pub struct UserStats {
     pub id: i32,
     pub days_used: i32,
-    pub all_time_ms: i64,
+    pub all_active_time_ms: i64,
+    pub all_spent_time_ms: i64,
     pub all_words: i32,
     pub quiz_all_times: i32,
     pub quiz_correct_times: i32,

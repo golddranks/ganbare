@@ -83,7 +83,7 @@ $(function() {
 					$.ajax(request);
 				});
 			$('<td>'+user_stats.days_used+'</td>').appendTo(user_item);
-			$('<td>'+Math.floor(Math.round(user_stats.all_time_ms/1000)/60)+' min '+Math.round(user_stats.all_time_ms/1000)%60+' s</td>').appendTo(user_item);
+			$('<td>'+Math.floor(Math.round(user_stats.all_active_time_ms/1000)/60)+' min '+Math.round(user_stats.all_active_time_ms/1000)%60+' s</td>').appendTo(user_item);
 			$('<td>'+user_stats.all_words+'</td>').appendTo(user_item);
 			$('<td>'+user_stats.quiz_all_times+'</td>').appendTo(user_item);
 			$('<td>'+Math.round(user_stats.quiz_correct_times/user_stats.quiz_all_times*100)+' %</td>').appendTo(user_item);
