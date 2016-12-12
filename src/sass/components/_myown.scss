@@ -83,7 +83,7 @@
 			* {
 				display: table-row;
 				width: 100%;
-				margin-top: 1em;
+				margin-top: 0.8em;
 			}
 		}
 
@@ -187,6 +187,18 @@
 
 @include breakpoint(xxsmall) {
 
+	#main {
+		max-width: 100vw;
+	}
+
+	h1 {
+		margin-bottom: (_size(element-margin) * 0.2);
+	}
+
+	p {
+		margin-bottom: (_size(element-margin) * 0.4);
+	}
+
 	#quiz {
 		display: block;
 		margin: 0;
@@ -199,15 +211,18 @@
 		@include vendor('display', 'flex');
 		@include vendor('flex-direction', 'column');
 		@include vendor('justify-content', 'center');
+		#questionExplanation {
+			margin-bottom: 1.7em;
+		}
 	}
 
-	h1 {
-		margin-bottom: (_size(element-margin) * 0.2);
+	#wordSectionSlideContainer {
+		padding-top: 2.4em;
+		#wordStatus {
+			margin-bottom: 1.7em;
+		}
 	}
 
-	p {
-		margin-bottom: (_size(element-margin) * 0.4);
-	}
 }
 
 /* This fixes the blue outline on Chrome */
@@ -241,12 +256,6 @@ button,
 	margin: 0;
 	position: relative;
 
-	@include breakpoint(xxsmall) {
-		p {
-			margin-bottom: (_size(element-margin) * 0.5);
-		}
-	}
-
 	button,
 	.answerButton {
 		
@@ -262,13 +271,23 @@ button,
 			max-height: 12em;
 		}
 
-		@include breakpoint(xxsmall) {
-			padding-bottom: (_size(element-margin) * 0.5);
+	}
+
+	@include breakpoint(xxsmall) {
+		p {
+			margin-bottom: 0.5em;
+		}
+
+		button,
+		.answerButton {
+			max-width: 100%;
 			img {
-				width: auto;
-				max-height: 11em;
+				max-width: 100%;
 			}
 		}
+
+		max-width: 100%;
+
 	}
 
 	*:last-child {

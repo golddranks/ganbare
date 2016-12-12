@@ -85,6 +85,12 @@
 			.optional {
 				display: none;
 			}
+			.avatar {
+				&:before {
+					left: -1em;
+					width: calc(100% + 2em);
+				}
+			}
 		}
 
 		body.is-loading & {
