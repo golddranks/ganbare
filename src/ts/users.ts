@@ -189,7 +189,8 @@ $(function() {
 							})
 					);
 				});
-			var break_button = $('<td></td>').appendTo(user_item)
+			var break_button = $('<td></td>').appendTo(user_item);
+
 			if (new Date(user_metrics.break_until) > new Date()) {
 				$('<button>stop</button>')
 					.appendTo(break_button)
@@ -202,6 +203,14 @@ $(function() {
 			} else {
 				break_button.text("no");
 			}
+			var reset_pw = $('<td></td>').appendTo(user_item);
+			var reset_pw_button = $('<button>reset</button>')
+				.appendTo(reset_pw)
+				.click(function() {
+					$.post("/reset_password", {email: user.email}, function() {
+						alert("Done!");
+					});
+				});
 		});
 
 		if (pending_users.length === 0) {

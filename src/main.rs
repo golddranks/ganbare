@@ -48,6 +48,13 @@ pub fn favicon(_: &mut Request) -> PencilResult {
     send_file("static/images/speaker_pink.png", "image/x-icon".parse().unwrap(), false, None)
 }
 
+#[cfg(debug_assertions)]
+pub fn source_maps(req: &mut Request) -> PencilResult {
+    use pencil::send_from_directory;
+    let file_path = req.view_args.get("file_path").expect("Pencil guarantees that filename should exist as an arg.");
+    send_from_directory("src", file_path, false, None)
+}
+
 
 use pencil::Pencil;
 
@@ -61,11 +68,15 @@ pub fn main() {
 
     let mut app = Pencil::new(".");
    
-    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html",
-        "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html",
-        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "users.html");
+    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "password_reset.html",
+        "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html", "send_pw_reset_email.html",
+        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html");
     
     app.enable_static_file_handling();
+
+    // DEBUGGING
+    #[cfg(debug_assertions)]
+    app.get("/src/<file_path:path>", "source_maps", source_maps);
 
     // BASIC FUNCTIONALITY
     app.get("/favicon.ico", "favicon", favicon);
@@ -82,6 +93,9 @@ pub fn main() {
     app.post("/confirm", "confirm_post", app_pages::confirm_post);
     app.get("/change_password", "change_password_form", app_pages::change_password_form);
     app.post("/change_password", "change_password", app_pages::change_password);
+    app.post("/reset_password", "send_pw_reset_email", app_pages::send_pw_reset_email);
+    app.get("/reset_password?email_sent=true", "pw_reset_email_sent", app_pages::pw_reset_email_sent);
+    app.get("/reset_password?secret=<secret:string>", "reset_password", app_pages::confirm_password_reset_form);
 
     // MANAGER PAGES
     app.get("/fresh_install", "fresh_install_form", manager_pages::fresh_install_form);

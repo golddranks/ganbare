@@ -674,3 +674,11 @@ pub struct NewEventUserdata<'a> {
 pub struct UpdateEventUserdata<'a> {
     pub data: &'a str,
 }
+
+#[derive(Queryable, Insertable, Debug)]
+#[table_name="reset_email_secrets"]
+pub struct ResetEmailSecrets {
+    pub secret: String,
+    pub email: String,
+    pub added: DateTime<UTC>,
+}

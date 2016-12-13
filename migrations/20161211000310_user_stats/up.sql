@@ -102,3 +102,9 @@ ALTER TABLE e_answered_data ADD COLUMN full_spent_time_ms INTEGER NOT NULL DEFAU
 ALTER TABLE e_answered_data ADD COLUMN reflected_time_ms INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+
+CREATE TABLE reset_email_secrets (
+	secret VARCHAR PRIMARY KEY,
+	email VARCHAR NOT NULL,
+	added TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
+)

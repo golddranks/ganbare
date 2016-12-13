@@ -194,6 +194,59 @@ pub fn change_password_form(req: &mut Request) -> PencilResult {
         .refresh_cookie(&sess)
 }
 
+pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
+
+    let secret = err_400!(req.args().get("secret"), "secret").clone();
+    let conn = db_connect().err_500()?;
+    let email = match user::check_password_reset(&conn, &secret).err_500()? {
+        Some(email) => email,
+        None => return redirect("/", 303),
+    };
+
+    let mut context = new_template_context();
+    context.insert("email".to_string(), email);
+    context.insert("secret".to_string(), secret.clone());
+
+    req.app.render_template("reset_password.html", &context)
+}
+
+pub fn pw_reset_email_sent(req: &mut Request) -> PencilResult {
+
+    let mut context = new_template_context();
+    context.insert("email_sent".to_string(), "true".to_string());
+
+    req.app.render_template("send_pw_reset_email.html", &context)
+}
+
+
+pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
+
+    fn parse_form(req: &mut Request) -> Result<String> {
+
+        req.load_form_data();
+        let form = req.form().expect("Form data should be loaded!");
+
+        debug!("form data {:?}",form);
+        let email = parse!(form.get("email"));
+
+        Ok(email)
+    }
+    let conn = db_connect().err_500()?;
+
+    let user_email = err_400!(parse_form(req), "invalid form data");
+
+    if let Some(secret) = user::send_pw_change_email(&conn, user_email).err_500()? {
+
+        email::send_pw_reset_email(&secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &*SITE_LINK,
+            &**req.app.handlebars_registry.read().expect("The registry is basically read-only after startup.")).err_500()?;
+        redirect("/reset_password?email_sent=true", 303)
+
+    } else {
+        Ok(bad_request(":("))
+    }
+}
+
+
 pub fn change_password(req: &mut Request) -> PencilResult {
 
     fn parse_form(req: &mut Request) -> Result<(String, String)> {

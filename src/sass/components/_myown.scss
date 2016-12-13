@@ -80,10 +80,13 @@
 			display: table;
 			margin: auto;
 
-			* {
+			.buttonRow {
 				display: table-row;
 				width: 100%;
-				margin-top: 0.8em;
+				* {
+					margin-top: 0.8em;
+					width: 100%;
+				}
 			}
 		}
 

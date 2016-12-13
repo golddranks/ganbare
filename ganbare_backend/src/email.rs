@@ -20,25 +20,45 @@ use super::*;
 #[derive(RustcEncodable)]
 struct EmailData<'a> { secret: &'a str, site_link: &'a str }
 
-pub fn send_confirmation<SOCK: ToSocketAddrs>(email : &str, secret : &str, mail_server: SOCK,
-    email_origin_domain: &str, site_name: &str, site_link: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
-    
-    impl<'a> ToJson for EmailData<'a> {
-        fn to_json(&self) -> Json {
-            let mut m: BTreeMap<String, Json> = BTreeMap::new();
-            m.insert("secret".to_string(), self.secret.to_json());
-            m.insert("site_link".to_string(), self.site_link.to_json());
-            m.to_json()
-        }
+impl<'a> ToJson for EmailData<'a> {
+    fn to_json(&self) -> Json {
+        let mut m: BTreeMap<String, Json> = BTreeMap::new();
+        m.insert("secret".to_string(), self.secret.to_json());
+        m.insert("site_link".to_string(), self.site_link.to_json());
+        m.to_json()
     }
+}
+
+pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, mail_server: SOCK,
+    email_origin_domain: &str, site_name: &str, site_link: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
 
     let data = EmailData { secret, site_link };
     let from_addr = format!("noreply@{}", email_origin_domain);
     let email = EmailBuilder::new()
-        .to(email)
+        .to(email_addr)
         .from(Mailbox {name: Some("gamba.re 応援団".into()), address: from_addr})
         .subject(&format!("【{}】Tervetuloa!", site_name))
         .html(hb_registry.render("email_confirm_email.html", &data)
+            .chain_err(|| "Handlebars template render error!")?
+            .as_ref())
+        .build().expect("Building email shouldn't fail.");
+    let mut mailer = SmtpTransportBuilder::new(mail_server)
+        .chain_err(|| "Couldn't setup the email transport!")?
+        .build();
+    mailer.send(email)
+        .chain_err(|| "Couldn't send email!")
+}
+
+pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail_server: SOCK,
+    email_origin_domain: &str, site_name: &str, site_link: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
+
+    let data = EmailData { secret: &secret.secret, site_link };
+    let from_addr = format!("noreply@{}", email_origin_domain);
+    let email = EmailBuilder::new()
+        .to(secret.email.as_str())
+        .from(Mailbox {name: Some("gamba.re 応援団".into()), address: from_addr})
+        .subject(&format!("【{}】Salasanan resetointi", site_name))
+        .html(hb_registry.render("pw_reset_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
             .as_ref())
         .build().expect("Building email shouldn't fail.");

@@ -35,6 +35,9 @@ lazy_static! {
     static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_SITE_DOMAIN")
         .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
 
+    static ref SITE_LINK : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_SITE_LINK")
+        .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
+
     static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_EMAIL_DOMAIN")
         .unwrap_or_else(|_|  std::env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
 
@@ -56,7 +59,7 @@ pub fn list_users(conn : &PgConnection) -> Result<Vec<User>> {
 fn main() {
     use clap::*;
     let mut handlebars = Handlebars::new();
-    handlebars.register_template_file("email_confirm_email.html", std::path::Path::new("templates/email_confirm_email.html"))
+    handlebars.register_template_file("email_confirm_email.html", std::path::Path::new("../templates/email_confirm_email.html"))
         .expect("Can't register templates/email_confirm_email.html?");
 
     let matches = App::new("ganba.re user control")
@@ -94,7 +97,7 @@ fn main() {
         ("rm", Some(args)) => {
             let email = args.value_of("email").unwrap();
             println!("Removing user with e-mail {}", email);
-            match remove_user(&conn, email) {
+            match remove_user_by_email(&conn, email) {
                 Ok(user) => { println!("Success! User removed. Removed user: {:?}", user); },
                 Err(e) => { println!("Error: {}", e); return; },
             };
@@ -113,20 +116,17 @@ fn main() {
                 Ok(secret) => secret,
                 Err(e) => { println!("Error: {:?}", e); return; }
             };
-            match email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &handlebars) {
+            match email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &*SITE_LINK, &handlebars) {
                 Ok(u) => println!("Sent an email confirmation! {:?}", u),
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}\nCause: {:?}", err, err.cause ()) },
             }
         },
         ("force_add", Some(args)) => {
-            use ganbare_backend::errors::ErrorKind::NoSuchUser;
             let email = args.value_of("email").unwrap();
             match get_user_by_email(&conn, &email) {
-                Err(Error(kind, _)) => match kind {
-                    NoSuchUser(email) => println!("Adding a user with email {}", email),
-                    _ => { println!("Error: {:?}", kind); return; },
-                },
-                Ok(_) => { println!("Error: User already exists!"); return; },
+                Err(e) => return println!("Error: {:?}", e),
+                Ok(Some(u)) => { println!("Error: User already exists! {:?}", u); return; },
+                Ok(None) => println!("Adding a user with email {}", email),
             }
             println!("Enter a password:");
             let password = match rpassword::read_password() {

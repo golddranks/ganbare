@@ -163,7 +163,7 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
 
     let answer = err_400!(parse_answer(req), "Can't parse form data? {:?}", req.form());
 
-    let new_quiz = quiz::get_next_quiz(&conn, &user, answer).err_500()?;
+    let new_quiz = quiz::get_next_quiz(&conn, &user, answer).err_500_debug(&user, &*req)?;
 
     match new_quiz {
 
