@@ -119,28 +119,51 @@ pub fn set_password(conn : &PgConnection, user_email : &str, password: &str, pep
     }
 }
 
-pub fn check_password_reset(conn: &PgConnection, secret: &str) -> Result<Option<String>> {
-    use schema::reset_email_secrets;
+pub fn check_password_reset(conn: &PgConnection, secret: &str) -> Result<Option<(ResetEmailSecrets, User)>> {
+    use schema::{reset_email_secrets, users};
 
-    let confirm : Option<ResetEmailSecrets> = reset_email_secrets::table
+    let confirm : Option<(ResetEmailSecrets, User)> = reset_email_secrets::table
+        .inner_join(users::table)
         .filter(reset_email_secrets::secret.eq(secret))
         .first(conn)
         .optional()?;
 
-    Ok(confirm.map(|c| c.email))
+    Ok(match confirm {
+        Some((c, u)) => {
+            if c.added < chrono::UTC::now() - chrono::Duration::days(1) {
+                diesel::delete(reset_email_secrets::table.filter(reset_email_secrets::user_id.eq(c.user_id))).execute(conn)?;
+                None
+            } else {
+                Some((c, u))
+            }
+        },
+        None => None,
+    })
 }
 
-pub fn send_pw_change_email(conn: &PgConnection, email: String)-> Result<Option<ResetEmailSecrets>> {
+pub fn invalidate_password_reset(conn: &PgConnection, secret: &ResetEmailSecrets) -> Result<()> {
+    use schema::{reset_email_secrets};
+
+    diesel::delete(reset_email_secrets::table.filter(reset_email_secrets::user_id.eq(secret.user_id))).execute(conn)?;
+    Ok(())
+}
+
+pub fn send_pw_change_email(conn: &PgConnection, email: &str)-> Result<ResetEmailSecrets> {
     use schema::{users, reset_email_secrets};
 
-    let earlier: Option<ResetEmailSecrets> = reset_email_secrets::table
-        .filter(reset_email_secrets::email.eq(&email))
+    let earlier_email: Option<(ResetEmailSecrets, User)> = reset_email_secrets::table
+        .inner_join(users::table)
+        .filter(users::email.eq(email))
+        .order(reset_email_secrets::added.desc())
         .get_result(conn)
         .optional()?;
 
-    if let Some(earlier) = earlier {
-        if earlier.added > chrono::UTC::now() - chrono::Duration::days(1) {
-            return Ok(None) // Flood filter
+    if let Some((secret, user)) = earlier_email {
+        if secret.added > chrono::UTC::now() - chrono::Duration::days(1) {
+            return Err(ErrorKind::RateLimitExceeded.into()) // Flood filter
+        } else {
+            // Possible to send a new request; delete/invalidate the earlier ones:
+            diesel::delete(reset_email_secrets::table.filter(reset_email_secrets::user_id.eq(user.id))).execute(conn)?;
         }
     }
 
@@ -149,17 +172,21 @@ pub fn send_pw_change_email(conn: &PgConnection, email: String)-> Result<Option<
         .get_result(conn)
         .optional()?;
 
-    if user.is_none() {
-        return Ok(None)
-    }
+    let user = match user {
+        Some(user) => user,
+        None => return Err(ErrorKind::NoSuchUser(email.to_string()).into()),
+    };
 
     let secret = data_encoding::base64url::encode(&session::fresh_token()?[..]);
 
-    let result = diesel::insert(&ResetEmailSecrets { secret: secret, email: email, added: chrono::UTC::now() })
+    let result = diesel::insert(&ResetEmailSecrets {    secret: secret,
+                                                        user_id: user.id,
+                                                        email: user.email.expect("We just found this user by the email address!"),
+                                                        added: chrono::UTC::now() })
         .into(reset_email_secrets::table)
         .get_result(conn)?;
 
-    Ok(Some(result))
+    Ok(result)
 }
 
 pub fn remove_user_by_email(conn: &PgConnection, rm_email: &str) -> Result<User> {

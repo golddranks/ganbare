@@ -97,7 +97,9 @@ pub fn login_form(req: &mut Request) -> PencilResult {
         return redirect("/fresh_install", 303)
     }
 
-    let context = new_template_context();
+    let email = req.args().get("email").map(|s|&**s).unwrap_or_else(|| "").to_string();
+    let mut context = new_template_context();
+    context.insert("email".into(), email);
 
     req.app.render_template("hello.html", &context)
 }
@@ -116,6 +118,7 @@ pub fn login_post(request: &mut Request) -> PencilResult {
         None => {
             warn!("Failed login.");
             let mut context = new_template_context();
+            context.insert("email".to_string(), email);
             context.insert("authError".to_string(), "true".to_string());
             let result = app.render_template("hello.html", &context);
             result.map(|mut resp| {resp.status_code = 401; resp})
@@ -131,6 +134,8 @@ pub fn logout(request: &mut Request) -> PencilResult {
 
 pub fn confirm_form(request: &mut Request) -> PencilResult {
 
+    rate_limit(Duration::from_millis(2000), || {
+
     let secret = err_400!(request.args().get("secret"), "secret");
     let conn = db_connect().err_500()?;
     let email = match email::check_pending_email_confirm(&conn, &secret).err_500()? {
@@ -143,11 +148,15 @@ pub fn confirm_form(request: &mut Request) -> PencilResult {
     context.insert("secret".to_string(), secret.clone());
 
     request.app.render_template("confirm.html", &context)
+
+    })
 }
 
 pub fn confirm_post(req: &mut Request) -> PencilResult {
+
+    rate_limit(Duration::from_millis(2000), || {
+
     req.load_form_data();
- //   let ip = req.request.remote_addr.ip();
     let conn = db_connect().err_500()?;
     let secret = err_400!(req.args().get("secret"), "secret missing").clone();
     let email = err_400!(req.form().expect("form data loaded.").get("email"), "email field missing");
@@ -174,6 +183,7 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
         None => 
             Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login them in. A bug?".to_string())))),
     }
+    })
 }
 
 
@@ -194,26 +204,84 @@ pub fn change_password_form(req: &mut Request) -> PencilResult {
         .refresh_cookie(&sess)
 }
 
+pub fn password_reset_success(req: &mut Request) -> PencilResult {
+    let mut context = new_template_context();
+    context.insert("changed".into(), "changed".into());
+    req.app.render_template("reset_password.html", &context)
+}
+
 pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
 
-    let secret = err_400!(req.args().get("secret"), "secret").clone();
+    rate_limit(Duration::from_millis(2000), || {
+
+    let secret = err_400!(req.args_mut().take("secret"), "secret");
+    let changed = req.args_mut().take("changed");
     let conn = db_connect().err_500()?;
     let email = match user::check_password_reset(&conn, &secret).err_500()? {
-        Some(email) => email,
+        Some((secret, _)) => secret.email,
         None => return redirect("/", 303),
     };
 
     let mut context = new_template_context();
-    context.insert("email".to_string(), email);
-    context.insert("secret".to_string(), secret.clone());
+    context.insert("email".into(), email);
+    context.insert("secret".into(), secret);
+    if let Some(changed) = changed {
+        context.insert("changed".into(), changed);
+    }
 
     req.app.render_template("reset_password.html", &context)
+    
+    })
 }
 
-pub fn pw_reset_email_sent(req: &mut Request) -> PencilResult {
+pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
 
+    rate_limit(Duration::from_millis(2000), || {
+
+    let secret = err_400!(req.form_mut().take("secret"), "secret's missing");
+    let password = err_400!(req.form_mut().take("new_password"), "password's missing");
+    let new_password_check = err_400!(req.form_mut().take("new_password_check"), "password's missing");
+    if password != new_password_check {
+        return Ok(bad_request("Password and password check don't match!"));
+    }
+
+    let conn = db_connect().err_500()?;
+
+    let (secret, user) = match user::check_password_reset(&conn, &secret).err_500()? {
+        Some((secret, user)) => (secret, user),
+        None => return redirect("/", 303),
+    };
+
+    user::invalidate_password_reset(&conn, &secret).err_500()?;
+
+    match user::change_password(&conn, user.id, &password, &*RUNTIME_PEPPER) {
+        Err(e) => match e.kind() {
+            &errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
+            &errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
+            _ => return Err(internal_error(e)),
+        },
+        _ => (),
+    };
+
+    match do_login(&secret.email, &password, &*req).err_500()? {
+        Some((_, sess)) =>
+            redirect("/reset_password?changed=true", 303).refresh_cookie(&sess),
+        None => 
+            Err(internal_error(Error::from(ErrMsg("We just successfully changed password, yet we can't login them in. A bug?".to_string())))),
+    }
+
+    })
+}
+
+pub fn pw_reset_email_form(req: &mut Request) -> PencilResult {
+    let email = req.args_mut().take("email").unwrap_or_else(|| "".into());
+    let sent = req.args_mut().take("sent");
     let mut context = new_template_context();
-    context.insert("email_sent".to_string(), "true".to_string());
+    if sent.is_none() {
+        context.insert("show_form".to_string(), "show_form".into());
+    }
+    context.insert("email".to_string(), email);
+    context.insert("sent".to_string(), sent.unwrap_or_else(|| "".into()));
 
     req.app.render_template("send_pw_reset_email.html", &context)
 }
@@ -222,27 +290,35 @@ pub fn pw_reset_email_sent(req: &mut Request) -> PencilResult {
 pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
 
     fn parse_form(req: &mut Request) -> Result<String> {
-
         req.load_form_data();
         let form = req.form().expect("Form data should be loaded!");
-
-        debug!("form data {:?}",form);
-        let email = parse!(form.get("email"));
-
-        Ok(email)
+        Ok(parse!(form.get("email")))
     }
+
     let conn = db_connect().err_500()?;
 
     let user_email = err_400!(parse_form(req), "invalid form data");
 
-    if let Some(secret) = user::send_pw_change_email(&conn, user_email).err_500()? {
-
-        email::send_pw_reset_email(&secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &*SITE_LINK,
-            &**req.app.handlebars_registry.read().expect("The registry is basically read-only after startup.")).err_500()?;
-        redirect("/reset_password?email_sent=true", 303)
-
-    } else {
-        Ok(bad_request(":("))
+    match user::send_pw_change_email(&conn, &user_email) {
+        Ok(secret) => {
+            email::send_pw_reset_email(&secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &*SITE_LINK,
+                &**req.app.handlebars_registry.read().expect("The registry is basically read-only after startup.")).err_500()?;
+            redirect("/send_password_reset_email?sent=true", 303)
+        },
+        Err(Error(ErrorKind::NoSuchUser(_), _)) => {
+            warn!("Trying to reset the password of non-existent address!");
+            let mut context = new_template_context();
+            context.insert("error".to_string(), "No such e-mail address :(".into());
+            context.insert("show_form".to_string(), "show_form".into());
+            req.app.render_template("send_pw_reset_email.html", &context).map(|mut r| { r.status_code = 400; r })
+        },
+        Err(Error(ErrorKind::RateLimitExceeded, _)) => {
+            warn!("Someone is sending multiple password request requests per day!");
+            let mut context = new_template_context();
+            context.insert("error".to_string(), "Rate limit exceeded :(".into());
+            req.app.render_template("send_pw_reset_email.html", &context).map(|mut r| { r.status_code = 429; r })
+        },
+        Err(e) => Err(internal_error(e)),
     }
 }
 

@@ -2,9 +2,6 @@
 
 Today:
 
-- Fix the answer button UI bug on IE
-
-- Implement forgot password feature
 - Implement nag emails
 
 - Publish more words

@@ -18,6 +18,7 @@ use ganbare::user;
 use ganbare::session;
 use ganbare::errors;
 use std::path::PathBuf;
+pub use std::time::Duration;
 pub use try_map::FallibleMapExt;
 
 lazy_static! {
@@ -302,3 +303,23 @@ pub fn do_logout(sess_token: Option<&str>) -> StdResult<(), PencilError> {
 macro_rules! parse {
     ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
 }
+
+
+pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration, function: F) -> O {
+    use std::time::Instant;
+    use std::thread;
+
+    let start_time = Instant::now();
+
+    let result = function();
+
+    let worked_duration = Instant::now() - start_time;
+    
+    if pause_duration > worked_duration {
+        thread::sleep(pause_duration - worked_duration);
+    }
+
+    result
+}
+
+

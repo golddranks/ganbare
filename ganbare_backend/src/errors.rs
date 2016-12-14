@@ -69,5 +69,9 @@
                 description("Option::None")
                 display("Option::None")
             }
+            RateLimitExceeded {
+                description("RateLimit exceeded")
+                display("RateLimit exceeded")
+            }
         }
     }

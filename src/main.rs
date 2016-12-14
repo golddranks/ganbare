@@ -68,7 +68,7 @@ pub fn main() {
 
     let mut app = Pencil::new(".");
    
-    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "password_reset.html",
+    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "reset_password.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html", "send_pw_reset_email.html",
         "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html");
     
@@ -93,9 +93,11 @@ pub fn main() {
     app.post("/confirm", "confirm_post", app_pages::confirm_post);
     app.get("/change_password", "change_password_form", app_pages::change_password_form);
     app.post("/change_password", "change_password", app_pages::change_password);
-    app.post("/reset_password", "send_pw_reset_email", app_pages::send_pw_reset_email);
-    app.get("/reset_password?email_sent=true", "pw_reset_email_sent", app_pages::pw_reset_email_sent);
-    app.get("/reset_password?secret=<secret:string>", "reset_password", app_pages::confirm_password_reset_form);
+    app.get("/reset_password?secret=<secret:string>", "reset_password_form", app_pages::confirm_password_reset_form);
+    app.get("/reset_password?changed=true", "password_reset_success", app_pages::password_reset_success);
+    app.post("/reset_password", "reset_password_post", app_pages::confirm_password_reset_post);
+    app.get("/send_password_reset_email", "pw_reset_email_form", app_pages::pw_reset_email_form);
+    app.post("/send_password_reset_email", "send_pw_reset_email", app_pages::send_pw_reset_email);
 
     // MANAGER PAGES
     app.get("/fresh_install", "fresh_install_form", manager_pages::fresh_install_form);

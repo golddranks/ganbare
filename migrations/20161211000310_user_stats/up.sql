@@ -104,7 +104,8 @@ ALTER TABLE e_answered_data ADD COLUMN reflected_time_ms INTEGER NOT NULL DEFAUL
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
 
 CREATE TABLE reset_email_secrets (
-	secret VARCHAR PRIMARY KEY,
+	user_id SERIAL PRIMARY KEY REFERENCES users,
 	email VARCHAR NOT NULL,
+	secret VARCHAR NOT NULL,
 	added TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 )

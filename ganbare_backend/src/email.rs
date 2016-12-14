@@ -18,13 +18,14 @@ use schema::pending_email_confirms;
 use super::*;
 
 #[derive(RustcEncodable)]
-struct EmailData<'a> { secret: &'a str, site_link: &'a str }
+struct EmailData<'a> { secret: &'a str, site_link: &'a str, site_name: &'a str, }
 
 impl<'a> ToJson for EmailData<'a> {
     fn to_json(&self) -> Json {
         let mut m: BTreeMap<String, Json> = BTreeMap::new();
         m.insert("secret".to_string(), self.secret.to_json());
         m.insert("site_link".to_string(), self.site_link.to_json());
+        m.insert("site_name".to_string(), self.site_name.to_json());
         m.to_json()
     }
 }
@@ -32,7 +33,7 @@ impl<'a> ToJson for EmailData<'a> {
 pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, mail_server: SOCK,
     email_origin_domain: &str, site_name: &str, site_link: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
 
-    let data = EmailData { secret, site_link };
+    let data = EmailData { secret, site_link, site_name };
     let from_addr = format!("noreply@{}", email_origin_domain);
     let email = EmailBuilder::new()
         .to(email_addr)
@@ -52,12 +53,12 @@ pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, 
 pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail_server: SOCK,
     email_origin_domain: &str, site_name: &str, site_link: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
 
-    let data = EmailData { secret: &secret.secret, site_link };
+    let data = EmailData { secret: &secret.secret, site_link, site_name };
     let from_addr = format!("noreply@{}", email_origin_domain);
     let email = EmailBuilder::new()
         .to(secret.email.as_str())
         .from(Mailbox {name: Some("gamba.re 応援団".into()), address: from_addr})
-        .subject(&format!("【{}】Salasanan resetointi", site_name))
+        .subject(&format!("【{}】Salasanan vaihtaminen", site_name))
         .html(hb_registry.render("pw_reset_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
             .as_ref())

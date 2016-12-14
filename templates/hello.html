@@ -6,11 +6,17 @@
 		<p>Tieteellinen koe japanin ääntämyksestä</p>
 	</header>
 	<hr />
-	{{#if authError}}<strong class="error">Käyttäjänimi tai salasana oli väärin!</strong>{{/if}}
+	{{#if authError}}
+	<strong class="error">Käyttäjänimi tai salasana oli väärin!</strong>
+	<form method="get" action="/send_password_reset_email">
+		<input type="hidden" name="email" value="{{ email }}">
+		<button class="compact">Vaihda unohtunut salasana</button>
+	</form>
+	{{/if}}
 	<h2>{{#if authError}}Kokeile uudelleen{{/if}}{{#unless authError}}Koehenkilö, kirjaudu sisään{{/unless}}</h2>
 	<form method="post" action="/login">
 		<div class="field">
-			<input type="email" name="email" id="email" placeholder="Sähköposti" />
+			<input type="email" name="email" id="email" value="{{ email }}" placeholder="Sähköposti" />
 		</div>
 		<div class="field">
 			<input type="password" name="password" id="password" placeholder="Salasana" />

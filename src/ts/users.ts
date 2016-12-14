@@ -207,7 +207,7 @@ $(function() {
 			var reset_pw_button = $('<button>reset</button>')
 				.appendTo(reset_pw)
 				.click(function() {
-					$.post("/reset_password", {email: user.email}, function() {
+					$.post("/send_password_reset_email", {email: user.email}, function() {
 						alert("Done!");
 					});
 				});

@@ -1,1 +1,27 @@
-SENT
+{{#partial main_section}}
+
+	<header>
+		<h1>Salasana unohtunut?</h1>
+	</header>
+	<hr />
+	{{#if sent}}
+		<strong>Lähetetty! Tarkista sähköpostisi.</strong>
+	{{/if}}
+	{{#if error}}
+		<strong class="error">Tapahtui virhe: {{ error}}</strong>
+	{{/if}}
+	{{#if show_form}}
+		<form method="post" action="/send_password_reset_email">
+			<p>Kirjoita tähän meiliosoitteesi, niin lähetämme sinulle ohjeet salasanan vaihtamiseksi.</p>
+			<div class="field">
+				<input type="email" name="email" id="email" value="{{ email }}" placeholder="Sähköposti" />
+			</div>
+			<div class="field">
+				<input type="submit" value="Ok">
+			</div>
+		</form>
+	{{/if}}
+
+{{/partial}}
+
+{{~> base.html ~}}

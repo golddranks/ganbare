@@ -19,6 +19,7 @@ pub struct NewUser<'a> {
 #[has_many(anon_aliases, foreign_key = "user_id")]
 #[has_many(pending_items, foreign_key = "user_id")]
 #[has_many(due_items, foreign_key = "user_id")]
+#[has_many(reset_email_secrets, foreign_key = "user_id")]
 #[derive(Identifiable, Queryable, Debug, Associations, AsChangeset, RustcEncodable)]
 pub struct User {
     pub id: i32,
@@ -675,10 +676,12 @@ pub struct UpdateEventUserdata<'a> {
     pub data: &'a str,
 }
 
-#[derive(Queryable, Insertable, Debug)]
+#[derive(Queryable, Insertable, Debug, Associations)]
+#[belongs_to(User, foreign_key = "user_id")]
 #[table_name="reset_email_secrets"]
 pub struct ResetEmailSecrets {
-    pub secret: String,
+    pub user_id: i32,
     pub email: String,
+    pub secret: String,
     pub added: DateTime<UTC>,
 }
