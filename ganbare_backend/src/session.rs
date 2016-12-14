@@ -1,6 +1,9 @@
 
 use super::*;
 use std::net::IpAddr;
+use std::thread;
+use std::time::Duration;
+use rand::{Rng, OsRng};
 
 pub const SESSID_BITS : usize = 128;
 
@@ -34,8 +37,12 @@ pub fn check(conn : &PgConnection, token_hex : &str, ip : IpAddr) -> Result<Opti
     use schema::{users, sessions};
     use diesel::ExpressionMethods;
 
-    let token = token_to_bin(token_hex)?;
+    let token = match token_to_bin(token_hex) {
+        Ok(t) => t,
+        Err(_) => return Ok(None), // If the token isn't in a valid format, just return "None".
+    };
 
+    let result;
     loop { // CAS loop. Try to update the DB until it succeeds.
 
         let user_sess: Option<(User, Session)> = users::table
@@ -82,13 +89,19 @@ pub fn check(conn : &PgConnection, token_hex : &str, ip : IpAddr) -> Result<Opti
             if rows_updated == 0 {
                 continue; // Failed to commit; some other connection commited new tokens
             } else {
-                return Ok(Some((user, sess))); // Successfully commited
+                result = Ok(Some((user, sess))); // Successfully commited
+                break;
             }
             
         } else {
-            return Ok(None)
+            // Punishment sleep for wrong credentials
+            thread::sleep(Duration::from_millis(20 + OsRng::new().expect("If we can't get OS RNG, we might as well crash.").gen_range(0, 5)));
+            result = Ok(None);
+            break;
         }
     }
+
+    result
 }
 
 pub fn end(conn : &PgConnection, token_hex : &str) -> Result<Option<()>> {
@@ -101,7 +114,14 @@ pub fn end(conn : &PgConnection, token_hex : &str) -> Result<Option<()>> {
         )
         .execute(conn)
         .optional()?;
-    Ok(deleted.map(|_| ()))
+    Ok(match deleted {
+        Some(_) => Some(()),
+        None => {
+            // Punishment sleep for wrong credentials
+            thread::sleep(Duration::from_millis(20 + OsRng::new().expect("If we can't get OS RNG, we might as well crash.").gen_range(0, 5)));
+            None
+        },
+    })
 } 
 
 pub fn start(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session> {
@@ -129,5 +149,5 @@ pub fn start(conn : &PgConnection, user : &User, ip : IpAddr) -> Result<Session>
     diesel::insert(&new_sess)
         .into(sessions::table)
         .get_result(conn)
-        .chain_err(|| "Couldn't start a session!") // TODO if the session id already exists, this is going to fail? (A few-in-a 2^128 change, though...)
+        .chain_err(|| "Couldn't start a session!") // if the session id already exists, this is going to fail? (A few-in-a 2^128 change, though...)
 }

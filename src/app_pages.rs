@@ -105,6 +105,9 @@ pub fn login_form(req: &mut Request) -> PencilResult {
 }
 
 pub fn login_post(request: &mut Request) -> PencilResult {
+
+    rate_limit(Duration::from_millis(1000), 20, || {
+
     let app = request.app;
     let ip = request.request.remote_addr.ip();
     let login_form = request.form_mut();
@@ -124,6 +127,8 @@ pub fn login_post(request: &mut Request) -> PencilResult {
             result.map(|mut resp| {resp.status_code = 401; resp})
         },
     }
+
+    })
 }
 
 pub fn logout(request: &mut Request) -> PencilResult {
@@ -134,7 +139,7 @@ pub fn logout(request: &mut Request) -> PencilResult {
 
 pub fn confirm_form(request: &mut Request) -> PencilResult {
 
-    rate_limit(Duration::from_millis(2000), || {
+    rate_limit(Duration::from_millis(2000), 20, || {
 
     let secret = err_400!(request.args().get("secret"), "secret");
     let conn = db_connect().err_500()?;
@@ -154,7 +159,7 @@ pub fn confirm_form(request: &mut Request) -> PencilResult {
 
 pub fn confirm_post(req: &mut Request) -> PencilResult {
 
-    rate_limit(Duration::from_millis(2000), || {
+    rate_limit(Duration::from_millis(2000), 20, || {
 
     req.load_form_data();
     let conn = db_connect().err_500()?;
@@ -177,7 +182,7 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
         }
     };
 
-    match do_login(&user.email.expect("The email address was just provent to exits."), &password, &*req).err_500()? {
+    match do_login(&user.email.expect("The email address was just proven to exits."), &password, &*req).err_500()? {
         Some((_, sess)) =>
             redirect("/", 303).refresh_cookie(&sess),
         None => 
@@ -212,7 +217,7 @@ pub fn password_reset_success(req: &mut Request) -> PencilResult {
 
 pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
 
-    rate_limit(Duration::from_millis(2000), || {
+    rate_limit(Duration::from_millis(2000), 20, || {
 
     let secret = err_400!(req.args_mut().take("secret"), "secret");
     let changed = req.args_mut().take("changed");
@@ -236,7 +241,7 @@ pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
 
 pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
 
-    rate_limit(Duration::from_millis(2000), || {
+    rate_limit(Duration::from_millis(2000), 20, || {
 
     let secret = err_400!(req.form_mut().take("secret"), "secret's missing");
     let password = err_400!(req.form_mut().take("new_password"), "password's missing");

@@ -305,9 +305,20 @@ macro_rules! parse {
 }
 
 
-pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration, function: F) -> O {
+pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration, random_max_millis: u64, function: F) -> O {
     use std::time::Instant;
     use std::thread;
+    use rand::{Rng, OsRng};
+    let mut os_rng = OsRng::new().expect("If the OS RNG is not present, just crash.");
+
+         // I THINK 0-5 ms of random duration is enough to mask all kinds of regularities such as rounding artefacts etc.
+         // (Apparently Linux and OS X have 1ms thread sleep granularity, whereas Windows has something like 10-15ms.)
+    #[cfg(target_os = "linux")]
+    let randomized_duration = Duration::from_millis(os_rng.gen_range(0, random_max_millis));
+    #[cfg(target_os = "macos")]
+    let randomized_duration = Duration::from_millis(os_rng.gen_range(0, random_max_millis));
+    #[cfg(target_os = "windows")]
+    let randomized_duration = Duration::from_millis(os_rng.gen_range(0, random_max_millis*10));
 
     let start_time = Instant::now();
 
@@ -316,7 +327,14 @@ pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration, function: F) ->
     let worked_duration = Instant::now() - start_time;
     
     if pause_duration > worked_duration {
-        thread::sleep(pause_duration - worked_duration);
+
+        thread::sleep(pause_duration - worked_duration + randomized_duration);
+
+    } else { // Oops, the work took more time than expected and we're leaking information! At least we can try and fumble a bit.
+
+        error!("rate limit: The work took more time than expected! We're leaking information!");
+        thread::sleep(randomized_duration);
+
     }
 
     result

@@ -18,7 +18,7 @@ dependencies = [
  "rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "try_map 0.1.0 (git+https://github.com/golddranks/try_map.git)",
+ "try_map 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-normalization 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -859,7 +859,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "try_map"
 version = "0.1.0"
-source = "git+https://github.com/golddranks/try_map.git#4db755ae55be3eeb417cff6491a6e6b995a72644"
+source = "git+https://github.com/golddranks/try_map.git#e05c573341a0eb7f9219a590504e10dd430d10b4"
+
+[[package]]
+name = "try_map"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "typeable"
@@ -1060,6 +1065,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum traitobject 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "07eaeb7689bb7fca7ce15628319635758eda769fed481ecfe6686ddef2600616"
 "checksum traitobject 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9dc23794ff47c95882da6f9d15de9a6be14987760a28cc0aafb40b7675ef09d8"
 "checksum try_map 0.1.0 (git+https://github.com/golddranks/try_map.git)" = "<none>"
+"checksum try_map 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bd585fe19933895bb9a7972668167355f96765441de7b2ed4234ce315d00b192"
 "checksum typeable 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1410f6f91f21d1612654e7cc69193b0334f909dcf2c790c4826254fbb86f8887"
 "checksum typemap 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "653be63c80a3296da5551e1bfd2cca35227e13cdd08c6668903ae2f4f77aa1f6"
 "checksum unicase 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "13a5906ca2b98c799f4b1ab4557b76367ebd6ae5ef14930ec841c74aed5f3764"
