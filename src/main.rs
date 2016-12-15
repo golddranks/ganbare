@@ -83,6 +83,13 @@ pub fn background_control_thread() {
             Err(e) => { error!("background_control_thread::send_nag_emails: Error: {}", e); },
         };
 
+        match ganbare::session::clean_old_sessions(&conn, chrono::Duration::days(14)) {
+            Ok(count) => if count != 0 { info!("Deleted {} expired sessions.", count) },
+            Err(e) => error!("background_control_thread::clean_old_sessions: Error: {}", e),
+        };
+        
+
+        // delete email confirms that are too old
     }
 }
 

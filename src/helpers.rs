@@ -293,8 +293,8 @@ pub fn try_auth_user(req: &mut Request)
 
 pub fn check_env_vars() { &*DATABASE_URL; &*EMAIL_SERVER; &*SITE_DOMAIN; }
 
-pub fn do_login<I: IntoIp>(email : &str, plaintext_pw : &str, ip: I) -> StdResult<Option<(User, Session)>, PencilError> {
-    let conn = db_connect().err_500()?;
+pub fn do_login<I: IntoIp>(conn: &PgConnection, email : &str, plaintext_pw : &str, ip: I) -> StdResult<Option<(User, Session)>, PencilError> {
+    debug!("Logging in user: {:?}", email);
     let user = try_or!(user::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
             else return Ok(None));
 
@@ -303,11 +303,9 @@ pub fn do_login<I: IntoIp>(email : &str, plaintext_pw : &str, ip: I) -> StdResul
     Ok(Some((user, sess)))
 }
 
-pub fn do_logout(sess_token: Option<&str>) -> StdResult<(), PencilError> {
-    let conn = db_connect().err_500()?;
-    if let Some(sess_token) = sess_token {
-        session::end(&conn, &sess_token).err_500()?;
-    };
+pub fn do_logout(conn: &PgConnection, sess: &Session) -> StdResult<(), PencilError> {
+    debug!("Logging out session: {:?}", sess);
+    session::end(&conn, &sess).err_500()?;
     Ok(())
 }
 

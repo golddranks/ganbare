@@ -33,6 +33,16 @@ fn token_to_bin(sessid : &str) -> Result<Vec<u8>> {
     }
 }
 
+pub fn clean_old_sessions(conn: &PgConnection, how_old: chrono::Duration) -> Result<usize> {
+    use schema::{sessions};
+
+    let deleted_count = diesel::delete(sessions::table
+        .filter(sessions::last_seen.lt(chrono::UTC::now()-how_old)))
+        .execute(conn)?;
+
+    Ok(deleted_count)
+}
+
 pub fn check(conn : &PgConnection, token_hex : &str, ip : IpAddr) -> Result<Option<(User, Session)>> {
     use schema::{users, sessions};
     use diesel::ExpressionMethods;
@@ -94,6 +104,7 @@ pub fn check(conn : &PgConnection, token_hex : &str, ip : IpAddr) -> Result<Opti
             }
             
         } else {
+            warn!("Somebody tried to open a page with wrong credentials! (Either a bug or a hacking attempt.)");
             // Punishment sleep for wrong credentials
             thread::sleep(Duration::from_millis(20 + OsRng::new().expect("If we can't get OS RNG, we might as well crash.").gen_range(0, 5)));
             result = Ok(None);
@@ -104,23 +115,20 @@ pub fn check(conn : &PgConnection, token_hex : &str, ip : IpAddr) -> Result<Opti
     result
 }
 
-pub fn end(conn : &PgConnection, token_hex : &str) -> Result<Option<()>> {
+pub fn end(conn : &PgConnection, sess : &Session) -> Result<Option<()>> {
     use schema::sessions;
 
-    let token = token_to_bin(token_hex)?;
-
-    let deleted = diesel::delete(sessions::table
-            .filter(sessions::current_token.eq(&token))
+    let deleted_count = diesel::delete(sessions::table
+            .filter(sessions::id.eq(sess.id))
         )
-        .execute(conn)
-        .optional()?;
-    Ok(match deleted {
-        Some(_) => Some(()),
-        None => {
+        .execute(conn)?;
+    Ok(if deleted_count != 1 {
+            warn!("Somebody tried to log out with wrong credentials! (Either a bug or a hacking attempt.)");
             // Punishment sleep for wrong credentials
             thread::sleep(Duration::from_millis(20 + OsRng::new().expect("If we can't get OS RNG, we might as well crash.").gen_range(0, 5)));
             None
-        },
+    } else {
+        Some(())
     })
 } 
 

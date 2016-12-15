@@ -12,6 +12,7 @@ use self::handlebars::Handlebars;
 use std::net::ToSocketAddrs;
 use std::collections::BTreeMap;
 use rustc_serialize::json::{Json, ToJson};
+use chrono::Duration;
 
 use schema::pending_email_confirms;
 use super::*;
@@ -145,7 +146,7 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
 pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, mail_server: SOCK, username: &str, password: &str,
     site_name: &str, site_link: &str, /* hb_registry: &Handlebars, */ from: (&str, &str)) -> Result<()> {
 
-    let slackers = user::get_slackers(conn)?;
+    let slackers = user::get_slackers(conn, Duration::minutes(5))?;
 
     if slackers.len() == 0 { return Ok(()) }
 
@@ -156,7 +157,7 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, mail_server
         .build();
 
     for (user, sess) in slackers {
-        println!("{:?} - {:?}", user, sess);
+        println!("{:?}\n{:?}\n", user, sess);
         continue; // FIXME
         let email_addr = if let Some(email) = user.email { email } else { continue };
         let data = EmailData { secret: "", site_link, site_name };

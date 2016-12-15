@@ -1,7 +1,6 @@
 
 use super::*;
 use pencil::redirect;
-use helpers;
 use ganbare::errors;
 use ganbare::event;
 use ganbare::user;
@@ -104,17 +103,22 @@ pub fn login_form(req: &mut Request) -> PencilResult {
     req.app.render_template("hello.html", &context)
 }
 
-pub fn login_post(request: &mut Request) -> PencilResult {
+pub fn login_post(req: &mut Request) -> PencilResult {
 
     rate_limit(Duration::from_millis(1000), 20, || {
 
-    let app = request.app;
-    let ip = request.request.remote_addr.ip();
-    let login_form = request.form_mut();
-    let email = login_form.take("email").unwrap_or_default();
-    let plaintext_pw = login_form.take("password").unwrap_or_default();
+    let app = req.app;
+    let ip = req.request.remote_addr.ip();
+    let email = req.form_mut().take("email").unwrap_or_default();
+    let plaintext_pw = req.form_mut().take("password").unwrap_or_default();
 
-    match do_login(&email, &plaintext_pw, ip).err_500()? {
+    let conn = db_connect().err_500()?;
+
+    if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+        do_logout(&conn, &old_sess).err_500()?;
+    }
+
+    match do_login(&conn, &email, &plaintext_pw, ip).err_500()? {
         Some((_, sess)) => {
             redirect("/", 303).refresh_cookie(&sess)
         },
@@ -131,8 +135,11 @@ pub fn login_post(request: &mut Request) -> PencilResult {
     })
 }
 
-pub fn logout(request: &mut Request) -> PencilResult {
-    helpers::do_logout(request.cookies().and_then(get_cookie))?;
+pub fn logout(req: &mut Request) -> PencilResult {
+    let conn = db_connect().err_500()?;
+    if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+        do_logout(&conn, &old_sess).err_500()?;
+    }
     return redirect("/", 303).expire_cookie()
 }
 
@@ -182,7 +189,13 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
         }
     };
 
-    match do_login(&user.email.expect("The email address was just proven to exits."), &password, &*req).err_500()? {
+    let conn = db_connect().err_500()?;
+
+    if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+        do_logout(&conn, &old_sess).err_500()?;
+    }
+
+    match do_login(&conn, &user.email.expect("The email address was just proven to exits."), &password, &*req).err_500()? {
         Some((_, sess)) =>
             redirect("/", 303).refresh_cookie(&sess),
         None => 
@@ -210,9 +223,12 @@ pub fn change_password_form(req: &mut Request) -> PencilResult {
 }
 
 pub fn password_reset_success(req: &mut Request) -> PencilResult {
+    let (_, _, sess) = auth_user(req, "")?;
     let mut context = new_template_context();
     context.insert("changed".into(), "changed".into());
-    req.app.render_template("reset_password.html", &context)
+    req.app
+        .render_template("reset_password.html", &context)
+        .refresh_cookie(&sess)
 }
 
 pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
@@ -234,7 +250,8 @@ pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
         context.insert("changed".into(), changed);
     }
 
-    req.app.render_template("reset_password.html", &context)
+    req.app
+        .render_template("reset_password.html", &context)
     
     })
 }
@@ -268,7 +285,11 @@ pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
         _ => (),
     };
 
-    match do_login(&secret.email, &password, &*req).err_500()? {
+    if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+        do_logout(&conn, &old_sess).err_500()?;
+    }
+
+    match do_login(&conn, &secret.email, &password, &*req).err_500()? {
         Some((_, sess)) =>
             redirect("/reset_password?changed=true", 303).refresh_cookie(&sess),
         None => 
