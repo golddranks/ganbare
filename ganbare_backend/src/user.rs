@@ -294,14 +294,14 @@ pub fn join_user_group_by_name(conn: &PgConnection, user: &User, group_name: &st
     Ok(())
 }
 
-pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -> Result<bool> {
+pub fn check_user_group(conn : &PgConnection, user_id: i32, group_name: &str )  -> Result<bool> {
     use schema::{user_groups, group_memberships};
 
     if group_name == "" { return Ok(true) };
 
     let exists : Option<(UserGroup, GroupMembership)> = user_groups::table
         .inner_join(group_memberships::table)
-        .filter(group_memberships::user_id.eq(user.id))
+        .filter(group_memberships::user_id.eq(user_id))
         .filter(user_groups::group_name.eq(group_name))
         .get_result(&*conn)
         .optional()
@@ -409,7 +409,17 @@ pub fn get_slackers(conn: &PgConnection, inactive: Duration) -> Result<Vec<(i32,
         .distinct()
         .get_results(conn)?;
 
-    let slackers = slackers.into_iter().map(|(user, email)| (user, email.expect("We filtered NULL emails earlier"))).collect();
+    let mut true_slackers = vec![];
+    for (user_id, email) in slackers {
 
-    Ok(slackers)
+        let (next_existing_due, no_new_words, no_new_quizes) = quiz::things_left_to_do(conn, user_id)?;
+
+        if no_new_words && no_new_quizes && next_existing_due.is_none() {
+            continue; // Nothing left to study , so he isn't a slacker
+        }
+
+        true_slackers.push((user_id, email.expect("We filtered NULL emails earlier")));
+
+    }
+    Ok(true_slackers)
 }

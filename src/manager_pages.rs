@@ -52,7 +52,7 @@ pub fn manage(req: &mut Request) -> PencilResult {
     let (user, sess) = get_user(&conn, req).err_500()?
         .ok_or_else(|| abort(401).unwrap_err() )?; // Unauthorized
 
-    if ! user::check_user_group(&conn, &user, "editors").err_500()?
+    if ! user::check_user_group(&conn, user.id, "editors").err_500()?
         { return abort(401); }
 
     let context = new_template_context();

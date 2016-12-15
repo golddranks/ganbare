@@ -13,7 +13,8 @@ CREATE TABLE user_stats (
 	all_spent_time_ms BIGINT NOT NULL DEFAULT 0,
 	all_words INTEGER NOT NULL DEFAULT 0,
 	quiz_all_times INTEGER NOT NULL DEFAULT 0,
-	quiz_correct_times INTEGER NOT NULL DEFAULT 0
+	quiz_correct_times INTEGER NOT NULL DEFAULT 0,
+	last_nag_email TIMESTAMPTZ
 );
 
 INSERT INTO user_stats (id, all_spent_time_ms, all_active_time_ms, days_used, all_words, quiz_all_times, quiz_correct_times) (

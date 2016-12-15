@@ -573,18 +573,16 @@ fn choose_cooldown_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetric
     Ok(None)
 }
 
-fn choose_new_q_or_e(conn: &PgConnection, user: &User) -> Result<Option<QuizType>> {
+fn choose_new_q_or_e(conn: &PgConnection, user_id: i32) -> Result<Option<QuizType>> {
 
-    if user::check_user_group(conn, user, "input_group")? {
-        debug!("This user is a part of the input group so let's give them questions.");
-        if let Some(q) = choose_new_question(conn, user.id)? {
+    if user::check_user_group(conn, user_id, "input_group")? {
+        if let Some(q) = choose_new_question(conn, user_id)? {
             return Ok(Some(QuizType::Question(q.id)))
         }
     }
 
-    if user::check_user_group(conn, user, "output_group")? {
-        debug!("This user is a part of the output group so let's give them exercises.");
-        if let Some(e) = choose_new_exercise(conn, user.id)? {
+    if user::check_user_group(conn, user_id, "output_group")? {
+        if let Some(e) = choose_new_exercise(conn, user_id)? {
             return Ok(Some(QuizType::Exercise(e.id)))
         }
     }
@@ -606,7 +604,7 @@ fn choose_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Res
         return Ok(Some(quiztype))
     }
 
-    if let Some(quiztype) = choose_new_q_or_e(conn, user)? {
+    if let Some(quiztype) = choose_new_q_or_e(conn, user.id)? {
         debug!("No overdue quiz items; presenting a new quiz.");
         return Ok(Some(quiztype))
     }
@@ -716,6 +714,15 @@ fn clear_limits(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option
     Ok(None)
 }
 
+pub fn things_left_to_do(conn: &PgConnection, user_id: i32) -> Result<(Option<chrono::DateTime<chrono::UTC>>, bool, bool)> {
+
+    let next_existing_due = choose_next_due_item(conn, user_id)?.map(|(due_item, _)| due_item.due_date);
+    let no_new_words = choose_new_random_word(conn, user_id)?.is_none();
+    let no_new_quizes =  choose_new_q_or_e(conn, user_id)?.is_none();
+
+    Ok((next_existing_due, no_new_words, no_new_quizes))
+}
+
 
 fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
     use std::cmp::{max};
@@ -723,9 +730,7 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
 
     let user_id = user.id;
 
-    let next_existing_due = choose_next_due_item(conn, user_id)?.map(|(due_item, _)| due_item.due_date);
-    let no_new_words = choose_new_random_word(conn, user_id)?.is_none();
-    let no_new_quizes =  choose_new_q_or_e(conn, user)?.is_none();
+    let (next_existing_due, no_new_words, no_new_quizes) = things_left_to_do(conn, user_id)?;
 
     debug!("No new quizes available: {:?} (either limited by lack of new words or by lack of quizes themselves)", no_new_quizes);
     debug!("No due quizes available: {:?}", next_existing_due.is_none());
@@ -962,7 +967,7 @@ fn return_word(conn: &PgConnection, user: &User, the_word: Word, metrics: &mut U
     metrics.new_words_since_break += 1;
 
     let audio_file = audio::load_random_from_bundle(&*conn, the_word.audio_bundle)?;
-    let show_accents = user::check_user_group(conn, user, "show_accents")?;
+    let show_accents = user::check_user_group(conn, user.id, "show_accents")?;
 
     let pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_file.id))?;
 

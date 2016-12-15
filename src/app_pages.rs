@@ -14,7 +14,7 @@ fn dispatch_events(conn: &PgConnection, user: &User)
         event::initiate(&conn, "welcome", &user).err_500()?;
         Some(redirect("/welcome", 303))
 
-    } else if user::check_user_group(conn, user, "survey").err_500()? && ! event::is_done(conn, "survey", &user).err_500()? {
+    } else if user::check_user_group(conn, user.id, "survey").err_500()? && ! event::is_done(conn, "survey", &user).err_500()? {
 
         event::initiate(&conn, "survey", &user).err_500()?;
         Some(redirect("/survey", 303))
@@ -27,7 +27,7 @@ fn dispatch_events(conn: &PgConnection, user: &User)
 fn main_quiz(req: &mut Request, conn: &PgConnection, user: &User) -> PencilResult { 
     let mut context = new_template_context();
 
-    if ! user::check_user_group(conn, user, "input_group").err_500()? && ! user::check_user_group(conn, user, "output_group").err_500()? {
+    if ! user::check_user_group(conn, user.id, "input_group").err_500()? && ! user::check_user_group(conn, user.id, "output_group").err_500()? {
         context.insert("alert_msg".into(), "Et kuulu mihinkään harjoitusryhmään!".into());
     }
 

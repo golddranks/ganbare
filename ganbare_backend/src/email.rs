@@ -12,7 +12,6 @@ use self::handlebars::Handlebars;
 use std::net::ToSocketAddrs;
 use std::collections::BTreeMap;
 use rustc_serialize::json::{Json, ToJson};
-use chrono::Duration;
 
 use schema::pending_email_confirms;
 use super::*;
@@ -143,8 +142,9 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
-pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: chrono::Duration, mail_server: SOCK, username: &str, password: &str,
-    site_name: &str, site_link: &str, /* hb_registry: &Handlebars, */ from: (&str, &str)) -> Result<()> {
+pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: chrono::Duration, nag_grace_period: chrono::Duration,
+    mail_server: SOCK, username: &str, password: &str,
+    site_name: &str, site_link: &str, hb_registry: &Handlebars, from: (&str, &str)) -> Result<()> {
 
     let slackers = user::get_slackers(conn, how_old)?;
 
@@ -157,16 +157,30 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: ch
         .build();
 
     for (user_id, email_addr) in slackers {
-        println!("{:?} {:?}\n", user_id, email_addr);
-        continue; // FIXME
+
+        use schema::user_stats;
+
+        let mut stats: UserStats = user_stats::table
+            .filter(user_stats::id.eq(user_id))
+            .get_result(conn)?;
+
+        let last_nag = stats.last_nag_email.unwrap_or(chrono::date::MIN.and_hms(0,0,0));
+
+        if last_nag > chrono::UTC::now() - nag_grace_period {
+            continue; // We have sent a nag email recently
+        }
+
+        stats.last_nag_email = Some(chrono::UTC::now());
+        let _: UserStats = stats.save_changes(conn)?;
+
         let data = EmailData { secret: "", site_link, site_name };
         let email = EmailBuilder::new()
             .to(email_addr.as_str())
             .from(from)
             .subject(&format!("【{}】Helou :3", site_name))
-            .html("jeeah"/*hb_registry.render("slacker_heatenings.html", &data) // FIXME
+            .html(hb_registry.render("slacker_heatenings.html", &data) // FIXME
                 .chain_err(|| "Handlebars template render error!")?
-                .as_ref()*/)
+                .as_ref())
             .build().expect("Building email shouldn't fail.");
 
         let result = mailer.send(email)

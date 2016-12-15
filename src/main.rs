@@ -67,17 +67,22 @@ pub fn background_control_thread() {
         };
     }
 
+
+    let mut app = Pencil::new(".");
+    include_templates!(app, "templates", "slacker_heatenings.html");
+
+
     loop {
         sleep(Duration::from_secs(5));
 
         match ganbare::email::send_nag_emails(
-                &conn, chrono::Duration::minutes(5),
+                &conn, chrono::Duration::minutes(5), chrono::Duration::days(2),
                 &*EMAIL_SERVER,
                 &*EMAIL_SMTP_USERNAME,
                 &*EMAIL_SMTP_PASSWORD,
                 &*SITE_DOMAIN,
                 &*SITE_LINK,
-               // &**req.app.handlebars_registry.read().expect("The registry is basically read-only after startup."), // FIXME
+                &*app.handlebars_registry.read().expect("The registry is basically read-only after startup."),
                 (&*EMAIL_ADDRESS, &*EMAIL_NAME)) {
             Ok(()) => (),
             Err(e) => { error!("background_control_thread::send_nag_emails: Error: {}", e); },
@@ -193,9 +198,9 @@ pub fn main() {
     app.get("/api/images/<filename:string>", "get_image", http_api::get_image);
     app.put("/api/eventdata/<eventname:string>/<key:string>", "put_eventdata", http_api::save_eventdata);
     app.post("/api/eventdata/<eventname:string>", "post_eventdata", http_api::save_eventdata);
-
+    
     std::thread::spawn(background_control_thread);
-
+    
     info!("Ready. Running on {}, serving at {}", *SERVER_BINDING, *SITE_DOMAIN);
     app.run(*SERVER_BINDING);
 }

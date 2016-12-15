@@ -611,6 +611,7 @@ pub struct UserStats {
     pub all_words: i32,
     pub quiz_all_times: i32,
     pub quiz_correct_times: i32,
+    pub last_nag_email: Option<DateTime<UTC>>,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable)]

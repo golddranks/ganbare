@@ -262,7 +262,7 @@ pub fn auth_user(req: &mut Request, required_group: &str)
 {
     match try_auth_user(req)? {
         Some((conn, user, sess)) => {
-            if user::check_user_group(&conn, &user, required_group).err_500()? {
+            if user::check_user_group(&conn, user.id, required_group).err_500()? {
                 Ok((conn, user, sess))
             } else {
                 Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
