@@ -70,7 +70,7 @@ function accentuate(word: string) {
 			narrators[narrator.id] = narrator;
 		});
 		narrators.forEach(function(narrator) {
-			var narr_header = $('<th class="narratorHeaders" class="narrator'+narrator.id+'"></th>').appendTo(narratorColumns);
+			var narr_header = $('<th class="narratorHeaders narrator'+narrator.id+'"></th>').appendTo(narratorColumns);
 
 			function initCell() {
 				narr_header.html('');
