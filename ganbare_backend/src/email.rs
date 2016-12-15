@@ -164,6 +164,10 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: ch
             .filter(user_stats::id.eq(user_id))
             .get_result(conn)?;
 
+        if ! user::check_user_group(conn, user_id, "nag_emails")? {
+            continue; // We don't send emails to users that don't belong to the "nag_emails" group.
+        }
+
         let last_nag = stats.last_nag_email.unwrap_or(chrono::date::MIN.and_hms(0,0,0));
 
         if last_nag > chrono::UTC::now() - nag_grace_period {

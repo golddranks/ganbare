@@ -2,8 +2,6 @@
 
 Today:
 
-- Implement nag emails
-
 - Publish more words
 
 
@@ -11,13 +9,13 @@ Tomorrow:
 - Impl the test tool (asks questions from both groups)
 - Implement anonymous groups and anonymous aliases
 - Impl a tool that then splits the group into half and assigns them to different groups
-- Event status on user management page
 - Introduce higher-level questions
 
 
 
 
 Stretch goals:
+- Event status on user management page
 - Make "aika loppui" message to exercises too
 - Make the survey to close the buttons when answered but before the answer is saved (needs to join the event of closing the buttons & getting response from server)
 - Refactor the error section and bug reporting functionality to be part of the base template
