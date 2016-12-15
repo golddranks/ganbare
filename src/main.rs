@@ -60,7 +60,7 @@ pub fn background_control_thread() {
 
     let conn;
     loop {
-        sleep(Duration::from_secs(180));
+        sleep(Duration::from_secs(5));
         match db_connect() {
             Ok(c) => { conn = c; break },
             Err(e) => error!("background_control_thread::db_connect: Error: {}", e),
@@ -71,7 +71,7 @@ pub fn background_control_thread() {
         sleep(Duration::from_secs(5));
 
         match ganbare::email::send_nag_emails(
-                &conn,
+                &conn, chrono::Duration::minutes(5),
                 &*EMAIL_SERVER,
                 &*EMAIL_SMTP_USERNAME,
                 &*EMAIL_SMTP_PASSWORD,

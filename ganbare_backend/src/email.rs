@@ -143,10 +143,10 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
-pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, mail_server: SOCK, username: &str, password: &str,
+pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: chrono::Duration, mail_server: SOCK, username: &str, password: &str,
     site_name: &str, site_link: &str, /* hb_registry: &Handlebars, */ from: (&str, &str)) -> Result<()> {
 
-    let slackers = user::get_slackers(conn, Duration::minutes(5))?;
+    let slackers = user::get_slackers(conn, how_old)?;
 
     if slackers.len() == 0 { return Ok(()) }
 
@@ -156,10 +156,9 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, mail_server
         .credentials(username, password)
         .build();
 
-    for (user, sess) in slackers {
-        println!("{:?}\n{:?}\n", user, sess);
+    for (user_id, email_addr) in slackers {
+        println!("{:?} {:?}\n", user_id, email_addr);
         continue; // FIXME
-        let email_addr = if let Some(email) = user.email { email } else { continue };
         let data = EmailData { secret: "", site_link, site_name };
         let email = EmailBuilder::new()
             .to(email_addr.as_str())

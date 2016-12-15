@@ -392,7 +392,7 @@ pub fn set_metrics(conn: &PgConnection, metrics: &UpdateUserMetrics) -> Result<O
     Ok(item)
 }
 
-pub fn get_slackers(conn: &PgConnection, inactive: Duration) -> Result<Vec<(User, Session)>> {
+pub fn get_slackers(conn: &PgConnection, inactive: Duration) -> Result<Vec<(i32, String)>> {
     use schema::{users, sessions};
     use diesel::expression::all;
 
@@ -401,12 +401,15 @@ pub fn get_slackers(conn: &PgConnection, inactive: Duration) -> Result<Vec<(User
         .filter(sessions::last_seen.gt(chrono::UTC::now()-inactive))
         .select(users::id);
 
-    let slackers: Vec<(User, Session)> = users::table
+    let slackers: Vec<(i32, Option<String>)> = users::table
         .inner_join(sessions::table)
         .filter(users::email.is_not_null())
         .filter(users::id.ne(all(non_slackers)))
-        .order(sessions::last_seen.desc())
+        .select((users::id, users::email))
+        .distinct()
         .get_results(conn)?;
+
+    let slackers = slackers.into_iter().map(|(user, email)| (user, email.expect("We filtered NULL emails earlier"))).collect();
 
     Ok(slackers)
 }

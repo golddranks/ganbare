@@ -103,6 +103,7 @@ ALTER TABLE e_answered_data ADD COLUMN full_spent_time_ms INTEGER NOT NULL DEFAU
 ALTER TABLE e_answered_data ADD COLUMN reflected_time_ms INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+UPDATE users SET email=NULL WHERE email LIKE 'invalid________________________________';
 
 CREATE TABLE reset_email_secrets (
 	user_id SERIAL PRIMARY KEY REFERENCES users,
@@ -110,3 +111,4 @@ CREATE TABLE reset_email_secrets (
 	secret VARCHAR NOT NULL,
 	added TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 )
+
