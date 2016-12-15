@@ -4,6 +4,7 @@ use pencil::redirect;
 use pencil::abort;
 use ganbare::user;
 use ganbare::manage;
+use std::collections::HashSet;
 
 pub fn fresh_install_form(req: &mut Request) -> PencilResult {
     let conn = ganbare::db::connect(&*DATABASE_URL).err_500()?;
@@ -229,8 +230,9 @@ pub fn add_users(req: &mut Request) -> PencilResult {
             groups.push(err_400!(user::get_group(&conn, &field.to_lowercase()).err_500()?, "No such group?").id);
         }
         let secret = email::add_pending_email_confirm(&conn, email, groups.as_ref()).err_500()?;
-        email::send_confirmation(email, &secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &*SITE_LINK, &**req.app.handlebars_registry.read()
-                .expect("The registry is basically read-only after startup."))
+        email::send_confirmation(email, &secret, &*EMAIL_SERVER,&*EMAIL_SMTP_USERNAME, &*EMAIL_SMTP_PASSWORD,
+            &*SITE_DOMAIN, &*SITE_LINK, &**req.app.handlebars_registry.read()
+                .expect("The registry is basically read-only after startup."), (&*EMAIL_ADDRESS, &*EMAIL_NAME))
             .err_500()?;
     }
 
@@ -257,5 +259,46 @@ pub fn audio(req: &mut Request) -> PencilResult {
 
     req.app
         .render_template("audio.html", &context)
+        .refresh_cookie(&sess)
+}
+
+pub fn send_mail_form(req: &mut Request) -> PencilResult {
+    let (_, _, sess) = auth_user(req, "editors")?;
+
+    let sent = req.form_mut().take("sent");
+
+    let mut context =  new_template_context();
+
+    if let Some(sent) = sent {
+        context.insert("sent".into(), sent);
+    }
+
+    req.app
+        .render_template("send_mail.html", &context)
+        .refresh_cookie(&sess)
+}
+
+pub fn send_mail_post(req: &mut Request) -> PencilResult {
+    let (conn, _, sess) = auth_user(req, "editors")?;
+
+    let group = err_400!(req.form_mut().take_all("group[]"), "group missing");
+    let group = err_400!(group.into_iter().map(|id| str::parse::<i32>(&id)).collect::<Vec<_>>().flip(), "group invalid");
+    let subject = err_400!(req.form_mut().take("subject"), "subject missing");
+    let body = err_400!(req.form_mut().take("body"), "body missing");
+
+    let mut email_addrs = HashSet::new();
+
+    for g in group {
+        for (u, _) in user::get_users_by_group(&conn, g).err_500()? {
+            if let Some(email) = u.email {
+                email_addrs.insert(email);
+            }
+        }
+    }
+
+    let result = ganbare::email::send_freeform_email(&*EMAIL_SERVER,&*EMAIL_SMTP_USERNAME, &*EMAIL_SMTP_PASSWORD,
+        (&*EMAIL_ADDRESS, &*EMAIL_NAME), email_addrs.iter().map(|s| &**s), &subject, &body).err_500()?;
+
+    redirect("/send_mail?sent=true", 303)
         .refresh_cookie(&sess)
 }

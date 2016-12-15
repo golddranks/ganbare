@@ -19,7 +19,7 @@ use ganbare::session;
 use ganbare::errors;
 use std::path::PathBuf;
 pub use std::time::Duration;
-pub use try_map::FallibleMapExt;
+pub use try_map::{FallibleMapExt, FlipResultExt};
 
 lazy_static! {
  
@@ -32,14 +32,25 @@ lazy_static! {
     pub static ref SITE_LINK : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_LINK")
         .unwrap_or_else(|_|  format!("http://{}:8081", env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())))};
         
-
     pub static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
         let binding = env::var("GANBARE_EMAIL_SERVER")
         .expect("GANBARE_EMAIL_SERVER: Specify an outbound email server, like this: mail.yourisp.com:25");
         binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
+ 
+    pub static ref EMAIL_SMTP_USERNAME : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_SMTP_USERNAME")
+        .unwrap_or_else(|_| "".into()) };
+
+    pub static ref EMAIL_SMTP_PASSWORD : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_SMTP_PASSWORD")
+        .unwrap_or_else(|_| "".into()) };
 
     pub static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_DOMAIN")
         .unwrap_or_else(|_|  env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
+
+    pub static ref EMAIL_ADDRESS : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_ADDRESS")
+        .unwrap_or_else(|_| format!("support@{}", &*EMAIL_DOMAIN)) };
+
+    pub static ref EMAIL_NAME : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_NAME")
+        .unwrap_or_else(|_|  "".into()) };
 
     pub static ref SERVER_BINDING : SocketAddr = { dotenv::dotenv().ok();
         let binding = env::var("GANBARE_SERVER_BINDING")

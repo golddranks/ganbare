@@ -14,13 +14,17 @@ The server is configured using environmental variables, or an `.env` file in the
 
 The following have defaults, and you may omit them:
 
-    GANBARE_SITE_LINK defaults to http://$GANBARE_SITE_DOMAIN:8081
-    GANBARE_EMAIL_DOMAIN defaults to $GANBARE_SITE_DOMAIN
+    GANBARE_EMAIL_SMTP_USERNAME SMTP username. Defaults to empty string.
+    GANBARE_EMAIL_SMTP_PASSWORD password. Defaults to empty string.
+    GANBARE_SITE_LINK defaults to http://$GANBARE_SITE_DOMAIN:8081. This is used, for example, in email messages to link to the site.
+    GANBARE_EMAIL_DOMAIN If the e-mail domain is different than the site domain. (e.g. app in subdomain but emails from main domain) Defaults to $GANBARE_SITE_DOMAIN
+    GANBARE_EMAIL_ADDRESS The default e-mail address that the emails from the app are send from. Defaults to support@$GANBARE_EMAIL_DOMAIN
+    GANBARE_EMAIL_NAME The name part of the e-mail address. Defaults to empty string.
     GANBARE_SERVER_BINDING defaults to localhost:8080. When running inside a container, change this to 0.0.0.0:8080 for the site to be accessible from host.
     GANBARE_JQUERY defaults to /static/js/jquery.min.js. For production, try https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
     GANBARE_FONT_URL defaults to /static/fonts/default.css. For production, try https://fonts.googleapis.com/css?family=Source+Sans+Pro:300
-    GANBARE_AUDIO_DIR defaults to audio You shouldn't need to change this, but it's possible.
-    GANBARE_IMAGES_DIR defaults to images You shouldn't need to change this, but it's possible.
+    GANBARE_AUDIO_DIR defaults to "audio" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
+    GANBARE_IMAGES_DIR defaults to "images" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
 
 During build, you need the following: 
 

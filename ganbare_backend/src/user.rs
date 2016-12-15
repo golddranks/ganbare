@@ -309,6 +309,17 @@ pub fn check_user_group(conn : &PgConnection, user: &User, group_name: &str )  -
     Ok(exists.is_some())
 }
 
+pub fn get_users_by_group(conn: &PgConnection, group_id: i32 ) -> Result<Vec<(User, GroupMembership)>> {
+    use schema::{group_memberships, users};
+
+    let users: Vec<(User, GroupMembership)> = users::table
+        .inner_join(group_memberships::table)
+        .filter(group_memberships::group_id.eq(group_id))
+        .get_results(conn)?;
+
+    Ok(users)
+}
+
 pub fn get_group(conn : &PgConnection, group_name: &str ) -> Result<Option<UserGroup>> {
     use schema::user_groups;
 

@@ -18,7 +18,7 @@ dependencies = [
  "rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "try_map 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "try_map 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-normalization 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -609,7 +609,7 @@ dependencies = [
 [[package]]
 name = "pencil"
 version = "0.3.0"
-source = "git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare#b153d461c4e1f218bcaca3229d9d6b96b5210615"
+source = "git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare#f1a7dbc83cdd2b2b607078f99fba90df93bbf014"
 dependencies = [
  "formdata 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -863,7 +863,7 @@ source = "git+https://github.com/golddranks/try_map.git#e05c573341a0eb7f9219a590
 
 [[package]]
 name = "try_map"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1065,7 +1065,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum traitobject 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "07eaeb7689bb7fca7ce15628319635758eda769fed481ecfe6686ddef2600616"
 "checksum traitobject 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9dc23794ff47c95882da6f9d15de9a6be14987760a28cc0aafb40b7675ef09d8"
 "checksum try_map 0.1.0 (git+https://github.com/golddranks/try_map.git)" = "<none>"
-"checksum try_map 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bd585fe19933895bb9a7972668167355f96765441de7b2ed4234ce315d00b192"
+"checksum try_map 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d794f9c0c9c3579d8bec45bd867741c8fe64e124af2b372a530021b1ba4b4a3b"
 "checksum typeable 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1410f6f91f21d1612654e7cc69193b0334f909dcf2c790c4826254fbb86f8887"
 "checksum typemap 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "653be63c80a3296da5551e1bfd2cca35227e13cdd08c6668903ae2f4f77aa1f6"
 "checksum unicase 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "13a5906ca2b98c799f4b1ab4557b76367ebd6ae5ef14930ec841c74aed5f3764"

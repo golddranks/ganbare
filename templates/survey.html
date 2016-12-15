@@ -198,7 +198,7 @@
 
 					$('<button style="min-width: 60%; margin-top: 1em;">Ok</button>')
 						.appendTo(answerButtons)
-						.one('click', function() { answerQuestion({q: question, a: answerData}, i) });
+						.one('click', function() { answerQuestion(answerData, i) });
 
 				} else if (answers === "languages") {
 					$(' <input type="checkbox" id="suomi"><label for="suomi">suomi</label>\
@@ -210,9 +210,9 @@
 						.appendTo(answerButtons)
 						.one('click', function() {
 							var answerData = {q: question, a:
-								{	suomea: $("#suomi").is(":checked"),
-									ruotsia: $("#ruotsi").is(":checked"),
-									muuta: $("#muukieli").val(),
+								{	suomi: $("#suomi").is(":checked"),
+									ruotsi: $("#ruotsi").is(":checked"),
+									muu: $("#muukieli").val(),
 								}
 							};
 							answerQuestion(answerData, i);

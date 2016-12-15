@@ -22,12 +22,12 @@ extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;
 extern crate hyper;
+pub use try_map::{FallibleMapExt, FlipResultExt};
 
 type DateTimeUTC = chrono::DateTime<chrono::UTC>;
 
 pub use diesel::prelude::*;
 
-pub use try_map::FallibleMapExt;
 pub use diesel::pg::PgConnection;
 
 

@@ -10,7 +10,6 @@ use self::lettre::transport::EmailTransport;
 use self::lettre::email::EmailBuilder;
 use self::handlebars::Handlebars;
 use std::net::ToSocketAddrs;
-use self::rust_email::{Mailbox};
 use std::collections::BTreeMap;
 use rustc_serialize::json::{Json, ToJson};
 
@@ -30,14 +29,13 @@ impl<'a> ToJson for EmailData<'a> {
     }
 }
 
-pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, mail_server: SOCK,
-    email_origin_domain: &str, site_name: &str, site_link: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
+pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, mail_server: SOCK, username: &str, password: &str,
+    site_name: &str, site_link: &str, hb_registry: &Handlebars, from: (&str, &str)) -> Result<EmailResponse> {
 
     let data = EmailData { secret, site_link, site_name };
-    let from_addr = format!("noreply@{}", email_origin_domain);
     let email = EmailBuilder::new()
         .to(email_addr)
-        .from(Mailbox {name: Some("gamba.re 応援団".into()), address: from_addr})
+        .from(from)
         .subject(&format!("【{}】Tervetuloa!", site_name))
         .html(hb_registry.render("email_confirm_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
@@ -45,19 +43,20 @@ pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, 
         .build().expect("Building email shouldn't fail.");
     let mut mailer = SmtpTransportBuilder::new(mail_server)
         .chain_err(|| "Couldn't setup the email transport!")?
+        .encrypt()
+        .credentials(username, password)
         .build();
     mailer.send(email)
         .chain_err(|| "Couldn't send email!")
 }
 
-pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail_server: SOCK,
-    email_origin_domain: &str, site_name: &str, site_link: &str, hb_registry: &Handlebars) -> Result<EmailResponse> {
+pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail_server: SOCK, username: &str, password: &str,
+    site_name: &str, site_link: &str, hb_registry: &Handlebars, from: (&str, &str)) -> Result<EmailResponse> {
 
     let data = EmailData { secret: &secret.secret, site_link, site_name };
-    let from_addr = format!("noreply@{}", email_origin_domain);
     let email = EmailBuilder::new()
         .to(secret.email.as_str())
-        .from(Mailbox {name: Some("gamba.re 応援団".into()), address: from_addr})
+        .from(from)
         .subject(&format!("【{}】Salasanan vaihtaminen", site_name))
         .html(hb_registry.render("pw_reset_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
@@ -65,9 +64,37 @@ pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail
         .build().expect("Building email shouldn't fail.");
     let mut mailer = SmtpTransportBuilder::new(mail_server)
         .chain_err(|| "Couldn't setup the email transport!")?
+        .encrypt()
+        .credentials(username, password)
         .build();
     mailer.send(email)
         .chain_err(|| "Couldn't send email!")
+}
+
+pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item=&'a str>>(mail_server: SOCK, username: &str, password: &str,
+    from: (&str, &str), to: ITER, subject: &str, body: &str) -> Result<()> {
+
+    let mut mailer = SmtpTransportBuilder::new(mail_server)
+        .chain_err(|| "Couldn't setup the email transport!")?
+        .encrypt()
+        .credentials(username, password)
+        .build();
+
+    for to in to {
+    
+        let email = EmailBuilder::new()
+            .from(from)
+            .subject(subject)
+            .text(body)
+            .to(to)
+            .build().expect("Building email shouldn't fail.");
+
+        let result = mailer.send(email)
+            .chain_err(|| "Couldn't send!")?;
+        info!("Sent emails: {:?}!", result);
+    }
+
+    Ok(())
 }
 
 

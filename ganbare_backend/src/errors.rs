@@ -7,6 +7,7 @@
             ::std::io::Error, StdIoError;
             ::diesel::result::Error, DieselError;
             ::diesel::migrations::RunMigrationsError, DieselMigrationError;
+            ::std::fmt::Error, FmtError;
         }
         errors {
             InvalidInput {

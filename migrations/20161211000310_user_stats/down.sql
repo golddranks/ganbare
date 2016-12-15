@@ -8,3 +8,4 @@ ALTER TABLE users ALTER COLUMN email SET NOT NULL;
 
 ALTER TABLE w_answered_data RENAME COLUMN full_spent_time_ms TO answer_time_ms;
 ALTER TABLE w_answered_data DROP COLUMN active_answer_time_ms;
+DELETE FROM user_groups WHERE group_name='show_accents';

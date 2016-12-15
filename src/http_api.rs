@@ -308,6 +308,10 @@ pub fn get_all(req: &mut Request) -> PencilResult {
             let items = audio::get_narrators(&conn).err_500()?;
             jsonify(&items)
         },
+        "get_groups" => {
+            let items = ganbare::user::all_groups(&conn).err_500()?;
+            jsonify(&items)
+        },
         _ => return Err(internal_error("no such endpoint!")),
     };
 
@@ -582,4 +586,3 @@ pub fn user(req: &mut Request) -> PencilResult {
 
     json.refresh_cookie(&sess)
 }
-

@@ -306,8 +306,9 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
 
     match user::send_pw_change_email(&conn, &user_email) {
         Ok(secret) => {
-            email::send_pw_reset_email(&secret, &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &*SITE_LINK,
-                &**req.app.handlebars_registry.read().expect("The registry is basically read-only after startup.")).err_500()?;
+            email::send_pw_reset_email(&secret, &*EMAIL_SERVER, &*EMAIL_SMTP_USERNAME, &*EMAIL_SMTP_PASSWORD, &*SITE_DOMAIN, &*SITE_LINK,
+                &**req.app.handlebars_registry.read().expect("The registry is basically read-only after startup."),
+                (&*EMAIL_ADDRESS, &*EMAIL_NAME)).err_500()?;
             redirect("/send_password_reset_email?sent=true", 303)
         },
         Err(Error(ErrorKind::NoSuchUser(_), _)) => {

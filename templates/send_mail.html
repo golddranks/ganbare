@@ -1,0 +1,35 @@
+{{#partial main_section}}
+
+	<h1>Send mail</h1>
+
+	{{#if sent}}
+		<strong class="message">Lähetetty!</strong>
+	{{/if}}
+	<form action="/send_mail" method="post">
+		<h2>To:</h2>
+		<div id="userGroups">
+		</div>
+		<p><label for="from">From:</label>gamba.re 応援団 &lt;noreply@akusento.ganba.re&gt;</p>
+		<p><label for="subject">Subject:</label><input type="text" name="subject" id="subject" value="【akusento.ganba.re】" style="text-transform: none;"></p>
+
+		<textarea name="body" id="body" style="text-transform: none;"></textarea>
+		<input type="submit" value="send">
+	</form>
+
+	<script type="text/javascript">
+	$(function() {
+		var userGroups = $("#userGroups");
+		$.get("/api/groups", function(resp) {
+			resp.forEach(function(group) {
+				$('<input type="checkbox" name="group[]" id="group_'+group.id+'" value="'+group.id+'"><label for="group_'+group.id+'">'+group.group_name+'</label>')
+					.appendTo(userGroups);
+			});
+			$('#group_number').val(resp.length);
+		})
+	});
+	</script>
+
+
+{{/partial}}
+
+{{~> base.html main_class=fullwidth ~}}

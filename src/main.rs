@@ -68,7 +68,7 @@ pub fn main() {
 
     let mut app = Pencil::new(".");
    
-    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "reset_password.html",
+    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "reset_password.html", "send_mail.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html", "send_pw_reset_email.html",
         "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html");
     
@@ -111,6 +111,8 @@ pub fn main() {
     app.get("/manage", "manage", manager_pages::manage);
     app.get("/users", "users", manager_pages::users);
     app.get("/audio", "audio", manager_pages::audio);
+    app.get("/send_mail", "send_mail_form", manager_pages::send_mail_form);
+    app.post("/send_mail", "send_mail_post", manager_pages::send_mail_post);
 
     // HTTP API
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
@@ -134,6 +136,7 @@ pub fn main() {
     app.put("/api/users/<user_id:int>?add_group=<group_id:int>", "add_group", http_api::user);
     app.put("/api/users/<user_id:int>?remove_group=<group_id:int>", "remove_group", http_api::user);
     app.put("/api/users/<user_id:int>?settings=metrics", "set_metrics", http_api::user);
+    app.get("/api/groups", "get_groups", http_api::get_all);
     app.delete("/api/users/<id:int>", "del_user", http_api::del_item);
     app.delete("/api/skills/<id:int>", "del_skill", http_api::del_item);
     app.put("/api/questions/<id:int>?publish", "publish_questions", http_api::set_published);
