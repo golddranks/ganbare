@@ -1,6 +1,7 @@
 use super::*;
-use std::time::Instant;
+use std::time::{Instant};
 use data_encoding;
+use chrono::Duration;
 
 /* TODO FIXME this can be a full-blown typed group system some day 
 enum Group {
@@ -389,4 +390,16 @@ pub fn set_metrics(conn: &PgConnection, metrics: &UpdateUserMetrics) -> Result<O
         .optional()?;
 
     Ok(item)
+}
+
+pub fn get_slackers(conn: &PgConnection) -> Result<Vec<(User, Session)>> {
+    use schema::{users, sessions};
+
+    let slackers: Vec<(User, Session)> = users::table
+        .inner_join(sessions::table)
+        .filter(sessions::last_seen.lt(chrono::UTC::now()-Duration::hours(1)))
+        .order(sessions::last_seen.desc())
+        .get_results(conn)?;
+
+    Ok(slackers)
 }

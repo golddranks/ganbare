@@ -55,6 +55,37 @@ pub fn source_maps(req: &mut Request) -> PencilResult {
     send_from_directory("src", file_path, false, None)
 }
 
+pub fn background_control_thread() {
+    use std::thread::sleep;
+
+    let conn;
+    loop {
+        sleep(Duration::from_secs(5));
+        match db_connect() {
+            Ok(c) => { conn = c; break },
+            Err(e) => error!("background_control_thread::db_connect: Error: {}", e),
+        };
+    }
+
+    loop {
+        sleep(Duration::from_secs(5));
+
+        match ganbare::email::send_nag_emails(
+                &conn,
+                &*EMAIL_SERVER,
+                &*EMAIL_SMTP_USERNAME,
+                &*EMAIL_SMTP_PASSWORD,
+                &*SITE_DOMAIN,
+                &*SITE_LINK,
+               // &**req.app.handlebars_registry.read().expect("The registry is basically read-only after startup."), // FIXME
+                (&*EMAIL_ADDRESS, &*EMAIL_NAME)) {
+            Ok(()) => (),
+            Err(e) => { error!("background_control_thread::send_nag_emails: Error: {}", e); },
+        };
+
+    }
+}
+
 
 use pencil::Pencil;
 
@@ -70,7 +101,7 @@ pub fn main() {
    
     include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "reset_password.html", "send_mail.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html", "send_pw_reset_email.html",
-        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html");
+        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html", "slacker_heatenings.html");
     
     app.enable_static_file_handling();
 
@@ -156,6 +187,7 @@ pub fn main() {
     app.put("/api/eventdata/<eventname:string>/<key:string>", "put_eventdata", http_api::save_eventdata);
     app.post("/api/eventdata/<eventname:string>", "post_eventdata", http_api::save_eventdata);
 
+    std::thread::spawn(background_control_thread);
 
     info!("Ready. Running on {}, serving at {}", *SERVER_BINDING, *SITE_DOMAIN);
     app.run(*SERVER_BINDING);

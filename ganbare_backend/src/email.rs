@@ -91,7 +91,7 @@ pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item=&'a str>
 
         let result = mailer.send(email)
             .chain_err(|| "Couldn't send!")?;
-        info!("Sent emails: {:?}!", result);
+        info!("Sent freeform emails: {:?}!", result);
     }
 
     Ok(())
@@ -142,6 +142,39 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
+pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, mail_server: SOCK, username: &str, password: &str,
+    site_name: &str, site_link: &str, /* hb_registry: &Handlebars, */ from: (&str, &str)) -> Result<()> {
 
+    let slackers = user::get_slackers(conn)?;
+
+    if slackers.len() == 0 { return Ok(()) }
+
+    let mut mailer = SmtpTransportBuilder::new(mail_server)
+        .chain_err(|| "Couldn't setup the email transport!")?
+        .encrypt()
+        .credentials(username, password)
+        .build();
+
+    for (user, sess) in slackers {
+        println!("{:?} - {:?}", user, sess);
+        continue; // FIXME
+        let email_addr = if let Some(email) = user.email { email } else { continue };
+        let data = EmailData { secret: "", site_link, site_name };
+        let email = EmailBuilder::new()
+            .to(email_addr.as_str())
+            .from(from)
+            .subject(&format!("【{}】Helou :3", site_name))
+            .html("jeeah"/*hb_registry.render("slacker_heatenings.html", &data) // FIXME
+                .chain_err(|| "Handlebars template render error!")?
+                .as_ref()*/)
+            .build().expect("Building email shouldn't fail.");
+
+        let result = mailer.send(email)
+            .chain_err(|| "Couldn't send!")?;
+        info!("Sent slacker heatening emails: {:?}!", result);
+    }
+
+    Ok(())
+}
 
 

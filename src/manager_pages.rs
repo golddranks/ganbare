@@ -296,7 +296,7 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
         }
     }
 
-    let result = ganbare::email::send_freeform_email(&*EMAIL_SERVER,&*EMAIL_SMTP_USERNAME, &*EMAIL_SMTP_PASSWORD,
+    ganbare::email::send_freeform_email(&*EMAIL_SERVER,&*EMAIL_SMTP_USERNAME, &*EMAIL_SMTP_PASSWORD,
         (&*EMAIL_ADDRESS, &*EMAIL_NAME), email_addrs.iter().map(|s| &**s), &subject, &body).err_500()?;
 
     redirect("/send_mail?sent=true", 303)
