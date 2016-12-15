@@ -60,7 +60,7 @@ pub fn background_control_thread() {
 
     let conn;
     loop {
-        sleep(Duration::from_secs(5));
+        sleep(Duration::from_secs(180));
         match db_connect() {
             Ok(c) => { conn = c; break },
             Err(e) => error!("background_control_thread::db_connect: Error: {}", e),

@@ -4,6 +4,7 @@ ALTER TABLE w_answered_data RENAME COLUMN answer_time_ms TO full_spent_time_ms;
 ALTER TABLE w_answered_data ADD COLUMN active_answer_time_ms INTEGER NOT NULL DEFAULT 0;
 
 INSERT INTO user_groups (group_name, anonymous) VALUES ('show_accents', false);
+INSERT INTO user_groups (group_name, anonymous) VALUES ('nag_emails', false);
 
 CREATE TABLE user_stats (
 	id SERIAL PRIMARY KEY REFERENCES users,
