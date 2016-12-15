@@ -51,4 +51,4 @@ CREATE TABLE anon_aliases (
 	group_id INTEGER REFERENCES user_groups
 );
 
-INSERT INTO user_groups VALUES (1, 'admins'), (2, 'editors'), (3, 'betatesters'), (4, 'subjects'), (5, 'input_group'), (6, 'output_group'), (7, 'survey');
+INSERT INTO user_groups (group_name) VALUES ('admins'), ('editors'), ('betatesters'), ('subjects'), ('input_group'), ('output_group'), ('survey');
