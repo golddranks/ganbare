@@ -25,6 +25,7 @@ $(function() {
 			var user_stats = u[2];
 			var group_memberships = u[3];
 			var overdues = u[4];
+			var sessions = u[5];
 
 			var user_list_tr = $('<tr></tr>').appendTo(usersList);
 			$('<th scope="row">'+user.email+'</th>').appendTo(user_list_tr);
@@ -211,6 +212,7 @@ $(function() {
 						alert("Done!");
 					});
 				});
+			var last_seen = $('<td>'+sessions[0]+'</td>').appendTo(user_item);
 		});
 
 		if (pending_users.length === 0) {

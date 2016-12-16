@@ -342,8 +342,10 @@ pub fn all_groups(conn: &PgConnection) -> Result<Vec<UserGroup>> {
     Ok(groups)
 }
 
-pub fn get_all(conn: &PgConnection) -> Result<(Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>, i64)>, Vec<UserGroup>, Vec<PendingEmailConfirm>)> {
-    use schema::{users, user_metrics, pending_email_confirms, group_memberships, user_stats};
+pub fn get_all(conn: &PgConnection) -> Result<(Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>, i64, Vec<String>)>,
+        Vec<UserGroup>, Vec<PendingEmailConfirm>)>
+{
+    use schema::{users, user_metrics, pending_email_confirms, group_memberships, user_stats, sessions};
 
     let groups = all_groups(conn)?;
 
@@ -368,16 +370,23 @@ pub fn get_all(conn: &PgConnection) -> Result<(Vec<(User, UserMetrics, UserStats
         .get_results(conn)?
         .grouped_by(&users);
 
-    let users_groups: Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>, i64)>
+    let sessions: Vec<Vec<Session>> = sessions::table
+        .order(sessions::last_seen.desc())
+        .get_results(conn)?
+        .grouped_by(&users);
+
+    let user_data: Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>, i64, Vec<String>)>
         = users.into_iter().zip(
-            users_metrics.into_iter().zip(user_stats.into_iter().zip(user_groups.into_iter().zip(overdues.into_iter())))
-        ).map(|(u, (mut m, (mut s, (g, o))))| (u, m.remove(0), s.remove(0), g, o)).collect();
+            users_metrics.into_iter().zip(user_stats.into_iter().zip(user_groups.into_iter().zip(overdues.into_iter().zip(sessions.into_iter()))))
+        ).map(|(u, (mut m, (mut s, (g, (o, sess)))))|
+            (u, m.remove(0), s.remove(0), g, o, sess.into_iter().map(|s| s.last_seen.to_rfc3339()).collect())
+        ).collect();
 
     let confirms: Vec<PendingEmailConfirm> = pending_email_confirms::table
         .get_results(conn)?;
 
     
-    Ok((users_groups, groups, confirms))
+    Ok((user_data, groups, confirms))
 }
 
 pub fn set_metrics(conn: &PgConnection, metrics: &UpdateUserMetrics) -> Result<Option<UserMetrics>> {
