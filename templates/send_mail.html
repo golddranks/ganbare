@@ -20,6 +20,8 @@
 	$(function() {
 		var userGroups = $("#userGroups");
 		$.get("/api/groups", function(resp) {
+			$('<input type="checkbox" name="group_pending" id="group_pending" value="group_pending"><label for="group_pending">email_pending</label>')
+					.appendTo(userGroups);
 			resp.forEach(function(group) {
 				$('<input type="checkbox" name="group[]" id="group_'+group.id+'" value="'+group.id+'"><label for="group_'+group.id+'">'+group.group_name+'</label>')
 					.appendTo(userGroups);

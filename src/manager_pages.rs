@@ -284,12 +284,20 @@ pub fn send_mail_form(req: &mut Request) -> PencilResult {
 pub fn send_mail_post(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "editors")?;
 
-    let group = err_400!(req.form_mut().take_all("group[]"), "group missing");
+    let group_pending = req.form_mut().take("group_pending");
+    let group = req.form_mut().take_all("group[]").unwrap_or_else(|| vec![]);
+    if group_pending.is_none() && group.len() == 0 {
+        return Ok(bad_request("group is missing!"));
+    }
     let group = err_400!(group.into_iter().map(|id| str::parse::<i32>(&id)).collect::<Vec<_>>().flip(), "group invalid");
     let subject = err_400!(req.form_mut().take("subject"), "subject missing");
     let body = err_400!(req.form_mut().take("body"), "body missing");
 
     let mut email_addrs = HashSet::new();
+
+    if group_pending.is_some() {
+        unimplemented!(); // FIXME
+    }
 
     for g in group {
         for (u, _) in user::get_users_by_group(&conn, g).err_500()? {
