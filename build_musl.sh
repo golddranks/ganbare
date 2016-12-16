@@ -1,5 +1,6 @@
 #!/bin/sh
 
+docker rm -v ganbare_builder
 ./build_static.sh && \
 docker run -it --name ganbare_builder -v $PWD:/workdir golddranks/ganbare_build && \
 docker cp ganbare_builder:/etc/ssl/certs certs_temp && \

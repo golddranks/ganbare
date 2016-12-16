@@ -19,6 +19,20 @@ fn dispatch_events(conn: &PgConnection, user: &User)
         event::initiate(&conn, "survey", &user).err_500()?;
         Some(redirect("/survey", 303))
 
+    } else if user::check_user_group(conn, user.id, "subject").err_500()?
+        && event::is_published(conn, "initial_test").err_500()?
+        && ! event::is_done(conn, "initial_test", &user).err_500()? {
+
+        event::initiate(&conn, "initial_test", &user).err_500()?;
+        Some(redirect("/pretest", 303))
+
+    } else if user::check_user_group(conn, user.id, "subject").err_500()?
+        && event::is_published(conn, "final_test").err_500()?
+        && ! event::is_done(conn, "final_test", &user).err_500()? {
+
+        event::initiate(&conn, "final_test", &user).err_500()?;
+        Some(redirect("/posttest", 303))
+
     } else { None };
 
     Ok(event_redirect)
@@ -85,6 +99,22 @@ pub fn welcome(req: &mut Request) -> PencilResult {
     req.app
         .render_template("welcome.html", &context)
         .refresh_cookie(&sess)
+}
+
+pub fn pre_post_test(req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "subject")?;
+
+    match req.endpoint().as_ref().map(|s| &**s) {
+        Some("pretest") => {
+            let (event, _) = event::require_ongoing(&conn, "pretest", &user).err_401()?;
+        },
+        Some("posttest") => {
+            let (event, _) = event::require_ongoing(&conn, "posttest", &user).err_401()?;
+        },
+        _ => unreachable!(),
+    }
+
+    unimplemented!(); // FIXME
 }
 
 pub fn login_form(req: &mut Request) -> PencilResult {

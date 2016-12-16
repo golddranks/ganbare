@@ -411,7 +411,7 @@ pub fn get_slackers(conn: &PgConnection, inactive: Duration) -> Result<Vec<(i32,
         .select(users::id);
 
     let slackers: Vec<(i32, Option<String>)> = users::table
-        .inner_join(sessions::table)
+        .left_outer_join(sessions::table)
         .filter(users::email.is_not_null())
         .filter(users::id.ne(all(non_slackers)))
         .select((users::id, users::email))

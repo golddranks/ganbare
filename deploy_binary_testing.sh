@@ -2,9 +2,14 @@
 DEPLOY_STATIC_DIR=/srv/ganbare_testing
 DEPLOY_SERVER=ganba.re
 DEPLOY_DB_NAME=ganbare_testing
-DEPLOY_LOCAL_PEPPERFILE=.env.ganbare_testing_runtime_pepper
+DEPLOY_LOCAL_PEPPER=$(cat .env.ganbare_testing_runtime_pepper)
 DEPLOY_PORT=8087
-DEPLOY_DOMAIN=testing.ganba.re
+DEPLOY_SITE_DOMAIN=testing.ganba.re
+DEPLOY_SITE_LINK=https://testing.ganba.re/
+DEPLOY_EMAIL_DOMAIN=ganba.re
+DEPLOY_EMAIL_SERVER=smtp.mailgun.org:587
+DEPLOY_EMAIL_SMTP_USERNAME=postmaster@ganba.re
+DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_testing_email_password)
 
 rsync -r images $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
 rsync -r audio $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
@@ -16,8 +21,13 @@ docker run -d --restart=unless-stopped \
 --link ganbare-postgres \
 -p $DEPLOY_PORT:8080 \
 -e "GANBARE_DATABASE_URL=postgres://\$(whoami)@ganbare-postgres/$DEPLOY_DB_NAME" \
--e "GANBARE_RUNTIME_PEPPER=$(cat $DEPLOY_LOCAL_PEPPERFILE)" \
--e "GANBARE_SITE_DOMAIN=$DEPLOY_DOMAIN" \
+-e "GANBARE_RUNTIME_PEPPER=$DEPLOY_LOCAL_PEPPER" \
+-e "GANBARE_SITE_DOMAIN=$DEPLOY_SITE_DOMAIN" \
+-e "GANBARE_EMAIL_DOMAIN=$DEPLOY_EMAIL_DOMAIN" \
+-e "GANBARE_EMAIL_SERVER=$DEPLOY_EMAIL_SERVER" \
+-e "GANBARE_EMAIL_SMTP_USERNAME=$DEPLOY_EMAIL_SMTP_USERNAME" \
+-e "GANBARE_EMAIL_SMTP_PASSWORD=$DEPLOY_EMAIL_SMTP_PASSWORD" \
+-e "GANBARE_SITE_LINK=$DEPLOY_SITE_LINK" \
 -e "RUST_LOG=ganbare=debug,ganbare_backend=debug" \
 -v $DEPLOY_STATIC_DIR/audio:/ganbare/audio \
 -v $DEPLOY_STATIC_DIR/images:/ganbare/images \

@@ -225,10 +225,24 @@ pub fn state(conn: &PgConnection, event_name: &str, user: &User) -> Result<Optio
 pub fn is_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<bool> {
     let state = state(conn, event_name, user)?;
     Ok(match state {
-        Some(e) => match e.1.event_finish {
+        Some((_, exp)) => match exp.event_finish {
             Some(_) => true,
             None => false,
         },
+        None => false,
+    })
+}
+
+
+pub fn is_published(conn: &PgConnection, event_name: &str) -> Result<bool> {
+    use schema::{events};
+    let ev: Option<Event> = events::table
+        .filter(events::name.eq(event_name))
+        .get_result(conn)
+        .optional()?;
+
+    Ok(match ev {
+        Some(ev) => ev.published,
         None => false,
     })
 }

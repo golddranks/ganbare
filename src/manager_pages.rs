@@ -246,7 +246,7 @@ pub fn add_users(req: &mut Request) -> PencilResult {
 }
 
 pub fn users(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "admins")?;
+    let (_, _, sess) = auth_user(req, "admins")?;
 
     let context =  new_template_context();
 

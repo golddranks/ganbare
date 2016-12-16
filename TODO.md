@@ -11,7 +11,9 @@ Tomorrow:
 - Impl a tool that then splits the group into half and assigns them to different groups
 - Introduce higher-level questions
 
-
+- Helou :3 -> some sensible mail title
+- Some sensible nagging period
+- Remove old mail confirmations
 
 
 Stretch goals:

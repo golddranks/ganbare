@@ -57,6 +57,7 @@ pub fn source_maps(req: &mut Request) -> PencilResult {
 
 pub fn background_control_thread() {
     use std::thread::sleep;
+    use std::error::Error;
 
     let conn;
     loop {
@@ -85,7 +86,7 @@ pub fn background_control_thread() {
                 &*app.handlebars_registry.read().expect("The registry is basically read-only after startup."),
                 (&*EMAIL_ADDRESS, &*EMAIL_NAME)) {
             Ok(()) => (),
-            Err(e) => { error!("background_control_thread::send_nag_emails: Error: {}", e); },
+            Err(e) => { error!("background_control_thread::send_nag_emails: Error: {}. Cause: {:?}", e.description(), e.cause()); },
         };
 
         match ganbare::session::clean_old_sessions(&conn, chrono::Duration::days(14)) {
@@ -94,7 +95,7 @@ pub fn background_control_thread() {
         };
         
 
-        // delete email confirms that are too old
+        // FIXME delete email confirms that are too old
     }
 }
 
@@ -126,6 +127,8 @@ pub fn main() {
     app.get("/", "hello", app_pages::hello);
     app.get("/welcome", "welcome", app_pages::welcome);
     app.get("/survey", "survey", app_pages::survey);
+    app.get("/pretest", "pretest", app_pages::pre_post_test);
+    app.get("/posttest", "posttest", app_pages::pre_post_test);
     app.post("/ok", "ok", app_pages::ok);
     app.get("/login", "login_form", app_pages::login_form);
     app.post("/login", "login_post", app_pages::login_post);

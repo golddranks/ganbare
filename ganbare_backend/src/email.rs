@@ -174,9 +174,6 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: ch
             continue; // We have sent a nag email recently
         }
 
-        stats.last_nag_email = Some(chrono::UTC::now());
-        let _: UserStats = stats.save_changes(conn)?;
-
         let data = EmailData { secret: "", site_link, site_name };
         let email = EmailBuilder::new()
             .to(email_addr.as_str())
@@ -189,7 +186,11 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: ch
 
         let result = mailer.send(email)
             .chain_err(|| "Couldn't send!")?;
-        info!("Sent slacker heatening emails: {:?}!", result);
+
+        stats.last_nag_email = Some(chrono::UTC::now());
+        let _: UserStats = stats.save_changes(conn)?;
+
+        info!("Sent slacker heatening email to {}: {:?}!", email_addr, result);
     }
 
     Ok(())

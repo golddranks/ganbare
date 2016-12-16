@@ -66,4 +66,4 @@ CREATE TABLE events (
 	published BOOLEAN NOT NULL DEFAULT false
 );
 
-INSERT INTO events VALUES (1, 'welcome', true), (2, 'survey', true), (3, 'initial_test', false), (4, 'final_test', false);
+INSERT INTO events (name, published) VALUES ('welcome', true), ('survey', true), ('initial_test', false), ('final_test', false);
