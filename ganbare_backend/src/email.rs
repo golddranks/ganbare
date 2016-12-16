@@ -178,7 +178,7 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: ch
         let email = EmailBuilder::new()
             .to(email_addr.as_str())
             .from(from)
-            .subject(&format!("【{}】Helou :3", site_name))
+            .subject(&format!("【{}】Minne katosit? (´・ω・`)", site_name))
             .html(hb_registry.render("slacker_heatenings.html", &data) // FIXME
                 .chain_err(|| "Handlebars template render error!")?
                 .as_ref())

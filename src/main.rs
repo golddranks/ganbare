@@ -77,7 +77,7 @@ pub fn background_control_thread() {
         sleep(Duration::from_secs(5));
 
         match ganbare::email::send_nag_emails(
-                &conn, chrono::Duration::minutes(5), chrono::Duration::days(2),
+                &conn, chrono::Duration::hours(26), chrono::Duration::days(2),
                 &*EMAIL_SERVER,
                 &*EMAIL_SMTP_USERNAME,
                 &*EMAIL_SMTP_PASSWORD,
