@@ -296,7 +296,9 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
     let mut email_addrs = HashSet::new();
 
     if group_pending.is_some() {
-        unimplemented!(); // FIXME
+        for email in ganbare::email::get_all_pending_email_confirms(&conn).err_500()? {
+            email_addrs.insert(email);
+        }
     }
 
     for g in group {

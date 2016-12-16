@@ -74,6 +74,8 @@ pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail
 pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item=&'a str>>(mail_server: SOCK, username: &str, password: &str,
     from: (&str, &str), to: ITER, subject: &str, body: &str) -> Result<()> {
 
+    info!("Going to send email to: {:?}", email_addrs);
+
     let mut mailer = SmtpTransportBuilder::new(mail_server)
         .chain_err(|| "Couldn't setup the email transport!")?
         .encrypt()
@@ -113,6 +115,15 @@ pub fn add_pending_email_confirm(conn : &PgConnection, email : &str, groups: &[i
             .chain_err(|| "Error :(")?;
     }
     Ok(secret)
+}
+
+pub fn get_all_pending_email_confirms(conn: &PgConnection) -> Result<Vec<String>> {
+    use schema::pending_email_confirms;
+    let emails: Vec<String> = pending_email_confirms::table
+        .select(pending_email_confirms::email)
+        .get_results(conn)?;
+
+    Ok(emails)
 }
 
 pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Result<Option<(String, Vec<i32>)>> {
