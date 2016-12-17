@@ -20,7 +20,7 @@ pub struct NewUser<'a> {
 #[has_many(pending_items, foreign_key = "user_id")]
 #[has_many(due_items, foreign_key = "user_id")]
 #[has_many(reset_email_secrets, foreign_key = "user_id")]
-#[derive(Identifiable, Queryable, Debug, Associations, AsChangeset, RustcEncodable)]
+#[derive(Identifiable, Clone, Queryable, Debug, Associations, AsChangeset, RustcEncodable)]
 pub struct User {
     pub id: i32,
     pub email: Option<String>,
@@ -90,6 +90,7 @@ pub struct NewPendingEmailConfirm<'a> {
 #[table_name="user_groups"]
 #[has_many(group_memberships, foreign_key = "group_id")]
 #[has_many(anon_aliases, foreign_key = "group_id")]
+#[has_many(events, foreign_key = "required_group")]
 pub struct UserGroup {
     pub id: i32,
     pub group_name: String,
@@ -614,13 +615,15 @@ pub struct UserStats {
     pub last_nag_email: Option<DateTime<UTC>>,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, RustcEncodable)]
 #[has_many(event_experiences, foreign_key = "event_id")]
+#[belongs_to(UserGroup, foreign_key = "required_group")]
 #[table_name="events"]
 pub struct Event {
     pub id: i32,
     pub name: String,
     pub published: bool,
+    pub required_group: Option<i32>,
 }
 
 #[derive(Insertable)]
@@ -629,7 +632,7 @@ pub struct NewEvent<'a> {
     pub name: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, RustcEncodable)]
 #[table_name="event_experiences"]
 #[changeset_options(treat_none_as_null = "true")]
 #[belongs_to(Event, foreign_key = "event_id")]

@@ -74,7 +74,7 @@ pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail
 pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item=&'a str>>(mail_server: SOCK, username: &str, password: &str,
     from: (&str, &str), to: ITER, subject: &str, body: &str) -> Result<()> {
 
-    info!("Going to send email to: {:?}", email_addrs);
+    info!("Going to send email to: {:?}", from);
 
     let mut mailer = SmtpTransportBuilder::new(mail_server)
         .chain_err(|| "Couldn't setup the email transport!")?

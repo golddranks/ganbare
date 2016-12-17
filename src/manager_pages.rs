@@ -315,3 +315,13 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
     redirect("/send_mail?sent=true", 303)
         .refresh_cookie(&sess)
 }
+
+pub fn events(req: &mut Request) -> PencilResult {
+    let (_, _, sess) = auth_user(req, "editors")?;
+
+    let mut context =  new_template_context();
+
+    req.app
+        .render_template("events.html", &context)
+        .refresh_cookie(&sess)
+}

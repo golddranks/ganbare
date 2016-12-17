@@ -1,0 +1,2 @@
+ALTER TABLE events ADD COLUMN required_group INTEGER REFERENCES user_groups;
+ALTER TABLE events ADD COLUMN priority INTEGER DEFAULT 0;

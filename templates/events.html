@@ -1,0 +1,65 @@
+{{#partial main_section}}
+
+	<h1>Events</h1>
+
+	<table class="eventTable">
+		<thead>
+			<tr id="eventHeader"><th>Events</th></tr>
+		</thead>
+		<tbody id="usersList">
+
+		</tbody>
+	</table>
+
+{{/partial}}
+
+{{#partial page_script_inline}}
+
+	var eventHeader = $("#eventHeader");
+	var usersList = $("#usersList");
+	$.get("/api/events", function(resp) {
+		var user_exp = new Array();
+		resp.forEach(function(tuple) {
+			var event = tuple[0];
+			var exps = tuple[1];
+			exps.forEach(function(t) {
+				var u = t[0];
+				var workable = t[1];
+				var exp = t[2];
+				if (user_exp[u.id] === undefined) {
+					user_exp[u.id] = {user: u, experience: new Array(), workable: new Array()};
+				}
+				user_exp[u.id].workable[event.id] = workable;
+				user_exp[u.id].experience[event.id] = exp;
+			});
+			if (event.published === true) {
+				$('<th>'+event.name+'</th>')
+				.appendTo(eventHeader);
+			} else {
+				$('<th><strike>'+event.name+'</strike></th>')
+				.appendTo(eventHeader);
+			}
+		});
+
+		user_exp.forEach(function(ue) {
+			var userRow = $('<tr><td>'+ue.user.email+'</td></tr>').appendTo(usersList);
+			resp.forEach(function(tuple) {
+				var event = tuple[0];
+				var work = ue.workable[event.id];
+				var exp = ue.experience[event.id];
+				if (work === false) {
+					$('<td></td>').appendTo(userRow);
+				} else if (exp === null) {
+					$('<td><i class="fa fa-circle-o" aria-hidden="true"></i></td>').appendTo(userRow);
+				} else if (exp.event_finish === null) {
+					$('<td><i class="fa fa-check-circle-o" aria-hidden="true"></i></td>').appendTo(userRow);
+				} else if (exp.event_finish !== null) {
+					$('<td><i class="fa fa-check-circle" aria-hidden="true"></i></td>').appendTo(userRow);
+				}
+			});
+		});
+	})
+
+{{/partial}}
+
+{{~> base.html main_class=fullwidth ~}}

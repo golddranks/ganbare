@@ -209,6 +209,103 @@ pub mod event {
 
     use super::*;
 
+
+pub fn get_all(conn: &PgConnection) -> Result<Vec<(Event, Vec<(User, bool, Option<EventExperience>)>)>> {
+    use schema::{users, events};
+    
+    let events: Vec<Event> = events::table
+        .get_results(conn)?;
+
+    let users: Vec<User> = users::table
+        .get_results(conn)?;
+
+    let mut event_data = vec![];
+    for event in events {
+
+        let mut exp_data: Vec<(User, bool, Option<EventExperience>)> = vec![];
+        for user in &users {
+
+            match is_workable_or_done_by_event_id(conn, event.id, user)? {
+                Some((_, Some(exp))) => exp_data.push((user.clone(), true, Some(exp))),
+                Some((_, None)) => exp_data.push((user.clone(), true, None)),
+                None => exp_data.push((user.clone(), false, None)),
+            }
+        }
+        event_data.push((event, exp_data));
+    }
+
+    Ok(event_data)
+}
+
+pub fn is_workable_or_done_by_event_id(conn: &PgConnection, event_id: i32, user: &User) -> Result<Option<(Event, Option<EventExperience>)>> {
+    use schema::{events, event_experiences, group_memberships};
+
+    let event_exp: Option<Event> = events::table
+        .filter(events::published.eq(true))
+        .filter(events::id.eq(event_id))
+        .get_result(conn)
+        .optional()?;
+
+    let event = if let Some(e) = event_exp { e } else { return Ok(None) };
+
+    let exp: Option<EventExperience> = event_experiences::table
+        .filter(event_experiences::user_id.eq(user.id))
+        .filter(event_experiences::event_id.eq(event.id))
+        .get_result(conn)
+        .optional()?;
+
+    let group_id = if let Some(g) = event.required_group { g } else { return Ok(Some((event, exp))) };
+
+
+    let group_membership: Option<GroupMembership> = group_memberships::table
+        .filter(group_memberships::group_id.eq(group_id))
+        .filter(group_memberships::user_id.eq(user.id))
+        .get_result(conn)
+        .optional()?;
+
+    match group_membership {
+        Some(_) => Ok(Some((event, exp))),
+        None => Ok(None),
+    }
+}
+
+pub fn is_workable(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<Event>> {
+    use schema::{events, event_experiences, group_memberships};
+
+    let event_exp: Option<Event> = events::table
+        .filter(events::published.eq(true))
+        .filter(events::name.eq(event_name))
+        .get_result(conn)
+        .optional()?;
+
+    let event = if let Some(e) = event_exp { e } else { return Ok(None) };
+
+    let exp: Option<EventExperience> = event_experiences::table
+        .filter(event_experiences::user_id.eq(user.id))
+        .filter(event_experiences::event_id.eq(event.id))
+        .get_result(conn)
+        .optional()?;
+
+    if let Some(exp) = exp {
+        if exp.event_finish.is_some() {
+            return Ok(None); // The event is already done
+        }
+    }
+
+    let group_id = if let Some(g) = event.required_group { g } else { return Ok(Some(event)) };
+
+    let group_membership: Option<GroupMembership> = group_memberships::table
+        .filter(group_memberships::group_id.eq(group_id))
+        .filter(group_memberships::user_id.eq(user.id))
+        .get_result(conn)
+        .optional()?;
+
+    match group_membership {
+        Some(_) => Ok(Some(event)),
+        None => Ok(None),
+    }
+}
+
 pub fn state(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences, events};
 

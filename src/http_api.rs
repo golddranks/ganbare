@@ -312,6 +312,10 @@ pub fn get_all(req: &mut Request) -> PencilResult {
             let items = ganbare::user::all_groups(&conn).err_500()?;
             jsonify(&items)
         },
+        "get_events" => {
+            let items = ganbare::event::get_all(&conn).err_500()?;
+            jsonify(&items)
+        },
         _ => return Err(internal_error("no such endpoint!")),
     };
 

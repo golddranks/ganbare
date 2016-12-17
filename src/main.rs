@@ -113,7 +113,7 @@ pub fn main() {
     let mut app = Pencil::new(".");
    
     include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "reset_password.html", "send_mail.html",
-        "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html", "send_pw_reset_email.html",
+        "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html", "send_pw_reset_email.html", "events.html",
         "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html", "slacker_heatenings.html");
     
     app.enable_static_file_handling();
@@ -156,6 +156,7 @@ pub fn main() {
     app.post("/add_word", "add_word_post", manager_pages::add_word_post);
     app.get("/manage", "manage", manager_pages::manage);
     app.get("/users", "users", manager_pages::users);
+    app.get("/events", "events", manager_pages::events);
     app.get("/audio", "audio", manager_pages::audio);
     app.get("/send_mail", "send_mail_form", manager_pages::send_mail_form);
     app.post("/send_mail", "send_mail_post", manager_pages::send_mail_post);
@@ -163,6 +164,7 @@ pub fn main() {
     // HTTP API
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
+    app.get("/api/events", "get_events", http_api::get_all);
     app.get("/api/bundles", "get_bundles", http_api::get_all);
     app.delete("/api/bundles/<id_from:int>?merge_with=<id_to:int>", "merge_bundle", http_api::merge_item);
     app.delete("/api/bundles/<id:int>", "del_bundle", http_api::del_item);

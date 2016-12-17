@@ -169,6 +169,17 @@
 	}
 }
 
+.eventTable {
+	thead {
+		border-bottom: 1px solid _palette(border);
+	}
+	td, th {
+		border-right: 1px solid _palette(border);
+		padding: 0.3em;
+		text-align: center;
+	}
+}
+
 .audioTable {
 	td, th {
 		border-right: 1px solid _palette(border);

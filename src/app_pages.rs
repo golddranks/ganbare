@@ -9,26 +9,27 @@ use ganbare::email;
 fn dispatch_events(conn: &PgConnection, user: &User)
     -> StdResult<Option<PencilResult>, PencilError> {
 
-    let event_redirect = if ! event::is_done(conn, "welcome", &user).err_500()? {
+    let event_redirect = if event::is_workable(conn, "welcome", &user).err_500()?.is_some() {
 
         event::initiate(&conn, "welcome", &user).err_500()?;
         Some(redirect("/welcome", 303))
 
-    } else if user::check_user_group(conn, user.id, "survey").err_500()? && ! event::is_done(conn, "survey", &user).err_500()? {
+    } else if event::is_workable(conn, "survey", &user).err_500()?.is_some() {
 
         event::initiate(&conn, "survey", &user).err_500()?;
         Some(redirect("/survey", 303))
 
-    } else if user::check_user_group(conn, user.id, "subject").err_500()?
-        && event::is_published(conn, "initial_test").err_500()?
-        && ! event::is_done(conn, "initial_test", &user).err_500()? {
+    } else if event::is_workable(conn, "subject", &user).err_500()?.is_some() {
 
         event::initiate(&conn, "initial_test", &user).err_500()?;
         Some(redirect("/pretest", 303))
 
-    } else if user::check_user_group(conn, user.id, "subject").err_500()?
-        && event::is_published(conn, "final_test").err_500()?
-        && ! event::is_done(conn, "final_test", &user).err_500()? {
+    } else if event::is_workable(conn, "subject", &user).err_500()?.is_some() {
+
+        event::initiate(&conn, "sorting_ceremony", &user).err_500()?;
+        Some(redirect("/sorting", 303))
+
+    } else if event::is_workable(conn, "subject", &user).err_500()?.is_some() {
 
         event::initiate(&conn, "final_test", &user).err_500()?;
         Some(redirect("/posttest", 303))
@@ -45,7 +46,8 @@ fn main_quiz(req: &mut Request, conn: &PgConnection, user: &User) -> PencilResul
         context.insert("alert_msg".into(), "Et kuulu mihinkään harjoitusryhmään!".into());
     }
 
-    req.app.render_template("main.html", &context)
+    req.app
+        .render_template("main.html", &context)
 }
 
 pub fn hello(req: &mut Request) -> PencilResult {
@@ -104,17 +106,22 @@ pub fn welcome(req: &mut Request) -> PencilResult {
 pub fn pre_post_test(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "subject")?;
 
+    let mut context = new_template_context();
+
     match req.endpoint().as_ref().map(|s| &**s) {
         Some("pretest") => {
             let (event, _) = event::require_ongoing(&conn, "pretest", &user).err_401()?;
+            context.insert("event_name".into(), "pretest".into());
         },
         Some("posttest") => {
             let (event, _) = event::require_ongoing(&conn, "posttest", &user).err_401()?;
+            context.insert("event_name".into(), "posttest".into());
         },
         _ => unreachable!(),
     }
 
-    unimplemented!(); // FIXME
+    req.app.render_template("main.html", &context)
+        .refresh_cookie(&sess)
 }
 
 pub fn login_form(req: &mut Request) -> PencilResult {
