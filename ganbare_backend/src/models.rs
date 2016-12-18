@@ -626,7 +626,7 @@ pub struct Event {
     pub required_group: Option<i32>,
 }
 
-#[derive(Queryable, Identifiable, RustcEncodable, AsChangeset)]
+#[derive(Queryable, Identifiable, RustcEncodable, Debug, AsChangeset)]
 #[table_name="events"]
 pub struct UpdateEvent<'a> {
     pub id: i32,

@@ -23,7 +23,6 @@
 		eventResp.forEach(function(tuple) {
 			var event = tuple[0];
 			var exps = tuple[1];
-			console.log(event);
 			exps.forEach(function(t) {
 				var u = t[0];
 				var workable = t[1];
@@ -34,12 +33,14 @@
 				user_exp[u.id].workable[event.id] = workable;
 				user_exp[u.id].experience[event.id] = exp;
 			});
+			var eventCell = $('<th></th>')
+				.appendTo(eventHeader);
 			if (event.published === true) {
-				var eventCell = $('<th>'+event.name+'</th>')
-				.appendTo(eventHeader);
+				var eventNameSpan = $('<span>'+event.name+'</span>')
+				.appendTo(eventCell);
 			} else {
-				var eventCell = $('<th><strike>'+event.name+'</strike></th>')
-				.appendTo(eventHeader);
+				var eventNameSpan = $('<span><strike>'+event.name+'</strike></span>')
+				.appendTo(eventCell);
 			}
 			var groupSelect = $('<select><option value="null"'+((event.required_group===null)?' selected':'')+'>None</option></select>')
 			.appendTo(eventCell);
@@ -48,15 +49,25 @@
 			});
 
 			groupSelect.change(function() {
-				var event_data = JSON.stringify({id: event.id, required_group: parseInt($(this).val())});
-				console.log(event_data);
 				$.ajax({
 					type: 'PUT',
 					url: "/api/events/"+event.id,
 					contentType: "application/json",
-					data: event_data,
+					data: JSON.stringify({id: event.id, required_group: parseInt($(this).val())}),
 					success: function(resp) {
-						console.log("Updated group:", resp);
+						location.reload();
+					},
+				});
+			});
+
+			eventNameSpan.click(function() {
+				$.ajax({
+					type: 'PUT',
+					url: "/api/events/"+event.id,
+					contentType: "application/json",
+					data: JSON.stringify({id: event.id, published: !event.published }),
+					success: function(resp) {
+						location.reload();
 					},
 				});
 			});
@@ -71,6 +82,8 @@
 				var exp = ue.experience[event.id];
 				if (work === false) {
 					$('<td></td>').appendTo(userRow);
+				} else if (!event.published) {
+					$('<td><i class="fa fa-circle-o" style="opacity: 0.2" aria-hidden="true"></i></td>').appendTo(userRow);
 				} else if (exp === null) {
 					$('<td><i class="fa fa-circle-o" aria-hidden="true"></i></td>').appendTo(userRow);
 				} else if (exp.event_finish === null) {

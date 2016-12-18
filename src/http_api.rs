@@ -438,8 +438,6 @@ pub fn update_item(req: &mut Request) -> PencilResult {
                 required_group: obj.get("required_group").map(|d| d.as_i64().map(|d| d as i32)),
             };
 
-            println!("{:?}", item);
-
             if item.id != id {
                 return abort(400);
             }
