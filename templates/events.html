@@ -17,11 +17,13 @@
 
 	var eventHeader = $("#eventHeader");
 	var usersList = $("#usersList");
-	$.get("/api/events", function(resp) {
+	$.get("/api/events", function(eventResp) {
+	$.get("/api/groups", function(groupResp) {
 		var user_exp = new Array();
-		resp.forEach(function(tuple) {
+		eventResp.forEach(function(tuple) {
 			var event = tuple[0];
 			var exps = tuple[1];
+			console.log(event);
 			exps.forEach(function(t) {
 				var u = t[0];
 				var workable = t[1];
@@ -33,17 +35,37 @@
 				user_exp[u.id].experience[event.id] = exp;
 			});
 			if (event.published === true) {
-				$('<th>'+event.name+'</th>')
+				var eventCell = $('<th>'+event.name+'</th>')
 				.appendTo(eventHeader);
 			} else {
-				$('<th><strike>'+event.name+'</strike></th>')
+				var eventCell = $('<th><strike>'+event.name+'</strike></th>')
 				.appendTo(eventHeader);
 			}
+			var groupSelect = $('<select><option value="null"'+((event.required_group===null)?' selected':'')+'>None</option></select>')
+			.appendTo(eventCell);
+			groupResp.forEach(function(group) {
+				$('<option value="'+group.id+'"'+((event.required_group===group.id)?' selected':'')+'>'+group.group_name+'</option>').appendTo(groupSelect);
+			});
+
+			groupSelect.change(function() {
+				var event_data = JSON.stringify({id: event.id, required_group: parseInt($(this).val())});
+				console.log(event_data);
+				$.ajax({
+					type: 'PUT',
+					url: "/api/events/"+event.id,
+					contentType: "application/json",
+					data: event_data,
+					success: function(resp) {
+						console.log("Updated group:", resp);
+					},
+				});
+			});
+
 		});
 
 		user_exp.forEach(function(ue) {
 			var userRow = $('<tr><td>'+ue.user.email+'</td></tr>').appendTo(usersList);
-			resp.forEach(function(tuple) {
+			eventResp.forEach(function(tuple) {
 				var event = tuple[0];
 				var work = ue.workable[event.id];
 				var exp = ue.experience[event.id];
@@ -58,7 +80,8 @@
 				}
 			});
 		});
-	})
+	});
+	});
 
 {{/partial}}
 

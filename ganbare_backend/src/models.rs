@@ -615,7 +615,7 @@ pub struct UserStats {
     pub last_nag_email: Option<DateTime<UTC>>,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, RustcEncodable, RustcDecodable)]
 #[has_many(event_experiences, foreign_key = "event_id")]
 #[belongs_to(UserGroup, foreign_key = "required_group")]
 #[table_name="events"]
@@ -624,6 +624,15 @@ pub struct Event {
     pub name: String,
     pub published: bool,
     pub required_group: Option<i32>,
+}
+
+#[derive(Queryable, Identifiable, RustcEncodable, AsChangeset)]
+#[table_name="events"]
+pub struct UpdateEvent<'a> {
+    pub id: i32,
+    pub name: Option<&'a str>,
+    pub published: Option<bool>,
+    pub required_group: Option<Option<i32>>,
 }
 
 #[derive(Insertable)]

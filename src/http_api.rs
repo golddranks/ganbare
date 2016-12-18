@@ -425,6 +425,28 @@ pub fn update_item(req: &mut Request) -> PencilResult {
 
             json = jsonify(&updated_item);
         },
+        "update_event" => {
+            use rustc_serialize::json::Json;
+
+            let item_json = Json::from_str(&text)
+                            .map_err(|_| abort(400).unwrap_err())?;
+            let obj = try_or!(item_json.as_object(), else return abort(400));
+            let item = ganbare::models::UpdateEvent {
+                id: try_or!(obj.get("id").and_then(|d| d.as_i64()), else return abort(400)) as i32,
+                name: obj.get("name").and_then(|d| d.as_string()),
+                published: obj.get("published").and_then(|d| d.as_boolean()),
+                required_group: obj.get("required_group").map(|d| d.as_i64().map(|d| d as i32)),
+            };
+
+            println!("{:?}", item);
+
+            if item.id != id {
+                return abort(400);
+            }
+            let updated_item = try_or!(event::update_event(&conn, &item).err_500()?, else return abort(404));
+
+            json = jsonify(&updated_item);
+        },
         _ => return Err(internal_error("no such endpoint!")),
     }
     

@@ -209,11 +209,22 @@ pub mod event {
 
     use super::*;
 
+pub fn update_event(conn: &PgConnection, item: &UpdateEvent) -> Result<Option<Event>> {
+    use schema::events;
+
+    let item = diesel::update(events::table
+        .filter(events::id.eq(item.id)))
+        .set(item)
+        .get_result(conn)
+        .optional()?;
+    Ok(item)
+}
 
 pub fn get_all(conn: &PgConnection) -> Result<Vec<(Event, Vec<(User, bool, Option<EventExperience>)>)>> {
     use schema::{users, events};
     
     let events: Vec<Event> = events::table
+        .order(events::id)
         .get_results(conn)?;
 
     let users: Vec<User> = users::table
@@ -241,7 +252,6 @@ pub fn is_workable_or_done_by_event_id(conn: &PgConnection, event_id: i32, user:
     use schema::{events, event_experiences, group_memberships};
 
     let event_exp: Option<Event> = events::table
-        .filter(events::published.eq(true))
         .filter(events::id.eq(event_id))
         .get_result(conn)
         .optional()?;
