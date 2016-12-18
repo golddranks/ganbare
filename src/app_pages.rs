@@ -19,19 +19,19 @@ fn dispatch_events(conn: &PgConnection, user: &User)
         event::initiate(&conn, "survey", &user).err_500()?;
         Some(redirect("/survey", 303))
 
-    } else if event::is_workable(conn, "subject", &user).err_500()?.is_some() {
+    } else if event::is_workable(conn, "pretest", &user).err_500()?.is_some() {
 
-        event::initiate(&conn, "initial_test", &user).err_500()?;
+        event::initiate(&conn, "pretest", &user).err_500()?;
         Some(redirect("/pretest", 303))
 
-    } else if event::is_workable(conn, "subject", &user).err_500()?.is_some() {
+    } else if event::is_workable(conn, "sorting_ceremony", &user).err_500()?.is_some() {
 
         event::initiate(&conn, "sorting_ceremony", &user).err_500()?;
         Some(redirect("/sorting", 303))
 
-    } else if event::is_workable(conn, "subject", &user).err_500()?.is_some() {
+    } else if event::is_workable(conn, "posttest", &user).err_500()?.is_some() {
 
-        event::initiate(&conn, "final_test", &user).err_500()?;
+        event::initiate(&conn, "posttest", &user).err_500()?;
         Some(redirect("/posttest", 303))
 
     } else { None };
@@ -104,7 +104,7 @@ pub fn welcome(req: &mut Request) -> PencilResult {
 }
 
 pub fn pre_post_test(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "subject")?;
+    let (conn, user, sess) = auth_user(req, "subjects")?;
 
     let mut context = new_template_context();
 

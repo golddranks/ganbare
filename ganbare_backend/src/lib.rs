@@ -282,13 +282,10 @@ pub fn is_workable_or_done_by_event_id(conn: &PgConnection, event_id: i32, user:
 pub fn is_workable(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<Event>> {
     use schema::{events, event_experiences, group_memberships};
 
-    let event_exp: Option<Event> = events::table
+    let event: Event = events::table
         .filter(events::published.eq(true))
         .filter(events::name.eq(event_name))
-        .get_result(conn)
-        .optional()?;
-
-    let event = if let Some(e) = event_exp { e } else { return Ok(None) };
+        .get_result(conn)?;
 
     let exp: Option<EventExperience> = event_experiences::table
         .filter(event_experiences::user_id.eq(user.id))
@@ -319,13 +316,16 @@ pub fn is_workable(conn: &PgConnection, event_name: &str, user: &User) -> Result
 pub fn state(conn: &PgConnection, event_name: &str, user: &User) -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences, events};
 
-    let ok = events::table
-        .inner_join(event_experiences::table)
-        .filter(event_experiences::user_id.eq(user.id))
+    let event: Event = events::table
         .filter(events::name.eq(event_name))
+        .get_result(conn)?;
+
+    let ok = event_experiences::table
+        .filter(event_experiences::user_id.eq(user.id))
+        .filter(event_experiences::event_id.eq(event.id))
         .get_result(conn)
         .optional()?;
-    Ok(ok)
+    Ok(ok.map(|exp| (event, exp)))
 }
 
 
@@ -343,15 +343,11 @@ pub fn is_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<boo
 
 pub fn is_published(conn: &PgConnection, event_name: &str) -> Result<bool> {
     use schema::{events};
-    let ev: Option<Event> = events::table
+    let ev: Event = events::table
         .filter(events::name.eq(event_name))
-        .get_result(conn)
-        .optional()?;
+        .get_result(conn)?;
 
-    Ok(match ev {
-        Some(ev) => ev.published,
-        None => false,
-    })
+    Ok(ev.published)
 }
 
 

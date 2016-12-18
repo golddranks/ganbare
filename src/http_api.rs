@@ -436,6 +436,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
                 name: obj.get("name").and_then(|d| d.as_string()),
                 published: obj.get("published").and_then(|d| d.as_boolean()),
                 required_group: obj.get("required_group").map(|d| d.as_i64().map(|d| d as i32)),
+                priority: obj.get("priority").and_then(|d| d.as_i64()).map(|d| d as i32),
             };
 
             if item.id != id {

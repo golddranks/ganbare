@@ -1,2 +1,10 @@
 ALTER TABLE events ADD COLUMN required_group INTEGER REFERENCES user_groups;
-ALTER TABLE events ADD COLUMN priority INTEGER DEFAULT 0;
+ALTER TABLE events ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
+UPDATE events SET required_group=(SELECT id FROM user_groups WHERE group_name='survey') WHERE name='survey';
+DELETE FROM event_experiences WHERE event_id=(SELECT id FROM events WHERE name='initial_test');
+DELETE FROM event_experiences WHERE event_id=(SELECT id FROM events WHERE name='final_test');
+DELETE FROM events WHERE name='initial_test';
+DELETE FROM events WHERE name='final_test';
+INSERT INTO events (name, published, required_group) VALUES ('sorting_ceremony', false, (SELECT id FROM user_groups WHERE group_name='subjects'));
+INSERT INTO events (name, published, required_group) VALUES ('pretest', false, (SELECT id FROM user_groups WHERE group_name='subjects'));
+INSERT INTO events (name, published, required_group) VALUES ('posttest', false, (SELECT id FROM user_groups WHERE group_name='subjects'));

@@ -299,13 +299,18 @@ pub fn check_user_group(conn : &PgConnection, user_id: i32, group_name: &str )  
 
     if group_name == "" { return Ok(true) };
 
-    let exists : Option<(UserGroup, GroupMembership)> = user_groups::table
-        .inner_join(group_memberships::table)
-        .filter(group_memberships::user_id.eq(user_id))
+    let group: Option<UserGroup> = user_groups::table
         .filter(user_groups::group_name.eq(group_name))
-        .get_result(&*conn)
-        .optional()
-        .chain_err(|| "DB error")?;
+        .get_result(conn)
+        .optional()?;
+
+    let group = if let Some(g) = group { g } else { return Err(ErrorKind::NoneResult.into()) };
+
+    let exists : Option<GroupMembership> = group_memberships::table
+        .filter(group_memberships::user_id.eq(user_id))
+        .filter(group_memberships::group_id.eq(group.id))
+        .get_result(conn)
+        .optional()?;
 
     Ok(exists.is_some())
 }
