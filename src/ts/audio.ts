@@ -72,14 +72,33 @@ function accentuate(word: string) {
 		narrators.forEach(function(narrator) {
 			var narr_header = $('<th class="narratorHeaders narrator'+narrator.id+'"></th>').appendTo(narratorColumns);
 
-			function initCell() {
+			function initCell(editCell_cb) {
 				narr_header.html('');
 				var narr_vertical = $('<div class="vertical" scope="col"></div>').appendTo(narr_header);
-				narr_vertical.text(narrator.id+' '+narrator.name);
+				var published_button = $('<input type="checkbox" name="'+narrator.id+'_published" id="'+narrator.id+'_published"'+(narrator.published?' checked':'')+'>')
+					.appendTo(narr_vertical);
+				$('<label for="'+narrator.id+'_published"></label>')
+					.appendTo(narr_vertical);
+				var narr_name = $('<span class="narrName">'+narrator.id+' '+narrator.name+'</span>')
+					.appendTo(narr_vertical);
 				var trash_button = $('<button class="compact narrDelButton"><i class="fa fa-trash" aria-hidden="true"></i></button>')
 					.appendTo(narr_vertical);
 				var merge_button = $('<button class="compact narrMergeButton"><i class="fa fa-compress" aria-hidden="true"></i></button>')
 					.appendTo(narr_vertical);
+				narr_name.off('click').one('click', editCell_cb);
+				published_button.change(function() {
+					var json_data = JSON.stringify({id: narrator.id, name: narrator.name, published: (published_button.is(':checked'))?true:false});
+					var request = {
+						type: 'PUT',
+						url: "/api/narrators/"+narrator.id,
+						contentType: "application/json",
+						data: json_data,
+						success: function(resp) {
+							narrator = resp;
+						}, 
+					};
+					$.ajax(request);
+				});
 				trash_button.click(function() {
 						var request = {
 							type: 'DELETE',
@@ -120,31 +139,26 @@ function accentuate(word: string) {
 					}
 				});
 			}
-			initCell();
 
 			function editCell(ev) {
-				ev.stopPropagation();
 				var inputName = $('<input type="text" value="'+narrator.name+'">');
 				narr_header.html('').append(inputName);
-				inputName.click(function(inClickEvent) {
-					inClickEvent.stopPropagation();
-				});
-				body.one('click', function() {
+				inputName.focus();
+				inputName.blur(function() {
 					var request = {
 						type: 'PUT',
 						url: "/api/narrators/"+narrator.id,
 						contentType: "application/json",
-						data: JSON.stringify({id: narrator.id, name: inputName.val()}),
+						data: JSON.stringify({id: narrator.id, name: inputName.val(), published: narrator.published}),
 						success: function(resp) {
 							narrator = resp;
-							initCell();
-							narr_header.off('click').one('click', editCell);
+							initCell(editCell);
 						}, 
 					};
 					$.ajax(request);
 				});
 			}
-			narr_header.one('click', editCell);
+			initCell(editCell);
 
 		});
 

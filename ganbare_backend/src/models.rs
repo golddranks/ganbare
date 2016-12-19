@@ -140,7 +140,7 @@ pub struct NewNarrator<'a> {
     pub name: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
 #[table_name="narrators"]
 #[has_many(audio_files, foreign_key = "narrators_id")]
 pub struct Narrator {

@@ -254,12 +254,12 @@ pub fn change_bundle_name(conn: &PgConnection, id: i32, new_name: &str) -> Resul
     Ok(bundle)
 }
 
-pub fn change_narrator_name(conn: &PgConnection, id: i32, new_name: &str) -> Result<Option<Narrator>> {
+pub fn update_narrator(conn: &PgConnection, narrator: &Narrator) -> Result<Option<Narrator>> {
     use schema::narrators;
 
     let narrator: Option<Narrator> = diesel::update(narrators::table
-        .filter(narrators::id.eq(id)))
-        .set(narrators::name.eq(new_name))
+        .filter(narrators::id.eq(narrator.id)))
+        .set(narrator)
         .get_result(conn)
         .optional()?;
 
