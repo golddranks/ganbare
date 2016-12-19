@@ -7,7 +7,14 @@ DELETE FROM event_experiences WHERE event_id=(SELECT id FROM events WHERE name='
 DELETE FROM event_experiences WHERE event_id=(SELECT id FROM events WHERE name='final_test');
 DELETE FROM events WHERE name='initial_test';
 DELETE FROM events WHERE name='final_test';
-INSERT INTO events (name, published, required_group) VALUES ('sorting_ceremony', false, (SELECT id FROM user_groups WHERE group_name='subjects'));
+INSERT INTO user_groups (group_name) VALUES ('ready_for_sorting');
+INSERT INTO user_groups (group_name) VALUES ('japani1');
+INSERT INTO user_groups (group_name) VALUES ('japani2');
+INSERT INTO user_groups (group_name) VALUES ('japani3');
+INSERT INTO user_groups (group_name) VALUES ('japani4');
+INSERT INTO events (name, published, required_group) VALUES ('sorting_ceremony', false, (SELECT id FROM user_groups WHERE group_name='ready_for_sorting'));
 INSERT INTO events (name, published, required_group) VALUES ('pretest', false, (SELECT id FROM user_groups WHERE group_name='subjects'));
 INSERT INTO events (name, published, required_group) VALUES ('posttest', false, (SELECT id FROM user_groups WHERE group_name='subjects'));
 ALTER TABLE narrators ADD COLUMN published BOOLEAN NOT NULL DEFAULT true;
+UPDATE user_groups SET anonymous=true WHERE group_name='input_group';
+UPDATE user_groups SET anonymous=true WHERE group_name='output_group';

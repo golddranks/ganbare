@@ -18,33 +18,46 @@ use ganbare_backend::email;
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
 use diesel::LoadDsl;
+use std::env;
 
 
 lazy_static! {
 
-    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_DATABASE_URL")
+    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
         .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
 
     static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
-        let pepper = std::env::var("GANBARE_RUNTIME_PEPPER")
+        let pepper = env::var("GANBARE_RUNTIME_PEPPER")
         .expect("Environmental variable GANBARE_RUNTIME_PEPPER must be set! (format: 256-bit random value encoded as base64)")
         .from_base64().expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
         if pepper.len() != 32 { panic!("The value must be 256-bit, that is, 32 bytes long!") }; pepper
     };
 
-    static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_SITE_DOMAIN")
+    pub static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
         .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
 
-    static ref SITE_LINK : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_SITE_LINK")
-        .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
-
-    static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_EMAIL_DOMAIN")
-        .unwrap_or_else(|_|  std::env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
-
-    static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
-        let binding = std::env::var("GANBARE_EMAIL_SERVER")
-        .expect("Specify an outbound email server, like this: mail.yourisp.com:25");
+    pub static ref SITE_LINK : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_LINK")
+        .unwrap_or_else(|_|  format!("http://{}:8081", env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())))};
+        
+    pub static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
+        let binding = env::var("GANBARE_EMAIL_SERVER")
+        .expect("GANBARE_EMAIL_SERVER: Specify an outbound email server, like this: mail.yourisp.com:25");
         binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
+ 
+    pub static ref EMAIL_SMTP_USERNAME : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_SMTP_USERNAME")
+        .unwrap_or_else(|_| "".into()) };
+
+    pub static ref EMAIL_SMTP_PASSWORD : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_SMTP_PASSWORD")
+        .unwrap_or_else(|_| "".into()) };
+
+    pub static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_DOMAIN")
+        .unwrap_or_else(|_|  env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
+
+    pub static ref EMAIL_ADDRESS : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_ADDRESS")
+        .unwrap_or_else(|_| format!("support@{}", &*EMAIL_DOMAIN)) };
+
+    pub static ref EMAIL_NAME : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_NAME")
+        .unwrap_or_else(|_|  "".into()) };
 
 }
 
@@ -116,7 +129,8 @@ fn main() {
                 Ok(secret) => secret,
                 Err(e) => { println!("Error: {:?}", e); return; }
             };
-            match email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER, &*EMAIL_DOMAIN, &*SITE_DOMAIN, &*SITE_LINK, &handlebars) {
+            match email::send_confirmation(email, secret.as_ref(), &*EMAIL_SERVER ,&*EMAIL_SMTP_USERNAME, &*EMAIL_SMTP_PASSWORD,
+                    &*SITE_DOMAIN, &*SITE_LINK, &handlebars, (&*EMAIL_ADDRESS, &*EMAIL_NAME)) {
                 Ok(u) => println!("Sent an email confirmation! {:?}", u),
                 Err(err_chain) => for err in err_chain.iter() { println!("Error: {}\nCause: {:?}", err, err.cause ()) },
             }

@@ -131,13 +131,45 @@ pub fn pre_post_test(req: &mut Request) -> PencilResult {
 }
 
 pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "subjects")?;
+    use rand::{Rng, thread_rng};
 
-    let mut context = new_template_context();
+    let (conn, user, sess) = auth_user(req, "ready_for_sorting")?;
 
     let (_, _) = event::require_ongoing(&conn, "sorting_ceremony", &user).err_401()?;
 
-    unimplemented!(); // FIXME
+    let group_name = if user::check_user_group(&conn, user.id, "japani1").err_500()? { "japani1" }
+        else if user::check_user_group(&conn, user.id, "japani2").err_500()? { "japani2" }
+        else if user::check_user_group(&conn, user.id, "japani3").err_500()? { "japani3" }
+        else if user::check_user_group(&conn, user.id, "japani4").err_500()? { "japani4" }
+        else { "ready_for_sorting" };
+
+    if user::remove_user_group_by_name(&conn, user.id, "input_group").err_500()? { debug!("Removed old input_group"); };
+    if user::remove_user_group_by_name(&conn, user.id, "output_group").err_500()? { debug!("Removed old output_group"); };
+
+    let mut membership = {
+        let subjects_size = user::group_size(&conn, group_name).err_500()?;
+        let quota = subjects_size/2 + subjects_size%2;
+        let s_input_size = user::group_intersection_size(&conn, group_name, "input_group").err_500()?;
+        let s_output_size = user::group_intersection_size(&conn, group_name, "output_group").err_500()?;
+        let sort_to_input: bool = if s_input_size < quota && s_output_size < quota {
+            thread_rng().gen::<bool>()
+        } else if s_input_size >= quota {
+            false
+        } else if s_output_size >= quota {
+            true
+        } else { unreachable!() };
+
+        if sort_to_input {
+            user::join_user_group_by_name(&conn, &user, "input_group").err_500()?
+        } else {
+            user::join_user_group_by_name(&conn, &user, "output_group").err_500()?
+        }
+    };
+    use ganbare::SaveChangesDsl;
+    membership.anonymous = true;
+    let _: ganbare::models::GroupMembership = membership.save_changes(&conn).err_500()?;
+    
+    event::set_done(&conn, "sorting_ceremony", &user).err_500()?;
 
     return redirect("/", 303)
         .refresh_cookie(&sess)

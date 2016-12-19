@@ -15,12 +15,10 @@ Need to do before release:
 - Add some sentences to the database
 	- 5 new pairs
 
-- Implement question priority to ensure the learners know a common sub-set of words
-- Check that asking sentences work
-- Implement the sorting ceremony
-- Check that the groups are really anonymous
 - Try implementing an audio recorder for the exercise test
 - Implement a testing tool for the picture retelling task
+- Implement question priority to ensure the learners know a common sub-set of words
+- Check that asking sentences work
 
 
 Stretch goals:

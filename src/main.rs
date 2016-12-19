@@ -189,6 +189,7 @@ pub fn main() {
     app.get("/api/groups", "get_groups", http_api::get_all);
     app.delete("/api/users/<id:int>", "del_user", http_api::del_item);
     app.delete("/api/skills/<id:int>", "del_skill", http_api::del_item);
+    app.delete("/api/events/<id:int>/<user_id:int>", "del_event_exp", http_api::del_item);
     app.put("/api/questions/<id:int>?publish", "publish_questions", http_api::set_published);
     app.put("/api/questions/<id:int>?unpublish", "unpublish_questions", http_api::set_published);
     app.put("/api/words/<id:int>?publish", "publish_words", http_api::set_published);

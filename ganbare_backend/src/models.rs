@@ -97,8 +97,9 @@ pub struct UserGroup {
     pub anonymous: bool,
 }
 
-#[derive(Queryable, Debug, Insertable, Associations, AsChangeset, RustcEncodable, RustcDecodable)]
+#[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="group_memberships"]
+#[primary_key(user_id, group_id)]
 #[belongs_to(UserGroup, foreign_key = "group_id")]
 #[belongs_to(User, foreign_key = "user_id")]
 pub struct GroupMembership {

@@ -267,6 +267,14 @@ pub fn del_item(req: &mut Request) -> PencilResult {
             }
             jsonify(&())
         },
+        "del_event_exp" => {
+            let user_id = req.view_args.get("user_id").expect("Pencil guarantees that Line ID should exist as an arg.");
+            let user_id = user_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+            if !event::remove_exp(&conn, id, user_id).err_500()?{
+                 return abort(404);
+            }
+            jsonify(&())
+        },
         _ => return Err(internal_error("no such endpoint!")),
     };
 

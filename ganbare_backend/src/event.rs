@@ -212,6 +212,17 @@ pub fn set_done(conn: &PgConnection, event_name: &str, user: &User) -> Result<Op
     }
 }
 
+pub fn remove_exp(conn: &PgConnection, event_id: i32, user_id: i32) -> Result<bool> {
+    use schema::event_experiences;
+
+    let count = diesel::delete(event_experiences::table
+        .filter(event_experiences::event_id.eq(event_id))
+        .filter(event_experiences::user_id.eq(user_id)))
+        .execute(conn)?;
+
+    Ok(count == 1)
+}
+
 pub fn save_userdata(conn: &PgConnection, event: &Event, user: &User, key: Option<&str>, data: &str) -> Result<EventUserdata> {
     use schema::event_userdata;
 

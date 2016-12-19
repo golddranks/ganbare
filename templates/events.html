@@ -80,16 +80,26 @@
 				var event = tuple[0];
 				var work = ue.workable[event.id];
 				var exp = ue.experience[event.id];
+				var cell = $('<td></td>').appendTo(userRow);
+				cell.click(function() {
+					$.ajax({
+						type: 'DELETE',
+						url: "/api/events/"+event.id+"/"+exp.user_id,
+						contentType: "application/json",
+						success: function(resp) {
+							location.reload();
+						},
+					});
+				});
 				if (work === false) {
-					$('<td></td>').appendTo(userRow);
 				} else if (!event.published) {
-					$('<td><i class="fa fa-circle-o" style="opacity: 0.2" aria-hidden="true"></i></td>').appendTo(userRow);
+					$('<i class="fa fa-circle-o" style="opacity: 0.2" aria-hidden="true"></i>').appendTo(cell);
 				} else if (exp === null) {
-					$('<td><i class="fa fa-circle-o" aria-hidden="true"></i></td>').appendTo(userRow);
+					$('<i class="fa fa-circle-o" aria-hidden="true"></i>').appendTo(cell);
 				} else if (exp.event_finish === null) {
-					$('<td><i class="fa fa-check-circle-o" aria-hidden="true"></i></td>').appendTo(userRow);
+					$('<i class="fa fa-check-circle-o" aria-hidden="true"></i>').appendTo(cell);
 				} else if (exp.event_finish !== null) {
-					$('<td><i class="fa fa-check-circle" aria-hidden="true"></i></td>').appendTo(userRow);
+					$('<i class="fa fa-check-circle" aria-hidden="true"></i>').appendTo(cell);
 				}
 			});
 		});

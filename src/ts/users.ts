@@ -33,10 +33,15 @@ $(function() {
 			var user_groups = new Array();
 			groups.forEach(function(group) {
 				user_groups[group.id] = false;
+				if (group.anonymous) {
+					user_groups[group.id] = null;
+				}
 			});
 
 			group_memberships.forEach(function(group_membership) {
-				user_groups[group_membership.group_id] = true;
+				if(!group_membership.anonymous) {
+					user_groups[group_membership.group_id] = true;
+				}
 			});
 
 			user_groups.forEach(function(isMember, index) {
@@ -44,7 +49,10 @@ $(function() {
 				var id = 'u'+user.id+'g'+index;
 				var checkbox = $('<input type="checkbox" id="'+id+'">').appendTo(cell);
 				var label = $('<label for="'+id+'"></label>').appendTo(cell);
-				if (isMember) {
+				if (isMember === null) {
+					console.log("yup");
+					checkbox.prop('disabled', true);
+				} else if (isMember) {
 					checkbox.prop('checked', 'true');
 				}
 				checkbox.change(function() {

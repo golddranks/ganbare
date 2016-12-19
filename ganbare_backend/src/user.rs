@@ -257,20 +257,20 @@ pub fn change_password(conn : &PgConnection, user_id : i32, new_password : &str,
 }
 
 
-pub fn join_user_group_by_id(conn: &PgConnection, user_id: i32, group_id: i32) -> Result<()> {
+pub fn join_user_group_by_id(conn: &PgConnection, user_id: i32, group_id: i32) -> Result<GroupMembership> {
     use schema::{group_memberships};
 
-    diesel::insert(&GroupMembership{ user_id, group_id, anonymous: false})
+    let membership: GroupMembership = diesel::insert(&GroupMembership{ user_id, group_id, anonymous: false})
                 .into(group_memberships::table)
-                .execute(conn)?;
-    Ok(())
+                .get_result(conn)?;
+    Ok(membership)
 }
 
 
-pub fn remove_user_group_by_id(conn: &PgConnection, user_id: i32, group_id: i32) -> Result<()> {
+pub fn remove_user_group_by_id(conn: &PgConnection, user_id: i32, group_id: i32) -> Result<bool> {
     use schema::{group_memberships};
 
-    diesel::delete(group_memberships::table
+    let count = diesel::delete(group_memberships::table
             .filter(
                 group_memberships::user_id.eq(user_id)
                 .and(group_memberships::group_id.eq(group_id))
@@ -278,20 +278,80 @@ pub fn remove_user_group_by_id(conn: &PgConnection, user_id: i32, group_id: i32)
         )
         .execute(conn)?;
 
-    Ok(())
+    Ok(count == 1)
 }
 
-pub fn join_user_group_by_name(conn: &PgConnection, user: &User, group_name: &str) -> Result<()> {
+pub fn group_size(conn: &PgConnection, group_name: &str) -> Result<i64> {
+    use schema::{group_memberships, user_groups};
+
+    let group: UserGroup = user_groups::table
+        .filter(user_groups::group_name.eq(group_name))
+        .get_result(conn)?;
+
+    let count = group_memberships::table
+        .filter(group_memberships::group_id.eq(group.id))
+        .count()
+        .get_result(conn)?;
+
+    Ok(count)
+}
+
+pub fn group_intersection_size(conn: &PgConnection, group_name_a: &str, group_name_b: &str) -> Result<i64> {
+    use schema::{users, group_memberships, user_groups};
+    use diesel::expression::dsl::any;
+
+    let group_a: UserGroup = user_groups::table
+        .filter(user_groups::group_name.eq(group_name_a))
+        .get_result(conn)?;
+    let group_a_members = group_memberships::table
+        .filter(group_memberships::group_id.eq(group_a.id))
+        .select(group_memberships::user_id);
+
+    let group_b: UserGroup = user_groups::table
+        .filter(user_groups::group_name.eq(group_name_b))
+        .get_result(conn)?;
+    let group_b_members = group_memberships::table
+        .filter(group_memberships::group_id.eq(group_b.id))
+        .select(group_memberships::user_id);
+
+    let count = users::table
+        .filter(users::id.eq(any(group_a_members)))
+        .filter(users::id.eq(any(group_b_members)))
+        .count()
+        .get_result(conn)?;
+
+    Ok(count)
+}
+
+pub fn join_user_group_by_name(conn: &PgConnection, user: &User, group_name: &str) -> Result<GroupMembership> {
     use schema::{user_groups, group_memberships};
 
     let group: UserGroup = user_groups::table
         .filter(user_groups::group_name.eq(group_name))
         .first(conn)?;
 
-    diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id, anonymous: false})
+    let membership: GroupMembership = diesel::insert(&GroupMembership{ user_id: user.id, group_id: group.id, anonymous: false})
                 .into(group_memberships::table)
-                .execute(conn)?;
-    Ok(())
+                .get_result(conn)?;
+    Ok(membership)
+}
+
+pub fn remove_user_group_by_name(conn: &PgConnection, user_id: i32, group_name: &str) -> Result<bool> {
+    use schema::{user_groups, group_memberships};
+
+    let group: UserGroup = user_groups::table
+        .filter(user_groups::group_name.eq(group_name))
+        .first(conn)?;
+
+    let count = diesel::delete(group_memberships::table
+            .filter(
+                group_memberships::user_id.eq(user_id)
+                .and(group_memberships::group_id.eq(group.id))
+            )
+        )
+        .execute(conn)?;
+
+    Ok(count == 1)
 }
 
 pub fn check_user_group(conn : &PgConnection, user_id: i32, group_name: &str )  -> Result<bool> {
