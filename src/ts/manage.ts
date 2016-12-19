@@ -166,7 +166,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		
 		words.forEach(function(word, index) {
 			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
-			var c_header = $('<h3></h3>').html('Word: ' + accentuate(word.word)).appendTo(c_item);
+			var c_header = $('<h3></h3>').html('Word ('+word.id+'): ' + accentuate(word.word)).appendTo(c_item);
 
 			var trash_button = $('　<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
 				.appendTo(c_header)
@@ -296,7 +296,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			var answers = tuple[1];
 
 			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
-			var c_header = $('<h3>Question: ' + question.q_name + '</h3>').appendTo(c_item);
+			var c_header = $('<h3>Question ('+question.id+'): ' + question.q_name + '</h3>').appendTo(c_item);
 			var trash_button = $('　<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
 				.appendTo(c_header)
 				.click(function() {
@@ -462,7 +462,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			var words = tuple[1];
 
 			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
-			var c_header = $("<h3>Exercise: " + nugget.skill_summary + "</h3>").appendTo(c_item);
+			var c_header = $("<h3>Exercise ("+exercise.id+"): " + nugget.skill_summary + "</h3>").appendTo(c_item);
 			var trash_button = $('<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
 				.appendTo(c_header)
 				.click(function() {

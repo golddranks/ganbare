@@ -3,21 +3,21 @@ use rand::{Rng, thread_rng};
 use diesel::expression::dsl::{all, any};
 use unicode_normalization::UnicodeNormalization;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, RustcEncodable)]
 pub enum Answered {
     W(WAnsweredData),
     Q(QAnsweredData),
     E(EAnsweredData),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum QuizType {
     Question(i32),
     Exercise(i32),
     Word(i32),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Quiz {
     W(WordJson),
     E(ExerciseJson),
@@ -25,37 +25,37 @@ pub enum Quiz {
     F(FutureQuiz),
 }
 
-#[derive(RustcEncodable, Debug)]
+#[derive(RustcEncodable, Debug, Clone)]
 pub struct FutureQuiz {
-    quiz_type: &'static str,
-    due_date: String,
+    pub quiz_type: &'static str,
+    pub due_date: String,
 }
 
-#[derive(RustcEncodable, Debug)]
+#[derive(RustcEncodable, Debug, Clone)]
 pub struct QuestionJson {
-    quiz_type: &'static str,
-    asked_id: i32,
-    explanation: String,
-    question: String,
-    right_a: i32,
-    answers: Vec<(i32, String)>,
+    pub quiz_type: &'static str,
+    pub asked_id: i32,
+    pub explanation: String,
+    pub question: String,
+    pub right_a: i32,
+    pub answers: Vec<(i32, String)>,
 }
 
-#[derive(RustcEncodable, Debug)]
+#[derive(RustcEncodable, Debug, Clone)]
 pub struct ExerciseJson {
-    quiz_type: &'static str,
-    asked_id: i32,
-    word: String,
-    explanation: String,
+    pub quiz_type: &'static str,
+    pub asked_id: i32,
+    pub word: String,
+    pub explanation: String,
 }
 
-#[derive(RustcEncodable, Debug)]
+#[derive(RustcEncodable, Debug, Clone)]
 pub struct WordJson {
-    quiz_type: &'static str,
-    asked_id: i32,
-    word: String,
-    explanation: String,
-    show_accents: bool,
+    pub quiz_type: &'static str,
+    pub asked_id: i32,
+    pub word: String,
+    pub explanation: String,
+    pub show_accents: bool,
 }
 
 
@@ -899,10 +899,7 @@ fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>
     Ok(Some(quiz_type))
 }
 
-fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
-
-    metrics.quizes_today += 1;
-    metrics.quizes_since_break += 1;
+pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Result<Option<Quiz>> {
 
     match quiztype {
             QuizType::Question(id) => {
@@ -961,10 +958,7 @@ fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType, metrics: 
         }
 }
 
-fn return_word(conn: &PgConnection, user: &User, the_word: Word, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
-
-    metrics.new_words_today += 1;
-    metrics.new_words_since_break += 1;
+pub fn return_word(conn: &PgConnection, user: &User, the_word: Word) -> Result<Option<Quiz>> {
 
     let audio_file = audio::load_random_from_bundle(&*conn, the_word.audio_bundle)?;
     let show_accents = user::check_user_group(conn, user.id, "show_accents")?;
@@ -990,7 +984,14 @@ fn return_word(conn: &PgConnection, user: &User, the_word: Word, metrics: &mut U
     return Ok(Some(Quiz::W(quiz_json)));
 }
 
-
+pub fn return_some_quiz(conn: &PgConnection, user: &User, quiz: QuizType) -> Result<Option<Quiz>> {
+    match quiz {
+        QuizType::Word(word) => {
+            return_word(conn, user, try_or!(load_word(conn, word)?, else return Ok(None)))
+        },
+        quiz => return_q_or_e(conn, user, quiz),
+    }
+}
 
 
 
@@ -1014,21 +1015,27 @@ fn get_new_quiz_inner(conn : &PgConnection, user : &User, metrics: &mut UserMetr
     // After that, question & exercise reviews that are overdue (except if they are on a cooldown period), and after that, new ones
 
     if let Some(quiztype) = choose_q_or_e(conn, user, metrics)? {
-        return return_q_or_e(conn, user, quiztype, metrics);
+        metrics.quizes_today += 1;
+        metrics.quizes_since_break += 1;
+        return return_q_or_e(conn, user, quiztype);
     }
 
 
     // No questions & exercises available at the moment. Introducing new words
 
     if let Some(the_word) = choose_new_word(conn, metrics)? {
-        return return_word(conn, user, the_word, metrics)
+        metrics.new_words_today += 1;
+        metrics.new_words_since_break += 1;
+        return return_word(conn, user, the_word)
     }
 
 
     // If there's nothing else, time to show the cooled-down stuff!
 
     if let Some(quiztype) = choose_cooldown_q_or_e(conn, user, metrics)? {
-        return return_q_or_e(conn, user, quiztype, metrics)
+        metrics.quizes_today += 1;
+        metrics.quizes_since_break += 1;
+        return return_q_or_e(conn, user, quiztype)
     }
 
     // There seems to be nothig to do?! Either there is no more words to study or the limits are full.

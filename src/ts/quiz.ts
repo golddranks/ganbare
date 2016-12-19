@@ -66,6 +66,7 @@ var normalSpeed = 400;
 var quiteFast = 200;
 var superFast = 100;
 
+var testing = window["testing"];
 var main = $("#main");
 var errorSection = $("#errorSection");
 var errorStatus = $("#errorStatus");
@@ -352,18 +353,26 @@ function answerQuestion(ansId, isCorrect, question, button) {
 	$(this).addClass("buttonHilight");
 	var mark = null;
 	var answeredInstant = Date.now();
-	if (isCorrect) {
-		mark = maru;
-		questionStatus.text("Oikein! Seuraava kysymys.");
-		correct.play();
-	} else if (ansId > 0) {
-		mark = batsu;
-		questionStatus.text("Pieleen meni, kokeile uudestaan!");
-		wrong.play();
-	} else if (ansId === -1) {
-		mark = batsu;
-		questionStatus.text("Aika loppui!");
-		wrong.play();
+	if (!testing) {
+		if (isCorrect) {
+			mark = maru;
+			questionStatus.text("Oikein! Seuraava kysymys.");
+			correct.play();
+		} else if (ansId > 0) {
+			mark = batsu;
+			questionStatus.text("Pieleen meni, kokeile uudestaan!");
+			wrong.play();
+		} else if (ansId === -1) {
+			mark = batsu;
+			questionStatus.text("Aika loppui!");
+			wrong.play();
+		}
+		mark.css("top", top + "px");
+		mark.show();
+		mark.removeClass("hidden");
+		setTimeout(function() { mark.fadeOut(normalSpeed); }, 1700);
+	} else {
+		questionStatus.text("Vastattu!");
 	}
 	questionStatus.show();
 	questionExplanation.hide();
@@ -374,16 +383,13 @@ function answerQuestion(ansId, isCorrect, question, button) {
 	} else {
 		top = $(button).position().top + ($(button).height()/2);
 	}
-	mark.css("top", top + "px");
-	mark.show();
-	mark.removeClass("hidden");
-	setTimeout(function() { mark.fadeOut(normalSpeed); }, 1700);
+	var timeAfterClick = testing?500:2200; // If we are in testing mode, we don't have to give so much time to reflect on the answer
 	setTimeout(function() { answerList.slideUp(normalSpeed, function() {
 		topmessage.fadeOut();
 		questionExplanation.text("Loading...");
 		questionExplanation.slideDown(normalSpeed);
 		nextQuestion(null);
-	}); }, 2200);
+	}); }, timeAfterClick);
 
 	function postAnswerQuestion() {
 		var jqxhr = $.post("/api/next_quiz", {
@@ -627,13 +633,17 @@ function showQuiz(quiz) {
 	cleanState();
 
 	if (quiz === null) {
-		console.log("No cards!");
-		questionSection.show();
-		questionSectionFlexContainer.show();
-		questionStatus.text("Ei ole mitään kysyttävää ☹️");
-		questionStatus.slideDown(normalSpeed);
-		avatar.fadeOut(superFast);
-		return;
+		if (testing) {
+			window.location.href = "/"; // Testing is over, reload the page.
+		} else {
+			console.log("No cards!");
+			questionSection.show();
+			questionSectionFlexContainer.show();
+			questionStatus.text("Ei ole mitään kysyttävää ☹️");
+			questionStatus.slideDown(normalSpeed);
+			avatar.fadeOut(superFast);
+			return;
+		}
 	} else if (new Date(quiz.due_date) > new Date()) {
 		console.log("BreakTime! Breaking until: ", new Date(quiz.due_date));
 		avatar.fadeOut(superFast);

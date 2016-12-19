@@ -384,7 +384,7 @@ pub struct NewPendingItem<'a> {
     pub item_type: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Clone, AsChangeset)]
 #[table_name="q_asked_data"]
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
@@ -396,7 +396,7 @@ pub struct QAskedData {
     pub correct_qa_id: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Clone, RustcEncodable)]
 #[table_name="q_answered_data"]
 #[belongs_to(QAskedData, foreign_key = "id")]
 pub struct QAnsweredData {
@@ -408,7 +408,7 @@ pub struct QAnsweredData {
     pub full_spent_time_ms: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Clone, AsChangeset)]
 #[table_name="e_asked_data"]
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(Exercise, foreign_key = "exercise_id")]
@@ -420,7 +420,7 @@ pub struct EAskedData {
     pub word_id: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Clone, AsChangeset, RustcEncodable)]
 #[table_name="e_answered_data"]
 #[belongs_to(EAskedData, foreign_key = "id")]
 pub struct EAnsweredData {
@@ -434,7 +434,7 @@ pub struct EAnsweredData {
     pub reflected_time_ms: i32,
 }
 
-#[derive(Identifiable, Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Identifiable, Insertable, Queryable, Associations, Debug, Clone, AsChangeset)]
 #[table_name="w_asked_data"]
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(Word, foreign_key = "word_id")]
@@ -445,7 +445,7 @@ pub struct WAskedData {
     pub show_accents: bool,
 }
 
-#[derive(Identifiable, Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Identifiable, Insertable, Queryable, Associations, Debug, Clone, AsChangeset, RustcEncodable)]
 #[table_name="w_answered_data"]
 #[belongs_to(WAskedData, foreign_key = "id")]
 pub struct WAnsweredData {

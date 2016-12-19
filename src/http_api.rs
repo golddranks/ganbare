@@ -14,6 +14,7 @@ use ganbare::skill;
 use ganbare::manage;
 use ganbare::event;
 use ganbare::user;
+use ganbare::test;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
@@ -108,7 +109,13 @@ pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
 pub fn new_quiz(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
 
-    let new_quiz = quiz::get_new_quiz(&conn, &user).err_500()?;
+    let new_quiz = if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "pretest", &user).err_500()? {
+        test::get_new_quiz_pretest(&conn, &user, &ev).err_500()?
+    } else if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "posttest", &user).err_500()? {
+        test::get_new_quiz_posttest(&conn, &user, &ev).err_500()?
+    } else {
+        quiz::get_new_quiz(&conn, &user).err_500()?
+    };
 
     match new_quiz {
 
@@ -163,7 +170,13 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
 
     let answer = err_400!(parse_answer(req), "Can't parse form data? {:?}", req.form());
 
-    let new_quiz = quiz::get_next_quiz(&conn, &user, answer).err_500_debug(&user, &*req)?;
+    let new_quiz = if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "pretest", &user).err_500()? {
+        test::get_next_quiz_pretest(&conn, &user, answer, &ev).err_500()?
+    } else if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "posttest", &user).err_500()? {
+        test::get_next_quiz_posttest(&conn, &user, answer, &ev).err_500()?
+    } else {
+        quiz::get_next_quiz(&conn, &user, answer).err_500_debug(&user, &*req)?
+    };
 
     match new_quiz {
 

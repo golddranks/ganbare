@@ -110,17 +110,36 @@ pub fn pre_post_test(req: &mut Request) -> PencilResult {
 
     match req.endpoint().as_ref().map(|s| &**s) {
         Some("pretest") => {
-            let (event, _) = event::require_ongoing(&conn, "pretest", &user).err_401()?;
-            context.insert("event_name".into(), "pretest".into());
+            if event::is_ongoing(&conn, "pretest", &user).err_500()?.is_some() {
+                context.insert("testing".into(), "true".into());
+            } else {
+                return redirect("/", 303).refresh_cookie(&sess);
+            }
         },
         Some("posttest") => {
-            let (event, _) = event::require_ongoing(&conn, "posttest", &user).err_401()?;
-            context.insert("event_name".into(), "posttest".into());
+            if event::is_ongoing(&conn, "posttest", &user).err_500()?.is_some() {
+                context.insert("testing".into(), "true".into());
+            } else {
+                return redirect("/", 303).refresh_cookie(&sess);
+            }
         },
         _ => unreachable!(),
     }
 
     req.app.render_template("main.html", &context)
+        .refresh_cookie(&sess)
+}
+
+pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "subjects")?;
+
+    let mut context = new_template_context();
+
+    let (_, _) = event::require_ongoing(&conn, "sorting_ceremony", &user).err_401()?;
+
+    unimplemented!(); // FIXME
+
+    return redirect("/", 303)
         .refresh_cookie(&sess)
 }
 

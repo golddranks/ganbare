@@ -128,6 +128,7 @@ pub fn main() {
     app.get("/welcome", "welcome", app_pages::welcome);
     app.get("/survey", "survey", app_pages::survey);
     app.get("/pretest", "pretest", app_pages::pre_post_test);
+    app.get("/sorting", "sorting", app_pages::sorting_ceremony);
     app.get("/posttest", "posttest", app_pages::pre_post_test);
     app.post("/ok", "ok", app_pages::ok);
     app.get("/login", "login_form", app_pages::login_form);

@@ -319,7 +319,7 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
 pub fn events(req: &mut Request) -> PencilResult {
     let (_, _, sess) = auth_user(req, "editors")?;
 
-    let mut context =  new_template_context();
+    let context =  new_template_context();
 
     req.app
         .render_template("events.html", &context)
