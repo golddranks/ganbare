@@ -369,16 +369,18 @@ pub fn load_all_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<Vec<
 }
 
 pub fn load_random_from_bundle(conn : &PgConnection, bundle_id: i32) -> Result<AudioFile> {
-    use schema::audio_files;
+    use schema::{audio_files, narrators};
     use rand::{Rng, thread_rng};
 
-    let mut q_audio_files : Vec<AudioFile> = audio_files::table
+    let mut q_audio_files : Vec<(AudioFile, Narrator)> = audio_files::table
+        .inner_join(narrators::table)
+        .filter(narrators::published.eq(true))
         .filter(audio_files::bundle_id.eq(bundle_id))
         .get_results(&*conn)
         .chain_err(|| "Can't load quiz!")?;
     
     let random_index = thread_rng().gen_range(0, q_audio_files.len()); // Panics if q_audio_files.len() == 0
-    let audio_file = q_audio_files.swap_remove(random_index);
+    let (audio_file, _) = q_audio_files.swap_remove(random_index);
     Ok(audio_file)
 }
 

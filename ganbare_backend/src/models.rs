@@ -146,6 +146,7 @@ pub struct NewNarrator<'a> {
 pub struct Narrator {
     pub id: i32,
     pub name: String,
+    pub published: bool,
 }
 
 #[derive(Insertable)]

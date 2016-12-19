@@ -363,7 +363,7 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredDat
 /* FETCHING & CHOOSING QUESTIONS */
 
 
-pub fn load_question(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<Vec<AudioFile>>)>> {
+pub fn load_question(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<AudioBundle>)>> {
     use schema::{quiz_questions, question_answers, audio_bundles};
 
     let qq : Option<QuizQuestion> = quiz_questions::table
@@ -378,10 +378,8 @@ pub fn load_question(conn : &PgConnection, id: i32 ) -> Result<Option<(QuizQuest
         .filter(question_answers::question_id.eq(qq.id))
         .load(&*conn)?
         .into_iter().unzip();
-
-    let q_audio_files = audio::load_all_from_bundles(&*conn, &q_bundles)?;
     
-    Ok(Some((qq, aas, q_audio_files)))
+    Ok(Some((qq, aas, q_bundles)))
 }
 
 pub fn load_exercise(conn : &PgConnection, id: i32 ) -> Result<Option<(Exercise, Vec<ExerciseVariant>, Vec<Word>)>> {
@@ -806,8 +804,8 @@ fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, 
     let random_answer_index = rng.gen_range(0, answers.len());
     let right_answer_id = answers[random_answer_index].id;
     let q_audio_bundle = &q_audio_bundles[random_answer_index];
-    let q_audio_file = try_or!{ rng.choose(q_audio_bundle),
-                else return Err(ErrorKind::DatabaseOdd("Bug: Audio bundles should always have more than zero members when created.").to_err()) };
+
+    let q_audio_file = audio::load_random_from_bundle(conn, q_audio_bundle.id)?;
 
     Ok((question, right_answer_id, answers, q_audio_file.id))
 }
