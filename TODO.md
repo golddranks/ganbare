@@ -1,21 +1,30 @@
 # To Do list
 
-Today:
+Need to do before release:
 
-- Publish more words
+- Edit the remaining audio files:
+	- Mrs R
+	- Mr E
+	- Mr U
+	- Ms T
+- Add words to the database
+	- 5 new pairs
+	- 10 new pairs
+	- 15 new pairs
+	- 20 new pairs
+- Add some sentences to the database
+	- 5 new pairs
 
-
-Tomorrow:
-- Impl the test tool (asks questions from both groups)
-- Implement anonymous groups and anonymous aliases
-- Impl a tool that then splits the group into half and assigns them to different groups
-- Introduce higher-level questions
-
-- Remove old mail confirmations
+- Implement question priority to ensure the learners know a common sub-set of words
+- Check that asking sentences work
+- Implement the sorting ceremony
+- Check that the groups are really anonymous
+- Try implementing an audio recorder for the exercise test
+- Implement a testing tool for the picture retelling task
 
 
 Stretch goals:
-- Event status on user management page
+- Remove old mail confirmations
 - Make "aika loppui" message to exercises too
 - Make the survey to close the buttons when answered but before the answer is saved (needs to join the event of closing the buttons & getting response from server)
 - Refactor the error section and bug reporting functionality to be part of the base template
