@@ -24,8 +24,6 @@ extern crate regex;
 extern crate hyper;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 
-type DateTimeUTC = chrono::DateTime<chrono::UTC>;
-
 pub use diesel::prelude::*;
 
 pub use diesel::pg::PgConnection;

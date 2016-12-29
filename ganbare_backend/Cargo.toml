@@ -15,7 +15,7 @@ chrono = { version = "0.2", features = ["rustc-serialize"]}
 rpassword = "0.3"
 rand = "0.3"
 rustc-serialize = "0.3"
-binary_macros = "0.1"
+binary_macros = "0.2"
 env_logger = "0.3"
 data-encoding = "1.1"
 lazy_static = "*"
@@ -31,3 +31,6 @@ pq-sys = "0.2.4"
 unicode-normalization = "*"
 hyper = "*"
 try_map = "0.2"
+
+[replace]
+"dotenv_codegen:0.9.3" = { git = "https://github.com/slapresta/rust-dotenv" }
