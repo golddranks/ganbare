@@ -2,12 +2,11 @@
 command -v pg_dump >/dev/null 2>&1 || { echo >&2 "I require pg_dump but it's not installed. Aborting."; exit 1; }
 command -v xxd >/dev/null 2>&1 || { echo >&2 "I require xxd but it's not installed. Aborting."; exit 1; }
 
+GANBARE_AUDIO_DIR="audio"
+GANBARE_IMAGES_DIR="images"
 if [ -f "./.env" ]
 then
 . "./.env"
-else
-GANBARE_AUDIO_DIR="audio"
-GANBARE_IMAGES_DIR="images"
 fi
 
 if [ -z $1 ]
