@@ -39,7 +39,7 @@ $(function() {
 			});
 
 			group_memberships.forEach(function(group_membership) {
-				if(!group_membership.anonymous) {
+				if(!group_membership.anonymous && user_groups[group_membership.group_id] === false) {
 					user_groups[group_membership.group_id] = true;
 				}
 			});
@@ -50,7 +50,6 @@ $(function() {
 				var checkbox = $('<input type="checkbox" id="'+id+'">').appendTo(cell);
 				var label = $('<label for="'+id+'"></label>').appendTo(cell);
 				if (isMember === null) {
-					console.log("yup");
 					checkbox.prop('disabled', true);
 				} else if (isMember) {
 					checkbox.prop('checked', 'true');
