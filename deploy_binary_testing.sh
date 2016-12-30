@@ -10,7 +10,7 @@ DEPLOY_EMAIL_DOMAIN=ganba.re
 DEPLOY_EMAIL_SERVER=smtp.mailgun.org:587
 DEPLOY_EMAIL_SMTP_USERNAME=postmaster@ganba.re
 DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_testing_email_password)
-DEPLOY_BUILD_NUMBER=$(cat build_number.txt)
+DEPLOY_BUILD_NUMBER="Build number: $(cat build_number.txt) Commit: $(git log HEAD --oneline --no-walk)"
 
 rsync -r images $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
 rsync -r audio $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
