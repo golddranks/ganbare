@@ -107,7 +107,7 @@ pub fn clean_urls(conn: &PgConnection) -> Result<Vec<String>> {
 fn clean_unicode() {
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let mut bundles = audio::get_all_bundles(&conn).unwrap();
+    let bundles = audio::get_all_bundles(&conn).unwrap();
 
     for (mut b, _) in bundles {
         let cleaned_name = b.listname.nfc().collect::<String>();
@@ -118,7 +118,7 @@ fn clean_unicode() {
         }
     }
 
-    let mut words: Vec<Word> = schema::words::table.get_results(&conn).unwrap();
+    let words: Vec<Word> = schema::words::table.get_results(&conn).unwrap();
 
     for mut w in words {
         let cleaned_word = w.word.nfc().collect::<String>();
@@ -128,7 +128,7 @@ fn clean_unicode() {
             let _: Word = w.save_changes(&conn).unwrap();
         }
     }
-    let mut skills: Vec<SkillNugget> = schema::skill_nuggets::table.get_results(&conn).unwrap();
+    let skills: Vec<SkillNugget> = schema::skill_nuggets::table.get_results(&conn).unwrap();
 
     for mut s in skills {
         let cleaned_skill = s.skill_summary.nfc().collect::<String>();
