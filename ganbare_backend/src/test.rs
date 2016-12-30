@@ -19,6 +19,8 @@ fn unpend_pending_item(conn: &PgConnection, answer_enum: &Answered) -> Result<()
     pending_item.pending = false;
     let _ : PendingItem = pending_item.save_changes(conn)?;
 
+    debug!("Pending item unpended.");
+
     Ok(())
 }
 

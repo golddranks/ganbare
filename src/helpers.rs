@@ -67,6 +67,9 @@ lazy_static! {
     pub static ref AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_AUDIO_DIR")
         .unwrap_or_else(|_| "audio".into())) };
 
+    pub static ref USER_AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_USER_AUDIO_DIR")
+        .unwrap_or_else(|_| "useraudio".into())) };
+
     pub static ref IMAGES_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_IMAGES_DIR")
         .unwrap_or_else(|_| "images".into())) };
 

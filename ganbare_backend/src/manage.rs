@@ -355,6 +355,9 @@ lazy_static! {
     static ref URL_REGEX: Regex = Regex::new(r#"['"](https?://.*?(\.[a-zA-Z0-9]{1,4})?)['"]"#)
         .expect("<- that is a valid regex there");
 
+    static ref EXTENSION_GUESS: Regex = Regex::new(r#"\.png|\.jpg|\.jpeg|\.gif"#)
+        .expect("<- that is a valid regex there");
+
     static ref CONVERTED_LINKS: RwLock<HashMap<String, String>> = RwLock::new(HashMap::<String, String>::new());
 
     static ref HTTP_CLIENT: Client = Client::new();
@@ -387,16 +390,26 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
 
             info!("Downloading the link target.");
 
-            let mut resp = HTTP_CLIENT.get(url).header(HttpConnection::close()).send().map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
+            let mut resp = HTTP_CLIENT.get(url)
+                .header(HttpConnection::close())
+                .send()
+                .map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
+            
+            let extension = {
+                let guess = EXTENSION_GUESS.captures_iter(url).next().and_then(|c| c.at(0));
+                let file_extension = url_match.at(2);
+                let content_type = resp.headers.get::<ContentType>();
+                let final_guess = file_extension.or_else(|| guess).unwrap_or(".noextension");
     
-            let file_extension = url_match.at(2).unwrap_or(".noextension");
-    
-            let extension = match resp.headers.get::<ContentType>() {
-                Some(&ContentType(Mime(Image, Png, _))) => ".png",
-                Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
-                Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
-                Some(_) => file_extension,
-                None => file_extension,
+                debug!("File extension: {:?}, Content type: {:?}, Guess: {:?}, Final guess: {:?}", file_extension, content_type, guess, final_guess);
+        
+                match content_type {
+                    Some(&ContentType(Mime(Image, Png, _))) => ".png",
+                    Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
+                    Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
+                    Some(_) => final_guess,
+                    None => final_guess,
+                }
             };
             
             let mut new_path = image_dir.to_owned();

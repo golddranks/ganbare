@@ -175,6 +175,15 @@ pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
         .refresh_cookie(&sess)
 }
 
+pub fn retelling (req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "")?;
+
+    let mut context = new_template_context();
+    
+    req.app.render_template("retelling.html", &context)
+        .refresh_cookie(&sess)
+}
+
 pub fn login_form(req: &mut Request) -> PencilResult {
     let conn = db_connect().err_500()?;
     if let Some((_, sess)) = get_user(&conn, req).err_500()? {

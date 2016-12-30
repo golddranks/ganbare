@@ -894,6 +894,8 @@ fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>
         },
     };
 
+    debug!("There was a pending item! Returning it.");
+
     Ok(Some(quiz_type))
 }
 

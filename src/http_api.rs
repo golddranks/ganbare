@@ -635,3 +635,33 @@ pub fn user(req: &mut Request) -> PencilResult {
 
     json.refresh_cookie(&sess)
 }
+
+pub fn useraudio(req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "")?;
+    use std::fs;
+    use std::io;
+    use rand::thread_rng;
+    use rand::Rng;
+    use time;
+
+    let event_name = req.view_args.remove("event_name").expect("Pencil guarantees that Line ID should exist as an arg.");
+
+    let (event, exp) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+
+    let mut new_path = USER_AUDIO_DIR.to_owned();
+    let mut filename = "%FT%H-%M-%SZ".to_string();
+    filename.extend(thread_rng().gen_ascii_chars().take(10));
+    filename.push_str(".ogg");
+    filename = time::strftime(&filename, &time::now()).unwrap();
+    new_path.push(&filename);
+
+    let mut file = fs::File::create(&new_path).err_500()?;
+    io::copy(req, &mut file).err_500()?;
+
+    event::save_userdata(&conn, &event, &user, None, &filename).err_500()?;
+
+    debug!("Saved user audio: {:?}", filename);
+
+    jsonify(&())
+        .refresh_cookie(&sess)
+}

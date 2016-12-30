@@ -1,0 +1,42 @@
+{{#partial page_script_link}}
+	<script src="/static/js/howler.min.js"></script>
+	<script src="/static/js/recorder.min.js"></script>
+{{/partial}}
+
+{{#partial main_section}}
+	Recorder
+{{/partial}}
+
+
+{{#partial page_script_inline}}
+
+var rec = new Recorder({ encoderPath: '/static/js/encoderWorker.min.js'});
+rec.addEventListener('streamReady', function() {
+	rec.start();
+	console.log("Start recording.");
+	setTimeout(function() {
+		console.log("Stop recording.");
+		rec.stop();
+	}, 3000);
+});
+rec.addEventListener('dataAvailable', function(data) {
+	console.log(data);
+	$.ajax({
+		url: '/api/useraudio?event=pretest',
+		type: 'POST',
+		contentType: 'application/octet-stream',  
+		data: data.detail,
+		processData: false
+	});
+});
+rec.addEventListener('start', function() {
+	console.log("Started");
+});
+rec.addEventListener('stop', function() {
+	console.log("Stopped");
+});
+rec.initStream();
+
+{{/partial}}
+
+{{~> base.html ~}}

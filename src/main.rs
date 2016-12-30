@@ -112,7 +112,7 @@ pub fn main() {
 
     let mut app = Pencil::new(".");
    
-    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "reset_password.html", "send_mail.html",
+    include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "reset_password.html", "send_mail.html", "retelling.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html", "send_pw_reset_email.html", "events.html",
         "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html", "slacker_heatenings.html");
     
@@ -127,6 +127,7 @@ pub fn main() {
     app.get("/", "hello", app_pages::hello);
     app.get("/welcome", "welcome", app_pages::welcome);
     app.get("/survey", "survey", app_pages::survey);
+    app.get("/retelling", "retelling", app_pages::retelling);
     app.get("/pretest", "pretest", app_pages::pre_post_test);
     app.get("/sorting", "sorting", app_pages::sorting_ceremony);
     app.get("/posttest", "posttest", app_pages::pre_post_test);
@@ -164,6 +165,7 @@ pub fn main() {
 
     // HTTP API
     app.get("/api/build_number", "get_build_number", http_api::get_build_number);
+    app.post("/api/useraudio?event=<event_name:string>", "post_useraudio", http_api::useraudio);
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
     app.get("/api/events", "get_events", http_api::get_all);
