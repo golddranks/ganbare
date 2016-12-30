@@ -77,6 +77,9 @@ lazy_static! {
         if pepper.len() != 32 { panic!("The value must be 256-bit, that is, 32 bytes long!") }; pepper
     };
 
+    pub static ref BUILD_NUMBER : String = { dotenv::dotenv().ok(); env::var("GANBARE_BUILD_NUMBER")
+        .unwrap_or_else(|_| "not set".into()) };
+
 }
 
 pub fn db_connect() -> Result<PgConnection> {

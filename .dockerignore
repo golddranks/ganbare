@@ -2,6 +2,7 @@
 .sass-cache
 audio
 images
+useraudio
 backups
 dev_assets
 target/debug

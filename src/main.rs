@@ -163,6 +163,7 @@ pub fn main() {
     app.post("/send_mail", "send_mail_post", manager_pages::send_mail_post);
 
     // HTTP API
+    app.get("/api/build_number", "get_build_number", http_api::get_build_number);
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
     app.get("/api/events", "get_events", http_api::get_all);

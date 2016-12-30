@@ -51,6 +51,10 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
         })
 }
 
+pub fn get_build_number(_: &mut Request) -> PencilResult {
+    jsonify(&*BUILD_NUMBER)
+}
+
 pub fn quiz_audio(req: &mut Request) -> PencilResult {
 
     let (conn, user, sess) = auth_user(req, "")?;
