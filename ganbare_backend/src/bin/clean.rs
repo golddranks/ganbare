@@ -139,7 +139,7 @@ fn clean_images() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let fs_files = std::fs::read_dir(&*IMAGE_DIR).unwrap();
+    let fs_files = std::fs::read_dir(&*IMAGE_DIR).expect(&format!("Not found: {:?}", &*IMAGE_DIR));
 
     let mut db_files: HashSet<String> = HashSet::new();
 
