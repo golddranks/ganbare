@@ -42,6 +42,10 @@ fn import_batch(path: &str, narrator: &str) {
         let mut word = path.file_stem().unwrap().to_str().unwrap().nfc().collect::<String>();
         let last_char = word.chars().next_back().expect("The word surely is longer than 0 characters!");
 
+        if word.chars().filter(|c| c == &'・' || c == &'*').count() > 1 {
+            panic!("Invalid filename! More than one accent marks: {:?}", word);
+        }
+
         if last_char.is_digit(10) {
             word.pop();
         }

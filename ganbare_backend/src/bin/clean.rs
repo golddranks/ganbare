@@ -19,6 +19,7 @@ extern crate time;
 use ganbare_backend::*;
 use std::path::{PathBuf};
 use std::collections::HashSet;
+use unicode_normalization::UnicodeNormalization;
 
 lazy_static! {
 
@@ -103,6 +104,42 @@ pub fn clean_urls(conn: &PgConnection) -> Result<Vec<String>> {
     Ok(logger)
 }
 
+fn clean_unicode() {
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let mut bundles = audio::get_all_bundles(&conn).unwrap();
+
+    for (mut b, _) in bundles {
+        let cleaned_name = b.listname.nfc().collect::<String>();
+        if cleaned_name != b.listname {
+            println!("Non-normalized unicode found: {:?}", b);
+            b.listname = cleaned_name;
+            let _: AudioBundle = b.save_changes(&conn).unwrap();
+        }
+    }
+
+    let mut words: Vec<Word> = schema::words::table.get_results(&conn).unwrap();
+
+    for mut w in words {
+        let cleaned_word = w.word.nfc().collect::<String>();
+        if cleaned_word != w.word {
+            println!("Non-normalized unicode found: {:?}", w);
+            w.word = cleaned_word;
+            let _: Word = w.save_changes(&conn).unwrap();
+        }
+    }
+    let mut skills: Vec<SkillNugget> = schema::skill_nuggets::table.get_results(&conn).unwrap();
+
+    for mut s in skills {
+        let cleaned_skill = s.skill_summary.nfc().collect::<String>();
+        if cleaned_skill != s.skill_summary {
+            println!("Non-normalized unicode found: {:?}", s);
+            s.skill_summary = cleaned_skill;
+            let _: SkillNugget = s.save_changes(&conn).unwrap();
+        }
+    }
+}
+
 fn clean_audio() {
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
@@ -123,6 +160,7 @@ fn clean_audio() {
             trash_dir.pop();
         }
     }
+
 }
 
 use regex::Regex;
@@ -196,4 +234,5 @@ fn main() {
     
     clean_audio();
     clean_images();
+    clean_unicode();
 }

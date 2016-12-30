@@ -125,7 +125,7 @@ pub struct NewSkillNugget<'a> {
     pub skill_summary: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, AsChangeset, Identifiable, Debug, RustcEncodable)]
 #[table_name="skill_nuggets"]
 #[has_many(quiz_questions, foreign_key = "skill_id")]
 #[has_many(skill_data, foreign_key = "skill_nugget")]
@@ -172,7 +172,7 @@ pub struct AudioFile {
     pub mime: String,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="audio_bundles"]
 #[has_many(audio_files, foreign_key = "bundle_id")]
 #[has_many(question_answers, foreign_key = "q_audio_bundle")]
