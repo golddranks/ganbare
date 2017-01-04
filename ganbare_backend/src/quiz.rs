@@ -47,6 +47,7 @@ pub struct ExerciseJson {
     pub asked_id: i32,
     pub word: String,
     pub explanation: String,
+    pub must_record: bool,
 }
 
 #[derive(RustcEncodable, Debug, Clone)]
@@ -868,6 +869,7 @@ fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>
                 asked_id: pi.id,
                 word: word.word.nfc().collect::<String>(),
                 explanation: word.explanation,
+                must_record: false,
             })
 
         },
@@ -950,6 +952,7 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
                     asked_id: pending_item.id,
                     word: word.word.nfc().collect::<String>(),
                     explanation: word.explanation,
+                    must_record: false,
                 };
     
                 return Ok(Some(Quiz::E(quiz_json)))
@@ -982,6 +985,35 @@ pub fn return_word(conn: &PgConnection, user: &User, the_word: Word) -> Result<O
     };
 
     return Ok(Some(Quiz::W(quiz_json)));
+}
+
+pub fn get_word_id(conn: &PgConnection, word: &str) -> Result<i32> {
+    use schema::words;
+
+    Ok(words::table
+        .filter(words::word.eq(word))
+        .select(words::id)
+        .get_result(conn)?)
+}
+
+pub fn get_exercise_id(conn: &PgConnection, skill_summary: &str) -> Result<i32> {
+    use schema::{exercises, skill_nuggets};
+
+    Ok(exercises::table
+        .inner_join(skill_nuggets::table)
+        .filter(skill_nuggets::skill_summary.eq(skill_summary).and(exercises::skill_level.lt(3)))
+        .select(exercises::id)
+        .get_result(conn)?)
+}
+
+pub fn get_question_id(conn: &PgConnection, skill_summary: &str) -> Result<i32> {
+    use schema::{quiz_questions, skill_nuggets};
+
+    Ok(quiz_questions::table
+        .inner_join(skill_nuggets::table)
+        .filter(skill_nuggets::skill_summary.eq(skill_summary).and(quiz_questions::skill_level.lt(3)))
+        .select(quiz_questions::id)
+        .get_result(conn)?)
 }
 
 pub fn return_some_quiz(conn: &PgConnection, user: &User, quiz: QuizType) -> Result<Option<Quiz>> {

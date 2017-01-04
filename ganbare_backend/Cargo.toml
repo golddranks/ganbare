@@ -7,7 +7,7 @@ authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 diesel = { version = "0.9", features = ["chrono"]}
 diesel_codegen = {version = "0.9", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
-dotenv_macros = "0.9"
+dotenv_macros = "0.10"
 rust-crypto = "0.2"
 error-chain = { git = "https://github.com/golddranks/error-chain.git", branch = "tweaks_for_ganbare"}
 clap = "2"
@@ -27,10 +27,6 @@ mime = "*"
 tempdir = "0.3"
 regex = "0.1"
 email = "*"
-pq-sys = "0.2.4"
 unicode-normalization = "*"
 hyper = "*"
 try_map = "0.2"
-
-[replace]
-"dotenv_codegen:0.9.3" = { git = "https://github.com/slapresta/rust-dotenv" }

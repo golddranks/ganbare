@@ -271,9 +271,9 @@ function setWordShowButton(audio) {
 
 }
 
-function answerExercise(isCorrect, exercise) {
-	if (exercise.sent) { return; };
-	exercise.sent = true;
+function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: quizData) {
+	if (quiz_data.sent) { return; };
+	quiz_data.sent = true;
 	console.log("answerExercise! isCorrect: ", isCorrect, " exercise: ", exercise);
 	wordShowButton.off('click');
 	exerciseFailureButton.off('click');
@@ -298,10 +298,10 @@ function answerExercise(isCorrect, exercise) {
 			asked_id: exercise.asked_id,
 			answer_level: isCorrect ? 1 : 0,
 			times_audio_played: timesAudioPlayed,
-			active_answer_time: exercise.pronouncedInstant - exercise.askedInstant,
-			reflected_time: answeredInstant - exercise.pronouncedInstant,
-			full_answer_time: answeredInstant - exercise.askedInstant,
-			full_spent_time: answeredInstant - exercise.startedInstant,
+			active_answer_time: quiz_data.pronouncedInstant - quiz_data.askedInstant,
+			reflected_time: answeredInstant - quiz_data.pronouncedInstant,
+			full_answer_time: answeredInstant - quiz_data.askedInstant,
+			full_spent_time: answeredInstant - quiz_data.startedInstant,
 		}, function(result) {
 			clearError();
 			console.log("postAnswerExercise: got result");
@@ -546,14 +546,23 @@ function showWord(word) {
 	}, 200);
 }
 
-/* pub struct ExerciseJson {
-    quiz_type: &'static str,
-    asked_id: i32,
-    word: String,
-    explanation: String,
-} */
+interface ExerciseJson {
+    quiz_type: string,
+    asked_id: number,
+    word: string,
+    explanation: string,
+    must_record: boolean,
+}
 
-function showExercise(exercise) {
+interface quizData {
+	startedInstant: number,
+	pronouncedInstant?: number,
+	askedInstant?: number,
+	answered: boolean,
+	sent: boolean,
+}
+
+function showExercise(exercise: ExerciseJson) {
 	wordSection.show();
 	console.log("showExercise!");
 	word_avatar.show();
@@ -561,7 +570,7 @@ function showExercise(exercise) {
 	wordStatus.text("Äännä parhaasi mukaan!").show();
 	wordShowSection.hide();
 	wordStatus.slideDown(normalSpeed, function() { word_avatar.fadeTo(normalSpeed, 1); });
-	exercise.startedInstant = Date.now();
+	let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
 	word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
 
 	console.log("exercise started");
@@ -576,9 +585,9 @@ function showExercise(exercise) {
 	setLoadError(exerciseAudio, "exerciseAudio", exercise);
 	setWordShowButton(exerciseAudio);
 
-	exerciseSuccessButton.one('click', function() { answerExercise(true, exercise); });
+	exerciseSuccessButton.one('click', ()=> { answerExercise(true, exercise, quiz_data); });
 
-	exerciseFailureButton.one('click', function() { answerExercise(false, exercise); });
+	exerciseFailureButton.one('click', ()=> { answerExercise(false, exercise, quiz_data); });
 
 	exerciseAudio.once('end', function(){
 		setTimeout(function() {
@@ -591,13 +600,13 @@ function showExercise(exercise) {
 		}, 1100);
 	});
 
-	exercise.answered = false;
+	quiz_data.answered = false;
 	exerciseOkButton.one("click", function() {
-		exercise.answered = true;
+		quiz_data.answered = true;
 		wordShowKana.html(accentuate(exercise.word, true));
 		exerciseAudio.play();
 		timesAudioPlayed++;
-		exercise.pronouncedInstant = Date.now();
+		quiz_data.pronouncedInstant = Date.now();
 		buttonSection.slideUp(normalSpeed, function() {
 			exerciseOkButton.hide();
 		});
@@ -607,17 +616,17 @@ function showExercise(exercise) {
 	topmessage.text("Vastausaikaa 8 s");
 	topmessage.fadeIn();
 
-	window.setTimeout(function() { if (exercise.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
-	window.setTimeout(function() { if (exercise.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
-	window.setTimeout(function() { if (exercise.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
+	window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
+	window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
+	window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
 	window.setTimeout(function() {
-		if (exercise.answered) {return};
+		if (quiz_data.answered) {return};
 		topmessage.fadeOut(); 
-		exercise.pronouncedInstant = Date.now();
-		answerExercise(false, exercise);
+		quiz_data.pronouncedInstant = Date.now();
+		answerExercise(false, exercise, quiz_data);
 	}, 8000);
 	
-	exercise.askedInstant = Date.now();
+	quiz_data.askedInstant = Date.now();
 	setTimeout(function() {
 		wordExplanation.addClass("imageLoaded");
 	}, 200);
@@ -659,7 +668,7 @@ function showQuiz(quiz) {
 	} else if (quiz.quiz_type === "word") {
 		showWord(quiz);
 	} else if (quiz.quiz_type === "exercise") {
-		showExercise(quiz);
+		showExercise(<ExerciseJson> quiz);
 	} else if (quiz.quiz_type === "future") {
 		start();
 	} else {

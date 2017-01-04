@@ -128,6 +128,7 @@ pub struct NewSkillNugget<'a> {
 #[derive(Insertable, Queryable, Associations, AsChangeset, Identifiable, Debug, RustcEncodable)]
 #[table_name="skill_nuggets"]
 #[has_many(quiz_questions, foreign_key = "skill_id")]
+#[has_many(exercises, foreign_key = "skill_id")]
 #[has_many(skill_data, foreign_key = "skill_nugget")]
 #[has_many(words, foreign_key = "skill_nugget")]
 pub struct SkillNugget {
