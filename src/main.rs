@@ -106,25 +106,40 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
 
     let origin = req.headers().get();
     let referer = req.headers().get();
+    let method_mutating = !req.method().safe();
+    let first_path_segment = match req.url.path_segments().map(|mut s| s.next()) {
+        Some(Some(split)) => split,
+        Some(None) => "",
+        None => return Some(Ok(bad_request("No url?"))),
+    };
 
-    if let Some(&Origin{ scheme: _, host: Host{ ref hostname, port: _ } }) = origin {
-        if hostname != &**SITE_DOMAIN {
-            println!("Someone tried to do a request with a wrong Origin: {}", hostname);
-            return Some(pencil::abort(403))
+    if method_mutating || first_path_segment == "api" { // Enable anti-CSRF heuristics: when the method is POST, DELETE etc., or if the request uses the HTTP API.
+
+        if let Some(&Origin{ scheme: _, host: Host{ ref hostname, port: _ } }) = origin {
+            if hostname != &**SITE_DOMAIN {
+                println!("Someone tried to do a request with a wrong Origin: {} Possible CSRF?", hostname);
+                return Some(pencil::abort(403))
+            }
+        }
+        if let Some(&Referer(ref referer)) = referer {
+            let url = Url::parse(referer);
+            let hostname = match url.as_ref().map(|url| url.host_str()) {
+                Ok(Some(host)) => host,
+                Ok(None) => return Some(pencil::abort(400)),
+                Err(e) => return Some(pencil::abort(400)),
+            };
+            if hostname != &**SITE_DOMAIN {
+                println!("Someone tried to do a request with a wrong Referer: {} Possible CSRF?", hostname);
+                return Some(pencil::abort(403))
+            }
+        }
+        if origin.is_none() && referer.is_none() {
+                println!("Someone tried to do a request with no Referer or Origin while triggering the anti-CSRF heuristics!");
+                println!("Accessing with HTTP method: {:?}. The first segment of path: {:?}", req.method(), first_path_segment);
+                return Some(pencil::abort(403))
         }
     }
-    if let Some(&Referer(ref referer)) = referer {
-        let url = Url::parse(referer);
-        let hostname = match url.as_ref().map(|url| url.host_str()) {
-            Ok(Some(host)) => host,
-            Ok(None) => return Some(pencil::abort(400)),
-            Err(e) => return Some(pencil::abort(400)),
-        };
-        if hostname != &**SITE_DOMAIN {
-            println!("Someone tried to do a request with a wrong Referer: {}", hostname);
-            return Some(pencil::abort(403))
-        }
-    }
+
     None
 }
 
