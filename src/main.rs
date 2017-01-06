@@ -23,6 +23,7 @@ extern crate chrono;
 extern crate regex;
 extern crate unicode_normalization;
 extern crate mime;
+extern crate url;
 
 #[macro_use]
 mod helpers;
@@ -99,6 +100,34 @@ pub fn background_control_thread() {
     }
 }
 
+fn csrf_check(req: &mut Request) -> Option<PencilResult> {
+    use hyper::header::{Origin, Referer, Host};
+    use url::{Url};
+
+    let origin = req.headers().get();
+    let referer = req.headers().get();
+
+    if let Some(&Origin{ scheme: _, host: Host{ ref hostname, port: _ } }) = origin {
+        if hostname != &**SITE_DOMAIN {
+            println!("Someone tried to do a request with a wrong Origin: {}", hostname);
+            return Some(pencil::abort(403))
+        }
+    }
+    if let Some(&Referer(ref referer)) = referer {
+        let url = Url::parse(referer);
+        let hostname = match url.as_ref().map(|url| url.host_str()) {
+            Ok(Some(host)) => host,
+            Ok(None) => return Some(pencil::abort(400)),
+            Err(e) => return Some(pencil::abort(400)),
+        };
+        if hostname != &**SITE_DOMAIN {
+            println!("Someone tried to do a request with a wrong Referer: {}", hostname);
+            return Some(pencil::abort(403))
+        }
+    }
+    None
+}
+
 
 use pencil::Pencil;
 
@@ -117,6 +146,7 @@ pub fn main() {
         "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html", "slacker_heatenings.html");
     
     app.enable_static_file_handling();
+    app.before_request(csrf_check);
 
     // DEBUGGING
     #[cfg(debug_assertions)]

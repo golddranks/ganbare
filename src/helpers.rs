@@ -73,6 +73,9 @@ lazy_static! {
     pub static ref IMAGES_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_IMAGES_DIR")
         .unwrap_or_else(|_| "images".into())) };
 
+    pub static ref TLS_ENABLED : bool = { dotenv::dotenv().ok(); env::var("GANBARE_TLS_ENABLED").map(|s| s.parse::<bool>().unwrap_or(true))
+        .unwrap_or(true) };
+
     pub static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
         let pepper = env::var("GANBARE_RUNTIME_PEPPER")
         .expect("Environmental variable GANBARE_RUNTIME_PEPPER must be set! (format: 256-bit random value encoded as base64)")
@@ -146,7 +149,9 @@ impl CookieProcessor for Response {
         let mut cookie = CookiePair::new("session_id".to_owned(), session::to_hex(sess));
         cookie.path = Some("/".to_owned());
         cookie.httponly = true;
-        cookie.secure = true;
+        if *TLS_ENABLED {
+            cookie.secure = true;
+        }
         cookie.domain = Some(SITE_DOMAIN.to_owned());
         cookie.expires = Some(time::now_utc() + time::Duration::weeks(2));
         self.set_cookie(SetCookie(vec![cookie]));

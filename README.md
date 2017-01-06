@@ -14,6 +14,7 @@ The server is configured using environmental variables, or an `.env` file in the
 
 The following have defaults, and you may omit them:
 
+    GANBARE_TLS_ENABLED At the moment: Whether the cookies are sent with "Secure" flag. Defaults to true.
     GANBARE_EMAIL_SMTP_USERNAME SMTP username. Defaults to empty string.
     GANBARE_EMAIL_SMTP_PASSWORD password. Defaults to empty string.
     GANBARE_SITE_LINK defaults to http://$GANBARE_SITE_DOMAIN:8081. This is used, for example, in email messages to link to the site.
