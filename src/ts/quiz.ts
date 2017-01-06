@@ -3,7 +3,7 @@
 
 $(function() {
 
-function accentuate(word: string, showAccent) {
+function accentuate(word: string, showAccent: boolean) : string {
 
 	if (!showAccent) {
 		return word.replace("・", "").replace("*", "");
@@ -57,6 +57,80 @@ function accentuate(word: string, showAccent) {
 	return accentuated.join("");
 }
 
+
+interface Quiz {
+    quiz_type: string,
+}
+
+interface FutureJson {
+    quiz_type: string,
+    due_date: string,
+}
+
+interface QuestionJson {
+    quiz_type: string,
+    asked_id: number,
+    explanation: string,
+    question: string,
+    right_a: number,
+    answers: [number, string][],
+}
+
+interface AnsweredQuestion {
+	type: string,
+	asked_id: number,
+	answered_qa_id: number,
+	active_answer_time: number,
+	full_answer_time: number,
+	full_spent_time: number,
+}
+
+interface WordJson {
+    quiz_type: string,
+    asked_id: number,
+    word: string,
+    explanation: string,
+    show_accents: boolean,
+}
+
+interface AnsweredWord {
+	type: string,
+	asked_id: number,
+	times_audio_played: number,
+	active_answer_time: number,
+	full_spent_time: number,
+}
+
+interface ExerciseJson {
+    quiz_type: string,
+    asked_id: number,
+    word: string,
+    explanation: string,
+    must_record: boolean,
+}
+
+interface AnsweredExercise {
+	type: string,
+	asked_id: number,
+	answer_level: number,
+	times_audio_played: number,
+	active_answer_time: number,
+	reflected_time: number,
+	full_answer_time: number,
+	full_spent_time: number,
+}
+
+interface quizData {
+	startedInstant: number,
+	pronouncedInstant?: number,
+	askedInstant?: number,
+	wordShownInstant?: number,
+	active_answer_time?: number,
+	playbackStartedInstant?: number,
+	playbackEndedInstant?: number,
+	answered: boolean,
+	sent: boolean,
+}
 
 
 /* general things */
@@ -116,7 +190,7 @@ var buttonSection = $("#buttonSection");
 
 /* errors */
 
-function bugMessage(e) {
+function bugMessage(e) : void {
 	console.log("Bug?", e);
 	errorSection.show();
 	errorStatus.text("Server is down or there is a bug :(");
@@ -124,7 +198,7 @@ function bugMessage(e) {
 	main.addClass("errorOn");
 }
 
-function clearError() {
+function clearError() : void {
 
 	errorSection.hide();
 	main.removeClass("errorOn");
@@ -135,13 +209,13 @@ function clearError() {
 var settingsArea = $("#settings");
 var menuButton = $("#menuButton");
 
-function toggleMenu(event) {
+function toggleMenu(event: Event) : void {
 	settingsArea.toggle();
 	main.toggleClass("menuOn");
 	event.stopPropagation(); 
 }
 
-function cancelMenu(event) {
+function cancelMenu(event: Event): void {
 	settingsArea.hide();
 	main.removeClass("menuOn");
 	event.stopPropagation(); 
@@ -156,7 +230,7 @@ $("#settingsMenu").click(function( event ) { event.stopPropagation(); });
 
 /* app main logic */
 
-function cleanState() {
+function cleanState() : void {
 	buttonSection.hide();
 	questionSectionFlexContainer.hide();
 	wordSectionSlideContainer.hide();
@@ -183,8 +257,8 @@ function cleanState() {
 	answerList.hide();
 }
 
-function breakTime(question) {
-	var dur_seconds = (new Date(question.due_date).getTime() - Date.now())/1000;
+function breakTime(future: FutureJson) : void {
+	var dur_seconds = (new Date(future.due_date).getTime() - Date.now())/1000;
 	var dur_hours = Math.floor(dur_seconds/3600);
 	var dur_minutes_remainder = Math.floor((dur_seconds % 3600) / 60);
 	var dur_seconds_remainder = Math.floor((dur_seconds % 3600) % 60);
@@ -216,12 +290,12 @@ function breakTime(question) {
 	questionStatus.slideDown(normalSpeed);
 }
 
-function createTwiceSemaphoreToNextQuestion() {
+function createTwiceSemaphoreToNextQuestion() : (Quiz)=>void {
 
 	var semaphore = 2;
-	var closureNextOne = null;
+	var closureNextOne: Quiz = null;
 
-	var nextQuestion = function(nextOne) {
+	return (nextOne: Quiz) => {
 		if (closureNextOne === null && nextOne !== null) {
 			closureNextOne = nextOne;
 		};
@@ -229,22 +303,21 @@ function createTwiceSemaphoreToNextQuestion() {
 		if (semaphore > 0) { return; };
 		showQuiz(closureNextOne);
 	};
-	return nextQuestion;
 }
 
 
-function setLoadError(audioElement, elementName, closureQuiz) {
+function setLoadError(audioElement: Howl, elementName: string, closureQuiz: Quiz) {
 
 	audioElement.on("loaderror", function (id, e) {
 
 		if (closureQuiz !== null && currentQuiz !== closureQuiz) { this.off(); return false; };
 	    console.log("Error with "+elementName+" element! Trying again after 3 secs.");
 		bugMessage(e);
-		audioElement.off("load").once("load", function() {
+		audioElement.off("load").once("load", () => {
 			console.log("Managed to load!", audioElement);
 			clearError();
 		});
-		setTimeout(function() {
+		setTimeout(() => {
 			audioElement.unload();
 			audioElement.load();
 		}, 3000);
@@ -255,7 +328,7 @@ function setLoadError(audioElement, elementName, closureQuiz) {
 setLoadError(correct, "correctSfx", null);
 setLoadError(wrong, "wrongSfx", null);
 
-function setWordShowButton(audio) {
+function setWordShowButton(audio: Howl) {
 
 	wordShowButton.off('click').on('click', function() {
 		timesAudioPlayed++;
@@ -293,7 +366,7 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 	var answeredInstant = Date.now();
 	function postAnswerExercise() {
 		console.log("postAnswerExercise", exercise);
-		var jqxhr = $.post("/api/next_quiz", {
+		let answered: AnsweredExercise = {
 			type: "exercise",
 			asked_id: exercise.asked_id,
 			answer_level: isCorrect ? 1 : 0,
@@ -302,7 +375,8 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 			reflected_time: answeredInstant - quiz_data.pronouncedInstant,
 			full_answer_time: answeredInstant - quiz_data.askedInstant,
 			full_spent_time: answeredInstant - quiz_data.startedInstant,
-		}, function(result) {
+		};
+		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
 			clearError();
 			console.log("postAnswerExercise: got result");
 			nextQuestion(result);
@@ -316,7 +390,7 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 	postAnswerExercise();
 };
 
-function answerWord(word) {
+function answerWord(word: WordJson, quiz_data: quizData) {
 	wordExplanation.removeClass("imageLoaded");
 	wordShowButton.off('click');
 	var nextQuestion = createTwiceSemaphoreToNextQuestion();
@@ -328,13 +402,14 @@ function answerWord(word) {
 	}, normalSlow);
 	var wordAnsweredInstant = Date.now();
 	function postAnswerWord() {
-		var jqxhr = $.post("/api/next_quiz", {
+		let answered: AnsweredWord = {
 			type: "word",
 			asked_id: word.asked_id,
 			times_audio_played: timesAudioPlayed,
-			active_answer_time: word.active_answer_time,
-			full_spent_time: wordAnsweredInstant - word.wordShownInstant,
-		}, function(result) {
+			active_answer_time: quiz_data.active_answer_time,
+			full_spent_time: wordAnsweredInstant - quiz_data.wordShownInstant,
+		};
+		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
 			clearError();
 			console.log("postAnswerWord: got result");
 			nextQuestion(result);
@@ -347,9 +422,9 @@ function answerWord(word) {
 	postAnswerWord();
 };
 
-function answerQuestion(ansId, isCorrect, question, button) {
-	if (question.answered) { return; };
-	question.answered = true;
+function answerQuestion(ansId: number, isCorrect: boolean, question: QuestionJson, button: JQuery, quiz_data: quizData) {
+	if (quiz_data.answered) { return; };
+	quiz_data.answered = true;
 	$(this).addClass("buttonHilight");
 	var mark = null;
 	var answeredInstant = Date.now();
@@ -392,14 +467,15 @@ function answerQuestion(ansId, isCorrect, question, button) {
 	}); }, timeAfterClick);
 
 	function postAnswerQuestion() {
-		var jqxhr = $.post("/api/next_quiz", {
+		let answered: AnsweredQuestion = {
 			type: "question",
 			asked_id: question.asked_id,
 			answered_qa_id: ansId,
-			active_answer_time: answeredInstant - question.playbackEndedInstant,
-			full_answer_time: answeredInstant - question.playbackStartedInstant,
-			full_spent_time: answeredInstant - question.startedInstant,
-		}, function(result) {
+			active_answer_time: answeredInstant - quiz_data.playbackEndedInstant,
+			full_answer_time: answeredInstant - quiz_data.playbackStartedInstant,
+			full_spent_time: answeredInstant - quiz_data.startedInstant,
+		};
+		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
 			clearError();
 			console.log("postAnswerQuestion: got result");
 			nextQuestion(result);
@@ -412,7 +488,7 @@ function answerQuestion(ansId, isCorrect, question, button) {
 	postAnswerQuestion();
 }
 
-function spawnAnswerButton(ansId, text, isCorrect, question) {
+function spawnAnswerButton(ansId: number, text: string, isCorrect: boolean, question: QuestionJson, quiz_data: quizData) {
 	var newAnswerButton = prototypeAnswer.clone();
 	var aAudio = null;
 	/*
@@ -424,22 +500,13 @@ function spawnAnswerButton(ansId, text, isCorrect, question) {
 		.html(text)
 		.one('click', function() {
 			if (aAudio !== null) { aAudio.play() };
-			answerQuestion(ansId, isCorrect, question, this);
+			answerQuestion(ansId, isCorrect, question, this, quiz_data);
 		});
 	answerList.append(newAnswerButton);
 };
 
 
-/* pub struct QuestionJson {
-    quiz_type: &'static str,
-    asked_id: i32,
-    explanation: String,
-    question: String,
-    right_a: i32,
-    answers: Vec<(i32, String)>,
-} */
-
-function showQuestion(question) {
+function showQuestion(question: QuestionJson) {
 	console.log(question);
 	questionSectionFlexContainer.show();
 	questionSection.show();
@@ -447,36 +514,37 @@ function showQuestion(question) {
 	avatar.show();
 	avatar.css('opacity', '0');
 	questionExplanation.slideDown(normalSpeed, function() { avatar.fadeTo(normalSpeed, 1); });
-	question.startedInstant = Date.now();
+	let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
+	quiz_data.startedInstant = Date.now();
 
 	question.answers.forEach(function(a, i) {
 		var isCorrect = (question.right_a === a[0])?true:false;
-		spawnAnswerButton(a[0], a[1], isCorrect, question);
+		spawnAnswerButton(a[0], a[1], isCorrect, question, quiz_data);
 	});
 	var qAudio = new Howl({ src: ['/api/audio.mp3?'+question.asked_id]});
 
 	play_button.one('click', function() {
 		console.log("question started");
-		question.playbackStartedInstant = Date.now();
+		quiz_data.playbackStartedInstant = Date.now();
 	   	questionStatus.slideUp(normalSpeed);
 		questionSection.css("min-height", questionSection.css("height")); // For mobile/xxsmall (questionSection is centered in a flexbox)
 		main.css("min-height", main.css("height")); // For desktop (main changes size)
 		avatar.fadeOut(quiteFast);
 
 		qAudio.once('end', function() {
-			question.playbackEndedInstant = Date.now();
+			quiz_data.playbackEndedInstant = Date.now();
 			topmessage.text("Vastausaikaa 8 s");
 			topmessage.fadeIn();
 			questionText.text(question.question);
 		
 			answerList.slideDown(normalSpeed);
-			window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
-			window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
-			window.setTimeout(function() { if (question.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
+			window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
+			window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
+			window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
 			window.setTimeout(function() {
-				if (question.answered) {return};
+				if (quiz_data.answered) {return};
 				topmessage.fadeOut(); 
-				answerQuestion(-1, false, question, null);
+				answerQuestion(-1, false, question, null, quiz_data);
 			}, 8000);
 		});
 		qAudio.play();
@@ -485,14 +553,8 @@ function showQuestion(question) {
 	setLoadError(qAudio, "questionAudio", question);
 	
 }
-/* pub struct WordJson {
-    quiz_type: &'static str,
-    asked_id: i32,
-    word: String,
-    explanation: String,
-    show_accents: bool,
-} */
-function showWord(word) {
+
+function showWord(word: WordJson) {
 	wordSection.show();
 	word_avatar.hide();
 	console.log("showWord!");
@@ -501,16 +563,18 @@ function showWord(word) {
 	wordExplanation.html(word.explanation);
 	var wordAudio = new Howl({ src: ['/api/audio.mp3?'+word.asked_id]});
 
-	word.wordShownInstant = Date.now();
+	let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
+
+	quiz_data.wordShownInstant = Date.now();
 
 	var activityStarted = Date.now();
 	var activeNow = true;
 	var activityThreshold_ms = 8000;
-	word.active_answer_time = 0;
+	quiz_data.active_answer_time = 0;
 
 	function userInactivated() {
 		activeNow = false;
-		word.active_answer_time += Date.now() - activityStarted;
+		quiz_data.active_answer_time += Date.now() - activityStarted;
 	}
 
 	var userInactiveTimer = setTimeout(userInactivated, activityThreshold_ms);
@@ -526,10 +590,10 @@ function showWord(word) {
 	wordOkButton.show()
 	wordOkButton.one('click', function() {
 		$("body").off('mousemove');
-		word.active_answer_time += Date.now() - activityStarted;
-		console.log("Active answer time was!", word.active_answer_time);
+		quiz_data.active_answer_time += Date.now() - activityStarted;
+		console.log("Active answer time was!", quiz_data.active_answer_time);
 		clearTimeout(userInactiveTimer);
-		answerWord(word);
+		answerWord(word, quiz_data);
 	});
 
 	setLoadError(wordAudio, "wordAudio", word);
@@ -544,22 +608,6 @@ function showWord(word) {
 		wordExplanation.addClass("imageLoaded");
 		wordSectionSlideContainer.slideDown(normalSpeed);
 	}, 200);
-}
-
-interface ExerciseJson {
-    quiz_type: string,
-    asked_id: number,
-    word: string,
-    explanation: string,
-    must_record: boolean,
-}
-
-interface quizData {
-	startedInstant: number,
-	pronouncedInstant?: number,
-	askedInstant?: number,
-	answered: boolean,
-	sent: boolean,
 }
 
 function showExercise(exercise: ExerciseJson) {
@@ -637,7 +685,7 @@ function showExercise(exercise: ExerciseJson) {
 
 }
 
-function showQuiz(quiz) {
+function showQuiz(quiz: Quiz) {
 	console.log("showQuiz!");
 	cleanState();
 
@@ -653,20 +701,23 @@ function showQuiz(quiz) {
 			avatar.fadeOut(superFast);
 			return;
 		}
-	} else if (new Date(quiz.due_date) > new Date()) {
-		console.log("BreakTime! Breaking until: ", new Date(quiz.due_date));
-		avatar.fadeOut(superFast);
-		breakTime(quiz);
-		breakTimeWaitHandle = window.setInterval(function() { breakTime(quiz); }, 1000);
-		return;
-	}
-	currentQuiz = quiz;
-	quiz.answered = false;
+	} 
 
-	if (quiz.quiz_type === "question") {
-		showQuestion(quiz);
+	currentQuiz = quiz;
+
+	if (quiz.quiz_type === "future") { 
+		let future = <FutureJson> quiz;
+		if (new Date(future.due_date) > new Date()) {
+			console.log("BreakTime! Breaking until: ", new Date(future.due_date));
+			avatar.fadeOut(superFast);
+			breakTime(future);
+			breakTimeWaitHandle = window.setInterval(function() { breakTime(future); }, 1000);
+			return;
+		}
+	} else if (quiz.quiz_type === "question") {
+		showQuestion(<QuestionJson> quiz);
 	} else if (quiz.quiz_type === "word") {
-		showWord(quiz);
+		showWord(<WordJson> quiz);
 	} else if (quiz.quiz_type === "exercise") {
 		showExercise(<ExerciseJson> quiz);
 	} else if (quiz.quiz_type === "future") {
