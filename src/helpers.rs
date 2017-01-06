@@ -145,6 +145,8 @@ impl CookieProcessor for Response {
     fn refresh_cookie(mut self, sess : &Session) -> PencilResult {
         let mut cookie = CookiePair::new("session_id".to_owned(), session::to_hex(sess));
         cookie.path = Some("/".to_owned());
+        cookie.httponly = true;
+        cookie.secure = true;
         cookie.domain = Some(SITE_DOMAIN.to_owned());
         cookie.expires = Some(time::now_utc() + time::Duration::weeks(2));
         self.set_cookie(SetCookie(vec![cookie]));
