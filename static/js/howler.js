@@ -1,5 +1,5 @@
 /*!
- *  howler.js v2.0.1
+ *  howler.js v2.0.2
  *  howlerjs.com
  *
  *  (c) 2013-2016, James Simpson of GoldFire Studios
@@ -496,6 +496,16 @@
       // Keep track of this Howl group in the global controller.
       Howler._howls.push(self);
 
+      // If they selected autoplay, add a play event to the load queue.
+      if (self._autoplay) {
+        self._queue.push({
+          event: 'play',
+          action: function() {
+            self.play();
+          }
+        });
+      }
+
       // Load the source file unless otherwise specified.
       if (self._preload) {
         self.load();
@@ -664,8 +674,8 @@
       }
 
       // Determine how long to play for and where to start playing.
-      var seek = sound._seek > 0 ? sound._seek : self._sprite[sprite][0] / 1000;
-      var duration = ((self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000) - seek;
+      var seek = Math.max(0, sound._seek > 0 ? sound._seek : self._sprite[sprite][0] / 1000);
+      var duration = Math.max(0, ((self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000) - seek);
       var timeout = (duration * 1000) / Math.abs(sound._rate);
 
       // Update the parameters of the sound
@@ -1458,7 +1468,6 @@
         // Stop the sound if it is currently playing.
         if (!sounds[i]._paused) {
           self.stop(sounds[i]._id);
-          self._emit('end', sounds[i]._id);
         }
 
         // Remove the source or disconnect.
@@ -1994,10 +2003,6 @@
         parent._loadQueue();
       }
 
-      if (parent._autoplay) {
-        parent.play();
-      }
-
       // Clear the event listener.
       self._node.removeEventListener(Howler._canPlayEvent, self._loadFn, false);
     },
@@ -2140,11 +2145,6 @@
       self._state = 'loaded';
       self._emit('load');
       self._loadQueue();
-    }
-
-    // Begin playback if specified.
-    if (self._autoplay) {
-      self.play();
     }
   };
 
