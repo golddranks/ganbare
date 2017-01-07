@@ -22,7 +22,7 @@ rec.addEventListener('streamReady', function() {
 rec.addEventListener('dataAvailable', function(data) {
 	console.log(data);
 	$.ajax({
-		url: '/api/useraudio?event=pretest',
+		url: '/api/user_audio?event=pretest',
 		type: 'POST',
 		contentType: 'application/octet-stream',  
 		data: data.detail,

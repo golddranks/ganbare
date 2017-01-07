@@ -1,6 +1,7 @@
 #!/bin/sh
 
 echo "$(( $(cat build_number.txt 2> /dev/null || echo "0") + 1 ))" > build_number.txt
+rm target/x86_64-unknown-linux-musl/release/ganbare 2> /dev/null || true
 docker rm -v ganbare_builder 2> /dev/null || true
 ./build_static.sh && \
 docker run -it --name ganbare_builder -v $PWD:/workdir golddranks/ganbare_build && \

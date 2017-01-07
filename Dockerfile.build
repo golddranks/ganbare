@@ -60,6 +60,7 @@ WORKDIR /workdir
 # PKG_CONFIG_PATH Some of the build.rs script of *-sys crates use pkg-config to probe for libs.
 # PKG_CONFIG_ALLOW_CROSS This tells the rust pkg-config crate to be enabled even when cross-compiling
 # PKG_CONFIG_ALL_STATIC This tells the rust pkg-config crate to statically link the native dependencies
+# The pq-sys crate doesn't use PKG_CONFIG, and we must manually pass PQ_LIB_STATIC for it to link statically.
 # PATH .cargo/bin is needed for running cargo, rustup etc,
 # PATH /musl/bin is needed because the build.rs of pq-sys runs a postgres binary pg_config from there that tells it the lib dir.
 #     (This is just a fallback, though)
@@ -69,6 +70,7 @@ ENV PATH=$PREFIX/bin:/root/.cargo/bin:$PATH \
     PKG_CONFIG_ALLOW_CROSS=true \
     PKG_CONFIG_ALL_STATIC=true \
     PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig \
+    PQ_LIB_STATIC=true \
     LD_LIBRARY_PATH=$PREFIX/lib \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
     SSL_CERT_DIR=/etc/ssl/certs
@@ -107,6 +109,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-201
 # "reboots" between every Dockerfile commands.
 RUN unset PKG_CONFIG_PATH && \
     unset LD_LIBRARY_PATH && \
+    unset PQ_LIB_STATIC && \
     export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && \
     cargo install diesel_cli
 

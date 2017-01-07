@@ -1,9 +1,9 @@
-FROM scratch
+FROM debian
 
 ADD target/x86_64-unknown-linux-musl/release/ganbare /ganbare/ganbare
 ADD static /ganbare/static
 ADD certs_temp /etc/ssl/certs
-VOLUME /ganbare/audio /ganbare/images
+VOLUME /ganbare/audio /ganbare/images /ganbare/user_audio
 ENV GANBARE_SERVER_BINDING=0.0.0.0:8080 \
 	GANBARE_JQUERY=https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js \
 	GANBARE_FONT_URL=https://fonts.googleapis.com/css?family=Source+Sans+Pro:300 \

@@ -2,10 +2,10 @@
 .sass-cache
 audio
 images
-useraudio
+user_audio
 backups
 dev_assets
 target/debug
 target/release
-ganbare_backend/target/debug
-ganbare_backend/target/release
+ganbare_backend/target
+

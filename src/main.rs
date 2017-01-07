@@ -107,13 +107,9 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
     let origin = req.headers().get();
     let referer = req.headers().get();
     let method_mutating = !req.method().safe();
-    let first_path_segment = match req.url.path_segments().map(|mut s| s.next()) {
-        Some(Some(split)) => split,
-        Some(None) => "",
-        None => return Some(Ok(bad_request("No url?"))),
-    };
+    let url = req.url.path();
 
-    if method_mutating || first_path_segment == "api" { // Enable anti-CSRF heuristics: when the method is POST, DELETE etc., or if the request uses the HTTP API.
+    if method_mutating || (*PARANOID && url.starts_with("/api")) { // Enable anti-CSRF heuristics: when the method is POST, DELETE etc., or if the request uses the HTTP API.
 
         if let Some(&Origin{ scheme: _, host: Host{ ref hostname, port: _ } }) = origin {
             if hostname != &**SITE_DOMAIN {
@@ -135,7 +131,7 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
         }
         if origin.is_none() && referer.is_none() {
                 println!("Someone tried to do a request with no Referer or Origin while triggering the anti-CSRF heuristics!");
-                println!("Accessing with HTTP method: {:?}. The first segment of path: {:?}", req.method(), first_path_segment);
+                println!("Accessing with HTTP method: {:?}. The first segment of path: {:?}", req.method(), url);
                 return Some(pencil::abort(403))
         }
     }
@@ -210,7 +206,7 @@ pub fn main() {
 
     // HTTP API
     app.get("/api/build_number", "get_build_number", http_api::get_build_number);
-    app.post("/api/useraudio?event=<event_name:string>", "post_useraudio", http_api::useraudio);
+    app.post("/api/user_audio?event=<event_name:string>", "post_useraudio", http_api::useraudio);
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
     app.get("/api/events", "get_events", http_api::get_all);

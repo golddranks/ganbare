@@ -14,7 +14,7 @@ The server is configured using environmental variables, or an `.env` file in the
 
 The following have defaults, and you may omit them:
 
-    GANBARE_TLS_ENABLED At the moment: Whether the cookies are sent with "Secure" flag. Defaults to true.
+    GANBARE_PARANOID Whether HTTPS is required and whether the cookies are sent with "Secure" flag. Also strictens the anti-CSRF measures. (Prevents even GET to the HTTP API) Defaults to true.
     GANBARE_EMAIL_SMTP_USERNAME SMTP username. Defaults to empty string.
     GANBARE_EMAIL_SMTP_PASSWORD password. Defaults to empty string.
     GANBARE_SITE_LINK defaults to http://$GANBARE_SITE_DOMAIN:8081. This is used, for example, in email messages to link to the site.
@@ -24,7 +24,7 @@ The following have defaults, and you may omit them:
     GANBARE_SERVER_BINDING defaults to localhost:8080. When running inside a container, change this to 0.0.0.0:8080 for the site to be accessible from host.
     GANBARE_JQUERY defaults to /static/js/jquery.min.js. For production, try https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
     GANBARE_FONT_URL defaults to /static/fonts/default.css. For production, try https://fonts.googleapis.com/css?family=Source+Sans+Pro:300
-    GANBARE_USER_AUDIO_DIR defaults to "useraudio" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
+    GANBARE_USER_AUDIO_DIR defaults to "user_audio" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
     GANBARE_AUDIO_DIR defaults to "audio" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
     GANBARE_IMAGES_DIR defaults to "images" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
 

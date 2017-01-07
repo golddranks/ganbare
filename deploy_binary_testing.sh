@@ -33,5 +33,6 @@ docker run -d --restart=unless-stopped \
 -e "RUST_LOG=ganbare=debug,ganbare_backend=debug" \
 -v $DEPLOY_STATIC_DIR/audio:/ganbare/audio \
 -v $DEPLOY_STATIC_DIR/images:/ganbare/images \
+-v $DEPLOY_STATIC_DIR/user_audio:/ganbare/user_audio \
 golddranks/ganbare_run
 EOF

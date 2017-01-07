@@ -68,12 +68,12 @@ lazy_static! {
         .unwrap_or_else(|_| "audio".into())) };
 
     pub static ref USER_AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_USER_AUDIO_DIR")
-        .unwrap_or_else(|_| "useraudio".into())) };
+        .unwrap_or_else(|_| "user_audio".into())) };
 
     pub static ref IMAGES_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_IMAGES_DIR")
         .unwrap_or_else(|_| "images".into())) };
 
-    pub static ref TLS_ENABLED : bool = { dotenv::dotenv().ok(); env::var("GANBARE_TLS_ENABLED").map(|s| s.parse::<bool>().unwrap_or(true))
+    pub static ref PARANOID : bool = { dotenv::dotenv().ok(); env::var("GANBARE_PARANOID").map(|s| s.parse::<bool>().unwrap_or(true))
         .unwrap_or(true) };
 
     pub static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
@@ -149,7 +149,7 @@ impl CookieProcessor for Response {
         let mut cookie = CookiePair::new("session_id".to_owned(), session::to_hex(sess));
         cookie.path = Some("/".to_owned());
         cookie.httponly = true;
-        if *TLS_ENABLED {
+        if *PARANOID {
             cookie.secure = true;
         }
         cookie.domain = Some(SITE_DOMAIN.to_owned());
