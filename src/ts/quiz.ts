@@ -1,6 +1,20 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
 /// <reference path="typings/globals/howler/index.d.ts" />
 
+declare type RecorderEventType = "streamError" | "streamReady" | "dataAvailable" | "start" | "pause" | "resume" | "stop";
+interface RecordingDataAvailableEvent {
+	detail: Uint8Array,
+}
+
+declare class Recorder {
+	constructor(config?);
+	initStream();
+	start();
+	stop();
+	addEventListener( type: RecorderEventType, listener: (ev) => void, useCapture? );
+	static isRecordingSupported(): boolean;
+}
+
 $(function() {
 
 function accentuate(word: string, showAccent: boolean) : string {
@@ -57,18 +71,61 @@ function accentuate(word: string, showAccent: boolean) : string {
 	return accentuated.join("");
 }
 
+function startRecording(eventName, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void)=> void) {
 
-interface Quiz {
-    quiz_type: string,
+	if (Recorder.isRecordingSupported()) {
+		let rec = new Recorder({encoderPath: "/static/js/encoderWorker.min.js"});
+
+		function finishedCB() {
+			console.log("Stopping recording.");
+			rec.stop();
+		}
+
+		function startCB() {
+			console.log("Start recording.");
+			rec.start();
+		}
+
+		rec.addEventListener( "streamReady", (ev) => {
+			console.log("Recording stream ready! (Not recording yet.)");
+			callback(true, startCB, finishedCB);
+		});
+		rec.addEventListener( "dataAvailable", (ev: RecordingDataAvailableEvent) => {
+			console.log("Recorded data is available!", ev);
+			$.ajax({
+				type: 'POST',
+				url: "/api/user_audio?event="+eventName,
+				processData: false,
+				contentType: 'application/octet-stream',
+				data: ev.detail,
+				success: function() {
+					console.log("Recorded audio saved successfully!");
+				}, 
+				error: function() {
+					console.log("Error with saving recorded audio!");
+				},
+			});
+		});
+		rec.addEventListener( "streamError", (ev) => {
+			bugMessage(ev);
+		});
+		rec.initStream();
+	} else {
+		callback(false, ()=>{}, finishedCB);
+	}
+
 }
 
+
+type Quiz = FutureJson | QuestionJson | WordJson | ExerciseJson;
+
 interface FutureJson {
-    quiz_type: string,
+    quiz_type: "future",
     due_date: string,
 }
 
 interface QuestionJson {
-    quiz_type: string,
+    quiz_type: "question",
     asked_id: number,
     explanation: string,
     question: string,
@@ -77,7 +134,7 @@ interface QuestionJson {
 }
 
 interface AnsweredQuestion {
-	type: string,
+	type: "question",
 	asked_id: number,
 	answered_qa_id: number,
 	active_answer_time: number,
@@ -86,7 +143,7 @@ interface AnsweredQuestion {
 }
 
 interface WordJson {
-    quiz_type: string,
+    quiz_type: "word",
     asked_id: number,
     word: string,
     explanation: string,
@@ -94,7 +151,7 @@ interface WordJson {
 }
 
 interface AnsweredWord {
-	type: string,
+	type: "word",
 	asked_id: number,
 	times_audio_played: number,
 	active_answer_time: number,
@@ -102,7 +159,7 @@ interface AnsweredWord {
 }
 
 interface ExerciseJson {
-    quiz_type: string,
+    quiz_type: "exercise",
     asked_id: number,
     word: string,
     explanation: string,
@@ -110,7 +167,7 @@ interface ExerciseJson {
 }
 
 interface AnsweredExercise {
-	type: string,
+	type: "exercise",
 	asked_id: number,
 	answer_level: number,
 	times_audio_played: number,
@@ -611,78 +668,91 @@ function showWord(word: WordJson) {
 }
 
 function showExercise(exercise: ExerciseJson) {
-	wordSection.show();
-	console.log("showExercise!");
-	word_avatar.show();
-	word_avatar.css('opacity', '0');
-	wordStatus.text("Äännä parhaasi mukaan!").show();
-	wordShowSection.hide();
-	wordStatus.slideDown(normalSpeed, function() { word_avatar.fadeTo(normalSpeed, 1); });
-	let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
-	word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
 
-	console.log("exercise started");
-	wordShowSection.slideDown();
-	exerciseOkButton.show();
-	buttonSection.show();
-	wordShowKana.html(accentuate(exercise.word, false));
-	wordExplanation.html(exercise.explanation);
+	let eventName = "pretest"; // TODO // FIXME
 
-	var exerciseAudio = new Howl({ src: ['/api/audio.mp3?'+exercise.asked_id]});
+	startRecording(eventName, (recording_supported, start_recording, finished_recording) => {
+		if (exercise.must_record && !recording_supported) {
+			alert("Your browser doesn't support recording audio! Try Firefox or Chrome!"); // FIXME Show this on the page
+			return;
+		}
 
-	setLoadError(exerciseAudio, "exerciseAudio", exercise);
-	setWordShowButton(exerciseAudio);
-
-	exerciseSuccessButton.one('click', ()=> { answerExercise(true, exercise, quiz_data); });
-
-	exerciseFailureButton.one('click', ()=> { answerExercise(false, exercise, quiz_data); });
-
-	exerciseAudio.once('end', function(){
-		setTimeout(function() {
-			wordButtonLabel.text("Itsearvio");
-			wordButtonLabel.show();
-			exerciseFailureButton.show();
-			exerciseSuccessButton.show();
-			wordShowButton.fadeIn();
-			buttonSection.slideDown(normalSpeed);
-		}, 1100);
-	});
-
-	quiz_data.answered = false;
-	exerciseOkButton.one("click", function() {
-		quiz_data.answered = true;
-		wordShowKana.html(accentuate(exercise.word, true));
-		exerciseAudio.play();
-		timesAudioPlayed++;
-		quiz_data.pronouncedInstant = Date.now();
-		buttonSection.slideUp(normalSpeed, function() {
-			exerciseOkButton.hide();
-		});
-		wordStatus.slideUp(normalSpeed);
-	});
-
-	topmessage.text("Vastausaikaa 8 s");
-	topmessage.fadeIn();
-
-	window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
-	window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
-	window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
-	window.setTimeout(function() {
-		if (quiz_data.answered) {return};
-		topmessage.fadeOut(); 
-		quiz_data.pronouncedInstant = Date.now();
-		answerExercise(false, exercise, quiz_data);
-	}, 8000);
+		wordSection.show();
+		console.log("showExercise!");
+		word_avatar.show();
+		word_avatar.css('opacity', '0');
+		wordStatus.text("Äännä parhaasi mukaan!").show();
+		wordShowSection.hide();
+		wordStatus.slideDown(normalSpeed, function() { word_avatar.fadeTo(normalSpeed, 1); });
+		let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
+		word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
+		
+			start_recording();
+			console.log("exercise started");
+			wordShowSection.slideDown();
+			exerciseOkButton.show();
+			buttonSection.show();
+			wordShowKana.html(accentuate(exercise.word, false));
+			wordExplanation.html(exercise.explanation);
+		
+			var exerciseAudio = new Howl({ src: ['/api/audio.mp3?'+exercise.asked_id]});
+		
+			setLoadError(exerciseAudio, "exerciseAudio", exercise);
+			setWordShowButton(exerciseAudio);
+		
+			exerciseSuccessButton.one('click', ()=> { answerExercise(true, exercise, quiz_data); });
+		
+			exerciseFailureButton.one('click', ()=> { answerExercise(false, exercise, quiz_data); });
+		
+			exerciseAudio.once('end', function(){
+				setTimeout(function() {
+					wordButtonLabel.text("Itsearvio");
+					wordButtonLabel.show();
+					exerciseFailureButton.show();
+					exerciseSuccessButton.show();
+					wordShowButton.fadeIn();
+					buttonSection.slideDown(normalSpeed);
+				}, 1100);
+			});
+		
+			quiz_data.answered = false;
+			exerciseOkButton.one("click", function() {
+				quiz_data.answered = true;
+				finished_recording();
+				wordShowKana.html(accentuate(exercise.word, true));
+				exerciseAudio.play();
+				timesAudioPlayed++;
+				quiz_data.pronouncedInstant = Date.now();
+				buttonSection.slideUp(normalSpeed, function() {
+					exerciseOkButton.hide();
+				});
+				wordStatus.slideUp(normalSpeed);
+			});
+		
+			topmessage.text("Vastausaikaa 8 s");
+			topmessage.fadeIn();
+		
+			window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
+			window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 2 s"); }, 6000);
+			window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 1 s"); }, 7000);
+			window.setTimeout(function() {
+				if (quiz_data.answered) {return};
+				finished_recording();
+				topmessage.fadeOut(); 
+				quiz_data.pronouncedInstant = Date.now();
+				answerExercise(false, exercise, quiz_data);
+			}, 8000);
+			
+			quiz_data.askedInstant = Date.now();
+			setTimeout(function() {
+				wordExplanation.addClass("imageLoaded");
+			}, 200);
+		})});
 	
-	quiz_data.askedInstant = Date.now();
-	setTimeout(function() {
-		wordExplanation.addClass("imageLoaded");
-	}, 200);
-	})});
+	
+		wordSectionSlideContainer.slideDown(normalSpeed);
 
-
-	wordSectionSlideContainer.slideDown(normalSpeed);
-
+	});
 }
 
 function showQuiz(quiz: Quiz) {
@@ -706,7 +776,7 @@ function showQuiz(quiz: Quiz) {
 	currentQuiz = quiz;
 
 	if (quiz.quiz_type === "future") { 
-		let future = <FutureJson> quiz;
+		let future = quiz;
 		if (new Date(future.due_date) > new Date()) {
 			console.log("BreakTime! Breaking until: ", new Date(future.due_date));
 			avatar.fadeOut(superFast);
@@ -714,12 +784,14 @@ function showQuiz(quiz: Quiz) {
 			breakTimeWaitHandle = window.setInterval(function() { breakTime(future); }, 1000);
 			return;
 		}
-	} else if (quiz.quiz_type === "question") {
-		showQuestion(<QuestionJson> quiz);
+	}
+
+	if (quiz.quiz_type === "question") {
+		showQuestion(quiz);
 	} else if (quiz.quiz_type === "word") {
-		showWord(<WordJson> quiz);
+		showWord(quiz);
 	} else if (quiz.quiz_type === "exercise") {
-		showExercise(<ExerciseJson> quiz);
+		showExercise(quiz);
 	} else if (quiz.quiz_type === "future") {
 		start();
 	} else {
