@@ -45,12 +45,11 @@ pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -
 
     let quizes = vec![
         QuizStr::Word("あ・か"),
-        QuizStr::Word("あ・か"),
         QuizStr::Word("あか・"),
         QuizStr::Question("あか"),
         QuizStr::Exercise("あか"),
         QuizStr::Word("あ・き"),
-        QuizStr::Word("あき・"),
+        QuizStr::Word("あき"),
         QuizStr::Question("あき"),
         QuizStr::Exercise("あき"),
         QuizStr::Word("あ・く"),
@@ -71,6 +70,7 @@ pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -
 
     if let Ok(Some(Quiz::E(ref mut e))) = quiz {
         e.must_record = true;
+        e.event_name = Some("pretest");
     }
 
     quiz
@@ -109,6 +109,7 @@ pub fn get_new_quiz_posttest(conn : &PgConnection, user : &User, event: &Event) 
 
     if let Ok(Some(Quiz::E(ref mut e))) = quiz {
         e.must_record = true;
+        e.event_name = Some("posttest");
     }
 
     quiz

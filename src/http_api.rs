@@ -636,7 +636,7 @@ pub fn user(req: &mut Request) -> PencilResult {
     json.refresh_cookie(&sess)
 }
 
-pub fn useraudio(req: &mut Request) -> PencilResult {
+pub fn post_useraudio(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
     use std::fs;
     use std::io;
@@ -646,7 +646,7 @@ pub fn useraudio(req: &mut Request) -> PencilResult {
 
     let event_name = req.view_args.remove("event_name").expect("Pencil guarantees that Line ID should exist as an arg.");
 
-    let (event, exp) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+    let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
 
     let mut new_path = USER_AUDIO_DIR.to_owned();
     let mut filename = "%FT%H-%M-%SZ".to_string();
@@ -658,10 +658,41 @@ pub fn useraudio(req: &mut Request) -> PencilResult {
     let mut file = fs::File::create(&new_path).err_500()?;
     io::copy(req, &mut file).err_500()?;
 
-    event::save_userdata(&conn, &event, &user, None, &filename).err_500()?;
+    let number = event::get_userdata(&conn, &event, &user, "recNumber").err_500()?.and_then(|d| d.data.parse::<usize>().map(|n| n+1).ok()).unwrap_or(0);
+    event::save_userdata(&conn, &event, &user, Some(&format!("{}", number)), &filename).err_500()?;
 
     debug!("Saved user audio: {:?}", filename);
 
     jsonify(&())
         .refresh_cookie(&sess)
+}
+
+pub fn get_useraudio(req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "")?;
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+
+    let event_name = req.view_args.remove("event_name").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+
+    match endpoint.as_ref() {
+        "get_last_useraudio" => {
+            let number = event::get_userdata(&conn, &event, &user, "recNumber").err_500()?.map(|e| e.data);
+            let number = number.as_ref().map(|s| &**s).unwrap_or("0");
+            let filename = try_or!(event::get_userdata(&conn, &event, &user, &number).err_500()?, else return abort(404));
+
+            let mut file_path = USER_AUDIO_DIR.clone();
+            file_path.push(&filename.data);
+        
+            use pencil::{PencilError, HTTPError};
+            use std::str::FromStr;
+
+            send_file(file_path.to_str().expect("The path should be fully ASCII"), mime::Mime::from_str("audio/ogg").unwrap(), false, req.headers().get())
+                .refresh_cookie(&sess)
+                .map_err(|e| match e {
+                    PencilError::PenHTTPError(HTTPError::NotFound) => { error!("Audio file not found? The audio file database/folder is borked? {:?}", file_path); internal_error(e) },
+                    _ => internal_error(e),
+                })
+        },
+        _ => unreachable!(),
+    }
 }

@@ -22,11 +22,11 @@ pub enum Quiz {
     W(WordJson),
     E(ExerciseJson),
     Q(QuestionJson),
-    F(FutureQuiz),
+    F(FutureJson),
 }
 
 #[derive(RustcEncodable, Debug, Clone)]
-pub struct FutureQuiz {
+pub struct FutureJson {
     pub quiz_type: &'static str,
     pub due_date: String,
 }
@@ -44,6 +44,7 @@ pub struct QuestionJson {
 #[derive(RustcEncodable, Debug, Clone)]
 pub struct ExerciseJson {
     pub quiz_type: &'static str,
+    pub event_name: Option<&'static str>,
     pub asked_id: i32,
     pub word: String,
     pub explanation: String,
@@ -689,7 +690,7 @@ fn clear_limits(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option
 
     if chrono::UTC::now() < metrics.break_until {
         let due_string = metrics.break_until.to_rfc3339();
-        return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
+        return Ok(Some(Quiz::F(FutureJson{ quiz_type: "future", due_date: due_string })));
     }
 
     // This is important because we have to zero the counts once every day even though we wouldn't break a single time!
@@ -759,7 +760,7 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
         }
 
         let due_string = metrics.break_until.to_rfc3339();
-        return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
+        return Ok(Some(Quiz::F(FutureJson{ quiz_type: "future", due_date: due_string })));
     }
 
     let words = metrics.new_words_since_break >= metrics.max_words_since_break || no_new_words;
@@ -788,7 +789,7 @@ fn check_break(conn: &PgConnection, user: &User, metrics: &mut UserMetrics) -> R
         metrics.quizes_since_break = 0;
 
         let due_string = metrics.break_until.to_rfc3339();
-        return Ok(Some(Quiz::F(FutureQuiz{ quiz_type: "future", due_date: due_string })));
+        return Ok(Some(Quiz::F(FutureJson{ quiz_type: "future", due_date: due_string })));
     }
 
     unreachable!("check_break. Either the break limits or daily limits should be full and those code paths return, so this should never happen.");
@@ -866,6 +867,7 @@ fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>
 
             Quiz::E(ExerciseJson {
                 quiz_type: "exercise",
+                event_name: None,
                 asked_id: pi.id,
                 word: word.word.nfc().collect::<String>(),
                 explanation: word.explanation,
@@ -949,6 +951,7 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
     
                 let quiz_json = ExerciseJson{
                     quiz_type: "exercise",
+                    event_name: None,
                     asked_id: pending_item.id,
                     word: word.word.nfc().collect::<String>(),
                     explanation: word.explanation,

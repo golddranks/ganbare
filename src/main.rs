@@ -1,5 +1,4 @@
 #![feature(inclusive_range_syntax)]
-#![feature(proc_macro)]
 #![feature(field_init_shorthand)]
 #![feature(custom_derive, custom_attribute, plugin)]
 #![plugin(diesel_codegen)]
@@ -7,6 +6,7 @@
 #[macro_use] extern crate diesel_codegen;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
+#[macro_use] extern crate mime;
 
 
 pub extern crate ganbare_backend;
@@ -22,7 +22,6 @@ extern crate rand;
 extern crate chrono;
 extern crate regex;
 extern crate unicode_normalization;
-extern crate mime;
 extern crate url;
 
 #[macro_use]
@@ -122,7 +121,7 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
             let hostname = match url.as_ref().map(|url| url.host_str()) {
                 Ok(Some(host)) => host,
                 Ok(None) => return Some(pencil::abort(400)),
-                Err(e) => return Some(pencil::abort(400)),
+                Err(_) => return Some(pencil::abort(400)),
             };
             if hostname != &**SITE_DOMAIN {
                 println!("Someone tried to do a request with a wrong Referer: {} Possible CSRF?", hostname);
@@ -206,7 +205,8 @@ pub fn main() {
 
     // HTTP API
     app.get("/api/build_number", "get_build_number", http_api::get_build_number);
-    app.post("/api/user_audio?event=<event_name:string>", "post_useraudio", http_api::useraudio);
+    app.get("/api/user_audio.ogg?event=<event_name:string>&last", "get_last_useraudio", http_api::get_useraudio);
+    app.post("/api/user_audio?event=<event_name:string>", "post_useraudio", http_api::post_useraudio);
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
     app.get("/api/events", "get_events", http_api::get_all);

@@ -1,5 +1,4 @@
 use super::schema::*;
-use diesel::ExpressionMethods;
 use chrono::{DateTime, UTC};
 use try_map::FallibleMapExt;
 

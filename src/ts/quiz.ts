@@ -71,7 +71,7 @@ function accentuate(word: string, showAccent: boolean) : string {
 	return accentuated.join("");
 }
 
-function startRecording(eventName, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void)=> void) {
+function startRecording(eventName: string, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void)=> void) {
 
 	if (Recorder.isRecordingSupported()) {
 		let rec = new Recorder({encoderPath: "/static/js/encoderWorker.min.js"});
@@ -160,6 +160,7 @@ interface AnsweredWord {
 
 interface ExerciseJson {
     quiz_type: "exercise",
+    event_name: string,
     asked_id: number,
     word: string,
     explanation: string,
@@ -250,8 +251,14 @@ var buttonSection = $("#buttonSection");
 function bugMessage(e) : void {
 	console.log("Bug?", e);
 	errorSection.show();
-	errorStatus.text("Server is down or there is a bug :(");
-	setTimeout(function() { errorStatus.html("Server is down or there is a bug :(<br>Trying to connect again..."); },2000);
+	errorStatus.text("Palvelimeen ei saada yhteyttä :(");
+	setTimeout(function() { errorStatus.html("Palvelimeen ei saada yhteyttä :(<br>Kokeillaan uudestaan..."); },2000);
+	main.addClass("errorOn");
+}
+
+function errorMessage(e) : void {
+	errorSection.show();
+	errorStatus.html(e);
 	main.addClass("errorOn");
 }
 
@@ -415,10 +422,12 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 			nextQuestion(null);
 		});
 	}, bitSlow);
-	if (isCorrect) {
-		correct.play();
-	} else {
-		bell.play();
+	if (!testing) {
+		if (isCorrect) {
+			correct.play();
+		} else {
+			bell.play();
+		}
 	}
 	var answeredInstant = Date.now();
 	function postAnswerExercise() {
@@ -669,11 +678,9 @@ function showWord(word: WordJson) {
 
 function showExercise(exercise: ExerciseJson) {
 
-	let eventName = "pretest"; // TODO // FIXME
-
-	startRecording(eventName, (recording_supported, start_recording, finished_recording) => {
+	startRecording(exercise.event_name, (recording_supported, start_recording, finished_recording) => {
 		if (exercise.must_record && !recording_supported) {
-			alert("Your browser doesn't support recording audio! Try Firefox or Chrome!"); // FIXME Show this on the page
+			errorMessage("Selaimesi ei tue äänen nauhoitusta!<br>Kokeile Firefoxia tai Chromea.");
 			return;
 		}
 
@@ -682,6 +689,9 @@ function showExercise(exercise: ExerciseJson) {
 		word_avatar.show();
 		word_avatar.css('opacity', '0');
 		wordStatus.text("Äännä parhaasi mukaan!").show();
+		if (testing) {
+			exerciseOkButton.text("Ok, sana äännetty!");
+		}
 		wordShowSection.hide();
 		wordStatus.slideDown(normalSpeed, function() { word_avatar.fadeTo(normalSpeed, 1); });
 		let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
@@ -705,6 +715,9 @@ function showExercise(exercise: ExerciseJson) {
 			exerciseFailureButton.one('click', ()=> { answerExercise(false, exercise, quiz_data); });
 		
 			exerciseAudio.once('end', function(){
+
+				var userAudio = new Howl({ src: ['/api/user_audio.ogg?event='+exercise.event_name+'&last']});
+				userAudio.play();
 				setTimeout(function() {
 					wordButtonLabel.text("Itsearvio");
 					wordButtonLabel.show();
@@ -719,14 +732,20 @@ function showExercise(exercise: ExerciseJson) {
 			exerciseOkButton.one("click", function() {
 				quiz_data.answered = true;
 				finished_recording();
-				wordShowKana.html(accentuate(exercise.word, true));
-				exerciseAudio.play();
-				timesAudioPlayed++;
 				quiz_data.pronouncedInstant = Date.now();
 				buttonSection.slideUp(normalSpeed, function() {
 					exerciseOkButton.hide();
 				});
 				wordStatus.slideUp(normalSpeed);
+
+				if (!testing) {
+					wordShowKana.html(accentuate(exercise.word, true));
+					exerciseAudio.play();
+					timesAudioPlayed++;
+				} else {
+					wordButtonLabel.text("Vastattu!");
+					answerExercise(true, exercise, quiz_data);
+				}
 			});
 		
 			topmessage.text("Vastausaikaa 8 s");
