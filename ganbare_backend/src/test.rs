@@ -56,6 +56,18 @@ pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -
         QuizStr::Word("あく"),
         QuizStr::Question("あく"),
         QuizStr::Exercise("あく"),
+        QuizStr::Word("あ・か"),
+        QuizStr::Word("あか・"),
+        QuizStr::Question("あか"),
+        QuizStr::Exercise("あか"),
+        QuizStr::Word("あ・き"),
+        QuizStr::Word("あき"),
+        QuizStr::Question("あき"),
+        QuizStr::Exercise("あき"),
+        QuizStr::Word("あ・く"),
+        QuizStr::Word("あく"),
+        QuizStr::Question("あく"),
+        QuizStr::Exercise("あく"),
     ];
 
 

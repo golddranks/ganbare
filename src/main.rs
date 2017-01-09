@@ -108,6 +108,10 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
     let method_mutating = !req.method().safe();
     let url = req.url.path();
 
+    if req.host_domain() != &**SITE_DOMAIN {
+        return Some(Ok(bad_request(format!("The host field is wrong. Expected: {}, Got: {}", &**SITE_DOMAIN, req.host_domain()))));
+    }
+
     if method_mutating || (*PARANOID && url.starts_with("/api")) { // Enable anti-CSRF heuristics: when the method is POST, DELETE etc., or if the request uses the HTTP API.
 
         if let Some(&Origin{ scheme: _, host: Host{ ref hostname, port: _ } }) = origin {

@@ -2,20 +2,7 @@
 
 Need to do before release:
 
-- Edit the remaining audio files:
-	- Mrs R
-	- Mr E
-	- Mr U
-	- Ms T
-- Add words to the database
-	- 5 new pairs
-	- 10 new pairs
-	- 15 new pairs
-	- 20 new pairs
-- Add some sentences to the database
-	- 5 new pairs
-
-- Try implementing an audio recorder for the exercise test
+- Edit sentences
 - Implement a testing tool for the picture retelling task
 - Implement question priority to ensure the learners know a common sub-set of words
 - Check that asking sentences work
@@ -23,7 +10,6 @@ Need to do before release:
 
 Stretch goals:
 - Remove old mail confirmations
-- Make "aika loppui" message to exercises too
 - Make the survey to close the buttons when answered but before the answer is saved (needs to join the event of closing the buttons & getting response from server)
 - Refactor the error section and bug reporting functionality to be part of the base template
 - Redirect to login page on 401 and when not logged in

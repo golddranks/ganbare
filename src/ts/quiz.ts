@@ -71,6 +71,14 @@ function accentuate(word: string, showAccent: boolean) : string {
 	return accentuated.join("");
 }
 
+function checkRecordingSupport(): boolean {
+	if (testing && !Recorder.isRecordingSupported()) {
+		errorMessage("Selaimesi ei tue äänen nauhoitusta!<br>Kokeile Firefoxia tai Chromea.");
+		return false;
+	}
+	return true;
+}
+
 function startRecording(eventName: string, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void, doneCB: (afterDone: ()=>void)=> void)=> void) {
 
 	if (Recorder.isRecordingSupported()) {
@@ -108,7 +116,8 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 					console.log("Recorded audio saved successfully!");
 					doneSemaphore();
 				}, 
-				error: function() {
+				error: function(err) {
+					bugMessage(err);
 					console.log("Error with saving recorded audio!");
 				},
 			});
@@ -372,7 +381,7 @@ function createSemaphore(count: number) : (callback?: ()=>void) =>void {
 		};
 		semaphore--;
 		if (semaphore > 0) { return; };
-		callback();
+		closureCallback();
 	};
 }
 
@@ -828,6 +837,7 @@ function showQuiz(quiz: Quiz): void {
 
 function start() {
 	clearError();
+	if (!checkRecordingSupport()) { return; }; // If required but not supported, abort.
 	var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
 	jqxhr.fail(function(e) {
 		console.log("Connection fails with getJSON. (/api/new_quiz)");
