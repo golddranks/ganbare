@@ -658,8 +658,10 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
     let mut file = fs::File::create(&new_path).err_500()?;
     io::copy(req, &mut file).err_500()?;
 
-    let number = event::get_userdata(&conn, &event, &user, "recNumber").err_500()?.and_then(|d| d.data.parse::<usize>().map(|n| n+1).ok()).unwrap_or(0);
-    event::save_userdata(&conn, &event, &user, Some(&format!("{}", number)), &filename).err_500()?;
+    let rec_number = event::get_userdata(&conn, &event, &user, "rec_number").err_500()?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
+    let quiz_number = event::get_userdata(&conn, &event, &user, "quiz_number").err_500()?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
+    event::save_userdata(&conn, &event, &user, Some("rec_number"), &format!("{}", rec_number+1)).err_500()?;
+    event::save_userdata(&conn, &event, &user, Some(&format!("quiz_{}_rec_{}", quiz_number, rec_number)), &filename).err_500()?;
 
     debug!("Saved user audio: {:?}", filename);
 
@@ -676,9 +678,10 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
 
     match endpoint.as_ref() {
         "get_last_useraudio" => {
-            let number = event::get_userdata(&conn, &event, &user, "recNumber").err_500()?.map(|e| e.data);
-            let number = number.as_ref().map(|s| &**s).unwrap_or("0");
-            let filename = try_or!(event::get_userdata(&conn, &event, &user, &number).err_500()?, else return abort(404));
+
+            let rec_number = event::get_userdata(&conn, &event, &user, "rec_number").err_500()?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
+            let quiz_number = event::get_userdata(&conn, &event, &user, "quiz_number").err_500()?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
+            let filename = try_or!(event::get_userdata(&conn, &event, &user, &format!("quiz_{}_rec_{}", quiz_number, rec_number)).err_500()?, else return abort(404));
 
             let mut file_path = USER_AUDIO_DIR.clone();
             file_path.push(&filename.data);

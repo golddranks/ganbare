@@ -40,7 +40,7 @@ fn get_quiz_type(conn: &PgConnection, quiz_str: &QuizStr) -> Result<QuizType> {
 
 pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<Quiz>> {
 
-    let number = event::get_userdata(conn, event, user, "number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
+    let number = event::get_userdata(conn, event, user, "quiz_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
 
 
     let quizes = vec![
@@ -82,19 +82,19 @@ pub fn get_next_quiz_pretest(conn : &PgConnection, user : &User, answer_enum: An
 {
     unpend_pending_item(conn, &answer_enum)?;
 
-    let mut number = event::get_userdata(conn, event, user, "number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
+    let mut number = event::get_userdata(conn, event, user, "quiz_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
     let answer_key = "answer_".to_string() + &number.to_string();
     let answer_json = json::encode(&answer_enum).unwrap();
     event::save_userdata(conn, event, user, Some(answer_key.as_str()), answer_json.as_str())?;
     number += 1;
-    event::save_userdata(conn, event, user, Some("number"), &number.to_string())?;
+    event::save_userdata(conn, event, user, Some("quiz_number"), &number.to_string())?;
     get_new_quiz_pretest(conn, user, event)
 }
 
 
 pub fn get_new_quiz_posttest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<Quiz>> {
 
-    let number = event::get_userdata(conn, event, user, "number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
+    let number = event::get_userdata(conn, event, user, "quiz_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
 
     let quizes = vec![
         QuizStr::Word("あか・"),

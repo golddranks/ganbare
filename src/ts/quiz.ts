@@ -71,7 +71,7 @@ function accentuate(word: string, showAccent: boolean) : string {
 	return accentuated.join("");
 }
 
-function startRecording(eventName: string, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void)=> void) {
+function startRecording(eventName: string, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void, doneCB: (afterDone: ()=>void)=> void)=> void) {
 
 	if (Recorder.isRecordingSupported()) {
 		let rec = new Recorder({encoderPath: "/static/js/encoderWorker.min.js"});
@@ -86,9 +86,15 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 			rec.start();
 		}
 
+		let doneSemaphore = createSemaphore(2);
+
+		function doneCB(afterDone: ()=>void) {
+			doneSemaphore(afterDone);
+		}
+
 		rec.addEventListener( "streamReady", (ev) => {
 			console.log("Recording stream ready! (Not recording yet.)");
-			callback(true, startCB, finishedCB);
+			callback(true, startCB, finishedCB, doneCB);
 		});
 		rec.addEventListener( "dataAvailable", (ev: RecordingDataAvailableEvent) => {
 			console.log("Recorded data is available!", ev);
@@ -100,6 +106,7 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 				data: ev.detail,
 				success: function() {
 					console.log("Recorded audio saved successfully!");
+					doneSemaphore();
 				}, 
 				error: function() {
 					console.log("Error with saving recorded audio!");
@@ -111,7 +118,7 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 		});
 		rec.initStream();
 	} else {
-		callback(false, ()=>{}, finishedCB);
+		callback(false, ()=>{}, finishedCB, (afterDone: ()=>void)=>{ afterDone(); });
 	}
 
 }
@@ -354,18 +361,18 @@ function breakTime(future: FutureJson) : void {
 	questionStatus.slideDown(normalSpeed);
 }
 
-function createTwiceSemaphoreToNextQuestion() : (Quiz)=>void {
+function createSemaphore(count: number) : (callback?: ()=>void) =>void {
 
-	var semaphore = 2;
-	var closureNextOne: Quiz = null;
+	var semaphore = count;
+	var closureCallback: ()=>void = null;
 
-	return (nextOne: Quiz) => {
-		if (closureNextOne === null && nextOne !== null) {
-			closureNextOne = nextOne;
+	return (callback?: ()=>void) => {
+		if (closureCallback === null && callback !== undefined) {
+			closureCallback = callback;
 		};
 		semaphore--;
 		if (semaphore > 0) { return; };
-		showQuiz(closureNextOne);
+		callback();
 	};
 }
 
@@ -415,11 +422,11 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 	wordShowButton.off('click');
 	exerciseFailureButton.off('click');
 	exerciseSuccessButton.off('click');
-	var nextQuestion = createTwiceSemaphoreToNextQuestion();
+	var nextQuestion = createSemaphore(2);
 	setTimeout(function() {
 		wordExplanation.removeClass("imageLoaded");
 		wordSectionSlideContainer.slideUp(normalSpeed, function() {
-			nextQuestion(null);
+			nextQuestion();
 		});
 	}, bitSlow);
 	if (!testing) {
@@ -445,7 +452,7 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
 			clearError();
 			console.log("postAnswerExercise: got result");
-			nextQuestion(result);
+			nextQuestion(() => { showQuiz(result) });
 		});
 		jqxhr.fail(function(e) {
 			console.log("postAnswerExercise: failed")
@@ -459,11 +466,11 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 function answerWord(word: WordJson, quiz_data: quizData) {
 	wordExplanation.removeClass("imageLoaded");
 	wordShowButton.off('click');
-	var nextQuestion = createTwiceSemaphoreToNextQuestion();
+	var nextQuestion = createSemaphore(2);
 	setTimeout(function() {
 		wordSectionSlideContainer.slideUp(normalSpeed, function() {
 			wordShowButton.focusout();
-			nextQuestion(null);
+			nextQuestion();
 		});
 	}, normalSlow);
 	var wordAnsweredInstant = Date.now();
@@ -478,7 +485,7 @@ function answerWord(word: WordJson, quiz_data: quizData) {
 		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
 			clearError();
 			console.log("postAnswerWord: got result");
-			nextQuestion(result);
+			nextQuestion(() => { showQuiz(result) });
 		});
 		jqxhr.fail(function(e) {
 			bugMessage(e);
@@ -517,7 +524,7 @@ function answerQuestion(ansId: number, isCorrect: boolean, question: QuestionJso
 	}
 	questionStatus.show();
 	questionExplanation.hide();
-	var nextQuestion = createTwiceSemaphoreToNextQuestion();
+	var nextQuestion = createSemaphore(2);
 	var top = 0;
 	if (button === null) {
 		top = answerList.height()/2;
@@ -529,7 +536,7 @@ function answerQuestion(ansId: number, isCorrect: boolean, question: QuestionJso
 		topmessage.fadeOut();
 		questionExplanation.text("Loading...");
 		questionExplanation.slideDown(normalSpeed);
-		nextQuestion(null);
+		nextQuestion();
 	}); }, timeAfterClick);
 
 	function postAnswerQuestion() {
@@ -544,7 +551,7 @@ function answerQuestion(ansId: number, isCorrect: boolean, question: QuestionJso
 		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
 			clearError();
 			console.log("postAnswerQuestion: got result");
-			nextQuestion(result);
+			nextQuestion(() => { showQuiz(result) });
 		});
 		jqxhr.fail(function(e) {
 			bugMessage(e);
@@ -678,7 +685,7 @@ function showWord(word: WordJson) {
 
 function showExercise(exercise: ExerciseJson) {
 
-	startRecording(exercise.event_name, (recording_supported, start_recording, finished_recording) => {
+	startRecording(exercise.event_name, (recording_supported, start_recording, finished_recording, when_recording_done) => {
 		if (exercise.must_record && !recording_supported) {
 			errorMessage("Selaimesi ei tue äänen nauhoitusta!<br>Kokeile Firefoxia tai Chromea.");
 			return;
@@ -744,7 +751,7 @@ function showExercise(exercise: ExerciseJson) {
 					timesAudioPlayed++;
 				} else {
 					wordButtonLabel.text("Vastattu!");
-					answerExercise(true, exercise, quiz_data);
+					when_recording_done(() => { answerExercise(true, exercise, quiz_data) });
 				}
 			});
 		
@@ -759,7 +766,7 @@ function showExercise(exercise: ExerciseJson) {
 				finished_recording();
 				topmessage.fadeOut(); 
 				quiz_data.pronouncedInstant = Date.now();
-				answerExercise(false, exercise, quiz_data);
+				when_recording_done(() => { answerExercise(false, exercise, quiz_data) });
 			}, 8000);
 			
 			quiz_data.askedInstant = Date.now();
@@ -774,7 +781,18 @@ function showExercise(exercise: ExerciseJson) {
 	});
 }
 
-function showQuiz(quiz: Quiz) {
+function startBreak(quiz: FutureJson): void {
+	if (new Date(quiz.due_date) > new Date()) {
+		console.log("BreakTime! Breaking until: ", new Date(quiz.due_date));
+		avatar.fadeOut(superFast);
+		breakTime(quiz);
+		breakTimeWaitHandle = window.setInterval(function() { breakTime(quiz); }, 1000);
+	} else {
+		start();
+	}
+}
+
+function showQuiz(quiz: Quiz): void {
 	console.log("showQuiz!");
 	cleanState();
 
@@ -794,17 +812,6 @@ function showQuiz(quiz: Quiz) {
 
 	currentQuiz = quiz;
 
-	if (quiz.quiz_type === "future") { 
-		let future = quiz;
-		if (new Date(future.due_date) > new Date()) {
-			console.log("BreakTime! Breaking until: ", new Date(future.due_date));
-			avatar.fadeOut(superFast);
-			breakTime(future);
-			breakTimeWaitHandle = window.setInterval(function() { breakTime(future); }, 1000);
-			return;
-		}
-	}
-
 	if (quiz.quiz_type === "question") {
 		showQuestion(quiz);
 	} else if (quiz.quiz_type === "word") {
@@ -812,7 +819,7 @@ function showQuiz(quiz: Quiz) {
 	} else if (quiz.quiz_type === "exercise") {
 		showExercise(quiz);
 	} else if (quiz.quiz_type === "future") {
-		start();
+		startBreak(quiz);
 	} else {
 		bugMessage(quiz);
 	}
