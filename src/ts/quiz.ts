@@ -7,10 +7,11 @@ interface RecordingDataAvailableEvent {
 }
 
 declare class Recorder {
-	constructor(config?);
+	constructor(config?: { encoderPath: string, leaveStreamOpen: boolean });
 	initStream();
 	start();
 	stop();
+	clearStream();
 	addEventListener( type: RecorderEventType, listener: (ev) => void, useCapture? );
 	static isRecordingSupported(): boolean;
 }
@@ -79,9 +80,18 @@ function checkRecordingSupport(): boolean {
 	return true;
 }
 
+let global_rec = null;
+
 function startRecording(eventName: string, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void, doneCB: (afterDone: ()=>void)=> void)=> void) {
 	if (Recorder.isRecordingSupported()) {
-		let rec = new Recorder({encoderPath: "/static/js/encoderWorker.min.js"});
+		let rec;
+		if (global_rec === null) {
+			console.log("Starting a new recorder stream.");
+			rec = new Recorder({encoderPath: "/static/js/encoderWorker.min.js", leaveStreamOpen: true });
+		} else {
+			console.log("Using an already started recorder stream.");
+			rec = global_rec;
+		}
 
 		function finishedCB() {
 			console.log("Stopping recording.");
@@ -99,11 +109,15 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 			doneSemaphore(afterDone);
 		}
 
-		rec.addEventListener( "streamReady", (ev) => {
+		function readyListener(ev) {
+			rec.removeEventListener("streamReady", readyListener);
+			clearError();
 			console.log("Recording stream ready! (Not recording yet.)");
 			callback(true, startCB, finishedCB, doneCB);
-		});
-		rec.addEventListener( "dataAvailable", (ev: RecordingDataAvailableEvent) => {
+		}
+
+		function dataAvailListener(ev: RecordingDataAvailableEvent) {
+			rec.removeEventListener("dataAvailable", dataAvailListener);
 			console.log("Recorded data is available!", ev);
 			$.ajax({
 				type: 'POST',
@@ -120,11 +134,24 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 					console.log("Error with saving recorded audio!");
 				},
 			});
-		});
-		rec.addEventListener( "streamError", (err: ErrorEvent) => {
-			errorMessage("Virhe alustaessa nauhoitusta: "+err.error.message);
-		});
-		rec.initStream();
+		}
+
+		rec.addEventListener("streamReady", readyListener);
+		rec.addEventListener("dataAvailable", dataAvailListener);
+	
+		if (global_rec === null) {
+			console.log("Init stream");
+
+			rec.addEventListener( "streamError", (err: ErrorEvent) => {
+				errorMessage("Virhe alustaessa nauhoitusta: "+err.error.message);
+			});
+
+			errorMessage("Tarvitsemme selaimesi nauhoitusominaisuutta!<br>Ole hyvä ja myönnä lupa nauhoitukselle.");
+			global_rec = rec;
+			rec.initStream();
+		} else {
+			callback(true, startCB, finishedCB, doneCB);
+		}
 	} else {
 		callback(false, ()=>{}, finishedCB, (afterDone: ()=>void)=>{ afterDone(); });
 	}
@@ -707,9 +734,9 @@ function showExercise(exercise: ExerciseJson) {
 		}
 		wordShowSection.hide();
 		wordStatus.slideDown(normalSpeed, function() { word_avatar.fadeTo(normalSpeed, 1); });
-		let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
 		word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
 		
+			let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
 			start_recording();
 			console.log("exercise started");
 			wordShowSection.slideDown();
@@ -757,7 +784,7 @@ function showExercise(exercise: ExerciseJson) {
 					timesAudioPlayed++;
 				} else {
 					wordButtonLabel.text("Vastattu!");
-					when_recording_done(() => { answerExercise(true, exercise, quiz_data) });
+					when_recording_done(() => { answerExercise(true, exercise, quiz_data); });
 				}
 			});
 		

@@ -171,7 +171,8 @@ pub fn main() {
     app.get("/", "hello", app_pages::hello);
     app.get("/welcome", "welcome", app_pages::welcome);
     app.get("/survey", "survey", app_pages::survey);
-    app.get("/retelling", "retelling", app_pages::retelling);
+    app.get("/pretest_retelling", "pretest_retelling", app_pages::retelling);
+    app.get("/posttest_retelling", "posttest_retelling", app_pages::retelling);
     app.get("/pretest", "pretest", app_pages::pre_post_test);
     app.get("/sorting", "sorting", app_pages::sorting_ceremony);
     app.get("/posttest", "posttest", app_pages::pre_post_test);

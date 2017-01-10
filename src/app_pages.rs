@@ -20,8 +20,10 @@ fn dispatch_events(conn: &PgConnection, user: &User)
         "welcome" => redirect("/welcome", 303),
         "survey" => redirect("/survey", 303),
         "pretest" => redirect("/pretest", 303),
+        "pretest_retelling" => redirect("/pretest_retelling", 303),
         "sorting_ceremony" => redirect("/sorting_ceremony", 303),
         "posttest" => redirect("/posttest", 303),
+        "posttest_retelling" => redirect("/posttest_retelling", 303),
         ename => return Err(internal_error(&format!("I don't know how to handle event {}!", ename))),
     };
 

@@ -824,7 +824,7 @@ fn ask_new_exercise(conn: &PgConnection, id: i32) -> Result<(Exercise, Word, i32
     Ok((exercise, word, audio_file.id))
 }
 
-fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>> {
+pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>> {
     use schema::{pending_items, q_asked_data, e_asked_data, w_asked_data};
 
     let pending_item: Option<PendingItem> = pending_items::table
@@ -918,10 +918,10 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
                     correct_qa_id: right_a_id,
                 };
 
+                register_future_q_answer(conn, &asked_data)?;
+    
                 let mut answer_choices: Vec<_> = answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
                 thread_rng().shuffle(&mut answer_choices);
-    
-                register_future_q_answer(conn, &asked_data)?;
     
                 let quiz_json = QuestionJson {
                     quiz_type: "question",
@@ -1019,15 +1019,96 @@ pub fn get_question_id(conn: &PgConnection, skill_summary: &str) -> Result<i32> 
         .get_result(conn)?)
 }
 
-pub fn return_some_quiz(conn: &PgConnection, user: &User, quiz: QuizType) -> Result<Option<Quiz>> {
-    match quiz {
-        QuizType::Word(word) => {
-            return_word(conn, user, try_or!(load_word(conn, word)?, else return Ok(None)))
-        },
-        quiz => return_q_or_e(conn, user, quiz),
-    }
+pub enum QuizSerialized {
+    Word(&'static str, i32),
+    Question(&'static str, i32, i32),
+    Exercise(&'static str, i32),
 }
 
+pub fn test_item(conn: &PgConnection, user: &User, quiz_str: &QuizSerialized) -> Result<Quiz> {
+    let test_item = match quiz_str {
+        &QuizSerialized::Word(ref s, audio_id) => {
+            let pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id))?;
+        
+            let asked_data = WAskedData {
+                id: pending_item.id,
+                word_id: quiz::get_word_id(conn, s).chain_err(|| format!("Word {} not found", s))?,
+                show_accents: false,
+            };
+        
+            register_future_w_answer(conn, &asked_data)?;
+
+            let word = try_or!{ load_word(conn, asked_data.word_id)?,
+                else return Err(ErrorKind::DatabaseOdd("Bug: If the item was set pending in the first place, it should exists!").to_err()) };
+
+            Quiz::W(WordJson {
+                quiz_type: "word",
+                asked_id: pending_item.id,
+                word: word.word.nfc().collect::<String>(),
+                explanation: word.explanation,
+                show_accents: asked_data.show_accents,
+            })
+        },
+        &QuizSerialized::Question(ref s, audio_id, variant_id) => {
+
+            let pending_item = new_pending_item(conn, user.id, QuizType::Question(audio_id))?;
+
+            let asked_data = QAskedData {
+                id: pending_item.id,
+                question_id: quiz::get_question_id(conn, s).chain_err(|| format!("Question {} not found", s))?,
+                correct_qa_id: variant_id,
+            };
+            register_future_q_answer(conn, &asked_data)?;
+
+            let (question, answers, _) = try_or!{ load_question(conn, asked_data.question_id)?,
+                else return Err(ErrorKind::DatabaseOdd("Bug: If the item was set pending in the first place, it should exists!").to_err()) };
+
+            let mut answer_choices: Vec<_> = answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
+            thread_rng().shuffle(&mut answer_choices);
+
+
+            Quiz::Q(QuestionJson {
+                quiz_type: "question",
+                asked_id: pending_item.id,
+                explanation: question.q_explanation,
+                question: question.question_text,
+                right_a: asked_data.correct_qa_id,
+                answers: answer_choices,
+            })
+
+        },
+        &QuizSerialized::Exercise(ref word, audio_id) => {
+
+            let pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id))?;
+            let exercise_name = word.replace('*', "").replace('・', "");
+
+            let asked_data = EAskedData {
+                id: pending_item.id,
+                exercise_id: quiz::get_exercise_id(conn, &exercise_name).chain_err(|| format!("Exercise {} not found", exercise_name))?,
+                word_id: quiz::get_word_id(conn, word).chain_err(|| format!("Word {} not found", word))?,
+            };
+
+            register_future_e_answer(conn, &asked_data)?;
+
+            let word = try_or!{ load_word(conn, asked_data.word_id)?,
+                else return Err(ErrorKind::DatabaseOdd("Bug: If the item was set pending in the first place, it should exists!").to_err()) };
+
+            Quiz::E(ExerciseJson {
+                quiz_type: "exercise",
+                event_name: None,
+                asked_id: pending_item.id,
+                word: word.word.nfc().collect::<String>(),
+                explanation: word.explanation,
+                must_record: false,
+            })
+
+        },
+    };
+
+    debug!("There was a test item! Returning it.");
+
+    Ok(test_item)
+}
 
 
 

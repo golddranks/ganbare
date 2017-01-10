@@ -1,10 +1,9 @@
 use super::*;
-use quiz::{Answered, Quiz, QuizType};
+use quiz::{Answered, Quiz, QuizSerialized};
 use rustc_serialize::json;
 
-/* PUBLIC APIS */
 
-fn unpend_pending_item(conn: &PgConnection, answer_enum: &Answered) -> Result<()> {
+fn unpend_pending_test_item(conn: &PgConnection, answer_enum: &Answered) -> Result<()> {
     use schema::pending_items;
 
     let answered_id = match answer_enum {
@@ -19,23 +18,9 @@ fn unpend_pending_item(conn: &PgConnection, answer_enum: &Answered) -> Result<()
     pending_item.pending = false;
     let _ : PendingItem = pending_item.save_changes(conn)?;
 
-    debug!("Pending item unpended.");
+    debug!("Pending test item unpended.");
 
     Ok(())
-}
-
-enum QuizStr {
-    Word(&'static str),
-    Question(&'static str),
-    Exercise(&'static str),
-}
-
-fn get_quiz_type(conn: &PgConnection, quiz_str: &QuizStr) -> Result<QuizType> {
-    Ok(match quiz_str {
-        &QuizStr::Word(ref s) => QuizType::Word(quiz::get_word_id(conn, s).chain_err(|| format!("Word {} not found", s))?),
-        &QuizStr::Question(ref s) => QuizType::Question(quiz::get_question_id(conn, s).chain_err(|| format!("Question {} not found", s))?),
-        &QuizStr::Exercise(ref s) => QuizType::Exercise(quiz::get_exercise_id(conn, s).chain_err(|| format!("Exercise {} not found", s))?),
-    })
 }
 
 pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<Quiz>> {
@@ -44,30 +29,30 @@ pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -
 
 
     let quizes = vec![
-        QuizStr::Word("あ・か"),
-        QuizStr::Word("あか・"),
-        QuizStr::Question("あか"),
-        QuizStr::Exercise("あか"),
-        QuizStr::Word("あ・き"),
-        QuizStr::Word("あき"),
-        QuizStr::Question("あき"),
-        QuizStr::Exercise("あき"),
-        QuizStr::Word("あ・く"),
-        QuizStr::Word("あく"),
-        QuizStr::Question("あく"),
-        QuizStr::Exercise("あく"),
-        QuizStr::Word("あ・か"),
-        QuizStr::Word("あか・"),
-        QuizStr::Question("あか"),
-        QuizStr::Exercise("あか"),
-        QuizStr::Word("あ・き"),
-        QuizStr::Word("あき"),
-        QuizStr::Question("あき"),
-        QuizStr::Exercise("あき"),
-        QuizStr::Word("あ・く"),
-        QuizStr::Word("あく"),
-        QuizStr::Question("あく"),
-        QuizStr::Exercise("あく"),
+        QuizSerialized::Word("あ・か", 3608),
+        QuizSerialized::Word("あか・", 3598),
+        QuizSerialized::Question("あか", 3598, 1),
+        QuizSerialized::Exercise("あ・か", 3608),
+        QuizSerialized::Word("あ・き", 1),
+        QuizSerialized::Word("あき", 1),
+        QuizSerialized::Question("あき", 1, 1),
+        QuizSerialized::Exercise("あ・き", 1),
+        QuizSerialized::Word("あ・く", 1),
+        QuizSerialized::Word("あく", 1),
+        QuizSerialized::Question("あく", 1, 1),
+        QuizSerialized::Exercise("あ・く", 1),
+        QuizSerialized::Word("あ・か", 1),
+        QuizSerialized::Word("あか・", 1),
+        QuizSerialized::Question("あか", 1, 1),
+        QuizSerialized::Exercise("あ・か", 1),
+        QuizSerialized::Word("あ・き", 1),
+        QuizSerialized::Word("あき", 1),
+        QuizSerialized::Question("あき", 1, 1),
+        QuizSerialized::Exercise("あ・き", 1),
+        QuizSerialized::Word("あ・く", 1),
+        QuizSerialized::Word("あく", 1),
+        QuizSerialized::Question("あく", 1, 1),
+        QuizSerialized::Exercise("あ・く", 1),
     ];
 
 
@@ -76,23 +61,21 @@ pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -
         return Ok(None)
     }
 
-    let quiz_type_id = get_quiz_type(conn, &quizes[number])?;
+    let mut quiz = quiz::test_item(conn, user, &quizes[number])?;
 
-    let mut quiz = quiz::return_some_quiz(conn, user, quiz_type_id);
-
-    if let Ok(Some(Quiz::E(ref mut e))) = quiz {
+    if let Quiz::E(ref mut e) = quiz {
         e.must_record = true;
         e.event_name = Some("pretest");
     }
 
-    quiz
+    Ok(Some(quiz))
 }
 
 
 pub fn get_next_quiz_pretest(conn : &PgConnection, user : &User, answer_enum: Answered, event: &Event)
     -> Result<Option<Quiz>>
 {
-    unpend_pending_item(conn, &answer_enum)?;
+    unpend_pending_test_item(conn, &answer_enum)?;
 
     let mut number = event::get_userdata(conn, event, user, "quiz_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
     let answer_key = "answer_".to_string() + &number.to_string();
@@ -109,22 +92,20 @@ pub fn get_new_quiz_posttest(conn : &PgConnection, user : &User, event: &Event) 
     let number = event::get_userdata(conn, event, user, "quiz_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
 
     let quizes = vec![
-        QuizStr::Word("あか・"),
-        QuizStr::Word("あ・か"),
-        QuizStr::Question("あか"),
-        QuizStr::Exercise("あか"),
+        QuizSerialized::Word("あか・", 1),
+        QuizSerialized::Word("あ・か", 1),
+        QuizSerialized::Question("あか", 1, 1),
+        QuizSerialized::Exercise("あか", 1),
     ];
 
-    let quiz_type_id = get_quiz_type(conn, &quizes[number])?;
+    let mut quiz = quiz::test_item(conn, user, &quizes[number])?;
 
-    let mut quiz = quiz::return_some_quiz(conn, user, quiz_type_id);
-
-    if let Ok(Some(Quiz::E(ref mut e))) = quiz {
+    if let Quiz::E(ref mut e) = quiz {
         e.must_record = true;
         e.event_name = Some("posttest");
     }
 
-    quiz
+    Ok(Some(quiz))
 }
 
 

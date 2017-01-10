@@ -119,8 +119,8 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			audio_bundles[id].files.forEach(function(file) {
 				var narrator_name = narrators[file.narrators_id].name;
 				var narrator_color = narrators[file.narrators_id].color;
-				var audio_button = $('<button class="compact" style="background-color: '+narrator_color+';"><img src="/static/images/speaker_teal.png" title="Narrator: '
-					+narrator_name+'" class="soundicon"></button>').appendTo(bundle_html);
+				var audio_button = $('<button class="compact" style="background-color: '+narrator_color+';"><img src="/static/images/speaker_teal.png" title="ID: '+
+					file.id+' Narrator: '+narrator_name+'" class="soundicon"></button>').appendTo(bundle_html);
 				audio_button.click(function() {
 					var audio = new Howl({ src: ['/api/audio/'+file.id+'.mp3']});
 					audio.play();
