@@ -80,7 +80,6 @@ function checkRecordingSupport(): boolean {
 }
 
 function startRecording(eventName: string, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void, doneCB: (afterDone: ()=>void)=> void)=> void) {
-
 	if (Recorder.isRecordingSupported()) {
 		let rec = new Recorder({encoderPath: "/static/js/encoderWorker.min.js"});
 
@@ -117,13 +116,13 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 					doneSemaphore();
 				}, 
 				error: function(err) {
-					bugMessage(err);
+					connectionFailMessage(err);
 					console.log("Error with saving recorded audio!");
 				},
 			});
 		});
-		rec.addEventListener( "streamError", (ev) => {
-			bugMessage(ev);
+		rec.addEventListener( "streamError", (err: ErrorEvent) => {
+			errorMessage("Virhe alustaessa nauhoitusta: "+err.error.message);
 		});
 		rec.initStream();
 	} else {
@@ -264,7 +263,7 @@ var buttonSection = $("#buttonSection");
 
 /* errors */
 
-function bugMessage(e) : void {
+function connectionFailMessage(e) : void {
 	console.log("Bug?", e);
 	errorSection.show();
 	errorStatus.text("Palvelimeen ei saada yhteyttä :(");
@@ -392,7 +391,7 @@ function setLoadError(audioElement: Howl, elementName: string, closureQuiz: Quiz
 
 		if (closureQuiz !== null && currentQuiz !== closureQuiz) { this.off(); return false; };
 	    console.log("Error with "+elementName+" element! Trying again after 3 secs.");
-		bugMessage(e);
+		connectionFailMessage(e);
 		audioElement.off("load").once("load", () => {
 			console.log("Managed to load!", audioElement);
 			clearError();
@@ -465,7 +464,7 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 		});
 		jqxhr.fail(function(e) {
 			console.log("postAnswerExercise: failed")
-			bugMessage(e);
+			connectionFailMessage(e);
 			setTimeout(postAnswerExercise, 3000);
 		});
 	};
@@ -497,7 +496,7 @@ function answerWord(word: WordJson, quiz_data: quizData) {
 			nextQuestion(() => { showQuiz(result) });
 		});
 		jqxhr.fail(function(e) {
-			bugMessage(e);
+			connectionFailMessage(e);
 			setTimeout(postAnswerWord, 3000);
 		});
 	};
@@ -563,7 +562,7 @@ function answerQuestion(ansId: number, isCorrect: boolean, question: QuestionJso
 			nextQuestion(() => { showQuiz(result) });
 		});
 		jqxhr.fail(function(e) {
-			bugMessage(e);
+			connectionFailMessage(e);
 			setTimeout(postAnswerQuestion, 3000);
 		});
 	};
@@ -693,13 +692,11 @@ function showWord(word: WordJson) {
 }
 
 function showExercise(exercise: ExerciseJson) {
-
 	startRecording(exercise.event_name, (recording_supported, start_recording, finished_recording, when_recording_done) => {
 		if (exercise.must_record && !recording_supported) {
 			errorMessage("Selaimesi ei tue äänen nauhoitusta!<br>Kokeile Firefoxia tai Chromea.");
 			return;
 		}
-
 		wordSection.show();
 		console.log("showExercise!");
 		word_avatar.show();
@@ -829,8 +826,6 @@ function showQuiz(quiz: Quiz): void {
 		showExercise(quiz);
 	} else if (quiz.quiz_type === "future") {
 		startBreak(quiz);
-	} else {
-		bugMessage(quiz);
 	}
 
 }
@@ -841,7 +836,7 @@ function start() {
 	var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
 	jqxhr.fail(function(e) {
 		console.log("Connection fails with getJSON. (/api/new_quiz)");
-		bugMessage(e);
+		connectionFailMessage(e);
 		setTimeout(start, 3000);
 	});
 };

@@ -2,8 +2,10 @@
 
 Need to do before release:
 
-- Edit sentences
-- Implement a testing tool for the picture retelling task
+- Dispatch events using the DB data, not manually
+- Make a retelling task event for pretest and posttest
+- Finalize and test posttest (mainly copy&paste from pretest)
+- Edit some (5) sentences
 - Implement question priority to ensure the learners know a common sub-set of words
 - Check that asking sentences work
 
