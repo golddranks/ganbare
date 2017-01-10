@@ -6,9 +6,14 @@
 {{#partial main_section}}
 
 	<h1>Manager</h1>
+	<p style="max-width: 28em; margin: auto;">Ganbare build version: <span id="build_number"></span></p>
 	<ul class="manage">
 	</ul>
 
+{{/partial}}
+
+{{#partial page_script_inline}}
+$("#build_number").load("/api/build_number");
 {{/partial}}
 
 {{~> base.html main_class=fullwidth ~}}
