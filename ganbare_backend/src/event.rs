@@ -15,7 +15,7 @@ pub fn get_all(conn: &PgConnection) -> Result<Vec<(Event, Vec<(User, bool, Optio
     use schema::{users, events};
     
     let events: Vec<Event> = events::table
-        .order(events::id)
+        .order(events::priority)
         .get_results(conn)?;
 
     let users: Vec<User> = users::table
@@ -37,6 +37,28 @@ pub fn get_all(conn: &PgConnection) -> Result<Vec<(Event, Vec<(User, bool, Optio
     }
 
     Ok(event_data)
+}
+
+pub fn dispatch_event(conn: &PgConnection, user_id: i32) -> Result<Option<Event>> {
+    use schema::{events, event_experiences, group_memberships};
+    use diesel::expression::dsl::{any, all};
+
+    let groups = group_memberships::table
+        .filter(group_memberships::user_id.eq(user_id))
+        .select(group_memberships::group_id.nullable());
+
+    let finished_events = event_experiences::table
+        .filter(event_experiences::user_id.eq(user_id))
+        .filter(event_experiences::event_finish.is_not_null())
+        .select(event_experiences::event_id);
+
+    Ok(events::table
+        .filter(events::published.eq(true))
+        .filter(events::required_group.eq(any(groups)))
+        .filter(events::id.ne(all(finished_events)))
+        .order(events::priority.asc())
+        .first(conn)
+        .optional()?)
 }
 
 pub fn is_workable_or_done_by_event_id(conn: &PgConnection, event_id: i32, user: &User) -> Result<Option<(Event, Option<EventExperience>)>> {

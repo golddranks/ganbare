@@ -43,7 +43,7 @@
 				.appendTo(eventCell);
 			}
 			var groupSelect = $('<select><option value="null"'+((event.required_group===null)?' selected':'')+'>None</option></select>')
-			.appendTo(eventCell);
+				.appendTo(eventCell);
 			groupResp.forEach(function(group) {
 				$('<option value="'+group.id+'"'+((event.required_group===group.id)?' selected':'')+'>'+group.group_name+'</option>').appendTo(groupSelect);
 			});
@@ -66,6 +66,19 @@
 					url: "/api/events/"+event.id,
 					contentType: "application/json",
 					data: JSON.stringify({id: event.id, published: !event.published }),
+					success: function(resp) {
+						location.reload();
+					},
+				});
+			});
+
+			var priority = $('<input type="number" value="'+event.priority+'">').appendTo(eventCell);
+			priority.change(function() {
+				$.ajax({
+					type: 'PUT',
+					url: "/api/events/"+event.id,
+					contentType: "application/json",
+					data: JSON.stringify({id: event.id, priority: parseInt($(this).val())}),
 					success: function(resp) {
 						location.reload();
 					},

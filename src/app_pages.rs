@@ -9,34 +9,23 @@ use ganbare::email;
 fn dispatch_events(conn: &PgConnection, user: &User)
     -> StdResult<Option<PencilResult>, PencilError> {
 
-    let event_redirect = if event::is_workable(conn, "welcome", &user).err_500()?.is_some() {
+    let event = match event::dispatch_event(conn, user.id).err_500()? {
+        Some(e) => e,
+        None => return Ok(None),
+    };
 
-        event::initiate(&conn, "welcome", &user).err_500()?;
-        Some(redirect("/welcome", 303))
+    event::initiate(conn, &*event.name, user).err_500()?;
+    
+    let redirect = match &*event.name {
+        "welcome" => redirect("/welcome", 303),
+        "survey" => redirect("/survey", 303),
+        "pretest" => redirect("/pretest", 303),
+        "sorting_ceremony" => redirect("/sorting_ceremony", 303),
+        "posttest" => redirect("/posttest", 303),
+        ename => return Err(internal_error(&format!("I don't know how to handle event {}!", ename))),
+    };
 
-    } else if event::is_workable(conn, "survey", &user).err_500()?.is_some() {
-
-        event::initiate(&conn, "survey", &user).err_500()?;
-        Some(redirect("/survey", 303))
-
-    } else if event::is_workable(conn, "pretest", &user).err_500()?.is_some() {
-
-        event::initiate(&conn, "pretest", &user).err_500()?;
-        Some(redirect("/pretest", 303))
-
-    } else if event::is_workable(conn, "sorting_ceremony", &user).err_500()?.is_some() {
-
-        event::initiate(&conn, "sorting_ceremony", &user).err_500()?;
-        Some(redirect("/sorting", 303))
-
-    } else if event::is_workable(conn, "posttest", &user).err_500()?.is_some() {
-
-        event::initiate(&conn, "posttest", &user).err_500()?;
-        Some(redirect("/posttest", 303))
-
-    } else { None };
-
-    Ok(event_redirect)
+    Ok(Some(redirect))
 }
 
 fn main_quiz(req: &mut Request, conn: &PgConnection, user: &User) -> PencilResult { 
