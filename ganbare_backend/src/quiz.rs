@@ -824,17 +824,11 @@ fn ask_new_exercise(conn: &PgConnection, id: i32) -> Result<(Exercise, Word, i32
     Ok((exercise, word, audio_file.id))
 }
 
-pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>> {
-    use schema::{pending_items, q_asked_data, e_asked_data, w_asked_data};
+pub fn pi_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
+    use schema::{q_asked_data, e_asked_data, w_asked_data};
 
-    let pending_item: Option<PendingItem> = pending_items::table
-        .filter(pending_items::user_id.eq(user_id))
-        .filter(pending_items::pending.eq(true))
-        .get_result(conn)
-        .optional()?;
-
-    let quiz_type = match pending_item {
-        Some(ref pi) if pi.item_type == "question" => {
+    Ok(match pi {
+        ref pi if pi.item_type == "question" => {
 
             let asked: QAskedData = q_asked_data::table
                 .filter(q_asked_data::id.eq(pi.id))
@@ -856,7 +850,7 @@ pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Q
             })
 
         },
-        Some(ref pi) if pi.item_type == "exercise" => {
+        ref pi if pi.item_type == "exercise" => {
 
             let asked: EAskedData = e_asked_data::table
                 .filter(e_asked_data::id.eq(pi.id))
@@ -875,7 +869,7 @@ pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Q
             })
 
         },
-        Some(ref pi) if pi.item_type == "word" => {
+        ref pi if pi.item_type == "word" => {
 
             let asked: WAskedData = w_asked_data::table
                 .filter(w_asked_data::id.eq(pi.id))
@@ -892,10 +886,22 @@ pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Q
                 show_accents: asked.show_accents,
             })
         },
-        Some(_) => unreachable!("Bug: There is only three kinds of quiz types!"),
-        None => {
-            return Ok(None)
-        },
+        _ => unreachable!("Bug: There is only three kinds of quiz types!"),
+    })
+}
+
+pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>> {
+    use schema::{pending_items};
+
+    let pending_item: Option<PendingItem> = pending_items::table
+        .filter(pending_items::user_id.eq(user_id))
+        .filter(pending_items::pending.eq(true))
+        .get_result(conn)
+        .optional()?;
+
+    let quiz_type = match pending_item {
+        Some(ref pi) => pi_to_quiz(conn, pi)?,
+        None => return Ok(None),
     };
 
     debug!("There was a pending item! Returning it.");

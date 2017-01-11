@@ -337,6 +337,7 @@ $("#settingsMenu").click(function( event ) { event.stopPropagation(); });
 /* app main logic */
 
 function cleanState() : void {
+	questionStatus.text("");
 	buttonSection.hide();
 	questionSectionFlexContainer.hide();
 	wordSectionSlideContainer.hide();

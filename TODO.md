@@ -2,6 +2,7 @@
 
 Need to do before release:
 
+- Fix that "vastattu" bug.
 - Make a retelling task event for pretest and posttest
 - Finalize and test posttest (mainly copy&paste from pretest)
 - Edit some (5) sentences
