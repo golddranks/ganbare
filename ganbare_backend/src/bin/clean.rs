@@ -34,77 +34,88 @@ lazy_static! {
 
 }
 
-pub fn clean_urls(conn: &PgConnection) -> Result<Vec<String>> {
+pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
     use ganbare_backend::schema::{words, question_answers};
-    use ganbare_backend::manage::sanitize_links;
-
+    let conn = db::connect(&*DATABASE_URL).unwrap();
 
     let mut logger = vec![];
 
-    let words: Vec<Word> = words::table
-        .filter(words::explanation.like("%http://%").or(words::explanation.like("%https://%")))
-        .get_results(conn)?;
-
-    for mut w in words {
-        let before = format!("{:?}", w);
-        w.explanation =  sanitize_links(&w.explanation, &*IMAGE_DIR)?;
-        logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n", before, w));
-
-        let _ : Word = w.save_changes(conn)?;
-    }
-
-    let words: Vec<Word> = words::table
-        .filter(words::explanation.like("%span%"))
-        .get_results(conn)?;
-
     let r2 = regex::Regex::new(r#"<span .*?>"#).expect("<- that is a valid regex there");
     let r3 = regex::Regex::new(r#"</span>"#).expect("<- that is a valid regex there");
+    let r4 = regex::Regex::new(r#"<br .*?>"#).expect("<- that is a valid regex there");
+
+
+    let words: Vec<Word> = words::table
+        .filter(words::explanation.like("%span%").or(words::explanation.like("%<br %")))
+        .get_results(&conn)?;
 
     for mut w in words {
         let before = format!("{:?}", w);
 
         w.explanation = r2.replace_all(&w.explanation, "");
         w.explanation = r3.replace_all(&w.explanation, "");
+        w.explanation = r4.replace_all(&w.explanation, "<br>");
 
-        logger.push(format!("Removed a span!\n{}\n→\n{:?}\n", before, w));
+        logger.push(format!("Tidied a span/br tag!\n{}\n→\n{:?}\n", before, w));
 
-        let _ : Word = w.save_changes(conn)?;
+        let _ : Word = w.save_changes(&conn)?;
     }
 
     let answers: Vec<Answer> = question_answers::table
-        .filter(question_answers::answer_text.like("%http://%").or(question_answers::answer_text.like("%https://%")))
-        .get_results(conn)?;
-
-    for mut a in answers {
-        let before = format!("{:?}", a);
-        a.answer_text =  sanitize_links(&a.answer_text, &*IMAGE_DIR)?;
-        logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n", before, a));
-
-        let _ : Answer = a.save_changes(conn)?;
-    }
-
-    let answers: Vec<Answer> = question_answers::table
-        .filter(question_answers::answer_text.like("%span%"))
-        .get_results(conn)?;
-
-    let r2 = regex::Regex::new(r#"<span .*?>"#).expect("<- that is a valid regex there");
-    let r3 = regex::Regex::new(r#"</span>"#).expect("<- that is a valid regex there");
+        .filter(question_answers::answer_text.like("%span%").or(question_answers::answer_text.like("%<br %")))
+        .get_results(&conn)?;
 
     for mut a in answers {
         let before = format!("{:?}", a);
 
         a.answer_text = r2.replace_all(&a.answer_text, "");
         a.answer_text = r3.replace_all(&a.answer_text, "");
+        a.answer_text = r4.replace_all(&a.answer_text, "<br>");
 
-        logger.push(format!("Removed a span!\n{}\n→\n{:?}\n", before, a));
+        logger.push(format!("Tidied a span/br tag!\n{}\n→\n{:?}\n", before, a));
 
-        let _ : Answer = a.save_changes(conn)?;
+        let _ : Answer = a.save_changes(&conn)?;
     }
 
     Ok(logger)
 }
 
-fn clean_unicode() {
+pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
+    use ganbare_backend::schema::{words, question_answers};
+    use ganbare_backend::manage::sanitize_links;
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let mut logger = vec![];
+
+    let words: Vec<Word> = words::table
+        .filter(words::explanation.like("%http://%").or(words::explanation.like("%https://%")))
+        .get_results(&conn)?;
+
+    for mut w in words {
+        let before = format!("{:?}", w);
+        w.explanation =  sanitize_links(&w.explanation, &*IMAGE_DIR)?;
+        logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n", before, w));
+
+        let _ : Word = w.save_changes(&conn)?;
+    }
+
+    let answers: Vec<Answer> = question_answers::table
+        .filter(question_answers::answer_text.like("%http://%").or(question_answers::answer_text.like("%https://%")))
+        .get_results(&conn)?;
+
+    for mut a in answers {
+        let before = format!("{:?}", a);
+        a.answer_text =  sanitize_links(&a.answer_text, &*IMAGE_DIR)?;
+        logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n", before, a));
+
+        let _ : Answer = a.save_changes(&conn)?;
+    }
+
+    Ok(logger)
+}
+
+fn normalize_unicode() {
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
     let bundles = audio::get_all_bundles(&conn).unwrap();
@@ -140,7 +151,7 @@ fn clean_unicode() {
     }
 }
 
-fn clean_audio() {
+fn clean_unused_audio() {
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
     let fs_files = std::fs::read_dir(&*AUDIO_DIR).unwrap();
@@ -172,7 +183,7 @@ lazy_static! {
 
 }
 
-fn clean_images() {
+fn clean_unused_images() {
     use ganbare_backend::schema::{question_answers, words};
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
@@ -180,10 +191,6 @@ fn clean_images() {
     let fs_files = std::fs::read_dir(&*IMAGE_DIR).expect(&format!("Not found: {:?}", &*IMAGE_DIR));
 
     let mut db_files: HashSet<String> = HashSet::new();
-
-    for line in clean_urls(&conn).unwrap() {
-        println!("{}", line);
-    };
 
     let words: Vec<Word> = words::table
         .filter(words::explanation.like("%<img%"))
@@ -223,6 +230,45 @@ fn clean_images() {
     }
 }
 
+lazy_static! {
+
+    static ref BR_IMG_REGEX: Regex = Regex::new(r#"([^>])(<img[^>]* src="[^"]+"[^>]*>)"#)
+        .expect("<- that is a valid regex there");
+
+}
+
+fn add_br_between_images_and_text() {
+    use ganbare_backend::schema::{question_answers, words};
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let words: Vec<Word> = words::table
+        .filter(words::explanation.like("%<img%"))
+        .get_results(&conn).unwrap();
+
+    for mut w in words {
+        let new_text = BR_IMG_REGEX.replace_all(&w.explanation, "$1<br>$2");
+        if new_text != w.explanation {
+            println!("Added a br tag:\n{:?}\n→\n{:?}\n", w.explanation, new_text);
+            w.explanation = new_text;
+            let _: Word = w.save_changes(&conn).unwrap();
+        }
+    }
+
+    let answers: Vec<Answer> = question_answers::table
+        .filter(question_answers::answer_text.like("%<img%"))
+        .get_results(&conn).unwrap();
+
+    for mut a in answers {
+        let new_text = BR_IMG_REGEX.replace_all(&a.answer_text, "$1<br>$2");
+        if new_text != a.answer_text {
+            println!("Added a br tag:\n{:?}\n→\n{:?}\n", a.answer_text, new_text);
+            a.answer_text = new_text;
+            let _: Answer = a.save_changes(&conn).unwrap();
+        }
+    }
+}
+
 fn main() {
     use clap::*;
 
@@ -231,8 +277,18 @@ fn main() {
 
     App::new("ganba.re audio cleaning tool")
         .version(crate_version!());
-    
-    clean_audio();
-    clean_images();
-    clean_unicode();
+
+
+    for line in outbound_urls_to_inbound().unwrap() {
+        println!("{}", line);
+    };
+
+    for line in tidy_span_and_br_tags().unwrap() {
+        println!("{}", line);
+    };
+
+    clean_unused_audio();
+    clean_unused_images();
+    normalize_unicode();
+    add_br_between_images_and_text();
 }
