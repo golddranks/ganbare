@@ -37,16 +37,17 @@ fn get_new_quiz_test(conn : &PgConnection, user : &User, event: &Event, quizes: 
     let number = event::get_userdata(conn, event, user, "quiz_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
     let pending_test_item = event::get_userdata(conn, event, user, "pending_test_item")?.and_then(|d| d.data.parse::<i32>().ok()).unwrap_or(0);
 
-    let quiz;
-
-    if pending_test_item == 0 { // We can show a new item, since to old one was answered to
+    let quiz = if pending_test_item == 0 { // We can show a new item, since to old one was answered to
     
         if number == quizes.len() {
             event::set_done(&conn, &event.name, &user)?;
             return Ok(None)
         }
     
-        quiz = quiz::test_item(conn, user, &quizes[number])?;
+        let (quiz, pi_id) = quiz::test_item(conn, user, &quizes[number])?;
+        event::save_userdata(conn, event, user, Some("pending_test_item"), &format!("{}", pi_id))?;
+        println!("New question number {}", number);
+        quiz
     
     } else {
         use schema::pending_items;
@@ -54,8 +55,10 @@ fn get_new_quiz_test(conn : &PgConnection, user : &User, event: &Event, quizes: 
             .filter(pending_items::id.eq(pending_test_item))
             .get_result(conn)?;
 
-        quiz = quiz::pi_to_quiz(conn, &pending_item)?;
-    }
+        println!("Returning a pending item ID {}.", pending_item.id);
+
+        quiz::pi_to_quiz(conn, &pending_item)?
+    };
 
     Ok(Some(quiz))
 }

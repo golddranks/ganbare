@@ -1031,10 +1031,11 @@ pub enum QuizSerialized {
     Exercise(&'static str, i32),
 }
 
-pub fn test_item(conn: &PgConnection, user: &User, quiz_str: &QuizSerialized) -> Result<Quiz> {
+pub fn test_item(conn: &PgConnection, user: &User, quiz_str: &QuizSerialized) -> Result<(Quiz, i32)> {
+    let pending_item;
     let test_item = match quiz_str {
         &QuizSerialized::Word(ref s, audio_id) => {
-            let pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id))?;
+            pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id))?;
         
             let asked_data = WAskedData {
                 id: pending_item.id,
@@ -1057,7 +1058,7 @@ pub fn test_item(conn: &PgConnection, user: &User, quiz_str: &QuizSerialized) ->
         },
         &QuizSerialized::Question(ref s, audio_id, variant_id) => {
 
-            let pending_item = new_pending_item(conn, user.id, QuizType::Question(audio_id))?;
+            pending_item = new_pending_item(conn, user.id, QuizType::Question(audio_id))?;
 
             let asked_data = QAskedData {
                 id: pending_item.id,
@@ -1085,7 +1086,7 @@ pub fn test_item(conn: &PgConnection, user: &User, quiz_str: &QuizSerialized) ->
         },
         &QuizSerialized::Exercise(ref word, audio_id) => {
 
-            let pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id))?;
+            pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id))?;
             let exercise_name = word.replace('*', "").replace('・', "");
 
             let asked_data = EAskedData {
@@ -1107,13 +1108,12 @@ pub fn test_item(conn: &PgConnection, user: &User, quiz_str: &QuizSerialized) ->
                 explanation: word.explanation,
                 must_record: false,
             })
-
         },
     };
 
     debug!("There was a test item! Returning it.");
 
-    Ok(test_item)
+    Ok((test_item, pending_item.id))
 }
 
 
