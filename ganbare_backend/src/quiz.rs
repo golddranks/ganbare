@@ -167,6 +167,11 @@ fn log_answer_word(conn : &PgConnection, user : &User, answered: &WAnsweredData)
         .filter(pending_items::id.eq(answered.id))
         .get_result(conn)?;
 
+    if pending_item.pending == false {
+        info!("User is trying to answer twice to the same question! Ignoring the later answer.");
+        return Ok(());
+    }
+
     // This Q&A is now considered done
     pending_item.pending = false;
     let _ : PendingItem = pending_item.save_changes(conn)?;
@@ -193,7 +198,7 @@ fn log_answer_word(conn : &PgConnection, user : &User, answered: &WAnsweredData)
     Ok(())
 }
 
-fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredData, metrics: &UserMetrics) -> Result<(QAskedData, QuestionData, DueItem)> {
+fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredData, metrics: &UserMetrics) -> Result<()> {
     use schema::{user_stats, pending_items, q_asked_data, q_answered_data, due_items, question_data, quiz_questions};
 
     let (mut pending_item, asked): (PendingItem, QAskedData) = pending_items::table
@@ -201,12 +206,16 @@ fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredD
         .filter(pending_items::id.eq(answered.id))
         .get_result(conn)?;
 
-    let correct = asked.correct_qa_id == answered.answered_qa_id.unwrap_or(-1);
-
+    if pending_item.pending == false {
+        info!("User is trying to answer twice to the same question! Ignoring the later answer.");
+        return Ok(());
+    }
 
     // This Q&A is now considered done
     pending_item.pending = false;
     let _ : PendingItem = pending_item.save_changes(conn)?;
+
+    let correct = asked.correct_qa_id == answered.answered_qa_id.unwrap_or(-1);
 
     diesel::insert(answered)
         .into(q_answered_data::table)
@@ -253,11 +262,9 @@ fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredD
                                         .optional()?;
 
     // Update the data for this question (due date, statistics etc.)
-    Ok(if let Some((questiondata, due_item)) = questiondata {
+    Ok(if let Some((_, due_item)) = questiondata {
 
-        let due_item = log_answer_due_item(conn, due_item, question.skill_id, correct, metrics)?;
-
-        (asked, questiondata, due_item)
+        log_answer_due_item(conn, due_item, question.skill_id, correct, metrics)?;
 
     } else { // New!
 
@@ -267,15 +274,13 @@ fn log_answer_question(conn : &PgConnection, user : &User, answered: &QAnsweredD
             question_id: asked.question_id,
             due: due_item.id,
         };
-        let questiondata = diesel::insert(&questiondata)
+        let _: QuestionData = diesel::insert(&questiondata)
             .into(question_data::table)
             .get_result(conn)?;
-
-        (asked, questiondata, due_item)
     })
 }
 
-fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredData, metrics: &UserMetrics) -> Result<(ExerciseData, DueItem)> {
+fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredData, metrics: &UserMetrics) -> Result<()> {
     use schema::{user_stats, pending_items, e_asked_data, e_answered_data, due_items, exercise_data, exercises};
 
     let correct = answered.answer_level > 0;
@@ -284,6 +289,11 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredDat
         .inner_join(e_asked_data::table)
         .filter(pending_items::id.eq(answered.id))
         .get_result(conn)?;
+
+    if pending_item.pending == false {
+        info!("User is trying to answer twice to the same question! Ignoring the later answer.");
+        return Ok(());
+    }
 
     // This Q&A is now considered done
     pending_item.pending = false;
@@ -331,11 +341,9 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredDat
                                         .optional()?;
 
     // Update the data for this word exercise (due date, statistics etc.)
-    Ok(if let Some((exercisedata, due_item)) = exercisedata {
+    Ok(if let Some((_, due_item)) = exercisedata {
 
-        let due_item = log_answer_due_item(conn, due_item, exercise.skill_id, correct, metrics)?;
-
-        (exercisedata, due_item)
+        log_answer_due_item(conn, due_item, exercise.skill_id, correct, metrics)?;
 
     } else { // New!
 
@@ -345,11 +353,10 @@ fn log_answer_exercise(conn: &PgConnection, user: &User, answered: &EAnsweredDat
             due: due_item.id,
             exercise_id: asked.exercise_id,
         };
-        let exercisedata = diesel::insert(&exercisedata)
+        let _: ExerciseData = diesel::insert(&exercisedata)
             .into(exercise_data::table)
             .get_result(conn)
             .chain_err(|| "Couldn't save the question tally data to database!")?;
-        (exercisedata, due_item)
     })
 }
 

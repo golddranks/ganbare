@@ -15,6 +15,10 @@ fn save_answer_test_item(conn: &PgConnection, user: &User, event: &Event, answer
     let mut pending_item: PendingItem = pending_items::table
         .filter(pending_items::id.eq(answered_id))
         .get_result(conn)?;
+    if pending_item.pending == false {
+        info!("The user tried to answer to the same question twice! Ignoring the later answer.");
+        return Ok(())
+    }
     pending_item.pending = false;
     let _ : PendingItem = pending_item.save_changes(conn)?;
 
