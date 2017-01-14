@@ -9,6 +9,8 @@ target
 /audio/
 /images/
 /backups/
+/static/content_audio
+/static/content_images
 /static/css/main.css
 /static/ts/
 /user_audio/

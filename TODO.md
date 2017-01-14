@@ -2,13 +2,12 @@
 
 Need to do before release:
 
-- Fix that "vastattu" bug.
-- Make a retelling task event for pretest and posttest
-- Finalize and test posttest (mainly copy&paste from pretest)
 - Edit some (5) sentences
-- Implement question priority to ensure the learners know a common sub-set of words
 - Check that asking sentences work
-
+- Implement question priority to ensure the learners know a common sub-set of words
+- Add a test completed -page
+- Add a "I agree to collaborate" -page
+- Add some basic info to the welcome page (possibly add some further pages)
 
 Stretch goals:
 - Remove old mail confirmations

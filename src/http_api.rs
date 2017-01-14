@@ -183,11 +183,8 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
     };
 
     match new_quiz {
-
         Some(quiz) => quiz_to_json(quiz),
-
         None => jsonify(&()),
-
     }.refresh_cookie(&sess)
 }
 
@@ -673,7 +670,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
     let endpoint = req.endpoint().expect("Pencil guarantees this");
 
-    let event_name = req.view_args.remove("event_name").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let event_name = req.view_args.remove("event_name").expect("Pencil guarantees that event name should exist as an arg.");
     let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
 
     match endpoint.as_ref() {
@@ -698,4 +695,36 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
         },
         _ => unreachable!(),
     }
+}
+
+pub fn new_retelling(req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "")?;
+    let event_name = req.view_args.remove("event_name").expect("Pencil guarantees that event name should exist as an arg.");
+    let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+
+    let retelling = match event_name.as_ref() {
+        "pretest_retelling" => test::get_new_retelling_pretest(&conn, &user, &event).err_500()?,
+        "posttest_retelling" => test::get_new_retelling_posttest(&conn, &user, &event).err_500()?,
+        _ => unreachable!(),
+    };
+
+    jsonify(&retelling)
+            .refresh_cookie(&sess)
+}
+
+pub fn next_retelling(req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "")?;
+    let event_name = req.view_args.remove("event_name").expect("Pencil guarantees that event name should exist as an arg.");
+    let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+
+    let retelling = match event_name.as_ref() {
+        "pretest_retelling" => test::get_next_retelling_pretest(&conn, &user, &event).err_500()?,
+        "posttest_retelling" => test::get_next_retelling_posttest(&conn, &user, &event).err_500()?,
+        _ => unreachable!(),
+    };
+
+    match retelling {
+        Some(ref retelling) => jsonify(retelling),
+        None => jsonify(&()),
+    }.refresh_cookie(&sess)
 }

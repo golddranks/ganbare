@@ -169,7 +169,23 @@ pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
 pub fn retelling (req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
 
+    let event_name;
+
+    match req.endpoint().as_ref().map(|s| &**s) {
+        Some("pretest_retelling") => {
+            event_name = "pretest_retelling";
+        },
+        Some("posttest_retelling") => {
+            event_name = "posttest_retelling";
+        },
+        _ => unreachable!(),
+    }
+
+    let (_, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+
     let mut context = new_template_context();
+    context.insert("testing".into(), "true".into());
+    context.insert("event_name".into(), event_name.into());
     
     req.app.render_template("retelling.html", &context)
         .refresh_cookie(&sess)

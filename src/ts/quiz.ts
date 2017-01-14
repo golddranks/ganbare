@@ -1,20 +1,6 @@
 /// <reference path="typings/globals/jquery/index.d.ts" />
 /// <reference path="typings/globals/howler/index.d.ts" />
-
-declare type RecorderEventType = "streamError" | "streamReady" | "dataAvailable" | "start" | "pause" | "resume" | "stop";
-interface RecordingDataAvailableEvent {
-	detail: Uint8Array,
-}
-
-declare class Recorder {
-	constructor(config?: { encoderPath: string, leaveStreamOpen: boolean });
-	initStream();
-	start();
-	stop();
-	clearStream();
-	addEventListener( type: RecorderEventType, listener: (ev) => void, useCapture? );
-	static isRecordingSupported(): boolean;
-}
+/// <reference path="recorder.d.ts" />
 
 $(function() {
 
@@ -294,7 +280,7 @@ function connectionFailMessage(e) : void {
 	console.log("Bug?", e);
 	errorSection.show();
 	errorStatus.text("Palvelimeen ei saada yhteyttä :(");
-	setTimeout(function() { errorStatus.html("Palvelimeen ei saada yhteyttä :(<br>Kokeillaan uudestaan..."); },2000);
+	setTimeout(() => { errorStatus.html("Palvelimeen ei saada yhteyttä :(<br>Kokeillaan uudestaan..."); }, 2000);
 	main.addClass("errorOn");
 }
 
@@ -624,7 +610,6 @@ function showQuestion(question: QuestionJson) {
 	avatar.css('opacity', '0');
 	questionExplanation.slideDown(normalSpeed, function() { avatar.fadeTo(normalSpeed, 1); });
 	let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
-	quiz_data.startedInstant = Date.now();
 
 	question.answers.forEach(function(a, i) {
 		var isCorrect = (question.right_a === a[0])?true:false;

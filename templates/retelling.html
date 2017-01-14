@@ -1,41 +1,43 @@
 {{#partial page_script_link}}
 	<script src="/static/js/howler.min.js"></script>
 	<script src="/static/js/recorder.min.js"></script>
+	<script>window.testing = {{#if testing }}true{{else}}false{{/if}};</script>
+	<script>window.event_name = {{#if event_name }}"{{ event_name }}"{{else}}null{{/if}};</script>
+	<script src="/static/ts/retelling.js"></script>
 {{/partial}}
 
 {{#partial main_section}}
-	Recorder
-{{/partial}}
-
-
-{{#partial page_script_inline}}
-
-var rec = new Recorder({ encoderPath: '/static/js/encoderWorker.min.js'});
-rec.addEventListener('streamReady', function() {
-	rec.start();
-	console.log("Start recording.");
-	setTimeout(function() {
-		console.log("Stop recording.");
-		rec.stop();
-	}, 3000);
-});
-rec.addEventListener('dataAvailable', function(data) {
-	console.log(data);
-	$.ajax({
-		url: '/api/user_audio?event=pretest',
-		type: 'POST',
-		contentType: 'application/octet-stream',  
-		data: data.detail,
-		processData: false
-	});
-});
-rec.addEventListener('start', function() {
-	console.log("Started");
-});
-rec.addEventListener('stop', function() {
-	console.log("Stopped");
-});
-rec.initStream();
+	<section id="topmessage">
+		<p class="topmessageparagraph" style="display: none;"></p>
+	</section>
+	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
+	<section id="settings" style="display: none;">
+		<ul id="settingsMenu">
+			<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
+			<li><a href="/change_password">Vaihda salasanaa</a></li>
+		</ul>
+	</section>
+	<div id="errorSection" style="display: none; ">
+		<p id="errorStatus">{{ error_msg }}</p>
+	</div>
+	<section id="quiz">
+		<div id="questionSectionFlexContainer">
+		<div id="questionSection" style="display: none;">
+			<p id="questionStatus" style="display: none;"></p>
+			<p id="questionExplanation" style="display: none;"></p>
+			<span class="avatar" id="qAvatar"><button class="imgbutton" id="qStartButton"><img src="static/images/play-button.png" alt="" /></button></span>
+			<div class="answerList compactAnswerList">
+				<p class="questionText"></p>
+				<img src="" id="retellingImage">
+			</div>
+			<div id="buttonSection" style="display: none;">
+				<div id="buttonContainer"><!-- jQuery supports animating only "normal" divs so we need another one to have the display: table layout -->
+					<div class="buttonRow"><button id="answerButton">Kerrottu!</button></div>
+				</div>
+			</div>
+		</div>
+		</div>
+	</section>
 
 {{/partial}}
 

@@ -209,6 +209,8 @@ pub fn main() {
     app.post("/send_mail", "send_mail_post", manager_pages::send_mail_post);
 
     // HTTP API
+    app.get("/api/next_retelling?event=<event_name:string>", "next_retelling", http_api::next_retelling);
+    app.get("/api/new_retelling?event=<event_name:string>", "new_retelling", http_api::new_retelling);
     app.get("/api/build_number", "get_build_number", http_api::get_build_number);
     app.get("/api/user_audio.ogg?event=<event_name:string>&last", "get_last_useraudio", http_api::get_useraudio);
     app.post("/api/user_audio?event=<event_name:string>", "post_useraudio", http_api::post_useraudio);

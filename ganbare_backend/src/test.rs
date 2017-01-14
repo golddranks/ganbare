@@ -67,6 +67,58 @@ fn get_new_quiz_test(conn : &PgConnection, user : &User, event: &Event, quizes: 
     Ok(Some(quiz))
 }
 
+pub fn get_next_quiz_pretest(conn : &PgConnection, user : &User, answer_enum: Answered, event: &Event)
+    -> Result<Option<Quiz>>
+{
+    save_answer_test_item(conn, user, event, &answer_enum)?;
+    get_new_quiz_pretest(conn, user, event)
+}
+
+
+pub fn get_next_quiz_posttest(conn : &PgConnection, user : &User, answer_enum: Answered, event: &Event)
+    -> Result<Option<Quiz>>
+{
+    save_answer_test_item(conn, user, event, &answer_enum)?;
+    get_new_quiz_posttest(conn, user, event)
+}
+
+#[derive(RustcEncodable)]
+pub struct RetellingJson {
+    img_src: String,
+    audio_src: String,
+}
+
+fn get_new_retelling(conn : &PgConnection, user : &User, event: &Event, retellings: &Vec<(&'static str, &'static str)>) -> Result<Option<RetellingJson>> {
+
+    let number = event::get_userdata(conn, event, user, "retelling_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0);
+
+    if number == retellings.len() {
+        event::set_done(&conn, &event.name, &user)?;
+        return Ok(None)
+    }
+
+    let retelling = retellings[number];
+
+    Ok(Some(RetellingJson{
+        img_src: retelling.0.into(),
+        audio_src: retelling.1.into(),
+    }))
+}
+
+pub fn get_next_retelling_posttest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<RetellingJson>> {
+
+    let number = event::get_userdata(conn, event, user, "retelling_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0) + 1;
+    event::save_userdata(conn, event, user, Some("retelling_number"), &number.to_string())?;
+    get_new_retelling_posttest(conn, user, event)
+}
+
+pub fn get_next_retelling_pretest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<RetellingJson>> {
+
+    let number = event::get_userdata(conn, event, user, "retelling_number")?.and_then(|d| d.data.parse::<usize>().ok()).unwrap_or(0) + 1;
+    event::save_userdata(conn, event, user, Some("retelling_number"), &number.to_string())?;
+    get_new_retelling_pretest(conn, user, event)
+}
+
 pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<Quiz>> {
 
     let quizes = vec![
@@ -106,14 +158,6 @@ pub fn get_new_quiz_pretest(conn : &PgConnection, user : &User, event: &Event) -
     Ok(quiz)
 }
 
-pub fn get_next_quiz_pretest(conn : &PgConnection, user : &User, answer_enum: Answered, event: &Event)
-    -> Result<Option<Quiz>>
-{
-    save_answer_test_item(conn, user, event, &answer_enum)?;
-    get_new_quiz_pretest(conn, user, event)
-}
-
-
 pub fn get_new_quiz_posttest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<Quiz>> {
 
     let quizes = vec![
@@ -133,11 +177,22 @@ pub fn get_new_quiz_posttest(conn : &PgConnection, user : &User, event: &Event) 
     Ok(quiz)
 }
 
+pub fn get_new_retelling_pretest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<RetellingJson>> {
 
-pub fn get_next_quiz_posttest(conn : &PgConnection, user : &User, answer_enum: Answered, event: &Event)
-    -> Result<Option<Quiz>>
-{
-    save_answer_test_item(conn, user, event, &answer_enum)?;
-    get_new_quiz_pretest(conn, user, event)
+    let retellings = vec![
+        ("static/content_images/mapodoufu.jpg", "static/content_audio/testibb.mp3"),
+        ("static/content_images/mapodoufu.jpg", "static/content_audio/testiaa.mp3"),
+        ("static/content_images/mapodoufu.jpg", "static/content_audio/testicc.mp3"),
+    ];
+    get_new_retelling(conn, user, event, &retellings)
 }
 
+pub fn get_new_retelling_posttest(conn : &PgConnection, user : &User, event: &Event) -> Result<Option<RetellingJson>> {
+
+    let retellings = vec![
+        ("static/content_images/mapodoufu.jpg", "static/content_audio/testicc.mp3"),
+        ("static/content_images/mapodoufu.jpg", "static/content_audio/testicc.mp3"),
+        ("static/content_images/mapodoufu.jpg", "static/content_audio/testicc.mp3"),
+    ];
+    get_new_retelling(conn, user, event, &retellings)
+}
