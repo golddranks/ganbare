@@ -27,7 +27,7 @@ lazy_static! {
 
 }
 
-fn import_batch(path: &str, narrator: &str) {
+fn import_batch(path: &str, narrator: &str, sentences: bool) {
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
     let files = std::fs::read_dir(path).unwrap();
@@ -45,10 +45,25 @@ fn import_batch(path: &str, narrator: &str) {
         if word.chars().filter(|c| c == &'・' || c == &'*').count() > 1 {
             panic!("Invalid filename! More than one accent marks: {:?}", word);
         }
+        if sentences && !word.contains('、') {
+            panic!("Invalid filename! No 、: {:?}", word);
+        }
 
         if last_char.is_digit(10) {
             word.pop();
         }
+
+        let nugget;
+
+        if sentences {
+            word = {
+                let mut word_split = word.split('、');
+                nugget = word_split.next().unwrap().to_owned();
+                word_split.next().unwrap().to_owned()
+            };
+        } else {
+            nugget = word.replace("*", "").replace("・", "");
+        };
 
         let temp_file_path = tmp_dir.path().join(f.file_name());
 
@@ -59,7 +74,6 @@ fn import_batch(path: &str, narrator: &str) {
         use std::str::FromStr;
         let mime = mime::Mime::from_str("audio/mpeg").unwrap();
 
-        let nugget = word.replace("*", "").replace("・", "");
 
         let w = manage::NewWordFromStrings {
             word,
@@ -82,6 +96,10 @@ fn main() {
     info!("Starting.");
 
     let matches = App::new("ganba.re word import tool")
+        .arg(Arg::with_name("sentences")
+                                .short("s")
+                                .long("sentences")
+                                .help("Flag to enable importing sentences"))
         .arg(Arg::with_name("PATH")
                                 .index(1)
                                 .required(true)
@@ -97,8 +115,9 @@ fn main() {
         .version(crate_version!())
         .get_matches();
     
+    let sentences = matches.is_present("sentences");
     let path = matches.value_of("PATH").unwrap();
     let narrator = matches.value_of("NARRATOR").unwrap();
 
-    import_batch(&path, &narrator);
+    import_batch(&path, &narrator, sentences);
 }
