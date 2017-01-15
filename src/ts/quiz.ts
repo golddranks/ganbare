@@ -4,11 +4,7 @@
 
 $(function() {
 
-function accentuate(word: string, showAccent: boolean) : string {
-
-	if (!showAccent) {
-		return word.replace("・", "").replace("*", "");
-	}
+function accentuate(word: string): string {
 
 	var empty = '<span class="accent">';
 	var middle = '<span class="accent" style="background-image: url(/static/images/accent_middle.png);">';
@@ -20,40 +16,81 @@ function accentuate(word: string, showAccent: boolean) : string {
 	var start_end_flat_short = '<span class="accent" style="background-image: url(/static/images/accent_start_end_flat_short.png);">';
 	var peak = '<span class="accent" style="background-image: url(/static/images/accent_peak.png);">';
 	
-	function isAccentMark(i) {
+	function isAccentMark(i: number): boolean {
 		return (word.charAt(i) === "*" || word.charAt(i) === "・")
+	};
+
+	function isRisingAccentMark(i: number): boolean {
+		return (word.charAt(i) === "／")
+	};
+
+	function isFlatAccentMark(i: number): boolean {
+		return (word.charAt(i) === "＝")
 	};
 
 	var accentuated = [""];
 	var ended = false;
-	for (var i = 0, len = word.length; i < len; i++) {
 
-		if (isAccentMark(i)) {
-			continue;
-		} else if (word.length === 1) {
-			accentuated.push(start_end_flat_short);
-		} else if (i === 0 && isAccentMark(i+1)) {
-			accentuated.push(start_end);
-			ended = true;
-		} else if (i === 1 && !ended && isAccentMark(i+1)) {
-			accentuated.push(peak);
-			ended = true;
-		} else if (i === 1 && !ended && i === len-1) {
-			accentuated.push(start_end_flat);
-		} else if (i === 1 && !ended) {
-			accentuated.push(start);
-		} else if (i > 1 && !ended && i === len-1) {
-			accentuated.push(flat_end);
-		} else if (i > 1 && !ended && isAccentMark(i+1)) {
-			accentuated.push(end);
-			ended = true;
-		} else if (i > 1 && !ended && !isAccentMark(i+1)) {
-			accentuated.push(middle);
-		} else {
-			accentuated.push(empty);
+	if (word.indexOf("／") >= 0) {
+		var started = false;
+		for (var i = 0, len = word.length; i < len; i++) {
+			if (isAccentMark(i) || isFlatAccentMark(i) || isRisingAccentMark(i)) {
+				continue;
+			} else if (isRisingAccentMark(i-1) && isAccentMark(i+1)) {
+				accentuated.push(peak);
+				started = true;
+				ended = true;
+			} else if (isRisingAccentMark(i-1) && isFlatAccentMark(i+1)) {
+				accentuated.push(start_end_flat);
+				started = true;
+				ended = true;
+			} else if (isRisingAccentMark(i-1)) {
+				accentuated.push(start);
+				started = true;
+			} else if (isAccentMark(i+1)) {
+				accentuated.push(end);
+				ended = true;
+			} else if (isFlatAccentMark(i+1)) {
+				accentuated.push(flat_end);
+				ended = true;
+			} else if (!ended && started) {
+				accentuated.push(middle);
+			} else {
+				accentuated.push(empty);
+			}
+			accentuated.push(word.charAt(i));
+			accentuated.push("</span>");
 		}
-		accentuated.push(word.charAt(i));
-		accentuated.push("</span>");
+	} else {
+		for (var i = 0, len = word.length; i < len; i++) {
+	
+			if (isAccentMark(i)) {
+				continue;
+			} else if (word.length === 1) {
+				accentuated.push(start_end_flat_short);
+			} else if (i === 0 && isAccentMark(i+1)) {
+				accentuated.push(start_end);
+				ended = true;
+			} else if (i === 1 && !ended && isAccentMark(i+1)) {
+				accentuated.push(peak);
+				ended = true;
+			} else if (i === 1 && !ended && i === len-1) {
+				accentuated.push(start_end_flat);
+			} else if (i === 1 && !ended) {
+				accentuated.push(start);
+			} else if (i > 1 && !ended && i === len-1) {
+				accentuated.push(flat_end);
+			} else if (i > 1 && !ended && isAccentMark(i+1)) {
+				accentuated.push(end);
+				ended = true;
+			} else if (i > 1 && !ended && !isAccentMark(i+1)) {
+				accentuated.push(middle);
+			} else {
+				accentuated.push(empty);
+			}
+			accentuated.push(word.charAt(i));
+			accentuated.push("</span>");
+		}
 	}
 	return accentuated.join("");
 }

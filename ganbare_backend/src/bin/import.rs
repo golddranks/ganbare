@@ -42,7 +42,7 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
         let mut word = path.file_stem().unwrap().to_str().unwrap().nfc().collect::<String>();
         let last_char = word.chars().next_back().expect("The word surely is longer than 0 characters!");
 
-        if word.chars().filter(|c| c == &'・' || c == &'*').count() > 1 {
+        if !sentences && word.chars().filter(|c| c == &'・' || c == &'*').count() > 1 {
             panic!("Invalid filename! More than one accent marks: {:?}", word);
         }
         if sentences && !word.contains('、') {
@@ -53,18 +53,6 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
             word.pop();
         }
 
-        let nugget;
-
-        if sentences {
-            word = {
-                let mut word_split = word.split('、');
-                nugget = word_split.next().unwrap().to_owned();
-                word_split.next().unwrap().to_owned()
-            };
-        } else {
-            nugget = word.replace("*", "").replace("・", "");
-        };
-
         let temp_file_path = tmp_dir.path().join(f.file_name());
 
         std::fs::copy(path, &temp_file_path).expect("copying files");
@@ -74,18 +62,70 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
         use std::str::FromStr;
         let mime = mime::Mime::from_str("audio/mpeg").unwrap();
 
+        let files = vec![(temp_file_path, Some(file_name), mime)];
 
-        let w = manage::NewWordFromStrings {
-            word,
-            explanation: "".into(),
-            nugget,
-            narrator: narrator,
-            files: vec![(temp_file_path, Some(file_name), mime)],
+        let w = if sentences {
+            full_sentence(&conn, &word, narrator, files)
+        } else {
+            simple_word(&word, narrator, files)
         };
-        
+
         println!("{:?}", w);
 
         manage::create_or_update_word(&conn, w, &AUDIO_DIR).unwrap();
+    }
+}
+
+fn full_sentence<'a>(conn: &PgConnection, filename: &str, narrator: &'a str, files: Vec<(PathBuf, Option<String>, mime::Mime)>) -> manage::NewWordFromStrings<'a> {
+
+    let mut word_split = filename.split('、');
+    let mut word = word_split.next().unwrap().to_owned();
+    let sentence = word_split.next().unwrap().to_owned();
+
+    let nugget = word.replace("・", "");
+
+    println!("{:?}", &word);
+    use schema::words;
+    let explanation: String = words::table
+        .filter(words::word.eq(&word))
+        .select(words::explanation)
+        .get_result(conn).unwrap();
+
+    if !word.contains('・') {
+        word.push('＝');
+    }
+
+    let second_codepoint = word.char_indices().nth(1).unwrap().0;
+    if word.chars().nth(1).unwrap() == '・' {
+        word.insert(0, '／');
+    } else {
+        word.insert(second_codepoint, '／');
+    }
+
+    let sentence = sentence.replace(&nugget, &word);
+
+    manage::NewWordFromStrings {
+        word: sentence,
+        explanation,
+        nugget,
+        narrator,
+        files,
+        skill_level: 2,
+    }
+}
+
+fn simple_word<'a>(filename: &str, narrator: &'a str, files: Vec<(PathBuf, Option<String>, mime::Mime)>) -> manage::NewWordFromStrings<'a> {
+
+    let nugget = filename.replace("*", "").replace("・", "");
+    let word = filename.to_owned();
+
+    manage::NewWordFromStrings {
+        word,
+        explanation: "".into(),
+        nugget,
+        narrator,
+        files,
+        skill_level: 0,
     }
 }
 
