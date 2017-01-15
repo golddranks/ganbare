@@ -520,7 +520,9 @@ fn choose_random_overdue_item_include_cooldown(conn : &PgConnection, user_id: i3
 }
 
 fn choose_new_question(conn : &PgConnection, user_id : i32) -> Result<Option<QuizQuestion>> {
+    use diesel::expression::dsl::*;
     use schema::{quiz_questions, question_data, due_items, skill_data};
+    /*
     let dues = due_items::table
         .inner_join(question_data::table)
         .select(question_data::question_id)
@@ -528,7 +530,7 @@ fn choose_new_question(conn : &PgConnection, user_id : i32) -> Result<Option<Qui
 
     let skills = skill_data::table
         .select(skill_data::skill_nugget)
-        .filter(skill_data::skill_level.gt(1)) // Take only skills with level >= 2 (=both words introduced) before
+        .filter(skill_data::skill_level.ge(2)) // Take only skills with level >= 2 (=both words introduced) before
         .filter(skill_data::user_id.eq(user_id));
 
     let new_question : Option<QuizQuestion> = quiz_questions::table
@@ -538,12 +540,51 @@ fn choose_new_question(conn : &PgConnection, user_id : i32) -> Result<Option<Qui
         .order(sql::random)
         .first(conn)
         .optional()?;
+*/
+    let new_question : Option<QuizQuestion> = sql::<(
+        diesel::types::Integer,
+        diesel::types::Integer,
+        diesel::types::Text,
+        diesel::types::Text,
+        diesel::types::Text,
+        diesel::types::Bool,
+        diesel::types::Integer,
+        )>(&format!(r###"
+SELECT
+    id,
+    skill_id,
+    q_name,
+    q_explanation,
+    question_text,
+    published,
+    q.skill_level,
+FROM
+    quiz_questions AS q
+    LEFT OUTER JOIN
+    (
+        SELECT
+            skill_level,
+            skill_nugget
+        FROM skill_data
+        WHERE user_id={}
+    ) AS s
+    ON skill_nugget=skill_id
+WHERE
+    q.skill_level <= COALESCE(s.skill_level, 0) AND
+    q.published = true AND
+    q.id NOT IN ( SELECT question_id FROM due_items JOIN question_data ON id=due WHERE user_id={} )
+ORDER BY RANDOM();
+"###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
+        .get_result(conn)
+        .optional()?;
 
     Ok(new_question)
 }
 
 fn choose_new_exercise(conn : &PgConnection, user_id : i32) -> Result<Option<Exercise>> {
+    use diesel::expression::dsl::*;
     use schema::{exercises, exercise_data, due_items, skill_data};
+    /*
     let dues = due_items::table
         .inner_join(exercise_data::table)
         .select(exercise_data::exercise_id)
@@ -551,7 +592,7 @@ fn choose_new_exercise(conn : &PgConnection, user_id : i32) -> Result<Option<Exe
 
     let skills = skill_data::table
         .select(skill_data::skill_nugget)
-        .filter(skill_data::skill_level.gt(1)) // Take only skills with level >= 2 (=both words introduced) before
+        .filter(skill_data::skill_level.ge(2)) // Take only skills with level >= 2 (=both words introduced) before
         .filter(skill_data::user_id.eq(user_id));
 
     let new_exercise : Option<Exercise> = exercises::table
@@ -560,6 +601,37 @@ fn choose_new_exercise(conn : &PgConnection, user_id : i32) -> Result<Option<Exe
         .filter(exercises::published.eq(true))
         .order(sql::random)
         .first(conn)
+        .optional()?;
+*/
+    let new_exercise : Option<Exercise> = sql::<(
+        diesel::types::Integer,
+        diesel::types::Integer,
+        diesel::types::Bool,
+        diesel::types::Integer,
+        )>(&format!(r###"
+SELECT
+    id,
+    skill_id,
+    published,
+    e.skill_level
+FROM
+    exercises AS e
+    LEFT OUTER JOIN
+    (
+        SELECT
+            skill_level,
+            skill_nugget
+        FROM skill_data
+        WHERE user_id={}
+    ) AS s
+    ON skill_nugget=skill_id
+WHERE
+    e.skill_level <= COALESCE(s.skill_level, 0) AND
+    e.published = true AND
+    e.id NOT IN ( SELECT exercise_id FROM due_items JOIN exercise_data ON id=due WHERE user_id={} )
+ORDER BY RANDOM();
+"###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
+        .get_result(conn)
         .optional()?;
 
     Ok(new_exercise)
@@ -621,39 +693,84 @@ fn choose_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Res
     Ok(None)
 }
 
+/// Choose a new word by random. The word must be published, the required skill level of the word must be smaller
+/// than the user's level on the corresponding skill and the word must not be seen before.
 fn choose_new_random_word(conn : &PgConnection, user_id : i32) -> Result<Option<Word>> {
     use diesel::expression::dsl::*;
-    use schema::{pending_items, words, w_asked_data};
+    use schema::{pending_items, words, w_asked_data, skill_data};
 
+/* // Diesel doesn't support this complex queries yet, so doing it directly in SQL
     let seen = pending_items::table
         .inner_join(w_asked_data::table)
         .select(w_asked_data::word_id)
         .filter(pending_items::user_id.eq(user_id));
 
     let new_word : Option<Word> = words::table
+        .left_outer_join(skill_data::table)
         .filter(words::id.ne(all(seen)))
         .filter(words::published.eq(true))
         .order(sql::random)
         .first(conn)
         .optional()?;
+*/
+    let new_word : Option<Word> = sql::<(
+        diesel::types::Integer,
+        diesel::types::Text,
+        diesel::types::Text,
+        diesel::types::Integer,
+        diesel::types::Integer,
+        diesel::types::Bool,
+        diesel::types::Integer,
+        )>(&format!(r###"
+SELECT
+    id,
+    word,
+    explanation,
+    audio_bundle,
+    words.skill_nugget,
+    published,
+    words.skill_level
+FROM
+    words
+    LEFT OUTER JOIN
+    (
+        SELECT
+            skill_level,
+            skill_nugget
+        FROM skill_data
+        WHERE user_id={}
+    ) AS skill_data
+    ON skill_data.skill_nugget=words.skill_nugget
+WHERE
+    words.skill_level <= COALESCE(skill_data.skill_level, 0) AND
+    words.published = true AND
+    words.id NOT IN ( SELECT word_id FROM pending_items JOIN w_asked_data ON pending_items.id=w_asked_data.id WHERE user_id={} )
+ORDER BY RANDOM();
+"###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
+        .get_result(conn)
+        .optional()?;
 
     Ok(new_word)
 }
 
+/// Choose a new word by random. The word must be published, the required skill level of the word must be smaller
+/// than the user's level on the corresponding skill and the word must not be seen before. Additionally, the user's
+/// skill level on the corresponding skill must be greater than zero. This ensures that only words of skills that the user
+/// has experience with are selected.
 fn choose_new_paired_word(conn : &PgConnection, user_id : i32) -> Result<Option<Word>> {
     use diesel::expression::dsl::*;
     use schema::{pending_items, words, w_asked_data, skill_nuggets, skill_data};
-
+/*
     let seen = pending_items::table
         .inner_join(w_asked_data::table)
-        .select(w_asked_data::word_id)
-        .filter(pending_items::user_id.eq(user_id));
+        .filter(pending_items::user_id.eq(user_id))
+        .select(w_asked_data::word_id);
 
     let other_pair_seen = skill_nuggets::table
         .inner_join(skill_data::table)
-        .select(skill_nuggets::id)
         .filter(skill_data::user_id.eq(user_id))
-        .filter(skill_data::skill_level.gt(0));
+        .filter(skill_data::skill_level.gt(0))
+        .select(skill_nuggets::id);
 
     let new_word : Option<Word> = words::table
         .filter(words::id.ne(all(seen)))
@@ -661,6 +778,44 @@ fn choose_new_paired_word(conn : &PgConnection, user_id : i32) -> Result<Option<
         .filter(words::skill_nugget.eq(any(other_pair_seen)))
         .order(sql::random)
         .first(conn)
+        .optional()?;
+*/
+    let new_word : Option<Word> = sql::<(
+        diesel::types::Integer,
+        diesel::types::Text,
+        diesel::types::Text,
+        diesel::types::Integer,
+        diesel::types::Integer,
+        diesel::types::Bool,
+        diesel::types::Integer,
+        )>(&format!(r###"
+SELECT
+    id,
+    word,
+    explanation,
+    audio_bundle,
+    words.skill_nugget,
+    published,
+    words.skill_level
+FROM
+    words
+    LEFT OUTER JOIN
+    (
+        SELECT
+            skill_level,
+            skill_nugget
+        FROM skill_data
+        WHERE user_id={}
+    ) AS skill_data
+    ON skill_data.skill_nugget=words.skill_nugget
+WHERE
+    COALESCE(skill_data.skill_level, 0) > 0 AND
+    words.skill_level <= COALESCE(skill_data.skill_level, 0) AND
+    words.published = true AND
+    words.id NOT IN ( SELECT word_id FROM pending_items JOIN w_asked_data ON pending_items.id=w_asked_data.id WHERE user_id={} )
+ORDER BY RANDOM();
+"###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
+        .get_result(conn)
         .optional()?;
 
     Ok(new_word)

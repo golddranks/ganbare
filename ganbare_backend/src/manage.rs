@@ -90,6 +90,7 @@ pub struct NewWordFromStrings<'a> {
     pub nugget: String,
     pub narrator: &'a str,
     pub files: Vec<(PathBuf, Option<String>, mime::Mime)>,
+    pub skill_level: i32,
 }
 
 #[derive(Debug)]
@@ -136,6 +137,7 @@ pub fn create_or_update_word(conn : &PgConnection, w: NewWordFromStrings, audio_
         .optional()?;
 
     if let Some(word) = word {
+        info!("The word existed already. Returning.");
         return Ok(word);
     } else {
         let new_word = NewWord {
@@ -143,6 +145,7 @@ pub fn create_or_update_word(conn : &PgConnection, w: NewWordFromStrings, audio_
             explanation: &w.explanation,
             audio_bundle: bundle.id,
             skill_nugget: nugget.id,
+            skill_level: w.skill_level,
         };
     
         let word = diesel::insert(&new_word)

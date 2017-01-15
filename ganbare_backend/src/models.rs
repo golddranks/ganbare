@@ -307,6 +307,7 @@ pub struct NewWord<'a> {
     pub explanation: &'a str,
     pub audio_bundle: i32,
     pub skill_nugget: i32,
+    pub skill_level: i32,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, AsChangeset)]
@@ -322,6 +323,7 @@ pub struct Word {
     pub audio_bundle: i32,
     pub skill_nugget: i32,
     pub published: bool,
+    pub skill_level: i32,
 }
 
 #[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
@@ -332,6 +334,7 @@ pub struct UpdateWord {
     pub audio_bundle: Option<i32>,
     pub skill_nugget: Option<i32>,
     pub published: Option<bool>,
+    pub skill_level: Option<i32>,
 }
 
 #[derive(Insertable, Identifiable, Queryable, Associations, Debug, AsChangeset)]
@@ -483,8 +486,9 @@ pub struct NewSkillData {
     pub skill_level: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Identifiable, Insertable, Queryable, Associations, Debug, AsChangeset)]
 #[table_name="skill_data"]
+#[primary_key(user_id, skill_nugget)]
 #[belongs_to(User, foreign_key = "user_id")]
 #[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
 pub struct SkillData {
