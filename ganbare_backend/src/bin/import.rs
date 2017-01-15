@@ -36,8 +36,8 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
     for f in files {
         let f = f.unwrap();
         let path = f.path();
-        let extension = if let Some(Some(e)) = path.extension().map(|s|s.to_str()) { e } else { continue }.to_string();
-        let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+        let extension = if let Some(Some(e)) = path.extension().map(|s|s.to_str()) { e } else { continue }.to_owned();
+        let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
 
         let mut word = path.file_stem().unwrap().to_str().unwrap().nfc().collect::<String>();
         let last_char = word.chars().next_back().expect("The word surely is longer than 0 characters!");
