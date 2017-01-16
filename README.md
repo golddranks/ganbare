@@ -14,7 +14,7 @@ The server is configured using environmental variables, or an `.env` file in the
 
 The following have defaults, and you may omit them:
 
-    GANBARE_PARANOID Whether HTTPS is required and whether the cookies are sent with "Secure" flag. Also strictens the anti-CSRF measures. (Prevents even GET to the HTTP API) Defaults to true.
+    GANBARE_PARANOID Defaults to true. When on, HTTPS is required. Cookies are sent with "Secure" flag. Strictens the anti-CSRF measures. (Checks Origin & Referer of all mutating HTTP METHODS, and prevents even non-mutating requests to the HTTP API) Enforces ContentSecurityPolicy as an anti-XSS measure.
     GANBARE_EMAIL_SMTP_USERNAME SMTP username. Defaults to empty string.
     GANBARE_EMAIL_SMTP_PASSWORD password. Defaults to empty string.
     GANBARE_SITE_LINK defaults to http://$GANBARE_SITE_DOMAIN:8081. This is used, for example, in email messages to link to the site.
@@ -27,6 +27,7 @@ The following have defaults, and you may omit them:
     GANBARE_USER_AUDIO_DIR defaults to "user_audio" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
     GANBARE_AUDIO_DIR defaults to "audio" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
     GANBARE_IMAGES_DIR defaults to "images" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
+    GANBARE_CONTENT_SECURITY_POLICY Sets the contents of Content-Security-Policy header. Defaults to "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com"
 
 During build, you need the following: 
 

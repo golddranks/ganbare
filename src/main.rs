@@ -7,6 +7,7 @@
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 #[macro_use] extern crate mime;
+#[macro_use] extern crate hyper;
 
 
 pub extern crate ganbare_backend;
@@ -15,7 +16,6 @@ extern crate try_map;
 extern crate pencil;
 extern crate dotenv;
 extern crate env_logger;
-extern crate hyper;
 extern crate time;
 extern crate rustc_serialize;
 extern crate rand;
@@ -142,6 +142,18 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
     None
 }
 
+fn set_headers(resp: &mut pencil::Response) {
+    use hyper::header::*;
+
+    header! {
+        (ContentSecurityPolicy, "Content-Security-Policy") => [String]
+    }
+
+    if *PARANOID {
+        resp.headers.set(ContentSecurityPolicy ( CONTENT_SECURITY_POLICY.clone() ));
+        resp.headers.set(StrictTransportSecurity { include_subdomains: true, max_age: 31536000 });
+    }
+}
 
 use pencil::Pencil;
 
@@ -161,6 +173,7 @@ pub fn main() {
     
     app.enable_static_file_handling();
     app.before_request(csrf_check);
+    app.after_request(set_headers);
 
     // DEBUGGING
     #[cfg(debug_assertions)]

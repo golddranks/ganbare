@@ -86,6 +86,9 @@ lazy_static! {
     pub static ref BUILD_NUMBER : String = { dotenv::dotenv().ok(); env::var("GANBARE_BUILD_NUMBER")
         .unwrap_or_else(|_| "not set".into()) };
 
+    pub static ref CONTENT_SECURITY_POLICY : String = { dotenv::dotenv().ok(); env::var("GANBARE_CONTENT_SECURITY_POLICY")
+        .unwrap_or_else(|_| "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com".into()) };
+
 }
 
 pub fn db_connect() -> Result<PgConnection> {
