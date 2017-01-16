@@ -1,0 +1,14 @@
+{{#partial main_section}}
+
+	<header>
+		<h1>{{ title }}</h1>
+		<p>Tieteellinen koe japanin ääntämyksestä</p>
+	</header>
+	<hr />
+	<p>Ohi on!</p>
+	<p>Nyt pääset varsinaisen harjoittelun pariin.</p>
+	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
+
+{{/partial}}
+
+{{~> base.html ~}}

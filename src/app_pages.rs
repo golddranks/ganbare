@@ -18,12 +18,18 @@ fn dispatch_events(conn: &PgConnection, user: &User)
     
     let redirect = match &*event.name {
         "welcome" => redirect("/welcome", 303),
+        "agreement" => redirect("/agreement", 303),
+        "info" => redirect("/info", 303),
         "survey" => redirect("/survey", 303),
+        "pretest_info" => redirect("/pretest_info", 303),
         "pretest" => redirect("/pretest", 303),
         "pretest_retelling" => redirect("/pretest_retelling", 303),
+        "pretest_done" => redirect("/pretest_done", 303),
         "sorting_ceremony" => redirect("/sorting_ceremony", 303),
+        "posttest_info" => redirect("/posttest_info", 303),
         "posttest" => redirect("/posttest", 303),
         "posttest_retelling" => redirect("/posttest_retelling", 303),
+        "posttest_done" => redirect("/posttest_done", 303),
         ename => return Err(internal_error(&format!("I don't know how to handle event {}!", ename))),
     };
 
@@ -84,13 +90,20 @@ pub fn survey(req: &mut Request) -> PencilResult {
         .refresh_cookie(&sess)
 }
 
-pub fn welcome(req: &mut Request) -> PencilResult { 
+pub fn text_pages(req: &mut Request) -> PencilResult { 
     let (conn, user, sess) = auth_user(req, "")?;
-    event::require_ongoing(&conn, "welcome", &user).err_401()?;
+
+    let endpoint_string = req.endpoint().expect("Pencil guarantees that this is always set.");
+    let endpoint = endpoint_string.as_ref();
+
+    event::require_ongoing(&conn, endpoint, &user).err_401()?;
     let mut context = new_template_context();
-    context.insert("event_name".into(), "welcome".into());
+    context.insert("event_name".into(), endpoint.into());
+
+    let mut template = endpoint.to_owned();
+    template.push_str(".html");
     req.app
-        .render_template("welcome.html", &context)
+        .render_template(&template, &context)
         .refresh_cookie(&sess)
 }
 

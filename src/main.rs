@@ -169,7 +169,8 @@ pub fn main() {
    
     include_templates!(app, "templates", "base.html", "fresh_install.html", "welcome.html", "join.html", "reset_password.html", "send_mail.html", "retelling.html",
         "hello.html", "main.html", "confirm.html", "add_quiz.html", "add_word.html", "survey.html", "audio.html", "send_pw_reset_email.html", "events.html",
-        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html", "slacker_heatenings.html");
+        "manage.html", "change_password.html", "add_users.html", "email_confirm_email.html", "pw_reset_email.html", "users.html", "slacker_heatenings.html",
+        "agreement.html", "info.html", "pretest_info.html", "pretest_done.html", "posttest_info.html", "posttest_done.html");
     
     app.enable_static_file_handling();
     app.before_request(csrf_check);
@@ -182,13 +183,19 @@ pub fn main() {
     // BASIC FUNCTIONALITY
     app.get("/favicon.ico", "favicon", favicon);
     app.get("/", "hello", app_pages::hello);
-    app.get("/welcome", "welcome", app_pages::welcome);
+    app.get("/welcome", "welcome", app_pages::text_pages);
+    app.get("/agreement", "agreement", app_pages::text_pages);
+    app.get("/info", "info", app_pages::text_pages);
     app.get("/survey", "survey", app_pages::survey);
-    app.get("/pretest_retelling", "pretest_retelling", app_pages::retelling);
-    app.get("/posttest_retelling", "posttest_retelling", app_pages::retelling);
+    app.get("/pretest_info", "pretest_info", app_pages::text_pages);
     app.get("/pretest", "pretest", app_pages::pre_post_test);
+    app.get("/pretest_retelling", "pretest_retelling", app_pages::retelling);
+    app.get("/pretest_done", "pretest_done", app_pages::text_pages);
     app.get("/sorting", "sorting", app_pages::sorting_ceremony);
+    app.get("/posttest_info", "pretest_info", app_pages::text_pages);
     app.get("/posttest", "posttest", app_pages::pre_post_test);
+    app.get("/posttest_retelling", "posttest_retelling", app_pages::retelling);
+    app.get("/posttest_done", "posttest_done", app_pages::text_pages);
     app.post("/ok", "ok", app_pages::ok);
     app.get("/login", "login_form", app_pages::login_form);
     app.post("/login", "login_post", app_pages::login_post);

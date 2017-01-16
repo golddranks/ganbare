@@ -1,0 +1,17 @@
+{{#partial main_section}}
+
+	<header>
+		<h1>{{ title }}</h1>
+		<p>Tieteellinen koe japanin ääntämyksestä</p>
+	</header>
+	<hr />
+	<h2>Suostumus tietojen keräämiseen</h2>
+	<p>Tämä ohjelma kerää tietoja käyttäjästään. </p>
+	<form action="/ok" method="post">
+		<input type="checkbox" id="agree" name="agree"><label for="agree">hyväksyn</label>
+		<button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok">
+	</form>
+
+{{/partial}}
+
+{{~> base.html ~}}

@@ -1,0 +1,12 @@
+INSERT INTO events (name, published, required_group, priority) VALUES ('agreement', false, (SELECT id FROM user_groups WHERE group_name='subjects'), 1);
+UPDATE events SET priority=2 WHERE id=(SELECT id FROM events WHERE name='survey');
+INSERT INTO events (name, published, required_group, priority) VALUES ('info', false, (SELECT id FROM user_groups WHERE group_name='subjects'), 3);
+INSERT INTO events (name, published, required_group, priority) VALUES ('pretest_info', false, (SELECT id FROM user_groups WHERE group_name='subjects'), 4);
+UPDATE events SET priority=5 WHERE id=(SELECT id FROM events WHERE name='pretest');
+UPDATE events SET priority=6 WHERE id=(SELECT id FROM events WHERE name='pretest_retelling');
+INSERT INTO events (name, published, required_group, priority) VALUES ('pretest_done', false, (SELECT id FROM user_groups WHERE group_name='subjects'), 7);
+UPDATE events SET priority=8 WHERE id=(SELECT id FROM events WHERE name='sorting_ceremony');
+INSERT INTO events (name, published, required_group, priority) VALUES ('posttest_info', false, (SELECT id FROM user_groups WHERE group_name='subjects'), 9);
+UPDATE events SET priority=10 WHERE id=(SELECT id FROM events WHERE name='posttest');
+UPDATE events SET priority=11 WHERE id=(SELECT id FROM events WHERE name='posttest_retelling');
+INSERT INTO events (name, published, required_group, priority) VALUES ('posttest_done', false, (SELECT id FROM user_groups WHERE group_name='subjects'), 12);
