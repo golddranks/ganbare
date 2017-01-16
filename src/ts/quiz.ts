@@ -4,7 +4,11 @@
 
 $(function() {
 
-function accentuate(word: string): string {
+function accentuate(word: string, showAccent: boolean): string {
+	
+	if (!showAccent) {		
+		return word.replace("・", "").replace("*", "");		
+	}
 
 	var empty = '<span class="accent">';
 	var middle = '<span class="accent" style="background-image: url(/static/images/accent_middle.png);">';
@@ -176,7 +180,7 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 			callback(true, startCB, finishedCB, doneCB);
 		}
 	} else {
-		callback(false, ()=>{}, finishedCB, (afterDone: ()=>void)=>{ afterDone(); });
+		callback(false, ()=>{}, ()=>{}, (afterDone: ()=>void)=>{ afterDone(); });
 	}
 
 }

@@ -244,6 +244,37 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			});
 
 			var c_edit = $('<input type="button" value="show" class="linklike">').appendTo(c_info);
+			var skill_label = $('<label class="bordered weak" style="display: inline-block">Skill:</label>').appendTo(c_info);
+			var skill_level = $('<input type="number" class="compact" value="'+word.skill_level+'" class="linklike">').appendTo(skill_label);
+			skill_level.change(function() {
+				let updated_value = $(this).val();
+				$.ajax({
+					type: 'PUT',
+					url: "/api/words/"+word.id,
+					contentType: "application/json",
+					data: JSON.stringify({skill_level: updated_value}),
+					success: function(resp) {
+						word.skill_level = updated_value;
+						console.log("Updated skill_level!");
+					},
+				});
+			});
+
+			var priority_label = $('<label class="bordered weak" style="display: inline-block">Priority:</label>').appendTo(c_info);
+			var priority_level = $('<input type="number" class="compact" value="'+word.priority+'" class="linklike">').appendTo(priority_label);
+			priority_level.change(function() {
+				let updated_value = $(this).val();
+				$.ajax({
+					type: 'PUT',
+					url: "/api/words/"+word.id,
+					contentType: "application/json",
+					data: JSON.stringify({priority: updated_value}),
+					success: function(resp) {
+						word.priority = updated_value;
+						console.log("Updated priority!");
+					},
+				});
+			});
 
 			createBundle(word.audio_bundle, c_info, function(updated_value, update_bundle_cb) {
 				$.ajax({
@@ -374,6 +405,22 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 
 			var c_edit = $('<input type="button" value="show" class="linklike">').appendTo(c_info);
+
+			var skill_label = $('<label class="bordered weak" style="display: inline-block">Skill:</label>').appendTo(c_info);
+			var skill_level = $('<input type="number" class="compact" value="'+question.skill_level+'" class="linklike">').appendTo(skill_label);
+			skill_level.change(function() {
+				let updated_value = $(this).val();
+				$.ajax({
+					type: 'PUT',
+					url: "/api/questions/"+question.id,
+					contentType: "application/json",
+					data: JSON.stringify({skill_level: updated_value}),
+					success: function(resp) {
+						question.skill_level = updated_value;
+						console.log("Updated skill_level!");
+					},
+				});
+			});
 
 			answers.forEach(function(ans) {
 				createBundle(ans.q_audio_bundle, c_info, function(updated_value, update_bundle_cb) {
@@ -536,6 +583,22 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 					request.url = '/api/exercises/'+exercise.id+'?unpublish';
 				};
 				$.ajax(request);
+			});
+
+			var skill_label = $('<label class="bordered weak" style="display: inline-block">Skill:</label>').appendTo(c_info);
+			var skill_level = $('<input type="number" class="compact" value="'+exercise.skill_level+'" class="linklike">').appendTo(skill_label);
+			skill_level.change(function() {
+				let updated_value = $(this).val();
+				$.ajax({
+					type: 'PUT',
+					url: "/api/exercises/"+exercise.id,
+					contentType: "application/json",
+					data: JSON.stringify({skill_level: updated_value}),
+					success: function(resp) {
+						exercise.skill_level = updated_value;
+						console.log("Updated skill_level!");
+					},
+				});
 			});
 
 		};

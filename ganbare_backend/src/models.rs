@@ -308,6 +308,7 @@ pub struct NewWord<'a> {
     pub audio_bundle: i32,
     pub skill_nugget: i32,
     pub skill_level: i32,
+    pub priority: i32,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, AsChangeset)]
@@ -324,6 +325,7 @@ pub struct Word {
     pub skill_nugget: i32,
     pub published: bool,
     pub skill_level: i32,
+    pub priority: i32,
 }
 
 #[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
@@ -335,6 +337,7 @@ pub struct UpdateWord {
     pub skill_nugget: Option<i32>,
     pub published: Option<bool>,
     pub skill_level: Option<i32>,
+    pub priority: Option<i32>,
 }
 
 #[derive(Insertable, Identifiable, Queryable, Associations, Debug, AsChangeset)]

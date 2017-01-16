@@ -1,6 +1,5 @@
 use super::*;
 use rand::{Rng, thread_rng};
-use diesel::expression::dsl::{all, any};
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Debug, Clone, RustcEncodable)]
@@ -521,8 +520,8 @@ fn choose_random_overdue_item_include_cooldown(conn : &PgConnection, user_id: i3
 
 fn choose_new_question(conn : &PgConnection, user_id : i32) -> Result<Option<QuizQuestion>> {
     use diesel::expression::dsl::*;
-    use schema::{quiz_questions, question_data, due_items, skill_data};
     /*
+    use schema::{quiz_questions, question_data, due_items, skill_data};
     let dues = due_items::table
         .inner_join(question_data::table)
         .select(question_data::question_id)
@@ -557,7 +556,7 @@ SELECT
     q_explanation,
     question_text,
     published,
-    q.skill_level,
+    q.skill_level
 FROM
     quiz_questions AS q
     LEFT OUTER JOIN
@@ -583,8 +582,8 @@ ORDER BY RANDOM();
 
 fn choose_new_exercise(conn : &PgConnection, user_id : i32) -> Result<Option<Exercise>> {
     use diesel::expression::dsl::*;
-    use schema::{exercises, exercise_data, due_items, skill_data};
     /*
+    use schema::{exercises, exercise_data, due_items, skill_data};
     let dues = due_items::table
         .inner_join(exercise_data::table)
         .select(exercise_data::exercise_id)
@@ -688,7 +687,7 @@ fn choose_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Res
         return Ok(Some(quiztype))
     }
     
-    debug!("No quiz items at all; returning.");
+    debug!("No overdue or new quiz items; returning.");
 
     Ok(None)
 }
@@ -697,9 +696,9 @@ fn choose_q_or_e(conn: &PgConnection, user: &User, metrics: &UserMetrics) -> Res
 /// than the user's level on the corresponding skill and the word must not be seen before.
 fn choose_new_random_word(conn : &PgConnection, user_id : i32) -> Result<Option<Word>> {
     use diesel::expression::dsl::*;
-    use schema::{pending_items, words, w_asked_data, skill_data};
 
 /* // Diesel doesn't support this complex queries yet, so doing it directly in SQL
+    use schema::{pending_items, words, w_asked_data, skill_data};
     let seen = pending_items::table
         .inner_join(w_asked_data::table)
         .select(w_asked_data::word_id)
@@ -721,6 +720,7 @@ fn choose_new_random_word(conn : &PgConnection, user_id : i32) -> Result<Option<
         diesel::types::Integer,
         diesel::types::Bool,
         diesel::types::Integer,
+        diesel::types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -729,7 +729,8 @@ SELECT
     audio_bundle,
     words.skill_nugget,
     published,
-    words.skill_level
+    words.skill_level,
+    priority
 FROM
     words
     LEFT OUTER JOIN
@@ -745,7 +746,7 @@ WHERE
     words.skill_level <= COALESCE(skill_data.skill_level, 0) AND
     words.published = true AND
     words.id NOT IN ( SELECT word_id FROM pending_items JOIN w_asked_data ON pending_items.id=w_asked_data.id WHERE user_id={} )
-ORDER BY RANDOM();
+ORDER BY words.priority DESC, RANDOM();
 "###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
         .get_result(conn)
         .optional()?;
@@ -759,8 +760,8 @@ ORDER BY RANDOM();
 /// has experience with are selected.
 fn choose_new_paired_word(conn : &PgConnection, user_id : i32) -> Result<Option<Word>> {
     use diesel::expression::dsl::*;
-    use schema::{pending_items, words, w_asked_data, skill_nuggets, skill_data};
 /*
+    use schema::{pending_items, words, w_asked_data, skill_nuggets, skill_data};
     let seen = pending_items::table
         .inner_join(w_asked_data::table)
         .filter(pending_items::user_id.eq(user_id))
@@ -788,6 +789,7 @@ fn choose_new_paired_word(conn : &PgConnection, user_id : i32) -> Result<Option<
         diesel::types::Integer,
         diesel::types::Bool,
         diesel::types::Integer,
+        diesel::types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -796,7 +798,8 @@ SELECT
     audio_bundle,
     words.skill_nugget,
     published,
-    words.skill_level
+    words.skill_level,
+    priority
 FROM
     words
     LEFT OUTER JOIN
@@ -813,7 +816,7 @@ WHERE
     words.skill_level <= COALESCE(skill_data.skill_level, 0) AND
     words.published = true AND
     words.id NOT IN ( SELECT word_id FROM pending_items JOIN w_asked_data ON pending_items.id=w_asked_data.id WHERE user_id={} )
-ORDER BY RANDOM();
+ORDER BY words.priority DESC, RANDOM();
 "###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
         .get_result(conn)
         .optional()?;
@@ -1172,7 +1175,7 @@ pub fn get_exercise_id(conn: &PgConnection, skill_summary: &str) -> Result<i32> 
 
     Ok(exercises::table
         .inner_join(skill_nuggets::table)
-        .filter(skill_nuggets::skill_summary.eq(skill_summary).and(exercises::skill_level.lt(3)))
+        .filter(skill_nuggets::skill_summary.eq(skill_summary).and(exercises::skill_level.le(2)))
         .select(exercises::id)
         .get_result(conn)?)
 }
@@ -1182,7 +1185,7 @@ pub fn get_question_id(conn: &PgConnection, skill_summary: &str) -> Result<i32> 
 
     Ok(quiz_questions::table
         .inner_join(skill_nuggets::table)
-        .filter(skill_nuggets::skill_summary.eq(skill_summary).and(quiz_questions::skill_level.lt(3)))
+        .filter(skill_nuggets::skill_summary.eq(skill_summary).and(quiz_questions::skill_level.le(2)))
         .select(quiz_questions::id)
         .get_result(conn)?)
 }

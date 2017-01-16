@@ -76,6 +76,10 @@
 			padding: 0 0.2em 0 0.2em;
 		}
 
+		input[type="number"].compact {
+			width: 3em;
+		}
+
 		#buttonContainer {
 			display: table;
 			margin: auto;

@@ -407,6 +407,15 @@ pub fn update_item(req: &mut Request) -> PencilResult {
             json = jsonify(&updated_item);
 
         },
+        "update_exercise" => {
+
+            let item = rustc_serialize::json::decode(&text)
+                            .map_err(|_| abort(400).unwrap_err())?;
+        
+            let updated_item = try_or!(manage::update_exercise(&conn, id, item).err_500()?, else return abort(404));
+
+            json = jsonify(&updated_item);
+        },
         "update_question" => {
 
             let item = rustc_serialize::json::decode(&text)

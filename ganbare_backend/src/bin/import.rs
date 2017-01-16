@@ -110,7 +110,8 @@ fn full_sentence<'a>(conn: &PgConnection, filename: &str, narrator: &'a str, fil
         nugget,
         narrator,
         files,
-        skill_level: 2,
+        skill_level: 5,
+        priority: 0,
     }
 }
 
@@ -126,6 +127,7 @@ fn simple_word<'a>(filename: &str, narrator: &'a str, files: Vec<(PathBuf, Optio
         narrator,
         files,
         skill_level: 0,
+        priority: 0,
     }
 }
 

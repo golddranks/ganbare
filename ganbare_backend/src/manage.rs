@@ -91,6 +91,7 @@ pub struct NewWordFromStrings<'a> {
     pub narrator: &'a str,
     pub files: Vec<(PathBuf, Option<String>, mime::Mime)>,
     pub skill_level: i32,
+    pub priority: i32,
 }
 
 #[derive(Debug)]
@@ -146,6 +147,7 @@ pub fn create_or_update_word(conn : &PgConnection, w: NewWordFromStrings, audio_
             audio_bundle: bundle.id,
             skill_nugget: nugget.id,
             skill_level: w.skill_level,
+            priority: w.priority,
         };
     
         let word = diesel::insert(&new_word)
@@ -216,6 +218,17 @@ pub fn update_word(conn : &PgConnection, id: i32, mut item: UpdateWord, image_di
         .optional()?;
     Ok(item)
 }
+
+pub fn update_exercise(conn : &PgConnection, id: i32, item: UpdateExercise) -> Result<Option<Exercise>> {
+    use schema::exercises;
+    let item = diesel::update(exercises::table
+        .filter(exercises::id.eq(id)))
+        .set(&item)
+        .get_result(conn)
+        .optional()?;
+    Ok(item)
+}
+
 
 pub fn update_question(conn : &PgConnection, id: i32, item: UpdateQuestion) -> Result<Option<QuizQuestion>> {
     use schema::quiz_questions;

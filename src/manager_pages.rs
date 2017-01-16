@@ -193,7 +193,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult  {
             }
         }
 
-        Ok(manage::NewWordFromStrings{word, explanation, narrator: "", nugget, files, skill_level: 0})
+        Ok(manage::NewWordFromStrings{word, explanation, narrator: "", nugget, files, skill_level: 0, priority: 0})
     }
 
     let (conn, _, sess) = auth_user(req, "editors")?;

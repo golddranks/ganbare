@@ -163,6 +163,8 @@ pub fn get_skill_nuggets(conn : &PgConnection) -> Result<Vec<(SkillNugget, (Vec<
 pub fn log_by_id(conn : &PgConnection, user_id : i32, skill_id: i32, level_increment: i32) -> Result<SkillData> {
     use schema::{skill_data};
 
+    debug!("Skill bump! Skill: {} Of user: {} Bumped by: {}", skill_id, user_id, level_increment);
+
     let skill_data : Option<SkillData> = skill_data::table
                                         .filter(skill_data::user_id.eq(user_id))
                                         .filter(skill_data::skill_nugget.eq(skill_id))
