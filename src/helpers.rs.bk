@@ -11,7 +11,7 @@ use ganbare::models::{User, Session};
 use std::net::IpAddr;
 use time;
 use std::result::Result as StdResult;
-use ganbare::errors::Result;
+use ganbare::errors::Result as Result;
 use rustc_serialize::base64::FromBase64;
 use ganbare::db;
 use ganbare::user;
@@ -96,12 +96,12 @@ pub fn db_connect() -> Result<PgConnection> {
 }
 
 
-pub fn get_cookie(cookies: &Cookie) -> Option<&str> {
+pub fn get_cookie(cookies : &Cookie) -> Option<&str> {
     for c in cookies.0.iter() {
         if c.name == "session_id" {
             return Some(c.value.as_ref());
         }
-    }
+    };
     None
 }
 
@@ -113,7 +113,7 @@ pub fn new_template_context() -> BTreeMap<String, String> {
     ctx
 }
 
-pub fn get_user(conn: &PgConnection, req: &Request) -> Result<Option<(User, Session)>> {
+pub fn get_user(conn : &PgConnection, req : &Request) -> Result<Option<(User, Session)>> {
     if let Some(sess_token) = req.cookies().and_then(get_cookie) {
         Ok(session::check(&conn, sess_token, req.remote_addr().ip())?)
     } else {
@@ -126,36 +126,29 @@ pub trait IntoIp {
 }
 
 impl IntoIp for IpAddr {
-    fn into_ip(self) -> IpAddr {
-        self
-    }
+    fn into_ip(self) -> IpAddr { self }
 }
 
 impl<'a, 'b, 'c> IntoIp for Request<'a, 'b, 'c> {
-    fn into_ip(self) -> IpAddr {
-        self.request.remote_addr.ip()
-    }
+    fn into_ip(self) -> IpAddr { self.request.remote_addr.ip() }
 }
 
 impl<'r, 'a, 'b, 'c> IntoIp for &'r mut Request<'a, 'b, 'c> {
-    fn into_ip(self) -> IpAddr {
-        self.request.remote_addr.ip()
-    }
+    fn into_ip(self) -> IpAddr { self.request.remote_addr.ip() }
 }
 
 impl<'r, 'a, 'b, 'c> IntoIp for &'r Request<'a, 'b, 'c> {
-    fn into_ip(self) -> IpAddr {
-        self.request.remote_addr.ip()
-    }
+    fn into_ip(self) -> IpAddr { self.request.remote_addr.ip() }
 }
 
-pub trait CookieProcessor {
+pub trait CookieProcessor{
     fn refresh_cookie(self, &Session) -> PencilResult;
     fn expire_cookie(self) -> Self;
 }
 
 impl CookieProcessor for Response {
-    fn refresh_cookie(mut self, sess: &Session) -> PencilResult {
+
+    fn refresh_cookie(mut self, sess : &Session) -> PencilResult {
         let mut cookie = CookiePair::new("session_id".to_owned(), session::to_hex(sess));
         cookie.path = Some("/".to_owned());
         cookie.httponly = true;
@@ -167,7 +160,7 @@ impl CookieProcessor for Response {
         self.set_cookie(SetCookie(vec![cookie]));
         Ok(self)
     }
-
+    
     fn expire_cookie(mut self) -> Self {
         let mut cookie = CookiePair::new("session_id".to_owned(), "".to_owned());
         cookie.path = Some("/".to_owned());
@@ -179,14 +172,13 @@ impl CookieProcessor for Response {
 }
 
 impl CookieProcessor for PencilResult {
-    fn refresh_cookie(self, sess: &Session) -> PencilResult {
+
+    fn refresh_cookie(self, sess : &Session) -> PencilResult {
         self.and_then(|resp| resp.refresh_cookie(sess))
     }
-
+    
     fn expire_cookie(self) -> Self {
-        self.and_then(|resp| {
-            Ok(<Response as CookieProcessor>::expire_cookie(resp))
-        })
+        self.and_then(|resp| Ok(<Response as CookieProcessor>::expire_cookie(resp)))
     }
 }
 
@@ -200,11 +192,11 @@ pub fn internal_error<T: std::fmt::Debug>(err: T) -> PencilError {
 }
 
 pub fn bad_request<T: ToString + std::fmt::Debug>(err_msg: T) -> Response {
-    warn!("Error 400: Bad request. {:?}", err_msg.to_string());
-    let body = err_msg.to_string();
-    let mut resp = pencil::Response::new(body);
-    resp.status_code = 400;
-    resp
+        warn!("Error 400: Bad request. {:?}", err_msg.to_string());
+        let body = err_msg.to_string();
+        let mut resp = pencil::Response::new(body);
+        resp.status_code = 400;
+        resp
 }
 
 pub trait ResultExt<T> {
@@ -225,9 +217,7 @@ impl<T, E: std::fmt::Debug> ResultExt<T> for StdResult<T, E> {
     }
 }
 
-pub trait CarrierInternal<T, E>
-    where E: std::fmt::Debug
-{
+pub trait CarrierInternal<T, E> where E: std::fmt::Debug {
     fn ok_or(self) -> std::result::Result<T, E>;
 }
 
@@ -239,9 +229,7 @@ impl<T> CarrierInternal<T, errors::Error> for Option<T> {
         }
     }
 }
-impl<T, E> CarrierInternal<T, E> for std::result::Result<T, E>
-    where E: std::fmt::Debug
-{
+impl<T, E> CarrierInternal<T, E> for std::result::Result<T, E> where E: std::fmt::Debug {
     fn ok_or(self) -> std::result::Result<T, E> {
         match self {
             Ok(a) => Ok(a),
@@ -285,9 +273,9 @@ macro_rules! include_templates(
 );
 
 
-pub fn auth_user(req: &mut Request,
-                 required_group: &str)
-                 -> StdResult<(PgConnection, User, Session), PencilError> {
+pub fn auth_user(req: &mut Request, required_group: &str)
+    -> StdResult<(PgConnection, User, Session), PencilError>
+{
     match try_auth_user(req)? {
         Some((conn, user, sess)) => {
             if user::check_user_group(&conn, user.id, required_group).err_500()? {
@@ -295,42 +283,33 @@ pub fn auth_user(req: &mut Request,
             } else {
                 Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
             }
-        }
+        },
         None => {
             Err(abort(401).unwrap_err()) // User isn't logged in
-        }
+        },
     }
 
 }
 
 pub fn try_auth_user(req: &mut Request)
-                     -> StdResult<Option<(PgConnection, User, Session)>, PencilError> {
+    -> StdResult<Option<(PgConnection, User, Session)>, PencilError> {
 
     let conn = db_connect().err_500()?;
 
-    if let Some((user, sess)) = get_user(&conn, req).err_500()? {
-        // User is logged in
+    if let Some((user, sess)) = get_user(&conn, req).err_500()?
+    { // User is logged in
 
         Ok(Some((conn, user, sess)))
 
-    } else {
-        // Not logged in
+    } else { // Not logged in
         Ok(None)
     }
 
 }
 
-pub fn check_env_vars() {
-    &*DATABASE_URL;
-    &*EMAIL_SERVER;
-    &*SITE_DOMAIN;
-}
+pub fn check_env_vars() { &*DATABASE_URL; &*EMAIL_SERVER; &*SITE_DOMAIN; }
 
-pub fn do_login<I: IntoIp>(conn: &PgConnection,
-                           email: &str,
-                           plaintext_pw: &str,
-                           ip: I)
-                           -> StdResult<Option<(User, Session)>, PencilError> {
+pub fn do_login<I: IntoIp>(conn: &PgConnection, email : &str, plaintext_pw : &str, ip: I) -> StdResult<Option<(User, Session)>, PencilError> {
     debug!("Logging in user: {:?}", email);
     let user = try_or!(user::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
             else return Ok(None));
@@ -351,36 +330,32 @@ macro_rules! parse {
 }
 
 
-pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration,
-                                       random_max_millis: u64,
-                                       function: F)
-                                       -> O {
+pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration, random_max_millis: u64, function: F) -> O {
     use std::time::Instant;
     use std::thread;
     use rand::{Rng, OsRng};
     let mut os_rng = OsRng::new().expect("If the OS RNG is not present, just crash.");
 
-    // I THINK 0-5 ms of random duration is enough to mask all kinds of regularities such as rounding artefacts etc.
-    // (Apparently Linux and OS X have 1ms thread sleep granularity, whereas Windows has something like 10-15ms.)
+         // I THINK 0-5 ms of random duration is enough to mask all kinds of regularities such as rounding artefacts etc.
+         // (Apparently Linux and OS X have 1ms thread sleep granularity, whereas Windows has something like 10-15ms.)
     #[cfg(target_os = "linux")]
     let randomized_duration = Duration::from_millis(os_rng.gen_range(0, random_max_millis));
     #[cfg(target_os = "macos")]
     let randomized_duration = Duration::from_millis(os_rng.gen_range(0, random_max_millis));
     #[cfg(target_os = "windows")]
-    let randomized_duration = Duration::from_millis(os_rng.gen_range(0, random_max_millis * 10));
+    let randomized_duration = Duration::from_millis(os_rng.gen_range(0, random_max_millis*10));
 
     let start_time = Instant::now();
 
     let result = function();
 
     let worked_duration = Instant::now() - start_time;
-
+    
     if pause_duration > worked_duration {
 
         thread::sleep(pause_duration - worked_duration + randomized_duration);
 
-    } else {
-        // Oops, the work took more time than expected and we're leaking information! At least we can try and fumble a bit.
+    } else { // Oops, the work took more time than expected and we're leaking information! At least we can try and fumble a bit.
 
         error!("rate limit: The work took more time than expected! We're leaking information!");
         thread::sleep(randomized_duration);
@@ -389,3 +364,5 @@ pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration,
 
     result
 }
+
+
