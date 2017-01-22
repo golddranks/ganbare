@@ -1,3 +1,4 @@
+*.bk
 *.map
 .env
 .env.*

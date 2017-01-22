@@ -44,7 +44,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     let mut file_path = AUDIO_DIR.clone();
     file_path.push(&file_name);
 
-    send_file(&file_path.to_str().expect("The path SHOULD be valid unicode!"),
+    send_file(file_path.to_str().expect("The path SHOULD be valid unicode!"),
               mime_type,
               false,
               req.headers().get())
@@ -85,7 +85,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
     let mut file_path = AUDIO_DIR.clone();
     file_path.push(&file_name);
 
-    send_file(&file_path.to_str().expect("The saved file path SHOULD be valid unicode!"),
+    send_file(file_path.to_str().expect("The saved file path SHOULD be valid unicode!"),
               mime_type,
               false,
               req.headers().get())
@@ -111,7 +111,7 @@ pub fn get_image(req: &mut Request) -> PencilResult {
     use pencil::{PencilError, HTTPError};
 
     send_from_directory(IMAGES_DIR.to_str().expect("The image dir path should be valid unicode!"),
-                        &file_name,
+                        file_name,
                         false,
                         req.headers().get())
         .refresh_cookie(&sess)
@@ -454,7 +454,8 @@ pub fn update_item(req: &mut Request) -> PencilResult {
     let endpoint = req.endpoint().expect("Pencil guarantees this");
     lazy_static! {
         // Taking JSON encoding into account: " is escaped as \"
-        static ref RE: regex::Regex = regex::Regex::new(r##"<img ([^>]* )?src=\\"(?P<src>[^"]*)\\"( [^>]*)?>"##).unwrap();
+        static ref RE: regex::Regex =
+            regex::Regex::new(r##"<img ([^>]* )?src=\\"(?P<src>[^"]*)\\"( [^>]*)?>"##).unwrap();
     }
     let text = RE.replace_all(&text, r###"<img src=\"$src\">"###);
 
@@ -464,7 +465,10 @@ pub fn update_item(req: &mut Request) -> PencilResult {
 
             let item = rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
 
-            let updated_item = try_or!(manage::update_word(&conn, id, item, &*IMAGES_DIR).err_500()?, else return abort(404));
+            let updated_item = try_or!(
+                manage::update_word(&conn, id, item, &*IMAGES_DIR).err_500()?,
+                else return abort(404)
+            );
 
             json = jsonify(&updated_item);
 
@@ -473,7 +477,10 @@ pub fn update_item(req: &mut Request) -> PencilResult {
 
             let item = rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
 
-            let updated_item = try_or!(manage::update_exercise(&conn, id, item).err_500()?, else return abort(404));
+            let updated_item = try_or!(
+                manage::update_exercise(&conn, id, item).err_500()?,
+                else return abort(404)
+            );
 
             json = jsonify(&updated_item);
         }
@@ -481,7 +488,10 @@ pub fn update_item(req: &mut Request) -> PencilResult {
 
             let item = rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
 
-            let updated_item = try_or!(manage::update_question(&conn, id, item).err_500()?, else return abort(404));
+            let updated_item = try_or!(
+                manage::update_question(&conn, id, item).err_500()?,
+                else return abort(404)
+            );
 
             json = jsonify(&updated_item);
         }
@@ -489,7 +499,10 @@ pub fn update_item(req: &mut Request) -> PencilResult {
 
             let item = rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
 
-            let updated_item = try_or!(manage::update_answer(&conn, id, item, &*IMAGES_DIR).err_500()?, else return abort(404));
+            let updated_item = try_or!(
+                manage::update_answer(&conn, id, item, &*IMAGES_DIR).err_500()?,
+                else return abort(404)
+            );
 
             json = jsonify(&updated_item);
         }
@@ -500,7 +513,10 @@ pub fn update_item(req: &mut Request) -> PencilResult {
             if item.id != id {
                 return abort(400);
             }
-            let updated_item = try_or!(audio::change_bundle_name(&conn, id, &item.listname).err_500()?, else return abort(404));
+            let updated_item = try_or!(
+                audio::change_bundle_name(&conn, id, &item.listname).err_500()?,
+                else return abort(404)
+            );
 
             json = jsonify(&updated_item);
         }
@@ -511,8 +527,10 @@ pub fn update_item(req: &mut Request) -> PencilResult {
             if item.id != id {
                 return abort(400);
             }
-            let updated_item =
-                try_or!(audio::update_narrator(&conn, &item).err_500()?, else return abort(404));
+            let updated_item = try_or!(
+                audio::update_narrator(&conn, &item).err_500()?,
+                else return abort(404)
+            );
 
             json = jsonify(&updated_item);
         }
@@ -559,29 +577,29 @@ pub fn post_question(req: &mut Request) -> PencilResult {
 
     fn parse_qq(qq: &UpdateQuestion) -> Result<NewQuizQuestion> {
         let qq = NewQuizQuestion {
-            skill_id: qq.skill_id.ok_or(ErrorKind::FormParseError.to_err())?,
-            q_name: qq.q_name.as_ref().ok_or(ErrorKind::FormParseError.to_err())?.as_str(),
+            skill_id: qq.skill_id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
+            q_name: qq.q_name.as_ref().ok_or_else(|| ErrorKind::FormParseError.to_err())?.as_str(),
             q_explanation: qq.q_explanation
                 .as_ref()
-                .ok_or(ErrorKind::FormParseError.to_err())?
+                .ok_or_else(|| ErrorKind::FormParseError.to_err())?
                 .as_str(),
             question_text: qq.question_text
                 .as_ref()
-                .ok_or(ErrorKind::FormParseError.to_err())?
+                .ok_or_else(|| ErrorKind::FormParseError.to_err())?
                 .as_str(),
-            skill_level: qq.skill_level.ok_or(ErrorKind::FormParseError.to_err())?,
+            skill_level: qq.skill_level.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
         };
         Ok(qq)
     }
 
     fn parse_aa(aa: &UpdateAnswer) -> Result<NewAnswer> {
         let aa = NewAnswer {
-            question_id: aa.question_id.ok_or(ErrorKind::FormParseError.to_err())?,
+            question_id: aa.question_id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
             a_audio_bundle: aa.a_audio_bundle.unwrap_or(None),
-            q_audio_bundle: aa.q_audio_bundle.ok_or(ErrorKind::FormParseError.to_err())?,
+            q_audio_bundle: aa.q_audio_bundle.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
             answer_text: aa.answer_text
                 .as_ref()
-                .ok_or(ErrorKind::FormParseError.to_err())?
+                .ok_or_else(|| ErrorKind::FormParseError.to_err())?
                 .as_str(),
         };
         Ok(aa)
@@ -618,16 +636,16 @@ pub fn post_exercise(req: &mut Request) -> PencilResult {
 
     fn parse_qq(qq: &UpdateExercise) -> Result<NewExercise> {
         let qq = NewExercise {
-            skill_id: qq.skill_id.ok_or(ErrorKind::FormParseError.to_err())?,
-            skill_level: qq.skill_level.ok_or(ErrorKind::FormParseError.to_err())?,
+            skill_id: qq.skill_id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
+            skill_level: qq.skill_level.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
         };
         Ok(qq)
     }
 
     fn parse_aa(aa: &UpdateExerciseVariant) -> Result<ExerciseVariant> {
         let aa = ExerciseVariant {
-            id: aa.id.ok_or(ErrorKind::FormParseError.to_err())?,
-            exercise_id: aa.exercise_id.ok_or(ErrorKind::FormParseError.to_err())?,
+            id: aa.id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
+            exercise_id: aa.exercise_id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
         };
         Ok(aa)
     }
@@ -791,7 +809,14 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
                 .err_500()?
                 .and_then(|d| d.data.parse::<usize>().ok())
                 .unwrap_or(0);
-            let filename = try_or!(event::get_userdata(&conn, &event, &user, &format!("quiz_{}_rec_{}", quiz_number, rec_number)).err_500()?, else return abort(404));
+            let filename = try_or!(
+                event::get_userdata(&conn,
+                                    &event,
+                                    &user,
+                                    &format!("quiz_{}_rec_{}", quiz_number, rec_number)
+                                ).err_500()?,
+                else return abort(404)
+            );
 
             let mut file_path = USER_AUDIO_DIR.clone();
             file_path.push(&filename.data);

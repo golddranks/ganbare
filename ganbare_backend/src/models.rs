@@ -8,9 +8,12 @@ pub struct NewUser<'a> {
     pub email: &'a str,
 }
 
-#[has_many(passwords, foreign_key = "id")] // actually, the relationship is one-to-1..0
-#[has_many(user_metrics, foreign_key = "id")] // actually, the relationship is one-to-1..0
-#[has_many(user_stats, foreign_key = "id")] // actually, the relationship is one-to-1..0
+#[has_many(passwords, foreign_key = "id")]
+// actually, the relationship is one-to-1..0
+#[has_many(user_metrics, foreign_key = "id")]
+// actually, the relationship is one-to-1..0
+#[has_many(user_stats, foreign_key = "id")]
+// actually, the relationship is one-to-1..0
 #[has_many(sessions, foreign_key = "user_id")]
 #[has_many(skill_data, foreign_key = "user_id")]
 #[has_many(event_experiences, foreign_key = "user_id")]
@@ -85,7 +88,8 @@ pub struct NewPendingEmailConfirm<'a> {
     pub groups: &'a [i32],
 }
 
-#[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset, RustcEncodable, RustcDecodable)]
+#[derive(Identifiable, Queryable, Debug, Insertable, Associations,
+    AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="user_groups"]
 #[has_many(group_memberships, foreign_key = "group_id")]
 #[has_many(anon_aliases, foreign_key = "group_id")]
@@ -96,7 +100,8 @@ pub struct UserGroup {
     pub anonymous: bool,
 }
 
-#[derive(Identifiable, Queryable, Debug, Insertable, Associations, AsChangeset, RustcEncodable, RustcDecodable)]
+#[derive(Identifiable, Queryable, Debug, Insertable, Associations,
+    AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="group_memberships"]
 #[primary_key(user_id, group_id)]
 #[belongs_to(UserGroup, foreign_key = "group_id")]
@@ -141,7 +146,8 @@ pub struct NewNarrator<'a> {
     pub name: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable,
+    AsChangeset,Debug, RustcEncodable, RustcDecodable)]
 #[table_name="narrators"]
 #[has_many(audio_files, foreign_key = "narrators_id")]
 pub struct Narrator {
@@ -172,7 +178,8 @@ pub struct AudioFile {
     pub mime: String,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable,
+    Debug, AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="audio_bundles"]
 #[has_many(audio_files, foreign_key = "bundle_id")]
 #[has_many(question_answers, foreign_key = "q_audio_bundle")]
@@ -256,7 +263,8 @@ pub struct UpdateAnswer {
     pub answer_text: Option<String>,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable,
+    Debug, RustcEncodable, RustcDecodable)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(exercise_variants, foreign_key = "exercise_id")]
 #[has_many(exercise_data, foreign_key = "exercise_id")]
@@ -428,7 +436,8 @@ pub struct EAskedData {
     pub word_id: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Clone, AsChangeset, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable,
+    Debug, Clone, AsChangeset, RustcEncodable)]
 #[table_name="e_answered_data"]
 #[belongs_to(EAskedData, foreign_key = "id")]
 pub struct EAnsweredData {
@@ -453,7 +462,8 @@ pub struct WAskedData {
     pub show_accents: bool,
 }
 
-#[derive(Identifiable, Insertable, Queryable, Associations, Debug, Clone, AsChangeset, RustcEncodable)]
+#[derive(Identifiable, Insertable, Queryable, Associations,
+    Debug, Clone, AsChangeset, RustcEncodable)]
 #[table_name="w_answered_data"]
 #[belongs_to(WAskedData, foreign_key = "id")]
 pub struct WAnsweredData {
@@ -509,8 +519,8 @@ pub struct UserMetrics {
     pub new_words_today: i32,
     pub quizes_since_break: i32,
     pub quizes_today: i32,
-    pub break_until:  DateTime<UTC>,
-    pub today:  DateTime<UTC>,
+    pub break_until: DateTime<UTC>,
+    pub today: DateTime<UTC>,
     pub max_words_since_break: i32,
     pub max_words_today: i32,
     pub max_quizes_since_break: i32,
@@ -528,22 +538,36 @@ use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
 impl Encodable for UserMetrics {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("UserMetrics", 16, |s| {
-            s.emit_struct_field("id", 0, |s| { s.emit_i32(self.id) })?;
-            s.emit_struct_field("new_words_since_break", 1, |s| { s.emit_i32(self.new_words_since_break) })?;
-            s.emit_struct_field("new_words_today", 2, |s| { s.emit_i32(self.new_words_today) })?;
-            s.emit_struct_field("quizes_since_break", 3, |s| { s.emit_i32(self.quizes_since_break) })?;
-            s.emit_struct_field("quizes_today", 4, |s| { s.emit_i32(self.quizes_today) })?;
-            s.emit_struct_field("break_until", 5, |s| { s.emit_str(&self.break_until.to_rfc3339()) })?;
-            s.emit_struct_field("today", 6, |s| { s.emit_str(&self.today.to_rfc3339()) })?;
-            s.emit_struct_field("max_words_since_break", 7, |s| { s.emit_i32(self.max_words_since_break) })?;
-            s.emit_struct_field("max_words_today", 8, |s| { s.emit_i32(self.max_words_today) })?;
-            s.emit_struct_field("max_quizes_since_break", 9, |s| { s.emit_i32(self.max_quizes_since_break) })?;
-            s.emit_struct_field("max_quizes_today", 10, |s| { s.emit_i32(self.max_quizes_today) })?;
-            s.emit_struct_field("break_length", 11, |s| { s.emit_i32(self.break_length) })?;
-            s.emit_struct_field("delay_multiplier", 12, |s| { s.emit_i32(self.delay_multiplier) })?;
-            s.emit_struct_field("initial_delay", 13, |s| { s.emit_i32(self.initial_delay) })?;
-            s.emit_struct_field("streak_limit", 14, |s| { s.emit_i32(self.streak_limit) })?;
-            s.emit_struct_field("cooldown_delay", 15, |s| { s.emit_i32(self.cooldown_delay) })?;
+            s.emit_struct_field("id", 0, |s| s.emit_i32(self.id))?;
+            s.emit_struct_field("new_words_since_break",
+                                   1,
+                                   |s| s.emit_i32(self.new_words_since_break))?;
+            s.emit_struct_field("new_words_today", 2, |s| s.emit_i32(self.new_words_today))?;
+            s.emit_struct_field("quizes_since_break",
+                                   3,
+                                   |s| s.emit_i32(self.quizes_since_break))?;
+            s.emit_struct_field("quizes_today", 4, |s| s.emit_i32(self.quizes_today))?;
+            s.emit_struct_field("break_until",
+                                   5,
+                                   |s| s.emit_str(&self.break_until.to_rfc3339()))?;
+            s.emit_struct_field("today", 6, |s| s.emit_str(&self.today.to_rfc3339()))?;
+            s.emit_struct_field("max_words_since_break",
+                                   7,
+                                   |s| s.emit_i32(self.max_words_since_break))?;
+            s.emit_struct_field("max_words_today", 8, |s| s.emit_i32(self.max_words_today))?;
+            s.emit_struct_field("max_quizes_since_break",
+                                   9,
+                                   |s| s.emit_i32(self.max_quizes_since_break))?;
+            s.emit_struct_field("max_quizes_today",
+                                   10,
+                                   |s| s.emit_i32(self.max_quizes_today))?;
+            s.emit_struct_field("break_length", 11, |s| s.emit_i32(self.break_length))?;
+            s.emit_struct_field("delay_multiplier",
+                                   12,
+                                   |s| s.emit_i32(self.delay_multiplier))?;
+            s.emit_struct_field("initial_delay", 13, |s| s.emit_i32(self.initial_delay))?;
+            s.emit_struct_field("streak_limit", 14, |s| s.emit_i32(self.streak_limit))?;
+            s.emit_struct_field("cooldown_delay", 15, |s| s.emit_i32(self.cooldown_delay))?;
             Ok(())
         })
     }
@@ -557,8 +581,8 @@ pub struct UpdateUserMetrics {
     pub new_words_today: Option<i32>,
     pub quizes_since_break: Option<i32>,
     pub quizes_today: Option<i32>,
-    pub break_until:  Option<DateTime<UTC>>,
-    pub today:  Option<DateTime<UTC>>,
+    pub break_until: Option<DateTime<UTC>>,
+    pub today: Option<DateTime<UTC>>,
     pub max_words_since_break: Option<i32>,
     pub max_words_today: Option<i32>,
     pub max_quizes_since_break: Option<i32>,
@@ -575,24 +599,45 @@ impl Decodable for UpdateUserMetrics {
     fn decode<D: Decoder>(d: &mut D) -> Result<UpdateUserMetrics, D::Error> {
         d.read_struct("UserMetrics", 16, |d| {
             Ok(UpdateUserMetrics{
-                id: d.read_struct_field("id", 0, Decodable::decode)?,
-                new_words_since_break: d.read_struct_field("new_words_since_break", 1, Decodable::decode)?,
-                new_words_today: d.read_struct_field("new_words_today", 2, Decodable::decode)?,
-                quizes_since_break: d.read_struct_field("quizes_since_break", 3, Decodable::decode)?,
-                quizes_today: d.read_struct_field("quizes_today", 4, Decodable::decode)?,
-                break_until: d.read_struct_field("break_until", 5, <Option<String> as Decodable>::decode)?
-                    .try_map(|s| DateTime::parse_from_rfc3339(&s).map_err(|_| d.error("Can't decode a date from rfc3339!")))?.map(|t| t.with_timezone(&UTC)),
+                id:
+                    d.read_struct_field("id", 0, Decodable::decode)?,
+                new_words_since_break:
+                    d.read_struct_field("new_words_since_break", 1, Decodable::decode)?,
+                new_words_today:
+                    d.read_struct_field("new_words_today", 2, Decodable::decode)?,
+                quizes_since_break:
+                    d.read_struct_field("quizes_since_break", 3, Decodable::decode)?,
+                quizes_today:
+                    d.read_struct_field("quizes_today", 4, Decodable::decode)?,
+                break_until:
+                    d.read_struct_field("break_until", 5, <Option<String> as Decodable>::decode)?
+                        .try_map(|s|
+                            DateTime::parse_from_rfc3339(&s)
+                                .map_err(|_| d.error("Can't decode a date from rfc3339!")))?
+                        .map(|t| t.with_timezone(&UTC)),
                 today: d.read_struct_field("today", 6, <Option<String> as Decodable>::decode)?
-                    .try_map(|s| DateTime::parse_from_rfc3339(&s).map_err(|_| d.error("Can't decode a date from rfc3339!")))?.map(|t| t.with_timezone(&UTC)),
-                max_words_since_break: d.read_struct_field("max_words_since_break", 7, Decodable::decode)?,
-                max_words_today: d.read_struct_field("max_words_today", 8, Decodable::decode)?,
-                max_quizes_since_break: d.read_struct_field("max_quizes_since_break", 9, Decodable::decode)?,
-                max_quizes_today: d.read_struct_field("max_quizes_today", 10, Decodable::decode)?,
-                break_length: d.read_struct_field("break_length", 11, Decodable::decode)?,
-                delay_multiplier: d.read_struct_field("delay_multiplier", 12, Decodable::decode)?,
-                initial_delay: d.read_struct_field("initial_delay", 13, Decodable::decode)?,
-                streak_limit: d.read_struct_field("streak_limit", 14, Decodable::decode)?,
-                cooldown_delay: d.read_struct_field("cooldown_delay", 15, Decodable::decode)?,
+                    .try_map(|s|
+                        DateTime::parse_from_rfc3339(&s)
+                            .map_err(|_| d.error("Can't decode a date from rfc3339!")))?
+                    .map(|t| t.with_timezone(&UTC)),
+                max_words_since_break:
+                    d.read_struct_field("max_words_since_break", 7, Decodable::decode)?,
+                max_words_today:
+                    d.read_struct_field("max_words_today", 8, Decodable::decode)?,
+                max_quizes_since_break:
+                    d.read_struct_field("max_quizes_since_break", 9, Decodable::decode)?,
+                max_quizes_today:
+                    d.read_struct_field("max_quizes_today", 10, Decodable::decode)?,
+                break_length:
+                    d.read_struct_field("break_length", 11, Decodable::decode)?,
+                delay_multiplier:
+                    d.read_struct_field("delay_multiplier", 12, Decodable::decode)?,
+                initial_delay:
+                    d.read_struct_field("initial_delay", 13, Decodable::decode)?,
+                streak_limit:
+                    d.read_struct_field("streak_limit", 14, Decodable::decode)?,
+                cooldown_delay:
+                    d.read_struct_field("cooldown_delay", 15, Decodable::decode)?,
             })
         })
     }
@@ -610,7 +655,8 @@ pub struct NewUserStats {
     pub id: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset,
+    Identifiable, RustcEncodable, RustcDecodable)]
 #[belongs_to(User, foreign_key = "id")]
 #[table_name="user_stats"]
 pub struct UserStats {

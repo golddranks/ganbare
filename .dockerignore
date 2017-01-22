@@ -7,5 +7,6 @@ backups
 dev_assets
 target/debug
 target/release
+target/rls
 ganbare_backend/target
 

@@ -22,72 +22,147 @@ pub use std::time::Duration;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 
 lazy_static! {
- 
-    pub static ref DATABASE_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_DATABASE_URL")
-        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
 
-    pub static ref SITE_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_DOMAIN")
-        .expect("GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)") };
-
-    pub static ref SITE_LINK : String = { dotenv::dotenv().ok(); env::var("GANBARE_SITE_LINK")
-        .unwrap_or_else(|_|  format!("http://{}:8081", env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())))};
-        
-    pub static ref EMAIL_SERVER : SocketAddr = { dotenv::dotenv().ok();
-        let binding = env::var("GANBARE_EMAIL_SERVER")
-        .expect("GANBARE_EMAIL_SERVER: Specify an outbound email server, like this: mail.yourisp.com:25");
-        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port") };
- 
-    pub static ref EMAIL_SMTP_USERNAME : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_SMTP_USERNAME")
-        .unwrap_or_else(|_| "".into()) };
-
-    pub static ref EMAIL_SMTP_PASSWORD : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_SMTP_PASSWORD")
-        .unwrap_or_else(|_| "".into()) };
-
-    pub static ref EMAIL_DOMAIN : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_DOMAIN")
-        .unwrap_or_else(|_|  env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into())) };
-
-    pub static ref EMAIL_ADDRESS : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_ADDRESS")
-        .unwrap_or_else(|_| format!("support@{}", &*EMAIL_DOMAIN)) };
-
-    pub static ref EMAIL_NAME : String = { dotenv::dotenv().ok(); env::var("GANBARE_EMAIL_NAME")
-        .unwrap_or_else(|_|  "".into()) };
-
-    pub static ref SERVER_BINDING : SocketAddr = { dotenv::dotenv().ok();
-        let binding = env::var("GANBARE_SERVER_BINDING")
-        .unwrap_or_else(|_| "localhost:8080".into());
-        binding.to_socket_addrs().expect("GANBARE_SERVER_BINDING: Format: domain:port").next()
-        .expect("GANBARE_SERVER_BINDING: Format: domain:port") };
-
-    pub static ref JQUERY_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_JQUERY")
-        .unwrap_or_else(|_| "/static/js/jquery.min.js".into()) };
-
-    pub static ref FONT_URL : String = { dotenv::dotenv().ok(); env::var("GANBARE_FONT_URL")
-        .unwrap_or_else(|_| "/static/fonts/default.css".into()) };
-
-    pub static ref AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_AUDIO_DIR")
-        .unwrap_or_else(|_| "audio".into())) };
-
-    pub static ref USER_AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_USER_AUDIO_DIR")
-        .unwrap_or_else(|_| "user_audio".into())) };
-
-    pub static ref IMAGES_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(env::var("GANBARE_IMAGES_DIR")
-        .unwrap_or_else(|_| "images".into())) };
-
-    pub static ref PARANOID : bool = { dotenv::dotenv().ok(); env::var("GANBARE_PARANOID").map(|s| s.parse::<bool>().unwrap_or(true))
-        .unwrap_or(true) };
-
-    pub static ref RUNTIME_PEPPER : Vec<u8> = { dotenv::dotenv().ok();
-        let pepper = env::var("GANBARE_RUNTIME_PEPPER")
-        .expect("Environmental variable GANBARE_RUNTIME_PEPPER must be set! (format: 256-bit random value encoded as base64)")
-        .from_base64().expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
-        if pepper.len() != 32 { panic!("The value must be 256-bit, that is, 32 bytes long!") }; pepper
+    pub static ref DATABASE_URL : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_DATABASE_URL")
+            .expect(
+            "GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)"
+            )
     };
 
-    pub static ref BUILD_NUMBER : String = { dotenv::dotenv().ok(); env::var("GANBARE_BUILD_NUMBER")
-        .unwrap_or_else(|_| "not set".into()) };
+    pub static ref SITE_DOMAIN : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_SITE_DOMAIN")
+            .expect(
+             "GANBARE_SITE_DOMAIN: Set the site domain! (Without it, the cookies don't work.)"
+            )
+    };
 
-    pub static ref CONTENT_SECURITY_POLICY : String = { dotenv::dotenv().ok(); env::var("GANBARE_CONTENT_SECURITY_POLICY")
-        .unwrap_or_else(|_| "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com".into()) };
+    pub static ref SITE_LINK : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_SITE_LINK")
+            .unwrap_or_else(|_|
+                format!("http://{}:8081", env::var("GANBARE_SITE_DOMAIN")
+                    .unwrap_or_else(|_| "".into()))
+                )
+    };
+
+    pub static ref EMAIL_SERVER : SocketAddr = {
+        dotenv::dotenv().ok();
+        let binding = env::var("GANBARE_EMAIL_SERVER")
+            .expect(
+            "GANBARE_EMAIL_SERVER: Specify an outbound email server, like this: mail.yourisp.com:25"
+            );
+        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port")
+    };
+
+    pub static ref EMAIL_SMTP_USERNAME : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_EMAIL_SMTP_USERNAME")
+            .unwrap_or_else(|_| "".into())
+        };
+
+    pub static ref EMAIL_SMTP_PASSWORD : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_EMAIL_SMTP_PASSWORD")
+        .unwrap_or_else(|_| "".into())
+    };
+
+    pub static ref EMAIL_DOMAIN : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_EMAIL_DOMAIN")
+            .unwrap_or_else(|_|  env::var("GANBARE_SITE_DOMAIN").unwrap_or_else(|_| "".into()))
+    };
+
+    pub static ref EMAIL_ADDRESS : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_EMAIL_ADDRESS")
+            .unwrap_or_else(|_| format!("support@{}", &*EMAIL_DOMAIN))
+    };
+
+    pub static ref EMAIL_NAME : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_EMAIL_NAME")
+            .unwrap_or_else(|_|  "".into())
+    };
+
+    pub static ref SERVER_BINDING : SocketAddr = {
+        dotenv::dotenv().ok();
+        let binding = env::var("GANBARE_SERVER_BINDING")
+            .unwrap_or_else(|_| "localhost:8080".into());
+        binding.to_socket_addrs().expect("GANBARE_SERVER_BINDING: Format: domain:port").next()
+            .expect("GANBARE_SERVER_BINDING: Format: domain:port")
+    };
+
+    pub static ref JQUERY_URL : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_JQUERY")
+            .unwrap_or_else(|_| "/static/js/jquery.min.js".into())
+    };
+
+    pub static ref FONT_URL : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_FONT_URL")
+            .unwrap_or_else(|_| "/static/fonts/default.css".into())
+    };
+
+    pub static ref AUDIO_DIR : PathBuf = {
+        dotenv::dotenv().ok();
+        PathBuf::from(env::var("GANBARE_AUDIO_DIR")
+            .unwrap_or_else(|_| "audio".into()))
+    };
+
+    pub static ref USER_AUDIO_DIR : PathBuf = {
+        dotenv::dotenv().ok();
+        PathBuf::from(env::var("GANBARE_USER_AUDIO_DIR")
+            .unwrap_or_else(|_| "user_audio".into()))
+    };
+
+    pub static ref IMAGES_DIR : PathBuf = {
+        dotenv::dotenv().ok();
+        PathBuf::from(env::var("GANBARE_IMAGES_DIR")
+            .unwrap_or_else(|_| "images".into()))
+    };
+
+    pub static ref PARANOID : bool = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_PARANOID").map(|s| s.parse::<bool>().unwrap_or(true))
+            .unwrap_or(true)
+    };
+
+    pub static ref RUNTIME_PEPPER : Vec<u8> = {
+        dotenv::dotenv().ok();
+        let pepper = env::var("GANBARE_RUNTIME_PEPPER")
+            .expect(
+                "Environmental variable GANBARE_RUNTIME_PEPPER must be set!\
+                (format: 256-bit random value encoded as base64)"
+            )
+            .from_base64().expect(
+                "Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!
+            ");
+        if pepper.len() != 32 {
+            panic!("The value must be 256-bit, that is, 32 bytes long!")
+        }
+        pepper
+    };
+
+    pub static ref BUILD_NUMBER : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_BUILD_NUMBER")
+            .unwrap_or_else(|_| "not set".into())
+    };
+
+    pub static ref CONTENT_SECURITY_POLICY : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_CONTENT_SECURITY_POLICY")
+            .unwrap_or_else(|_|
+                "default-src 'self'; \
+                style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+                font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; \
+                script-src 'self' 'unsafe-inline' https://ajax.googleapis.com".into()
+            )
+    };
 
 }
 
@@ -97,7 +172,7 @@ pub fn db_connect() -> Result<PgConnection> {
 
 
 pub fn get_cookie(cookies: &Cookie) -> Option<&str> {
-    for c in cookies.0.iter() {
+    for c in &cookies.0 {
         if c.name == "session_id" {
             return Some(c.value.as_ref());
         }
@@ -115,7 +190,7 @@ pub fn new_template_context() -> BTreeMap<String, String> {
 
 pub fn get_user(conn: &PgConnection, req: &Request) -> Result<Option<(User, Session)>> {
     if let Some(sess_token) = req.cookies().and_then(get_cookie) {
-        Ok(session::check(&conn, sess_token, req.remote_addr().ip())?)
+        Ok(session::check(conn, sess_token, req.remote_addr().ip())?)
     } else {
         Ok(None)
     }
@@ -215,7 +290,7 @@ pub trait ResultExt<T> {
 
 impl<T, E: std::fmt::Debug> ResultExt<T> for StdResult<T, E> {
     fn err_500(self) -> StdResult<T, PencilError> {
-        self.map_err(|e| internal_error(e))
+        self.map_err(internal_error)
     }
     fn err_500_debug(self, user: &User, req: &Request) -> StdResult<T, PencilError> {
         self.map_err(|e| internal_error((e, user, req)))
@@ -256,7 +331,11 @@ macro_rules! err_400 {
         Err(e) => {
             use std::error::Error;
             return Ok(bad_request(
-                format!(concat!("<h1>HTTP 400 Bad Request {:?}: ", $format_string, "</h1>"), e.description() $(, $param)*)
+                format!(
+                    concat!(
+                        "<h1>HTTP 400 Bad Request {:?}: ", $format_string, "</h1>"
+                    ), e.description() $(, $param)*
+                )
             ))
         },
     } }
@@ -276,10 +355,14 @@ macro_rules! include_templates(
 #[cfg(not(debug_assertions))]
 macro_rules! include_templates(
     ($app:ident, $temp_dir:expr, $($file:expr),*) => { {
-        let mut reg = $app.handlebars_registry.write().expect("This is supposed to fail fast and hard.");
+        let mut reg = $app.handlebars_registry
+            .write()
+            .expect("This is supposed to fail fast and hard.");
         $(
-        reg.register_template_string($file, include_str!(concat!(env!("PWD"), "/", $temp_dir, "/", $file)).to_string())
-        .expect("This is supposed to fail fast and hard.");
+            reg.register_template_string($file, include_str!(
+                concat!(env!("PWD"), "/", $temp_dir, "/", $file)).to_string()
+            )
+            .expect("This is supposed to fail fast and hard.");
         )*
     } }
 );
@@ -320,6 +403,8 @@ pub fn try_auth_user(req: &mut Request)
 
 }
 
+/// Try and dereference required env vars for the `lazy_static!`
+/// to run and check if the values are present.
 pub fn check_env_vars() {
     &*DATABASE_URL;
     &*EMAIL_SERVER;
@@ -335,19 +420,23 @@ pub fn do_login<I: IntoIp>(conn: &PgConnection,
     let user = try_or!(user::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
             else return Ok(None));
 
-    let sess = session::start(&conn, &user, ip.into_ip()).err_500()?;
+    let sess = session::start(conn, &user, ip.into_ip()).err_500()?;
 
     Ok(Some((user, sess)))
 }
 
 pub fn do_logout(conn: &PgConnection, sess: &Session) -> StdResult<(), PencilError> {
     debug!("Logging out session: {:?}", sess);
-    session::end(&conn, &sess).err_500()?;
+    session::end(conn, sess).err_500()?;
     Ok(())
 }
 
 macro_rules! parse {
-    ($expression:expr) => {$expression.map(String::to_string).ok_or(ErrorKind::FormParseError.to_err())?;}
+    ($expression:expr) => {
+        $expression
+            .map(String::to_string)
+            .ok_or(ErrorKind::FormParseError.to_err())?;
+    }
 }
 
 
@@ -360,8 +449,10 @@ pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration,
     use rand::{Rng, OsRng};
     let mut os_rng = OsRng::new().expect("If the OS RNG is not present, just crash.");
 
-    // I THINK 0-5 ms of random duration is enough to mask all kinds of regularities such as rounding artefacts etc.
-    // (Apparently Linux and OS X have 1ms thread sleep granularity, whereas Windows has something like 10-15ms.)
+    // I THINK 0-5 ms of random duration is enough to mask all kinds of regularities
+    // such as rounding artefacts etc.
+    // (Apparently Linux and OS X have 1ms thread sleep granularity,
+    // whereas Windows has something like 10-15ms.)
     #[cfg(target_os = "linux")]
     let randomized_duration = Duration::from_millis(os_rng.gen_range(0, random_max_millis));
     #[cfg(target_os = "macos")]
@@ -380,7 +471,8 @@ pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration,
         thread::sleep(pause_duration - worked_duration + randomized_duration);
 
     } else {
-        // Oops, the work took more time than expected and we're leaking information! At least we can try and fumble a bit.
+        // Oops, the work took more time than expected and we're leaking information!
+        // At least we can try and fumble a bit.
 
         error!("rate limit: The work took more time than expected! We're leaking information!");
         thread::sleep(randomized_duration);

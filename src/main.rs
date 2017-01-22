@@ -146,7 +146,7 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
         // Enable anti-CSRF heuristics:
         // when the method is POST, DELETE etc., or if the request uses the HTTP API.
 
-        if let Some(&Origin { scheme: _, host: Host { ref hostname, port: _ } }) = origin {
+        if let Some(&Origin { host: Host { ref hostname, .. }, .. }) = origin {
             if hostname != &**SITE_DOMAIN {
                 println!("Someone tried to do a request with a wrong Origin: {} Possible CSRF?",
                          hostname);
@@ -157,8 +157,7 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
             let url = Url::parse(referer);
             let hostname = match url.as_ref().map(|url| url.host_str()) {
                 Ok(Some(host)) => host,
-                Ok(None) => return Some(pencil::abort(400)),
-                Err(_) => return Some(pencil::abort(400)),
+                Ok(None) | Err(_) => return Some(pencil::abort(400)),
             };
             if hostname != &**SITE_DOMAIN {
                 println!("Someone tried to do a request with a wrong Referer: {} Possible CSRF?",

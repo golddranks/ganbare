@@ -30,7 +30,7 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
         return abort(401);
     };
 
-    let user = user::add_user(&conn, &email, &new_password, &*RUNTIME_PEPPER).err_500()?;
+    let user = user::add_user(&conn, email, new_password, &*RUNTIME_PEPPER).err_500()?;
     user::join_user_group_by_name(&conn, &user, "admins").err_500()?;
     user::join_user_group_by_name(&conn, &user, "editors").err_500()?;
     user::join_user_group_by_name(&conn, &user, "input_group").err_500()?;
@@ -42,7 +42,7 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
 
     match do_login(&conn,
                    &user.email.expect("The email is known to exist."),
-                   &new_password,
+                   new_password,
                    &*req).err_500()? {
         Some((_, sess)) => {
             let mut context = new_template_context();
@@ -126,10 +126,10 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                                      file.filename()
                                          .map_err(|_| ErrorKind::FormParseError.to_err())?,
                                      file.content_type()
-                                         .ok_or(ErrorKind::FormParseError.to_err())?));
+                                         .ok_or_else(|| ErrorKind::FormParseError.to_err())?));
                 }
             }
-            if q_variants.len() == 0 {
+            if q_variants.is_empty() {
                 return Err(Error::from("Can't create a question with 0 audio files for question!"));
             }
             let answer_audio = files.get(&format!("choice_{}_answer_audio", i));
@@ -145,7 +145,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                               cloned_path.filename()
                                   .map_err(|_| ErrorKind::FormParseError.to_err())?,
                               cloned_path.content_type()
-                                  .ok_or(ErrorKind::FormParseError.to_err())?))
+                                  .ok_or_else(|| ErrorKind::FormParseError.to_err())?))
                 }
             } else {
                 answer_audio_path = None;
@@ -173,8 +173,8 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
 
     let form = err_400!(parse_form(&mut *req), "Error with parsing form!");
     let result = manage::create_quiz(&conn, form.0, form.1, &*AUDIO_DIR);
-    result.map_err(|e| match e.kind() {
-            &ErrorKind::FormParseError => abort(400).unwrap_err(),
+    result.map_err(|e| match *e.kind() {
+            ErrorKind::FormParseError => abort(400).unwrap_err(),
             _ => abort(500).unwrap_err(),
         })?;
 
@@ -218,7 +218,8 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
                 file.do_not_delete_on_drop();
                 files.push((file.path.clone(),
                             file.filename().map_err(|_| ErrorKind::FormParseError.to_err())?,
-                            file.content_type().ok_or(ErrorKind::FormParseError.to_err())?));
+                            file.content_type()
+                                .ok_or_else(|| ErrorKind::FormParseError.to_err())?));
             }
         }
 
@@ -260,7 +261,7 @@ pub fn add_users(req: &mut Request) -> PencilResult {
     req.load_form_data();
     let form = req.form().expect("The form data is loaded.");
     let emails = err_400!(form.get("emailList"), "emailList missing?");
-    for row in emails.split("\n") {
+    for row in emails.split('\n') {
         let mut fields = row.split_whitespace();
         let email = err_400!(fields.next(), "email field missing?");
         let mut groups = vec![];
@@ -331,7 +332,7 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
 
     let group_pending = req.form_mut().take("group_pending");
     let group = req.form_mut().take_all("group[]").unwrap_or_else(|| vec![]);
-    if group_pending.is_none() && group.len() == 0 {
+    if group_pending.is_none() && group.is_empty() {
         return Ok(bad_request("group is missing!"));
     }
     let group =

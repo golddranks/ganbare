@@ -1,4 +1,4 @@
-    error_chain! {
+error_chain! {
         foreign_links {
             ::std::str::ParseBoolError, ParseBoolError;
             ::std::env::VarError, VarError;
@@ -59,8 +59,12 @@
                 display("Can't find that file!")
             }
             DatabaseOdd(reason: &'static str) {
-                description("There's something wrong with the contents of the DB vs. how it should be!")
-                display("There's something wrong with the contents of the DB vs. how it should be! {}", reason)
+                description(
+                    "There's something wrong with the contents of the DB vs. how it should be!"
+                )
+                display(
+                    "There's something wrong with the contents of the DB vs. how it should be! {}"
+                , reason)
             }
             AccessDenied {
                 description("Access denied")

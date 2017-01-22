@@ -1,34 +1,34 @@
 extern crate dotenv;
 
 use super::errors::*;
-use super::models::{Password};
+use super::models::Password;
 
 #[derive(Clone, Copy)]
 pub struct HashedPassword {
-    hash : [u8; 24],
-    salt : [u8; 16],
-    initial_rounds : i16,
-    extra_rounds : i16,
+    hash: [u8; 24],
+    salt: [u8; 16],
+    initial_rounds: i16,
+    extra_rounds: i16,
 }
 
 impl From<Password> for HashedPassword {
-    fn from(db_password : Password) -> Self{
+    fn from(db_password: Password) -> Self {
         let mut hash = [0_u8; 24];
         let mut salt = [0_u8; 16];
         hash[..].clone_from_slice(&db_password.password_hash[..]);
         salt[..].clone_from_slice(&db_password.salt[..]);
         HashedPassword {
-            hash : hash,
-            salt : salt,
-            initial_rounds : db_password.initial_rounds,
-            extra_rounds : db_password.extra_rounds,
+            hash: hash,
+            salt: salt,
+            initial_rounds: db_password.initial_rounds,
+            extra_rounds: db_password.extra_rounds,
         }
     }
 }
 
 
 impl HashedPassword {
-    pub fn into_db(self, user_id : i32) -> Password{
+    pub fn into_db(self, user_id: i32) -> Password {
         Password {
             id: user_id,
             password_hash: (&self.hash[..]).into(),
@@ -39,7 +39,11 @@ impl HashedPassword {
     }
 }
 
-fn pepper_salt_pw_hash(plaintext_pw : &str, salt : [u8; 16], initial_rounds : i16, runtime_pepper: &[u8]) -> Result<HashedPassword> {
+fn pepper_salt_pw_hash(plaintext_pw: &str,
+                       salt: [u8; 16],
+                       initial_rounds: i16,
+                       runtime_pepper: &[u8])
+                       -> Result<HashedPassword> {
     use crypto::bcrypt::bcrypt;
     use crypto::sha2;
     use crypto::digest::Digest;
@@ -56,14 +60,23 @@ fn pepper_salt_pw_hash(plaintext_pw : &str, salt : [u8; 16], initial_rounds : i1
 
     let mut output_hash = [0_u8; 24];
     bcrypt(initial_rounds as u32, &salt, &peppered_pw, &mut output_hash);
-    Ok(HashedPassword{hash: output_hash, salt: salt, initial_rounds: initial_rounds, extra_rounds: 0})
+    Ok(HashedPassword {
+        hash: output_hash,
+        salt: salt,
+        initial_rounds: initial_rounds,
+        extra_rounds: 0,
+    })
 }
 
 pub fn set_password(plaintext_pw: &str, pepper: &[u8]) -> Result<HashedPassword> {
     use rand::{OsRng, Rng};
 
-    if plaintext_pw.len() < 8 { return Err(ErrorKind::PasswordTooShort.into()) };
-    if plaintext_pw.len() > 1024 { return Err(ErrorKind::PasswordTooLong.into()) };
+    if plaintext_pw.len() < 8 {
+        return Err(ErrorKind::PasswordTooShort.into());
+    };
+    if plaintext_pw.len() > 1024 {
+        return Err(ErrorKind::PasswordTooLong.into());
+    };
 
     let mut salt = [0_u8; 16];
     OsRng::new()?.fill_bytes(&mut salt);
@@ -71,26 +84,37 @@ pub fn set_password(plaintext_pw: &str, pepper: &[u8]) -> Result<HashedPassword>
     Ok(pepper_salt_pw_hash(plaintext_pw, salt, 10, pepper)?)
 }
 
-pub fn stretch_password(strength_goal : i16, hashed_pw : HashedPassword)
-        -> HashedPassword {
+pub fn stretch_password(strength_goal: i16, hashed_pw: HashedPassword) -> HashedPassword {
     use crypto::bcrypt::bcrypt;
 
-    let mut output_hash = hashed_pw.hash; // We can regard the password hash as the output of the original creation function.
+    // We can regard the password hash as the output of the original creation function.
+    let mut output_hash = hashed_pw.hash;
     let mut extra_rounds = hashed_pw.extra_rounds;
 
     while hashed_pw.initial_rounds + extra_rounds < strength_goal {
         let input = output_hash;
-        bcrypt((hashed_pw.initial_rounds + extra_rounds) as u32, &hashed_pw.salt, &input, &mut output_hash);
+        bcrypt((hashed_pw.initial_rounds + extra_rounds) as u32,
+               &hashed_pw.salt,
+               &input,
+               &mut output_hash);
         extra_rounds += 1;
     }
-    HashedPassword{hash: output_hash, salt: hashed_pw.salt, initial_rounds: hashed_pw.initial_rounds, extra_rounds: extra_rounds}
+    HashedPassword {
+        hash: output_hash,
+        salt: hashed_pw.salt,
+        initial_rounds: hashed_pw.initial_rounds,
+        extra_rounds: extra_rounds,
+    }
 }
 
-pub fn check_password( plaintext_pw : &str, pw_from_db : HashedPassword, pepper: &[u8])
-        -> Result<()> {
+pub fn check_password(plaintext_pw: &str, pw_from_db: HashedPassword, pepper: &[u8]) -> Result<()> {
     use crypto::util::fixed_time_eq;
-    let init_hash = pepper_salt_pw_hash(plaintext_pw, pw_from_db.salt, pw_from_db.initial_rounds, pepper)?;
-    let strected_pw = stretch_password(pw_from_db.initial_rounds + pw_from_db.extra_rounds, init_hash);
+    let init_hash = pepper_salt_pw_hash(plaintext_pw,
+                                        pw_from_db.salt,
+                                        pw_from_db.initial_rounds,
+                                        pepper)?;
+    let strected_pw = stretch_password(pw_from_db.initial_rounds + pw_from_db.extra_rounds,
+                                       init_hash);
 
     if fixed_time_eq(&strected_pw.hash, &pw_from_db.hash) {
         Ok(())
@@ -147,7 +171,7 @@ fn test_set_stretch_password2() {
     use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
-    
+
     let init_pw_1 = set_password("swordfish", &pepper).unwrap();
     println!("hashed init_hash.");
     let init_pw_2 = stretch_password(10, init_pw_1);
@@ -163,7 +187,7 @@ fn test_set_stretch_password3() {
     use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
-    
+
     let init_pw = set_password("schwertfisch", &pepper).unwrap();
     println!("hashed init_hash.");
     let stretched_pw_0 = stretch_password(11, init_pw);
@@ -183,7 +207,7 @@ fn test_set_stretch_check_password1() {
     use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
-    
+
     let init_pw = set_password("miekkakala", &pepper).unwrap();
     println!("hashed init_hash.");
     let stretched_pw = stretch_password(11, init_pw);
@@ -197,7 +221,7 @@ fn test_set_stretch_check_password2() {
     use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
-    
+
     let init_pw = set_password("miekkakala", &pepper).unwrap();
     println!("hashed init_hash.");
     let stretched_pw = stretch_password(11, init_pw);

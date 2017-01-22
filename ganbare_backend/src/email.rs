@@ -17,7 +17,11 @@ use schema::pending_email_confirms;
 use super::*;
 
 #[derive(RustcEncodable)]
-struct EmailData<'a> { secret: &'a str, site_link: &'a str, site_name: &'a str, }
+struct EmailData<'a> {
+    secret: &'a str,
+    site_link: &'a str,
+    site_name: &'a str,
+}
 
 impl<'a> ToJson for EmailData<'a> {
     fn to_json(&self) -> Json {
@@ -29,10 +33,22 @@ impl<'a> ToJson for EmailData<'a> {
     }
 }
 
-pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, mail_server: SOCK, username: &str, password: &str,
-    site_name: &str, site_link: &str, hb_registry: &Handlebars, from: (&str, &str)) -> Result<EmailResponse> {
+pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr: &str,
+                                              secret: &str,
+                                              mail_server: SOCK,
+                                              username: &str,
+                                              password: &str,
+                                              site_name: &str,
+                                              site_link: &str,
+                                              hb_registry: &Handlebars,
+                                              from: (&str, &str))
+                                              -> Result<EmailResponse> {
 
-    let data = EmailData { secret, site_link, site_name };
+    let data = EmailData {
+        secret: secret,
+        site_link: site_link,
+        site_name: site_name,
+    };
     let email = EmailBuilder::new()
         .to(email_addr)
         .from(from)
@@ -40,7 +56,8 @@ pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, 
         .html(hb_registry.render("email_confirm_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
             .as_ref())
-        .build().expect("Building email shouldn't fail.");
+        .build()
+        .expect("Building email shouldn't fail.");
     let mut mailer = SmtpTransportBuilder::new(mail_server)
         .chain_err(|| "Couldn't setup the email transport!")?
         .encrypt()
@@ -50,10 +67,21 @@ pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr : &str, secret : &str, 
         .chain_err(|| "Couldn't send email!")
 }
 
-pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail_server: SOCK, username: &str, password: &str,
-    site_name: &str, site_link: &str, hb_registry: &Handlebars, from: (&str, &str)) -> Result<EmailResponse> {
+pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets,
+                                                mail_server: SOCK,
+                                                username: &str,
+                                                password: &str,
+                                                site_name: &str,
+                                                site_link: &str,
+                                                hb_registry: &Handlebars,
+                                                from: (&str, &str))
+                                                -> Result<EmailResponse> {
 
-    let data = EmailData { secret: &secret.secret, site_link, site_name };
+    let data = EmailData {
+        secret: &secret.secret,
+        site_link: site_link,
+        site_name: site_name,
+    };
     let email = EmailBuilder::new()
         .to(secret.email.as_str())
         .from(from)
@@ -61,7 +89,8 @@ pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail
         .html(hb_registry.render("pw_reset_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
             .as_ref())
-        .build().expect("Building email shouldn't fail.");
+        .build()
+        .expect("Building email shouldn't fail.");
     let mut mailer = SmtpTransportBuilder::new(mail_server)
         .chain_err(|| "Couldn't setup the email transport!")?
         .encrypt()
@@ -71,8 +100,15 @@ pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets, mail
         .chain_err(|| "Couldn't send email!")
 }
 
-pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item=&'a str>>(mail_server: SOCK, username: &str, password: &str,
-    from: (&str, &str), to: ITER, subject: &str, body: &str) -> Result<()> {
+pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item = &'a str>>
+    (mail_server: SOCK,
+     username: &str,
+     password: &str,
+     from: (&str, &str),
+     to: ITER,
+     subject: &str,
+     body: &str)
+     -> Result<()> {
 
     info!("Going to send email to: {:?}", from);
 
@@ -83,13 +119,14 @@ pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item=&'a str>
         .build();
 
     for to in to {
-    
+
         let email = EmailBuilder::new()
             .from(from)
             .subject(subject)
             .text(body)
             .to(to)
-            .build().expect("Building email shouldn't fail.");
+            .build()
+            .expect("Building email shouldn't fail.");
 
         let result = mailer.send(email)
             .chain_err(|| "Couldn't send!")?;
@@ -101,16 +138,18 @@ pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item=&'a str>
 
 
 
-pub fn add_pending_email_confirm(conn : &PgConnection, email : &str, groups: &[i32]) -> Result<String> {
+pub fn add_pending_email_confirm(conn: &PgConnection,
+                                 email: &str,
+                                 groups: &[i32])
+                                 -> Result<String> {
     let secret = data_encoding::base64url::encode(&session::fresh_token()?[..]);
     {
         let confirm = NewPendingEmailConfirm {
-            email,
+            email: email,
             secret: secret.as_ref(),
-            groups
+            groups: groups,
         };
-        diesel::insert(&confirm)
-            .into(pending_email_confirms::table)
+        diesel::insert(&confirm).into(pending_email_confirms::table)
             .execute(conn)
             .chain_err(|| "Error :(")?;
     }
@@ -119,23 +158,28 @@ pub fn add_pending_email_confirm(conn : &PgConnection, email : &str, groups: &[i
 
 pub fn get_all_pending_email_confirms(conn: &PgConnection) -> Result<Vec<String>> {
     use schema::pending_email_confirms;
-    let emails: Vec<String> = pending_email_confirms::table
-        .select(pending_email_confirms::email)
+    let emails: Vec<String> = pending_email_confirms::table.select(pending_email_confirms::email)
         .get_results(conn)?;
 
     Ok(emails)
 }
 
-pub fn check_pending_email_confirm(conn : &PgConnection, secret : &str) -> Result<Option<(String, Vec<i32>)>> {
-    let confirm : Option<PendingEmailConfirm> = pending_email_confirms::table
-        .filter(pending_email_confirms::secret.eq(secret))
-        .first(conn)
-        .optional()?;
+pub fn check_pending_email_confirm(conn: &PgConnection,
+                                   secret: &str)
+                                   -> Result<Option<(String, Vec<i32>)>> {
+    let confirm: Option<PendingEmailConfirm> =
+        pending_email_confirms::table.filter(pending_email_confirms::secret.eq(secret))
+            .first(conn)
+            .optional()?;
 
     Ok(confirm.map(|c| (c.email, c.groups)))
 }
 
-pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, secret : &str, pepper: &[u8]) -> Result<User> {
+pub fn complete_pending_email_confirm(conn: &PgConnection,
+                                      password: &str,
+                                      secret: &str,
+                                      pepper: &[u8])
+                                      -> Result<User> {
 
     let (email, group_ids) = try_or!(check_pending_email_confirm(&*conn, secret)?,
         else return Err(ErrorKind::NoSuchSess.into()));
@@ -153,13 +197,23 @@ pub fn complete_pending_email_confirm(conn : &PgConnection, password : &str, sec
     Ok(user)
 }
 
-pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: chrono::Duration, nag_grace_period: chrono::Duration,
-    mail_server: SOCK, username: &str, password: &str,
-    site_name: &str, site_link: &str, hb_registry: &Handlebars, from: (&str, &str)) -> Result<()> {
+pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection,
+                                                how_old: chrono::Duration,
+                                                nag_grace_period: chrono::Duration,
+                                                mail_server: SOCK,
+                                                username: &str,
+                                                password: &str,
+                                                site_name: &str,
+                                                site_link: &str,
+                                                hb_registry: &Handlebars,
+                                                from: (&str, &str))
+                                                -> Result<()> {
 
     let slackers = user::get_slackers(conn, how_old)?;
 
-    if slackers.len() == 0 { return Ok(()) }
+    if slackers.len() == 0 {
+        return Ok(());
+    }
 
     let mut mailer = SmtpTransportBuilder::new(mail_server)
         .chain_err(|| "Couldn't setup the email transport!")?
@@ -171,21 +225,24 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: ch
 
         use schema::user_stats;
 
-        let mut stats: UserStats = user_stats::table
-            .filter(user_stats::id.eq(user_id))
+        let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
             .get_result(conn)?;
 
-        if ! user::check_user_group(conn, user_id, "nag_emails")? {
+        if !user::check_user_group(conn, user_id, "nag_emails")? {
             continue; // We don't send emails to users that don't belong to the "nag_emails" group.
         }
 
-        let last_nag = stats.last_nag_email.unwrap_or(chrono::date::MIN.and_hms(0,0,0));
+        let last_nag = stats.last_nag_email.unwrap_or(chrono::date::MIN.and_hms(0, 0, 0));
 
         if last_nag > chrono::UTC::now() - nag_grace_period {
             continue; // We have sent a nag email recently
         }
 
-        let data = EmailData { secret: "", site_link, site_name };
+        let data = EmailData {
+            secret: "",
+            site_link: site_link,
+            site_name: site_name,
+        };
         let email = EmailBuilder::new()
             .to(email_addr.as_str())
             .from(from)
@@ -193,7 +250,8 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: ch
             .html(hb_registry.render("slacker_heatenings.html", &data) // FIXME
                 .chain_err(|| "Handlebars template render error!")?
                 .as_ref())
-            .build().expect("Building email shouldn't fail.");
+            .build()
+            .expect("Building email shouldn't fail.");
 
         let result = mailer.send(email)
             .chain_err(|| "Couldn't send!")?;
@@ -201,10 +259,10 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection, how_old: ch
         stats.last_nag_email = Some(chrono::UTC::now());
         let _: UserStats = stats.save_changes(conn)?;
 
-        info!("Sent slacker heatening email to {}: {:?}!", email_addr, result);
+        info!("Sent slacker heatening email to {}: {:?}!",
+              email_addr,
+              result);
     }
 
     Ok(())
 }
-
-

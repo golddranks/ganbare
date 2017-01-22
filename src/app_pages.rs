@@ -199,7 +199,7 @@ pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
 
     event::set_done(&conn, "sorting_ceremony", &user).err_500()?;
 
-    return redirect("/", 303).refresh_cookie(&sess);
+    redirect("/", 303).refresh_cookie(&sess)
 }
 
 pub fn retelling(req: &mut Request) -> PencilResult {
@@ -217,7 +217,7 @@ pub fn retelling(req: &mut Request) -> PencilResult {
         _ => unreachable!(),
     }
 
-    let (_, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+    let (_, _) = event::require_ongoing(&conn, event_name, &user).err_401()?;
 
     let mut context = new_template_context();
     context.insert("testing".into(), "true".into());
@@ -282,7 +282,7 @@ pub fn logout(req: &mut Request) -> PencilResult {
     if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
         do_logout(&conn, &old_sess).err_500()?;
     }
-    return redirect("/", 303).expire_cookie();
+    redirect("/", 303).expire_cookie()
 }
 
 
@@ -292,7 +292,7 @@ pub fn confirm_form(request: &mut Request) -> PencilResult {
 
         let secret = err_400!(request.args().get("secret"), "secret");
         let conn = db_connect().err_500()?;
-        let email = match email::check_pending_email_confirm(&conn, &secret).err_500()? {
+        let email = match email::check_pending_email_confirm(&conn, secret).err_500()? {
             Some((email, _)) => email,
             None => return redirect("/", 303),
         };
@@ -318,23 +318,23 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
         let password = err_400!(req.form().expect("form data loaded.").get("password"),
                                 "password missing");
         let user = match email::complete_pending_email_confirm(&conn,
-                                                               &password,
+                                                               password,
                                                                &secret,
                                                                &*RUNTIME_PEPPER) {
             Ok(u) => u,
             Err(e) => {
-                match e.kind() {
-                    &errors::ErrorKind::NoSuchSess => {
+                match *e.kind() {
+                    errors::ErrorKind::NoSuchSess => {
                         if user::get_user_by_email(&conn, email).err_500()?.is_some() {
                             return Ok(bad_request("The user account already exists?"));
                         } else {
                             return Ok(bad_request(""));
                         }
                     }
-                    &errors::ErrorKind::PasswordTooShort => {
+                    errors::ErrorKind::PasswordTooShort => {
                         return Ok(bad_request("Password too short"))
                     }
-                    &errors::ErrorKind::PasswordTooLong => {
+                    errors::ErrorKind::PasswordTooLong => {
                         return Ok(bad_request("Password too long"))
                     }
                     _ => return Err(internal_error(e)),
@@ -350,7 +350,7 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
 
         match do_login(&conn,
                        &user.email.expect("The email address was just proven to exits."),
-                       &password,
+                       password,
                        &*req).err_500()? {
             Some((_, sess)) => redirect("/", 303).refresh_cookie(&sess),
             None => {
@@ -436,19 +436,12 @@ pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
 
         user::invalidate_password_reset(&conn, &secret).err_500()?;
 
-        match user::change_password(&conn, user.id, &password, &*RUNTIME_PEPPER) {
-            Err(e) => {
-                match e.kind() {
-                    &errors::ErrorKind::PasswordTooShort => {
-                        return Ok(bad_request("Password too short"))
-                    }
-                    &errors::ErrorKind::PasswordTooLong => {
-                        return Ok(bad_request("Password too long"))
-                    }
-                    _ => return Err(internal_error(e)),
-                }
+        if let Err(e) = user::change_password(&conn, user.id, &password, &*RUNTIME_PEPPER) {
+            match *e.kind() {
+                errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
+                errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
+                _ => return Err(internal_error(e)),
             }
-            _ => (),
         };
 
         if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
@@ -560,8 +553,8 @@ pub fn change_password(req: &mut Request) -> PencilResult {
 
     match user::auth_user(&conn, &user_email, &old_password, &*RUNTIME_PEPPER) {
         Err(e) => {
-            return match e.kind() {
-                &ErrorKind::AuthError => {
+            return match *e.kind() {
+                ErrorKind::AuthError => {
                     let mut context = new_template_context();
                     context.insert("authError".to_string(), "true".to_string());
 
@@ -576,20 +569,17 @@ pub fn change_password(req: &mut Request) -> PencilResult {
             }
         }
         Ok(_) => {
-            match user::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER) {
-                Err(e) => {
-                    match e.kind() {
-                        &errors::ErrorKind::PasswordTooShort => {
-                            return Ok(bad_request("Password too short"))
-                        }
-                        &errors::ErrorKind::PasswordTooLong => {
-                            return Ok(bad_request("Password too long"))
-                        }
-                        _ => return Err(internal_error(e)),
+            if let Err(e) = user::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER) {
+                match *e.kind() {
+                    errors::ErrorKind::PasswordTooShort => {
+                        return Ok(bad_request("Password too short"))
                     }
+                    errors::ErrorKind::PasswordTooLong => {
+                        return Ok(bad_request("Password too long"))
+                    }
+                    _ => return Err(internal_error(e)),
                 }
-                _ => (),
-            };
+            }
         }
     };
 

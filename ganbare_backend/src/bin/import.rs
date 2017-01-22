@@ -11,7 +11,8 @@ extern crate tempdir;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-#[macro_use]  extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 
 use unicode_normalization::UnicodeNormalization;
 use ganbare_backend::*;
@@ -19,12 +20,19 @@ use std::path::PathBuf;
 
 lazy_static! {
 
-    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_DATABASE_URL")
-        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
+    static ref DATABASE_URL : String = {
+        dotenv::dotenv().ok();
+        std::env::var("GANBARE_DATABASE_URL")
+            .expect(
+            "GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)"
+            )
+    };
 
-    pub static ref AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(std::env::var("GANBARE_AUDIO_DIR")
-        .unwrap_or_else(|_| "../audio".into())) };
-
+    pub static ref AUDIO_DIR : PathBuf = {
+        dotenv::dotenv().ok();
+        PathBuf::from(std::env::var("GANBARE_AUDIO_DIR")
+            .unwrap_or_else(|_| "../audio".into()))
+    };
 }
 
 fn import_batch(path: &str, narrator: &str, sentences: bool) {
@@ -36,11 +44,17 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
     for f in files {
         let f = f.unwrap();
         let path = f.path();
-        let extension = if let Some(Some(e)) = path.extension().map(|s|s.to_str()) { e } else { continue }.to_owned();
+        let extension = if let Some(Some(e)) = path.extension().map(|s| s.to_str()) {
+                e
+            } else {
+                continue;
+            }
+            .to_owned();
         let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
 
         let mut word = path.file_stem().unwrap().to_str().unwrap().nfc().collect::<String>();
-        let last_char = word.chars().next_back().expect("The word surely is longer than 0 characters!");
+        let last_char =
+            word.chars().next_back().expect("The word surely is longer than 0 characters!");
 
         if !sentences && word.chars().filter(|c| c == &'・' || c == &'*').count() > 1 {
             panic!("Invalid filename! More than one accent marks: {:?}", word);
@@ -57,7 +71,9 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
 
         std::fs::copy(path, &temp_file_path).expect("copying files");
 
-        if extension != "mp3" { continue };
+        if extension != "mp3" {
+            continue;
+        };
 
         use std::str::FromStr;
         let mime = mime::Mime::from_str("audio/mpeg").unwrap();
@@ -76,7 +92,11 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
     }
 }
 
-fn full_sentence<'a>(conn: &PgConnection, filename: &str, narrator: &'a str, files: Vec<(PathBuf, Option<String>, mime::Mime)>) -> manage::NewWordFromStrings<'a> {
+fn full_sentence<'a>(conn: &PgConnection,
+                     filename: &str,
+                     narrator: &'a str,
+                     files: Vec<(PathBuf, Option<String>, mime::Mime)>)
+                     -> manage::NewWordFromStrings<'a> {
 
     let mut word_split = filename.split('、');
     let mut word = word_split.next().unwrap().to_owned();
@@ -86,10 +106,10 @@ fn full_sentence<'a>(conn: &PgConnection, filename: &str, narrator: &'a str, fil
 
     println!("{:?}", &word);
     use schema::words;
-    let explanation: String = words::table
-        .filter(words::word.eq(&word))
+    let explanation: String = words::table.filter(words::word.eq(&word))
         .select(words::explanation)
-        .get_result(conn).unwrap();
+        .get_result(conn)
+        .unwrap();
 
     if !word.contains('・') {
         word.push('＝');
@@ -106,26 +126,29 @@ fn full_sentence<'a>(conn: &PgConnection, filename: &str, narrator: &'a str, fil
 
     manage::NewWordFromStrings {
         word: sentence,
-        explanation,
-        nugget,
-        narrator,
-        files,
+        explanation: explanation,
+        nugget: nugget,
+        narrator: narrator,
+        files: files,
         skill_level: 5,
         priority: 0,
     }
 }
 
-fn simple_word<'a>(filename: &str, narrator: &'a str, files: Vec<(PathBuf, Option<String>, mime::Mime)>) -> manage::NewWordFromStrings<'a> {
+fn simple_word<'a>(filename: &str,
+                   narrator: &'a str,
+                   files: Vec<(PathBuf, Option<String>, mime::Mime)>)
+                   -> manage::NewWordFromStrings<'a> {
 
     let nugget = filename.replace("*", "").replace("・", "");
     let word = filename.to_owned();
 
     manage::NewWordFromStrings {
-        word,
+        word: word,
         explanation: "".into(),
-        nugget,
-        narrator,
-        files,
+        nugget: nugget,
+        narrator: narrator,
+        files: files,
         skill_level: 0,
         priority: 0,
     }
@@ -139,24 +162,24 @@ fn main() {
 
     let matches = App::new("ganba.re word import tool")
         .arg(Arg::with_name("sentences")
-                                .short("s")
-                                .long("sentences")
-                                .help("Flag to enable importing sentences"))
+            .short("s")
+            .long("sentences")
+            .help("Flag to enable importing sentences"))
         .arg(Arg::with_name("PATH")
-                                .index(1)
-                                .required(true)
-                                .value_name("PATH")
-                                .help("The path to the input files")
-                                .takes_value(true))
+            .index(1)
+            .required(true)
+            .value_name("PATH")
+            .help("The path to the input files")
+            .takes_value(true))
         .arg(Arg::with_name("NARRATOR")
-                                .index(2)
-                                .required(true)
-                                .value_name("NARRATOR")
-                                .help("The person narrating the files")
-                                .takes_value(true))
+            .index(2)
+            .required(true)
+            .value_name("NARRATOR")
+            .help("The person narrating the files")
+            .takes_value(true))
         .version(crate_version!())
         .get_matches();
-    
+
     let sentences = matches.is_present("sentences");
     let path = matches.value_of("PATH").unwrap();
     let narrator = matches.value_of("NARRATOR").unwrap();

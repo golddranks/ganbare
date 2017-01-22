@@ -11,27 +11,38 @@ extern crate tempdir;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-#[macro_use]  extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 extern crate rand;
 extern crate regex;
 extern crate time;
 
 use ganbare_backend::*;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
 lazy_static! {
 
-    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_DATABASE_URL")
-        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
+    static ref DATABASE_URL : String = {
+        dotenv::dotenv().ok();
+        std::env::var("GANBARE_DATABASE_URL")
+            .expect(
+            "GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)"
+            )
+    };
 
-    pub static ref AUDIO_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(std::env::var("GANBARE_AUDIO_DIR")
-        .unwrap_or_else(|_| "../audio".into())) };
+    pub static ref AUDIO_DIR : PathBuf = {
+        dotenv::dotenv().ok();
+        PathBuf::from(std::env::var("GANBARE_AUDIO_DIR")
+            .unwrap_or_else(|_| "../audio".into()))
+    };
 
-    pub static ref IMAGE_DIR : PathBuf = { dotenv::dotenv().ok(); PathBuf::from(std::env::var("GANBARE_IMAGES_DIR")
-        .unwrap_or_else(|_| "../images".into())) };
-
+    pub static ref IMAGE_DIR : PathBuf = {
+        dotenv::dotenv().ok();
+        PathBuf::from(std::env::var("GANBARE_IMAGES_DIR")
+            .unwrap_or_else(|_| "../images".into()))
+    };
 }
 
 pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
@@ -45,9 +56,9 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
     let r4 = regex::Regex::new(r#"<br .*?>"#).expect("<- that is a valid regex there");
 
 
-    let words: Vec<Word> = words::table
-        .filter(words::explanation.like("%span%").or(words::explanation.like("%<br %")))
-        .get_results(&conn)?;
+    let words: Vec<Word> =
+        words::table.filter(words::explanation.like("%span%").or(words::explanation.like("%<br %")))
+            .get_results(&conn)?;
 
     for mut w in words {
         let before = format!("{:?}", w);
@@ -58,12 +69,13 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
 
         logger.push(format!("Tidied a span/br tag!\n{}\n→\n{:?}\n", before, w));
 
-        let _ : Word = w.save_changes(&conn)?;
+        let _: Word = w.save_changes(&conn)?;
     }
 
-    let answers: Vec<Answer> = question_answers::table
-        .filter(question_answers::answer_text.like("%span%").or(question_answers::answer_text.like("%<br %")))
-        .get_results(&conn)?;
+    let answers: Vec<Answer> =
+        question_answers::table.filter(question_answers::answer_text.like("%span%")
+                .or(question_answers::answer_text.like("%<br %")))
+            .get_results(&conn)?;
 
     for mut a in answers {
         let before = format!("{:?}", a);
@@ -74,7 +86,7 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
 
         logger.push(format!("Tidied a span/br tag!\n{}\n→\n{:?}\n", before, a));
 
-        let _ : Answer = a.save_changes(&conn)?;
+        let _: Answer = a.save_changes(&conn)?;
     }
 
     Ok(logger)
@@ -94,22 +106,27 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
 
     for mut w in words {
         let before = format!("{:?}", w);
-        w.explanation =  sanitize_links(&w.explanation, &*IMAGE_DIR)?;
-        logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n", before, w));
+        w.explanation = sanitize_links(&w.explanation, &*IMAGE_DIR)?;
+        logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n",
+                            before,
+                            w));
 
-        let _ : Word = w.save_changes(&conn)?;
+        let _: Word = w.save_changes(&conn)?;
     }
 
-    let answers: Vec<Answer> = question_answers::table
-        .filter(question_answers::answer_text.like("%http://%").or(question_answers::answer_text.like("%https://%")))
-        .get_results(&conn)?;
+    let answers: Vec<Answer> =
+        question_answers::table.filter(question_answers::answer_text.like("%http://%")
+                .or(question_answers::answer_text.like("%https://%")))
+            .get_results(&conn)?;
 
     for mut a in answers {
         let before = format!("{:?}", a);
-        a.answer_text =  sanitize_links(&a.answer_text, &*IMAGE_DIR)?;
-        logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n", before, a));
+        a.answer_text = sanitize_links(&a.answer_text, &*IMAGE_DIR)?;
+        logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n",
+                            before,
+                            a));
 
-        let _ : Answer = a.save_changes(&conn)?;
+        let _: Answer = a.save_changes(&conn)?;
     }
 
     Ok(logger)
@@ -156,7 +173,8 @@ fn clean_unused_audio() {
 
     let fs_files = std::fs::read_dir(&*AUDIO_DIR).unwrap();
 
-    let db_files: HashSet<String> = audio::get_all_files(&conn).unwrap().into_iter().map(|f| f.0).collect();
+    let db_files: HashSet<String> =
+        audio::get_all_files(&conn).unwrap().into_iter().map(|f| f.0).collect();
 
     let mut trash_dir = AUDIO_DIR.clone();
     trash_dir.push("trash");
@@ -164,10 +182,12 @@ fn clean_unused_audio() {
     for f in fs_files {
         let f = f.unwrap();
         let f_name = f.file_name();
-        if ! db_files.contains(f_name.to_str().unwrap()) && f_name != *"trash" {
+        if !db_files.contains(f_name.to_str().unwrap()) && f_name != *"trash" {
             trash_dir.push(&f_name);
-            info!("Moving a unneeded file {:?} to the trash directory.", &f_name);
-            std::fs::rename(f.path(), &trash_dir).expect("Create \"trash\" directory for cleaning up!");
+            info!("Moving a unneeded file {:?} to the trash directory.",
+                  &f_name);
+            std::fs::rename(f.path(), &trash_dir)
+                .expect("Create \"trash\" directory for cleaning up!");
             trash_dir.pop();
         }
     }
@@ -192,9 +212,9 @@ fn clean_unused_images() {
 
     let mut db_files: HashSet<String> = HashSet::new();
 
-    let words: Vec<Word> = words::table
-        .filter(words::explanation.like("%<img%"))
-        .get_results(&conn).unwrap();
+    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
+        .get_results(&conn)
+        .unwrap();
 
     for w in words {
 
@@ -204,9 +224,10 @@ fn clean_unused_images() {
         }
     }
 
-    let answers: Vec<Answer> = question_answers::table
-        .filter(question_answers::answer_text.like("%<img%"))
-        .get_results(&conn).unwrap();
+    let answers: Vec<Answer> =
+        question_answers::table.filter(question_answers::answer_text.like("%<img%"))
+            .get_results(&conn)
+            .unwrap();
 
     for a in answers {
         for img_match in IMG_REGEX.captures_iter(&a.answer_text) {
@@ -221,10 +242,12 @@ fn clean_unused_images() {
     for f in fs_files {
         let f = f.unwrap();
         let f_name = f.file_name();
-        if ! db_files.contains(f_name.to_str().unwrap()) && f_name != *"trash" {
+        if !db_files.contains(f_name.to_str().unwrap()) && f_name != *"trash" {
             trash_dir.push(&f_name);
-            info!("Moving a unneeded file {:?} to the trash directory.", &f_name);
-            std::fs::rename(f.path(), &trash_dir).expect("Create \"trash\" directory for cleaning up!");
+            info!("Moving a unneeded file {:?} to the trash directory.",
+                  &f_name);
+            std::fs::rename(f.path(), &trash_dir)
+                .expect("Create \"trash\" directory for cleaning up!");
             trash_dir.pop();
         }
     }
@@ -242,27 +265,32 @@ fn add_br_between_images_and_text() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let words: Vec<Word> = words::table
-        .filter(words::explanation.like("%<img%"))
-        .get_results(&conn).unwrap();
+    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
+        .get_results(&conn)
+        .unwrap();
 
     for mut w in words {
         let new_text = BR_IMG_REGEX.replace_all(&w.explanation, "$1<br>$2");
         if new_text != w.explanation {
-            println!("Added a br tag:\n{:?}\n→\n{:?}\n", w.explanation, new_text);
+            println!("Added a br tag:\n{:?}\n→\n{:?}\n",
+                     w.explanation,
+                     new_text);
             w.explanation = new_text;
             let _: Word = w.save_changes(&conn).unwrap();
         }
     }
 
-    let answers: Vec<Answer> = question_answers::table
-        .filter(question_answers::answer_text.like("%<img%"))
-        .get_results(&conn).unwrap();
+    let answers: Vec<Answer> =
+        question_answers::table.filter(question_answers::answer_text.like("%<img%"))
+            .get_results(&conn)
+            .unwrap();
 
     for mut a in answers {
         let new_text = BR_IMG_REGEX.replace_all(&a.answer_text, "$1<br>$2");
         if new_text != a.answer_text {
-            println!("Added a br tag:\n{:?}\n→\n{:?}\n", a.answer_text, new_text);
+            println!("Added a br tag:\n{:?}\n→\n{:?}\n",
+                     a.answer_text,
+                     new_text);
             a.answer_text = new_text;
             let _: Answer = a.save_changes(&conn).unwrap();
         }
@@ -275,17 +303,16 @@ fn main() {
     env_logger::init().unwrap();
     info!("Starting.");
 
-    App::new("ganba.re audio cleaning tool")
-        .version(crate_version!());
+    App::new("ganba.re audio cleaning tool").version(crate_version!());
 
 
     for line in outbound_urls_to_inbound().unwrap() {
         println!("{}", line);
-    };
+    }
 
     for line in tidy_span_and_br_tags().unwrap() {
         println!("{}", line);
-    };
+    }
 
     clean_unused_audio();
     clean_unused_images();

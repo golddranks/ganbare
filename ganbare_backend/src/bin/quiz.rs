@@ -14,25 +14,31 @@ use ganbare_backend::errors::*;
 use ganbare_backend::db;
 use ganbare_backend::models::*;
 use diesel::LoadDsl;
-#[macro_use]  extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 
 
 lazy_static! {
 
-    static ref DATABASE_URL : String = { dotenv::dotenv().ok(); std::env::var("GANBARE_DATABASE_URL")
-        .expect("GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)")};
+    static ref DATABASE_URL : String = {
+        dotenv::dotenv().ok();
+        std::env::var("GANBARE_DATABASE_URL")
+            .expect(
+            "GANBARE_DATABASE_URL must be set (format: postgres://username:password@host/dbname)"
+            )
+    };
 
 }
 
 
-pub fn list_skillnuggets(conn : &PgConnection) -> Result<Vec<SkillNugget>> {
+pub fn list_skillnuggets(conn: &PgConnection) -> Result<Vec<SkillNugget>> {
     use ganbare_backend::schema::skill_nuggets::dsl::*;
- 
+
     skill_nuggets.load::<SkillNugget>(conn).chain_err(|| "Can't load")
 
 }
 
-pub fn list_questions(conn : &PgConnection) -> Result<Vec<QuizQuestion>> {
+pub fn list_questions(conn: &PgConnection) -> Result<Vec<QuizQuestion>> {
     use ganbare_backend::schema::quiz_questions::dsl::*;
 
     quiz_questions.load::<QuizQuestion>(conn).chain_err(|| "Can't load")
@@ -56,17 +62,18 @@ fn main() {
             println!("{} skill nuggets found:", items.len());
             for i in items {
                 println!("{:?}", i);
-            };
-        },
+            }
+        }
         ("lsq", Some(_)) => {
             let items = list_questions(&conn).unwrap();
             println!("{} questions found:", items.len());
             for i in items {
                 println!("{:?}", i);
-            };
-        },
+            }
+        }
         _ => {
-            unreachable!(); // clap should exit before reaching here if none of the subcommands are entered.
-        },
+            // clap should exit before reaching here if none of the subcommands are entered.
+            unreachable!();
+        }
     }
 }
