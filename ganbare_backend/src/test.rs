@@ -10,16 +10,16 @@ fn save_answer_test_item(conn: &PgConnection,
                          -> Result<()> {
     use schema::pending_items;
 
-    let answered_id = match answer_enum {
-        &Answered::E(ref a) => a.id,
-        &Answered::Q(ref a) => a.id,
-        &Answered::W(ref a) => a.id,
+    let answered_id = match *answer_enum {
+        Answered::E(ref a) => a.id,
+        Answered::Q(ref a) => a.id,
+        Answered::W(ref a) => a.id,
     };
 
     let mut pending_item: PendingItem =
         pending_items::table.filter(pending_items::id.eq(answered_id))
             .get_result(conn)?;
-    if pending_item.pending == false {
+    if !pending_item.pending {
         info!("The user tried to answer to the same question twice! Ignoring the later answer.");
         return Ok(());
     }
@@ -50,7 +50,7 @@ fn save_answer_test_item(conn: &PgConnection,
 fn get_new_quiz_test(conn: &PgConnection,
                      user: &User,
                      event: &Event,
-                     quizes: &Vec<QuizSerialized>)
+                     quizes: &[QuizSerialized])
                      -> Result<Option<Quiz>> {
 
     let number = event::get_userdata(conn, event, user, "quiz_number")
@@ -66,7 +66,7 @@ fn get_new_quiz_test(conn: &PgConnection,
         // We can show a new item, since to old one was answered to
 
         if number == quizes.len() {
-            event::set_done(&conn, &event.name, &user)?;
+            event::set_done(conn, &event.name, user)?;
             return Ok(None);
         }
 
@@ -121,7 +121,7 @@ pub struct RetellingJson {
 fn get_new_retelling(conn: &PgConnection,
                      user: &User,
                      event: &Event,
-                     retellings: &Vec<(&'static str, &'static str)>)
+                     retellings: &[(&'static str, &'static str)])
                      -> Result<Option<RetellingJson>> {
 
     let number = event::get_userdata(conn, event, user, "retelling_number")
@@ -130,7 +130,7 @@ fn get_new_retelling(conn: &PgConnection,
         .unwrap_or(0);
 
     if number == retellings.len() {
-        event::set_done(&conn, &event.name, &user)?;
+        event::set_done(conn, &event.name, user)?;
         return Ok(None);
     }
 

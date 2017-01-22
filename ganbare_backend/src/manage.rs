@@ -30,12 +30,12 @@ pub fn create_quiz(conn: &PgConnection,
     info!("Creating quiz!");
 
     // Sanity check
-    if answers.len() == 0 {
+    if answers.is_empty() {
         warn!("Can't create a question with 0 answers!");
         return Err(ErrorKind::FormParseError.into());
     }
     for a in &answers {
-        if a.q_variants.len() == 0 {
+        if a.q_variants.is_empty() {
             warn!("Can't create a question with 0 audio files for question!");
             return Err(ErrorKind::FormParseError.into());
         }
@@ -119,7 +119,7 @@ pub fn add_audio(conn: &PgConnection, w: NewAudio, audio_dir: &Path) -> Result<A
 
     info!("Add audio {:?}", w);
 
-    let mut narrator = Some(audio::get_create_narrator(conn, &w.narrator)?);
+    let mut narrator = Some(audio::get_create_narrator(conn, w.narrator)?);
     let mut bundle = Some(audio::get_create_bundle(conn, &w.word)?);
 
     for mut file in w.files {
@@ -140,8 +140,8 @@ pub fn create_or_update_word(conn: &PgConnection,
 
     let nugget = skill::get_create_by_name(&*conn, &w.nugget)?;
 
-    let mut narrator = Some(audio::get_create_narrator(&*conn, &w.narrator)?);
-    let mut bundle = Some(audio::get_create_bundle(&*conn, &w.word)?);
+    let mut narrator = Some(audio::get_create_narrator(conn, w.narrator)?);
+    let mut bundle = Some(audio::get_create_bundle(conn, &w.word)?);
 
     for mut file in w.files {
         audio::save(&*conn, &mut narrator, &mut file, &mut bundle, audio_dir)?;
@@ -436,8 +436,9 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
         if CONVERTED_LINKS.read()
             .expect("If the lock is poisoned, we're screwed anyway")
             .contains_key(url) {
-            let ref new_url =
-                CONVERTED_LINKS.read().expect("If the lock is poisoned, we're screwed anyway")[url];
+            let new_url = &CONVERTED_LINKS.read()
+                .expect("If the lock is poisoned, we're screwed anyway")
+                               [url];
             result = result.replace(url, new_url);
         } else {
 
@@ -464,8 +465,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
                     Some(&ContentType(Mime(Image, Png, _))) => ".png",
                     Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
                     Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
-                    Some(_) => final_guess,
-                    None => final_guess,
+                    Some(_) | None => final_guess,
                 }
             };
 

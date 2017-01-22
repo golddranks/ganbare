@@ -184,5 +184,5 @@ fn main() {
     let path = matches.value_of("PATH").unwrap();
     let narrator = matches.value_of("NARRATOR").unwrap();
 
-    import_batch(&path, &narrator, sentences);
+    import_batch(path, narrator, sentences);
 }

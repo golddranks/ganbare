@@ -45,8 +45,8 @@ pub fn auth_user(conn: &PgConnection,
                  -> Result<Option<User>> {
     let (user, hashed_pw_from_db) = match get_user_pass_by_email(conn, email) {
         Err(err) => {
-            match err.kind() {
-                &ErrorKind::NoSuchUser(_) => return Ok(None),
+            match *err.kind() {
+                ErrorKind::NoSuchUser(_) => return Ok(None),
                 _ => Err(err),
             }
         }
@@ -56,8 +56,8 @@ pub fn auth_user(conn: &PgConnection,
     let time_before = Instant::now();
     match password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper) {
         Err(err) => {
-            match err.kind() {
-                &ErrorKind::PasswordDoesntMatch => return Ok(None),
+            match *err.kind() {
+                ErrorKind::PasswordDoesntMatch => return Ok(None),
                 _ => Err(err),
             }
         }
@@ -78,7 +78,7 @@ pub fn add_user(conn: &PgConnection, email: &str, password: &str, pepper: &[u8])
     if email.len() > 254 {
         return Err(ErrorKind::EmailAddressTooLong.into());
     };
-    if !email.contains("@") {
+    if !email.contains('@') {
         return Err(ErrorKind::EmailAddressNotValid.into());
     };
 

@@ -197,21 +197,21 @@ pub fn complete_pending_email_confirm(conn: &PgConnection,
     Ok(user)
 }
 
-pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection,
-                                                how_old: chrono::Duration,
-                                                nag_grace_period: chrono::Duration,
-                                                mail_server: SOCK,
-                                                username: &str,
-                                                password: &str,
-                                                site_name: &str,
-                                                site_link: &str,
-                                                hb_registry: &Handlebars,
-                                                from: (&str, &str))
-                                                -> Result<()> {
+pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &PgConnection,
+                                            how_old: chrono::Duration,
+                                            nag_grace_period: chrono::Duration,
+                                            mail_server: SOCK,
+                                            username: &str,
+                                            password: &str,
+                                            site_name: &str,
+                                            site_link: &str,
+                                            hb_registry: &Handlebars,
+                                            from: (&str, &str))
+                                            -> Result<()> {
 
     let slackers = user::get_slackers(conn, how_old)?;
 
-    if slackers.len() == 0 {
+    if slackers.is_empty() {
         return Ok(());
     }
 
@@ -232,7 +232,7 @@ pub fn send_nag_emails<'a, SOCK: ToSocketAddrs>(conn: &PgConnection,
             continue; // We don't send emails to users that don't belong to the "nag_emails" group.
         }
 
-        let last_nag = stats.last_nag_email.unwrap_or(chrono::date::MIN.and_hms(0, 0, 0));
+        let last_nag = stats.last_nag_email.unwrap_or_else(|| chrono::date::MIN.and_hms(0, 0, 0));
 
         if last_nag > chrono::UTC::now() - nag_grace_period {
             continue; // We have sent a nag email recently

@@ -52,7 +52,7 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
     let mut logger = vec![];
 
     let r2 = regex::Regex::new(r#"<span .*?>"#).expect("<- that is a valid regex there");
-    let r3 = regex::Regex::new(r#"</span>"#).expect("<- that is a valid regex there");
+    let r3 = r#"</span>"#;
     let r4 = regex::Regex::new(r#"<br .*?>"#).expect("<- that is a valid regex there");
 
 
@@ -64,7 +64,7 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
         let before = format!("{:?}", w);
 
         w.explanation = r2.replace_all(&w.explanation, "");
-        w.explanation = r3.replace_all(&w.explanation, "");
+        w.explanation = w.explanation.replace(r3, "");
         w.explanation = r4.replace_all(&w.explanation, "<br>");
 
         logger.push(format!("Tidied a span/br tag!\n{}\n→\n{:?}\n", before, w));
@@ -81,7 +81,7 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
         let before = format!("{:?}", a);
 
         a.answer_text = r2.replace_all(&a.answer_text, "");
-        a.answer_text = r3.replace_all(&a.answer_text, "");
+        a.answer_text = a.answer_text.replace(r3, "");
         a.answer_text = r4.replace_all(&a.answer_text, "<br>");
 
         logger.push(format!("Tidied a span/br tag!\n{}\n→\n{:?}\n", before, a));

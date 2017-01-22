@@ -332,7 +332,7 @@ pub fn save(conn: &PgConnection,
               file.1.as_ref().map(|s| s.as_str()).unwrap_or(""),
               audio_dir)?;
 
-    let bundle_id = if let &mut Some(ref bundle) = bundle {
+    let bundle_id = if let Some(ref bundle) = *bundle {
         bundle.id
     } else {
         let new_bundle = new_bundle(&*conn, "")?;
@@ -377,7 +377,7 @@ pub fn load_all_from_bundles(conn: &PgConnection,
 
     for q in &q_audio_files {
         // Sanity check
-        if q.len() == 0 {
+        if q.is_empty() {
             return Err(ErrorKind::DatabaseOdd("Bug: Audio bundles should always have more than \
                                                zero members when created.")
                 .into());

@@ -194,7 +194,7 @@ fn log_answer_word(conn: &PgConnection, user: &User, answered: &WAnsweredData) -
             .filter(pending_items::id.eq(answered.id))
             .get_result(conn)?;
 
-    if pending_item.pending == false {
+    if !pending_item.pending {
         info!("User is trying to answer twice to the same question! Ignoring the later answer.");
         return Ok(());
     }
@@ -235,7 +235,7 @@ fn log_answer_question(conn: &PgConnection,
             .filter(pending_items::id.eq(answered.id))
             .get_result(conn)?;
 
-    if pending_item.pending == false {
+    if !pending_item.pending {
         info!("User is trying to answer twice to the same question! Ignoring the later answer.");
         return Ok(());
     }
@@ -330,7 +330,7 @@ fn log_answer_exercise(conn: &PgConnection,
             .filter(pending_items::id.eq(answered.id))
             .get_result(conn)?;
 
-    if pending_item.pending == false {
+    if !pending_item.pending {
         info!("User is trying to answer twice to the same question! Ignoring the later answer.");
         return Ok(());
     }
@@ -1010,7 +1010,7 @@ fn check_break(conn: &PgConnection,
             // Nothing else left but due items – so no use breaking until there is some available
             metrics.break_until =
                 max(metrics.break_until,
-                    next_existing_due.unwrap_or(chrono::date::MAX.and_hms(0, 0, 0)));
+                    next_existing_due.unwrap_or_else(|| chrono::date::MAX.and_hms(0, 0, 0)));
         }
 
         let due_string = metrics.break_until.to_rfc3339();
@@ -1042,7 +1042,7 @@ fn check_break(conn: &PgConnection,
             // Nothing else left but due items – so no use breaking until there is some available
             metrics.break_until =
                 max(metrics.break_until,
-                    next_existing_due.unwrap_or(chrono::date::MAX.and_hms(0, 0, 0)));
+                    next_existing_due.unwrap_or_else(|| chrono::date::MAX.and_hms(0, 0, 0)));
         }
 
         metrics.new_words_since_break = 0;
@@ -1098,7 +1098,7 @@ pub fn pi_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
     use schema::{q_asked_data, e_asked_data, w_asked_data};
 
     Ok(match pi {
-        ref pi if pi.item_type == "question" => {
+        pi if pi.item_type == "question" => {
 
             let asked: QAskedData = q_asked_data::table.filter(q_asked_data::id.eq(pi.id))
                 .get_result(conn)?;
@@ -1123,7 +1123,7 @@ pub fn pi_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
             })
 
         }
-        ref pi if pi.item_type == "exercise" => {
+        pi if pi.item_type == "exercise" => {
 
             let asked: EAskedData = e_asked_data::table.filter(e_asked_data::id.eq(pi.id))
                 .get_result(conn)?;
@@ -1144,7 +1144,7 @@ pub fn pi_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
             })
 
         }
-        ref pi if pi.item_type == "word" => {
+        pi if pi.item_type == "word" => {
 
             let asked: WAskedData = w_asked_data::table.filter(w_asked_data::id.eq(pi.id))
                 .get_result(conn)?;
@@ -1216,7 +1216,7 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
                 answers: answer_choices,
             };
 
-            return Ok(Some(Quiz::Q(quiz_json)));
+            Ok(Some(Quiz::Q(quiz_json)))
 
         }
         QuizType::Exercise(id) => {
@@ -1242,7 +1242,7 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
                 must_record: false,
             };
 
-            return Ok(Some(Quiz::E(quiz_json)));
+            Ok(Some(Quiz::E(quiz_json)))
         }
         QuizType::Word(_) => unreachable!(),
     }
@@ -1271,7 +1271,7 @@ pub fn return_word(conn: &PgConnection, user: &User, the_word: Word) -> Result<O
         show_accents: show_accents,
     };
 
-    return Ok(Some(Quiz::W(quiz_json)));
+    Ok(Some(Quiz::W(quiz_json)))
 }
 
 pub fn get_word_id(conn: &PgConnection, word: &str) -> Result<i32> {
@@ -1312,8 +1312,8 @@ pub fn test_item(conn: &PgConnection,
                  quiz_str: &QuizSerialized)
                  -> Result<(Quiz, i32)> {
     let pending_item;
-    let test_item = match quiz_str {
-        &QuizSerialized::Word(ref s, audio_id) => {
+    let test_item = match *quiz_str {
+        QuizSerialized::Word(s, audio_id) => {
             pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id))?;
 
             let asked_data = WAskedData {
@@ -1338,7 +1338,7 @@ pub fn test_item(conn: &PgConnection,
                 show_accents: asked_data.show_accents,
             })
         }
-        &QuizSerialized::Question(ref s, audio_id, variant_id) => {
+        QuizSerialized::Question(s, audio_id, variant_id) => {
 
             pending_item = new_pending_item(conn, user.id, QuizType::Question(audio_id))?;
 
@@ -1372,7 +1372,7 @@ pub fn test_item(conn: &PgConnection,
             })
 
         }
-        &QuizSerialized::Exercise(ref word, audio_id) => {
+        QuizSerialized::Exercise(word, audio_id) => {
 
             pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id))?;
             let exercise_name = word.replace('*', "").replace('・', "");

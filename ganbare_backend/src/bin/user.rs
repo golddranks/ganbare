@@ -192,7 +192,7 @@ fn main() {
         ("add", Some(args)) => {
             use ganbare_backend::errors::ErrorKind::NoSuchUser;
             let email = args.value_of("email").unwrap();
-            match get_user_by_email(&conn, &email) {
+            match get_user_by_email(&conn, email) {
                 Err(Error(kind, _)) => {
                     match kind {
                         NoSuchUser(email) => println!("Adding a user with email {}", email),
@@ -233,7 +233,7 @@ fn main() {
         }
         ("force_add", Some(args)) => {
             let email = args.value_of("email").unwrap();
-            match get_user_by_email(&conn, &email) {
+            match get_user_by_email(&conn, email) {
                 Err(e) => return println!("Error: {:?}", e),
                 Ok(Some(u)) => {
                     println!("Error: User already exists! {:?}", u);

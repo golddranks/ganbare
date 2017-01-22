@@ -53,7 +53,7 @@ fn pepper_salt_pw_hash(plaintext_pw: &str,
     let mut hasher = sha2::Sha512::new();
     hasher.input_str(plaintext_pw);
     hasher.input(build_pepper);
-    hasher.input(&runtime_pepper);
+    hasher.input(runtime_pepper);
     let mut peppered_pw = [0_u8; 64];
     hasher.result(&mut peppered_pw);
     let peppered_pw = peppered_pw;

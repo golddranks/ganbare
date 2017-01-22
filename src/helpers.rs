@@ -406,9 +406,9 @@ pub fn try_auth_user(req: &mut Request)
 /// Try and dereference required env vars for the `lazy_static!`
 /// to run and check if the values are present.
 pub fn check_env_vars() {
-    &*DATABASE_URL;
-    &*EMAIL_SERVER;
-    &*SITE_DOMAIN;
+    let _ = &*DATABASE_URL;
+    let _ = &*EMAIL_SERVER;
+    let _ = &*SITE_DOMAIN;
 }
 
 pub fn do_login<I: IntoIp>(conn: &PgConnection,
