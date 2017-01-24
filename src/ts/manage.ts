@@ -124,6 +124,8 @@ prifilter.change(() => {
 
 function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
+	loading_msg.hide();
+
 	var audio_bundles = {};
 
 	bundle_resp.forEach(function(tuple) {
@@ -140,16 +142,18 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		narrators[n.id] = n;
 	});
 
+	var proto_trash_button = $('<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>');
 	let proto_audio_button = $('<button class="compact" style="background-color: white;" title="undefined"><img src="/static/images/speaker_teal.png" class="soundicon"></button>');
+	let proto_bundle = $('<div class="bordered weak" style="display: inline-block;" title="undefined"></div>');
+	let proto_span = $('<span></span>');
 
 	function createBundle(id, element, update_value_cb) {
 		var listname = audio_bundles[id].listname;
-		var bundle_html = $('<div class="bordered weak" style="display: inline-block;" title="Name: '+listname
-			+'"></div>').appendTo(element);
+		var bundle_html = proto_bundle.clone().appendTo(element).prop('title', 'Name: '+listname);
 
 		function init_ui(id) {
 			bundle_html.empty();
-			var id_span = $('<span></span>')
+			var id_span = proto_span.clone()
 				.appendTo(bundle_html)
 				.text('ID '+id);
 
@@ -188,21 +192,36 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		n_list.append("<h2>No skill nuggets exist at the moment.</h2>");
 	}
 
-	nugget_resp.forEach(function(tuple, nugget_index) {
+	let nugget_index = 0;
+	function drawNuggetAsync() {
+		for (let i = 0; i < 5; i++) {
+			let tuple = nugget_resp[nugget_index];
+
+			if (tuple === undefined) {
+				return; // Nothing left to render;
+			}
+
+			// Drawing only high-priority items
+			if ( tuple[1][0].some((w) => { return w.priority >= priority_filter })) {
+				drawNugget(tuple, nugget_index);
+			}
+			nugget_index += 1;
+		}
+		setTimeout(drawNuggetAsync, 0);
+	}
+	drawNuggetAsync();
+
+	function drawNugget(tuple, nugget_index) {
 
 		var nugget = tuple[0];
 		var words = tuple[1][0];
 		var questions = tuple[1][1];
 		var exercises = tuple[1][2];
 
-		if ( words.every((w) => { return w.priority < priority_filter })) {
-			return; // Skip low-priority items
-		}
-
 		var n_item = $('<li style="width: 100%"><hr></li>').appendTo(n_list);
 		var skill_nugget_header = $("<h2>Skill nugget: " + nugget.skill_summary + "</h2>")
 			.appendTo(n_item);
-		var trash_button = $('　<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+		var trash_button = proto_trash_button.clone()
 			.appendTo(skill_nugget_header)
 			.click(function() {
 				$.ajax({
@@ -225,7 +244,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
 			var c_header = $('<h3></h3>').html('Word ('+word.id+'): ' + accentuate(word.word)).appendTo(c_item);
 
-			var trash_button = $('　<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+			var trash_button = proto_trash_button.clone()
 				.appendTo(c_header)
 				.click(function() {
 					$.ajax({
@@ -385,7 +404,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
 			var c_header = $('<h3>Question ('+question.id+'): ' + question.q_name + '</h3>').appendTo(c_item);
-			var trash_button = $('　<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+			var trash_button = proto_trash_button.clone()
 				.appendTo(c_header)
 				.click(function() {
 					$.ajax({
@@ -567,7 +586,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
 			var c_header = $("<h3>Exercise ("+exercise.id+"): " + nugget.skill_summary + "</h3>").appendTo(c_item);
-			var trash_button = $('<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>')
+			var trash_button = proto_trash_button.clone()
 				.appendTo(c_header)
 				.click(function() {
 					$.ajax({
@@ -710,26 +729,39 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		}
 		check_init_autocreate_buttons();
 		
-	}); // forEach nugget ends
+	}; // function drawNugget ends
 }; // function drawList ends
 
 var nugget_resp = null;
 var bundle_resp = null;
 var narrator_resp = null;
 
+var loading_msg = $('<p>Loading... </p>').insertAfter(prifilter);
+
+function tryDraw() {
+	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) {
+		loading_msg.text("Loaded. Rendering content. ");
+		setTimeout(() => { drawList(nugget_resp, bundle_resp, narrator_resp); }, 0);
+	}
+}
+
 $.getJSON("/api/bundles", function(resp) {
+	loading_msg.append("Bundles loaded. ");
 	bundle_resp = resp;
-	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) { drawList(nugget_resp, bundle_resp, narrator_resp); }
+	setTimeout(tryDraw, 0);
+	
 });
 
 $.getJSON("/api/narrators", function(resp) {
+	loading_msg.append("Narrators loaded. ");
 	narrator_resp = resp;
-	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) { drawList(nugget_resp, bundle_resp, narrator_resp); }
+	setTimeout(tryDraw, 0);
 });
 
 $.getJSON("/api/nuggets", function(resp) {
+	loading_msg.append("Words loaded. ");
 	nugget_resp = resp;
-	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) { drawList(nugget_resp, bundle_resp, narrator_resp); }
+	setTimeout(tryDraw, 0);
 });
 
 });
