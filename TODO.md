@@ -2,9 +2,9 @@
 
 Need to do before release:
 
-- Update the skill_level of questions which have only skill_level of 1
-- Check that asking sentences work
-- Implement question priority to ensure the learners know a common sub-set of words
+- Check that asking sentences works
+- Check that question priority works
+
 - Add a test completed -page
 - Add a "I agree to collaborate" -page
 - Add some basic info to the welcome page (possibly add some further pages)

@@ -305,7 +305,7 @@ fn fix_skill_names() {
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
     let mut cleanup_str = String::with_capacity(300);
-    std::fs::File::open("../dev_assets/skill_cleanup.txt").unwrap().read_to_string(&mut cleanup_str)
+    std::fs::File::open("src/bin/skill_cleanup.txt").unwrap().read_to_string(&mut cleanup_str)
         .expect("Why can't it read to a string?");
     let cleanup = cleanup_str.lines().map(|l| {
         let words = l.split_at(l.find("\t").unwrap());
@@ -442,7 +442,7 @@ fn main() {
     normalize_unicode();
     println!("Add <br> between images and text.");
     add_br_between_images_and_text();
-    println!("Fix skill names (remove unrelated suffixes etc. according to ../dev_assets/skill_cleanup.txt)");
+    println!("Fix skill names (remove unrelated suffixes etc. according to src/bin/skill_cleanup.txt)");
     fix_skill_names();
     println!("Add audio file hashes for files that are still missing them.");
     add_audio_file_hashes();

@@ -1,1 +1,1 @@
-ALTER TABLE audio_files ADD COLUMN file_sha2 BYTEA;
+ALTER TABLE audio_files ADD COLUMN file_sha2 BYTEA UNIQUE;

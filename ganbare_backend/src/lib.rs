@@ -12,7 +12,6 @@ extern crate diesel_codegen;
 extern crate error_chain;
 #[macro_use]
 extern crate log;
-#[macro_use]
 extern crate mime;
 #[macro_use]
 extern crate lazy_static;
