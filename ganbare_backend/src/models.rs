@@ -163,6 +163,7 @@ pub struct NewAudioFile<'a> {
     pub bundle_id: i32,
     pub file_path: &'a str,
     pub mime: &'a str,
+    pub file_sha2: &'a[u8],
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
@@ -176,6 +177,7 @@ pub struct AudioFile {
     pub bundle_id: i32,
     pub file_path: String,
     pub mime: String,
+    pub file_sha2: Option<Vec<u8>>,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable,

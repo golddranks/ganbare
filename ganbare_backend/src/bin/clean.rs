@@ -16,6 +16,7 @@ extern crate lazy_static;
 extern crate rand;
 extern crate regex;
 extern crate time;
+extern crate crypto;
 
 use ganbare_backend::*;
 use std::path::PathBuf;
@@ -297,6 +298,58 @@ fn add_br_between_images_and_text() {
     }
 }
 
+fn fix_skill_names() {
+    use std::io::Read;
+    use schema::skill_nuggets;
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let mut setsubiji_str = String::with_capacity(300);
+    std::fs::File::open("../dev_assets/setsubiji.txt").unwrap().read_to_string(&mut setsubiji_str).expect("Why can't it read to a string?");
+    let setsubiji = setsubiji_str.lines().map(|l| {
+        let words = l.split_at(l.find("\t").unwrap());
+        (words.0, &words.1[1..])
+    });
+
+    for (from, to) in setsubiji {
+
+        let skill: Option<SkillNugget> = skill_nuggets::table
+            .filter(skill_nuggets::skill_summary.eq(from))
+            .get_result(&conn)
+            .optional()
+            .expect("Shoot!");
+
+        if let Some(mut skill) = skill {
+            println!("{} → {}", from, to);
+            skill.skill_summary = to.to_owned();
+            let _: SkillNugget = skill.save_changes(&conn).expect("Crapshoot!");
+        }
+
+    }
+}
+
+fn add_audio_file_hashes() {
+    use schema::audio_files;
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    for (filename, _mime) in audio::get_all_files(&conn).unwrap() {
+        let hash = audio::audio_file_hash(&filename, &*AUDIO_DIR).unwrap();
+
+        let f : Option<AudioFile> = diesel::update(audio_files::table
+                .filter(audio_files::file_path.eq(&filename).and(audio_files::file_sha2.is_null())))
+            .set(audio_files::file_sha2.eq(&hash[..]))
+            .get_result(&conn)
+            .optional()
+            .unwrap();
+
+        if f.is_some() {
+            println!("Set hash: {}", &filename);
+        }
+
+    }
+}
+
 fn main() {
     use clap::*;
 
@@ -318,4 +371,6 @@ fn main() {
     clean_unused_images();
     normalize_unicode();
     add_br_between_images_and_text();
+    fix_skill_names();
+    add_audio_file_hashes();
 }

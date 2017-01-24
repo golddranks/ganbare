@@ -53,7 +53,8 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
         let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
 
         let mut word = path.file_stem().unwrap().to_str().unwrap().nfc().collect::<String>();
-        let last_char =
+
+        let mut last_char =
             word.chars().next_back().expect("The word surely is longer than 0 characters!");
 
         if !sentences && word.chars().filter(|c| c == &'・' || c == &'*').count() > 1 {
@@ -63,8 +64,15 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
             panic!("Invalid filename! No 、: {:?}", word);
         }
 
-        if last_char.is_digit(10) {
+        while last_char.is_digit(10) {
             word.pop();
+            last_char =
+                word.chars().next_back().expect("The word surely is longer than 0 characters!");
+        }
+
+        if audio::exists(&conn, &path).expect("Crapshoot") {
+            println!("That audio file already exists in the system. Skipping.");
+            continue;
         }
 
         let temp_file_path = tmp_dir.path().join(f.file_name());
@@ -72,6 +80,7 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
         std::fs::copy(path, &temp_file_path).expect("copying files");
 
         if extension != "mp3" {
+            println!("Only mp3 supported at the moment.");
             continue;
         };
 
@@ -81,7 +90,10 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
         let files = vec![(temp_file_path, Some(file_name), mime)];
 
         let w = if sentences {
-            full_sentence(&conn, &word, narrator, files)
+            match full_sentence(&conn, &word, narrator, files) {
+                Some(s) => s,
+                None => continue,
+            }
         } else {
             simple_word(&word, narrator, files)
         };
@@ -96,35 +108,94 @@ fn full_sentence<'a>(conn: &PgConnection,
                      filename: &str,
                      narrator: &'a str,
                      files: Vec<(PathBuf, Option<String>, mime::Mime)>)
-                     -> manage::NewWordFromStrings<'a> {
+                     -> Option<manage::NewWordFromStrings<'a>> {
 
-    let mut word_split = filename.split('、');
+    let mut word_split = filename.splitn(2, '、');
     let mut word = word_split.next().unwrap().to_owned();
-    let sentence = word_split.next().unwrap().to_owned();
+    let mut sentence = word_split.next().unwrap().to_owned();
 
     let nugget = word.replace("・", "");
 
-    println!("{:?}", &word);
-    use schema::words;
-    let explanation: String = words::table.filter(words::word.eq(&word))
+    println!("\nNew sentence containing word: {}", &word);
+
+    use schema::{words, skill_nuggets};
+    let explanation: Option<String> = words::table.filter(words::word.eq(&word))
         .select(words::explanation)
         .get_result(conn)
-        .unwrap();
+        .optional()
+        .expect("Database borkage toot toot");
 
-    if !word.contains('・') {
-        word.push('＝');
+    let explanation = match explanation {
+        Some(e) => e,
+        None => {
+            let variant_explanation: Option<String> = (|| {
+
+                let mut variant = word.clone();
+                if word.ends_with("・") {
+                    variant.pop();
+                } else if !word.contains("・") {
+                    variant.push('・');
+                } else {
+                    return None;
+                }
+    
+                println!("Ugh, no {} found, trying {}", word, variant);
+    
+                words::table.filter(words::word.eq(&variant))
+                    .select(words::explanation)
+                    .get_result(conn)
+                    .optional()
+                    .expect("Database borkage toot toot")
+            })();
+
+            match variant_explanation {
+                Some(e) => e,
+                None => {
+                    println!("Nope, trying with skill {}", &nugget);
+                    let variants: Vec<(SkillNugget, Word)> = skill_nuggets::table
+                        .inner_join(words::table)
+                        .filter(skill_nuggets::skill_summary.eq(&nugget))
+                        .get_results(conn)
+                        .expect("Database borkage toot toot");
+                        
+                    let mut variant_explanation = None;
+                    for (_skill_nugget, word_with_suffix) in variants {
+                        if word_with_suffix.word.contains(&word) {
+                            println!("At least these exist. Word: {}  Explanation: {}", word_with_suffix.word, word_with_suffix.explanation );
+                            variant_explanation = Some(word_with_suffix.explanation);
+                            break;
+                        }
+                    }
+                    match variant_explanation {
+                        Some(e) => e,
+                        None => panic!("Shit! This stuff simply doesn't exist in the DB!"),
+                    }
+                }
+            }
+        }
+    };
+
+    if sentence.contains(&nugget) {
+
+        if !word.contains('・') {
+            word.push('＝');
+        }
+    
+        let second_codepoint = word.char_indices().nth(1).unwrap().0;
+        if word.chars().nth(1).unwrap() == '・' {
+            word.insert(0, '／');
+        } else {
+            word.insert(second_codepoint, '／');
+        }
+
+        sentence = sentence.replace(&nugget, &word);
+    } else if !sentence.contains('／') || (!sentence.contains('・') && !sentence.contains('＝')) {
+        println!("If the sentence doesn't contain the word as-is,\
+            it should at least contain accent markup to make up for it! {} and {} Skipping.", &nugget, &sentence);
+        return None;
     }
 
-    let second_codepoint = word.char_indices().nth(1).unwrap().0;
-    if word.chars().nth(1).unwrap() == '・' {
-        word.insert(0, '／');
-    } else {
-        word.insert(second_codepoint, '／');
-    }
-
-    let sentence = sentence.replace(&nugget, &word);
-
-    manage::NewWordFromStrings {
+    Some(manage::NewWordFromStrings {
         word: sentence,
         explanation: explanation,
         nugget: nugget,
@@ -132,7 +203,7 @@ fn full_sentence<'a>(conn: &PgConnection,
         files: files,
         skill_level: 5,
         priority: 0,
-    }
+    })
 }
 
 fn simple_word<'a>(filename: &str,
@@ -166,13 +237,11 @@ fn main() {
             .long("sentences")
             .help("Flag to enable importing sentences"))
         .arg(Arg::with_name("PATH")
-            .index(1)
             .required(true)
             .value_name("PATH")
             .help("The path to the input files")
             .takes_value(true))
         .arg(Arg::with_name("NARRATOR")
-            .index(2)
             .required(true)
             .value_name("NARRATOR")
             .help("The person narrating the files")

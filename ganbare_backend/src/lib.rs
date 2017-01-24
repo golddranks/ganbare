@@ -28,6 +28,7 @@ extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;
 extern crate hyper;
+
 pub use try_map::{FallibleMapExt, FlipResultExt};
 
 pub use diesel::prelude::*;

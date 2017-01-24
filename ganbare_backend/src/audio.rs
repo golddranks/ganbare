@@ -26,6 +26,29 @@ fn save_file(path: &mut PathBuf, orig_filename: &str, audio_dir: &Path) -> Resul
     Ok(())
 }
 
+pub fn exists(conn: &PgConnection, path: &PathBuf) -> Result<bool> {
+    use crypto::sha2;
+    use crypto::digest::Digest;
+    use std::io::Read;
+    use schema::audio_files;
+
+    let mut hasher = sha2::Sha512::new();
+
+    let mut f = std::fs::File::open(path)?;
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf)?;
+    hasher.input(&buf);
+    let mut file_hash = [0_u8; 64];
+    hasher.result(&mut file_hash);
+
+    let audio_file: Option<AudioFile> = audio_files::table
+        .filter(audio_files::file_sha2.eq(&file_hash[..]))
+        .get_result(conn)
+        .optional()?;
+
+    Ok(audio_file.is_some())
+}
+
 pub fn get_create_narrator(conn: &PgConnection, mut name: &str) -> Result<Narrator> {
     use schema::narrators;
 
@@ -320,6 +343,26 @@ pub fn get_narrators_by_name(conn: &PgConnection, name: &str) -> Result<Vec<Narr
 }
 
 
+pub fn audio_file_hash(filename: &str, audio_dir: &Path) -> Result<[u8; 64]> {
+    use crypto::sha2;
+    use crypto::digest::Digest;
+    use std::io::Read;
+
+    let mut path = audio_dir.to_owned();
+    path.push(filename);
+
+    let mut hasher = sha2::Sha512::new();
+
+    let mut f = std::fs::File::open(path)?;
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf)?;
+    hasher.input(&buf);
+    let mut file_hash = [0_u8; 64];
+    hasher.result(&mut file_hash);
+    Ok(file_hash)
+}
+
+
 pub fn save(conn: &PgConnection,
             mut narrator: &mut Option<Narrator>,
             file: &mut (PathBuf, Option<String>, mime::Mime),
@@ -353,6 +396,7 @@ pub fn save(conn: &PgConnection,
         bundle_id: bundle_id,
         file_path: file_path,
         mime: mime,
+        file_sha2: &audio_file_hash(&file_path, audio_dir)?[..],
     };
 
     let audio_file: AudioFile = diesel::insert(&new_q_audio).into(audio_files::table)
