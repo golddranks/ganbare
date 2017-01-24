@@ -112,13 +112,21 @@ $("body").click(function() {
 
 var main = $("#main");
 var n_list = $("#main ul");
-var prifilter = $("#priorityFilter");
+var prifilter_value = $("#priorityFilterValue");
+var prifilter_toggle = $("#priorityFilterToggle");
 
-let priority_filter = prifilter.val();
+let priority_filter_value = prifilter_value.val();
+let priority_filter_toggle = prifilter_toggle.is(":checked");
 
-prifilter.change(() => {
+prifilter_value.change(() => {
 	n_list.html("");
-	priority_filter = prifilter.val();
+	priority_filter_value = prifilter_value.val();
+	drawList(nugget_resp, bundle_resp, narrator_resp);
+});
+
+prifilter_toggle.change(() => {
+	n_list.html("");
+	priority_filter_toggle = prifilter_toggle.is(":checked");
 	drawList(nugget_resp, bundle_resp, narrator_resp);
 });
 
@@ -202,7 +210,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			}
 
 			// Drawing only high-priority items
-			if ( tuple[1][0].some((w) => { return w.priority >= priority_filter })) {
+			if ( ! priority_filter_toggle || tuple[1][0].some((w) => { return w.priority == priority_filter_value })) {
 				drawNugget(tuple, nugget_index);
 			}
 			nugget_index += 1;
@@ -736,7 +744,7 @@ var nugget_resp = null;
 var bundle_resp = null;
 var narrator_resp = null;
 
-var loading_msg = $('<p>Loading... </p>').insertAfter(prifilter);
+var loading_msg = $('<p>Loading... </p>').insertAfter(prifilter_value);
 
 function tryDraw() {
 	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) {
