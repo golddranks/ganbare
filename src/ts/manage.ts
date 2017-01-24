@@ -140,6 +140,8 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		narrators[n.id] = n;
 	});
 
+	let proto_audio_button = $('<button class="compact" style="background-color: white;" title="undefined"><img src="/static/images/speaker_teal.png" class="soundicon"></button>');
+
 	function createBundle(id, element, update_value_cb) {
 		var listname = audio_bundles[id].listname;
 		var bundle_html = $('<div class="bordered weak" style="display: inline-block;" title="Name: '+listname
@@ -169,8 +171,9 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			audio_bundles[id].files.forEach(function(file) {
 				var narrator_name = narrators[file.narrators_id].name;
 				var narrator_color = narrators[file.narrators_id].color;
-				var audio_button = $('<button class="compact" style="background-color: '+narrator_color+';"><img src="/static/images/speaker_teal.png" title="ID: '+
-					file.id+' Narrator: '+narrator_name+'" class="soundicon"></button>').appendTo(bundle_html);
+				var audio_button = proto_audio_button.clone().appendTo(bundle_html);
+				audio_button.prop('title', 'ID: '+file.id+' Narrator: '+narrator_name);
+				audio_button.css('background-color', narrator_color);
 				audio_button.click(function() {
 					var audio = new Howl({ src: ['/api/audio/'+file.id+'.mp3']});
 					audio.play();
