@@ -338,21 +338,29 @@ fn add_audio_file_hashes() {
         .filter(audio_files::file_sha2.is_null())
         .get_results(&conn).unwrap();
 
-    for AudioFile{ file_path, .. } in all_hashless_audio_files {
+    for AudioFile{ id, file_path, .. } in all_hashless_audio_files {
 
         let hash = audio::audio_file_hash(&file_path, &*AUDIO_DIR).unwrap();
 
         let f : Option<AudioFile> = diesel::update(audio_files::table
-                .filter(audio_files::file_path.eq(&file_path).and(audio_files::file_sha2.is_null())))
+                .filter(audio_files::file_path.eq(&file_path)))
             .set(audio_files::file_sha2.eq(&hash[..]))
             .get_result(&conn)
             .optional()
-            .unwrap();
+            .or_else(|_| {
+                let existing: AudioFile = audio_files::table
+                    .filter(audio_files::file_sha2.eq(&hash[..])).get_result(&conn).unwrap();
+                println!("Hash/file already exists! Bundle: {} Existing: {} {} New: {} {}",
+                    existing.bundle_id, existing.id, existing.file_path, id, &file_path);
+                println!("Deleting the newer one.");
+                diesel::delete(audio_files::table.filter(audio_files::id.eq(id))).execute(&conn).expect("Couldn't delete!");
+
+                Ok::<_, errors::Error>(None)
+            }).unwrap();
 
         if f.is_some() {
             println!("Set hash: {}", &file_path);
         }
-
     }
 }
 
