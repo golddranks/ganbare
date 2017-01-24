@@ -3,7 +3,6 @@
 Need to do before release:
 
 - Update the skill_level of questions which have only skill_level of 1
-- Edit some (5) sentences
 - Check that asking sentences work
 - Implement question priority to ensure the learners know a common sub-set of words
 - Add a test completed -page

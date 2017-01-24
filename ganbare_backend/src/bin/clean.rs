@@ -304,14 +304,15 @@ fn fix_skill_names() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let mut setsubiji_str = String::with_capacity(300);
-    std::fs::File::open("../dev_assets/setsubiji.txt").unwrap().read_to_string(&mut setsubiji_str).expect("Why can't it read to a string?");
-    let setsubiji = setsubiji_str.lines().map(|l| {
+    let mut cleanup_str = String::with_capacity(300);
+    std::fs::File::open("../dev_assets/skill_cleanup.txt").unwrap().read_to_string(&mut cleanup_str)
+        .expect("Why can't it read to a string?");
+    let cleanup = cleanup_str.lines().map(|l| {
         let words = l.split_at(l.find("\t").unwrap());
         (words.0, &words.1[1..])
     });
 
-    for (from, to) in setsubiji {
+    for (from, to) in cleanup {
 
         let skill: Option<SkillNugget> = skill_nuggets::table
             .filter(skill_nuggets::skill_summary.eq(from))
@@ -333,21 +334,79 @@ fn add_audio_file_hashes() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    for (filename, _mime) in audio::get_all_files(&conn).unwrap() {
-        let hash = audio::audio_file_hash(&filename, &*AUDIO_DIR).unwrap();
+    let all_hashless_audio_files: Vec<AudioFile> = audio_files::table
+        .filter(audio_files::file_sha2.is_null())
+        .get_results(&conn).unwrap();
+
+    for AudioFile{ file_path, .. } in all_hashless_audio_files {
+
+        let hash = audio::audio_file_hash(&file_path, &*AUDIO_DIR).unwrap();
 
         let f : Option<AudioFile> = diesel::update(audio_files::table
-                .filter(audio_files::file_path.eq(&filename).and(audio_files::file_sha2.is_null())))
+                .filter(audio_files::file_path.eq(&file_path).and(audio_files::file_sha2.is_null())))
             .set(audio_files::file_sha2.eq(&hash[..]))
             .get_result(&conn)
             .optional()
             .unwrap();
 
         if f.is_some() {
-            println!("Set hash: {}", &filename);
+            println!("Set hash: {}", &file_path);
         }
 
     }
+}
+
+fn check_skill_levels() {
+    use schema::{quiz_questions, exercises};
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let questions: Vec<QuizQuestion> = quiz_questions::table
+        .filter(quiz_questions::skill_level.eq(1))
+        .get_results(&conn).unwrap();
+
+    for mut q in questions {
+        println!("Raising a skill level of a question from 1 → 2. {:?}", q);
+        q.skill_level = 2;
+        let _: QuizQuestion = q.save_changes(&conn).unwrap();
+    }
+
+    let exercises: Vec<Exercise> = exercises::table
+        .filter(exercises::skill_level.eq(1))
+        .get_results(&conn).unwrap();
+
+    for mut e in exercises {
+        println!("Raising a skill level of a exercise from 1 → 2. {:?}", e);
+        e.skill_level = 2;
+        let _: Exercise = e.save_changes(&conn).unwrap();
+    }
+}
+
+fn check_priority_levels() {
+    use schema::{words, skill_nuggets};
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let priority_skills: Vec<i32> = words::table
+        .inner_join(skill_nuggets::table)
+        .filter(words::skill_level.ge(5))
+        .select(skill_nuggets::id)
+        .get_results(&conn).unwrap();
+
+    for skill_id in priority_skills {
+
+        let priority_words: Vec<Word> = diesel::update(
+            words::table
+                .filter(words::skill_nugget.eq(skill_id).and(words::priority.lt(2)))
+            )
+            .set(words::priority.eq(2))
+            .get_results(&conn).unwrap();
+
+        for word in priority_words {
+            println!("Raised a priority level of a word {:?}", word);
+        }
+    }
+
 }
 
 fn main() {
@@ -367,10 +426,20 @@ fn main() {
         println!("{}", line);
     }
 
+    println!("Clean unused audio and move to trash.");
     clean_unused_audio();
+    println!("Clean unused images and move to trash.");
     clean_unused_images();
+    println!("Normalize Unicode to Canonical Composition Form.");
     normalize_unicode();
+    println!("Add <br> between images and text.");
     add_br_between_images_and_text();
+    println!("Fix skill names (remove unrelated suffixes etc. according to ../dev_assets/skill_cleanup.txt)");
     fix_skill_names();
+    println!("Add audio file hashes for files that are still missing them.");
     add_audio_file_hashes();
+    println!("Fix skill levels (questions and exercises ought to have at least skill level 2).");
+    check_skill_levels();
+    println!("Fix priority levels (words that are accompanied by sentences ought to have higher priority levels).");
+    check_priority_levels();
 }

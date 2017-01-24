@@ -207,7 +207,7 @@ pub struct NewQuizQuestion<'a> {
     pub skill_level: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, AsChangeset, Debug, RustcEncodable)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(question_answers, foreign_key = "question_id")]
 #[has_many(question_data, foreign_key = "question_id")]
@@ -266,7 +266,7 @@ pub struct UpdateAnswer {
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable,
-    Debug, RustcEncodable, RustcDecodable)]
+    Debug, RustcEncodable, RustcDecodable, AsChangeset)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(exercise_variants, foreign_key = "exercise_id")]
 #[has_many(exercise_data, foreign_key = "exercise_id")]
