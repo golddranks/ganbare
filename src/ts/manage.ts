@@ -112,6 +112,15 @@ $("body").click(function() {
 
 var main = $("#main");
 var n_list = $("#main ul");
+var prifilter = $("#priorityFilter");
+
+let priority_filter = prifilter.val();
+
+prifilter.change(() => {
+	n_list.html("");
+	priority_filter = prifilter.val();
+	drawList(nugget_resp, bundle_resp, narrator_resp);
+});
 
 function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
@@ -179,6 +188,14 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 	nugget_resp.forEach(function(tuple, nugget_index) {
 
 		var nugget = tuple[0];
+		var words = tuple[1][0];
+		var questions = tuple[1][1];
+		var exercises = tuple[1][2];
+
+		if ( words.every((w) => { return w.priority < priority_filter })) {
+			return; // Skip low-priority items
+		}
+
 		var n_item = $('<li style="width: 100%"><hr></li>').appendTo(n_list);
 		var skill_nugget_header = $("<h2>Skill nugget: " + nugget.skill_summary + "</h2>")
 			.appendTo(n_item);
@@ -200,10 +217,6 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			});
 
 		var c_list = $("<ul></ul>").appendTo(n_item);
-
-		var words = tuple[1][0];
-		var questions = tuple[1][1];
-		var exercises = tuple[1][2];
 		
 		words.forEach(function(word, index) {
 			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
