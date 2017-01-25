@@ -348,12 +348,24 @@ fn add_audio_file_hashes() {
             .get_result(&conn)
             .optional()
             .or_else(|_| {
+                use schema::pending_items;
+
                 let existing: AudioFile = audio_files::table
                     .filter(audio_files::file_sha2.eq(&hash[..])).get_result(&conn).unwrap();
                 println!("Hash/file already exists! Bundle: {} Existing: {} {} New: {} {}",
                     existing.bundle_id, existing.id, existing.file_path, id, &file_path);
                 println!("Deleting the newer one.");
-                diesel::delete(audio_files::table.filter(audio_files::id.eq(id))).execute(&conn).expect("Couldn't delete!");
+                diesel::update(
+                        pending_items::table
+                            .filter(pending_items::audio_file_id.eq(id))
+                    )
+                    .set(pending_items::audio_file_id.eq(existing.id))
+                    .execute(&conn).expect("Couldn't update!");
+                diesel::delete(
+                        audio_files::table
+                            .filter(audio_files::id.eq(id))
+                    )
+                    .execute(&conn).expect("Couldn't delete!");
 
                 Ok::<_, errors::Error>(None)
             }).unwrap();
