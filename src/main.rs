@@ -3,13 +3,11 @@
 #![feature(custom_derive, custom_attribute, plugin)]
 #![plugin(diesel_codegen)]
 
-#[macro_use]
 extern crate diesel_codegen;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-#[macro_use]
 extern crate mime;
 #[macro_use]
 extern crate hyper;

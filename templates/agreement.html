@@ -6,7 +6,18 @@
 	</header>
 	<hr />
 	<h2>Suostumus tietojen keräämiseen</h2>
-	<p>Tämä ohjelma kerää tietoja käyttäjästään. </p>
+	<p>
+	Tämä ohjelma kerää tietoja käyttäjästään tutkimusta varten. Tallennetut tiedot ovat:
+	<ul>
+	<li>Käyttäjän sähköpostiosoite</li>
+	<li>Käyttäjän vastaukset harjoituskysymyksiin</li>
+	<li>Käyttäjän mikrofonilla nauhoittamat ääninäytteet</li>
+	</ul>
+	Mitään tietoja ei luovuteta kolmansille osapuolille. Tietoja saatetaan käyttää hyväksi
+	tutkimuksessa ja tutkimustuloksia saatetaan julkaista, mutta kaikki kerätyt tiedot
+	anonymisoidaan niin, että kokeeseen osallistujia ei voi niistä tunnistaa.
+	Tietoja säilytetään maksimissaan kolme vuotta niiden keräämisestä.
+	</p>
 	<form action="/ok" method="post">
 		<input type="checkbox" id="agree" name="agree"><label for="agree">hyväksyn</label>
 		<button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok">
