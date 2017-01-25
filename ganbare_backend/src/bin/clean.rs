@@ -355,18 +355,19 @@ fn add_audio_file_hashes() {
                 println!("Hash/file already exists! Bundle: {} Existing: {} {} New: {} {}",
                     existing.bundle_id, existing.id, existing.file_path, id, &file_path);
                 println!("Deleting the newer one.");
-                diesel::update(
+                let updated = diesel::update(
                         pending_items::table
                             .filter(pending_items::audio_file_id.eq(id))
                     )
                     .set(pending_items::audio_file_id.eq(existing.id))
                     .execute(&conn).expect("Couldn't update!");
-                diesel::delete(
+                let deleted = diesel::delete(
                         audio_files::table
                             .filter(audio_files::id.eq(id))
                     )
                     .execute(&conn).expect("Couldn't delete!");
 
+                println!("Deleted audio_files rows: {} Updated pending_items rows: {}", deleted, updated);
                 Ok::<_, errors::Error>(None)
             }).unwrap();
 
