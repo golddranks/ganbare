@@ -1,13 +1,39 @@
-{{#partial main_section}}
+{{#partial page_script_link}}
+	<script src="/static/js/howler.js"></script>
+	<script src="/static/js/recorder.min.js"></script>
+	<script src="/static/ts/mictest.js"></script>
+{{/partial}}
 
-	<header>
-		<h1>{{ title }}</h1>
-		<p>Tieteellinen koe japanin ääntämyksestä</p>
-	</header>
-	<hr />
-	<p>Ensin pieni koe! Testaamme, kuinka hyvä olet aksenteissa jo valmiiksi.</p>
-	<p>Joo.</p>
-	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
+
+{{#partial main_section}}
+<div id="errorSection" style="display: none; ">
+	<p id="errorStatus">{{ error_msg }}</p>
+</div>
+<section id="pretestExplanation">
+	<h1>Testi</h1>
+	<p>Ennen harjoittelun aloittamista testaamme vielä lyhyesti, kuinka hyvä olet aksenteissa jo valmiiksi.
+	Älä stressaa turhia, vaan vastaa parhaasi mukaan kysymyksiin.</p>
+	<p>Normaalisti emme välitä, vaikka pitäisit taukoja välissä harjoitellessasi aksentteja, mutta ole hyvä
+	ja tee tämän testi yhteen putkeen. Varaa itsellesi aikaa reilu viisi minuuttia ja meluton, häiriötön
+	tila, jossa olet mieluusti yksin.</p>
+	<p>Testissä nauhoitetaan yhdessä vaiheessa ääntäsi mikrofonin avustuksella. Nauhoitus toimii vain
+	Chrome- ja Firefox-selaimilla, joten varmistathan etukäteen että käytät yhteensopivaa selainta.</p>
+	<p>Ennen testin aloittamista tarkistamme mikrofonin ja kaiuttimien toimivuuden.</p>
+	<button id="checkMic">Tarkistus</button>
+</section>
+<section id="micCheckExplanation" style="display: none">
+	<h1>Testi</h1>
+	<p>Mikrofonin nauhoittaa nyt ääntäsi. Sano normaaliin ääneen: "testi, testi", ja paina sitten "OK".</p>
+	<button id="recDone">OK</button>
+</section>
+
+<section id="micCheckOk" style="display: none">
+	<h1>Testi</h1>
+	<p>Kuulitko oman äänesi? Jos kuulit, kaikki on kunnossa, ja voit aloittaa kokeen.</p>
+	<p>Jos et kuullut, varmista että kaiuttimet ovat päällä ja mikrofoni toimii, ja paina "tarkista uudelleen".</p>
+	<button id="checkMicAgain">tarkista uudelleen</button>
+	<form action="/ok" method="post"><button>Aloita koe</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
+</section>
 
 {{/partial}}
 

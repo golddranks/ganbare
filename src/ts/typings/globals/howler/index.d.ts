@@ -17,13 +17,14 @@ interface IHowlSoundSpriteDefinition {
 declare type HowlPos3d = [number, number, number]|[number, number, number, number];
 
 interface IHowlProperties {
+    html5?: boolean;
     autoplay?: boolean;
     buffer?: boolean;
     duration?: number;
-    format?: string;
+    format?: string | string[];
     loop?: boolean;
     sprite?: IHowlSoundSpriteDefinition;
-    src?: string[];
+    src?: string | string[];
     pos3d?: HowlPos3d;
     volume?: number;
     urls?: string[];
