@@ -854,6 +854,50 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     }
 }
 
+use std::collections::HashMap;
+use std::sync::RwLock;
+
+lazy_static! {
+    pub static ref TEMP_AUDIO: RwLock<HashMap<u64, Vec<u8>>> = RwLock::new(HashMap::new());
+}
+
+pub fn mic_check(req: &mut Request) -> PencilResult {
+    let (conn, user, sess) = auth_user(req, "")?;
+
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+
+    let random_token = err_400!(req.view_args
+        .remove("random_token")
+        .expect("Pencil guarantees that event name should exist as an arg.")
+        .parse::<u64>(), "The token must be parseable to u64!");
+
+    match endpoint.as_ref() {
+        "mic_check_rec" => {
+            let mut audio = vec![];
+            std::io::copy(req, &mut audio).err_500()?;
+            let mut map = TEMP_AUDIO.write().err_500()?;
+            map.insert(random_token, audio);
+            jsonify(&()).refresh_cookie(&sess)
+        },
+        "mic_check_play" => {
+            use std::str::FromStr;
+
+            println!("{:?}, {:?}", req, req.headers());
+
+            let map = TEMP_AUDIO.read().err_500()?;
+            let audio = err_400!(map.get(&random_token), "No such audio clip!");
+            let mut resp = Response::from(&audio[..]);
+            let mime = mime::Mime::from_str("audio/ogg").unwrap();
+            resp.headers.set::<hyper::header::ContentType>(hyper::header::ContentType(mime));
+            resp.refresh_cookie(&sess).map(|r| {
+                println!("{:?} {:?}", &r, &r.headers);
+                r
+            })
+        },
+        _ => unreachable!(),
+    }
+}
+
 pub fn new_retelling(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
     let event_name = req.view_args
