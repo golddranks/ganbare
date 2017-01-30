@@ -6,8 +6,9 @@ Need to do before release:
 - Check that question priority works
 
 - Add a test completed -page
-- Add a "I agree to collaborate" -page
-- Add some basic info to the welcome page (possibly add some further pages)
+
+- Test that recording and playing works on chrome
+- Review all the code changes
 
 Stretch goals:
 - Remove old mail confirmations
