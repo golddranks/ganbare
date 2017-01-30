@@ -9,6 +9,11 @@
     filter: blur(4px);
 }
 
+#main.errorOn > section {
+	-webkit-filter: blur(4px); /* Safari */
+    filter: blur(4px);
+}
+
 #main {
 
 
@@ -243,6 +248,19 @@
 
 }
 
+
+
+.horizontalFlexContainer {
+	width: 100%;
+	@include vendor('display', 'flex');
+	@include vendor('flex-direction', 'row');
+	@include vendor('justify-content', 'center');
+
+	&>* {
+		margin: 1em;
+	}
+}
+
 /* This fixes the blue outline on Chrome */
 button:focus,
 input[type="submit"]:focus,
@@ -422,6 +440,10 @@ input.wordShowKana {
 	}
 }
 
+.wordyExplanation {
+	text-align: left;
+}
+
 #surveyBox {
 
 	.smallscreen {
@@ -465,6 +487,14 @@ input.wordShowKana {
 		}
 	}
 
+}
+
+.tightBottom {
+	margin-bottom: 0;
+}
+
+.infoCard {
+	display: none;
 }
 
 span.accent {

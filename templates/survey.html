@@ -11,7 +11,7 @@
 		<script>
 
 		function surveyReady() {
-			$("#questionText").text("Kiitos vastauksista! Nyt japanin harjoittelun pariin.");
+			$("#questionText").text("Kiitos vastauksista!");
 			$('<form action="/ok" method="POST">\
 				<input type="hidden" value="survey" name="event_ok">\
 				<input type="submit" value="Ok" style="min-width: 50%; margin-top: 1em;">\
@@ -85,7 +85,7 @@
 			{q: "Haluaisin osata ääntää japania todella hyvin.", a: answers_5},
 			{q: "Opiskelen japania käymällä kursseilla.", a: answers_3},
 			{q: "Opiskelen japania jollain muulla tavalla, millä?", a: textfield},
-			{q: "Mitkä uskot olevan vahvuutesi japanin kielitaidossasi?", a: fourfold},
+			{q: "Mihin kohtaa nelikenttää sijoittaisit vahvuutesi japanin kielitaidossasi?", a: fourfold},
 			{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
 			{q: "Mikä on äidinkielesi?", a: languages},
 			];

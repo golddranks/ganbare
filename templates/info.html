@@ -1,13 +1,238 @@
+
+{{#partial page_script_link}}
+<script src="/static/js/howler.min.js"></script>
+{{/partial}}
+
 {{#partial main_section}}
 
-	<header>
-		<h1>{{ title }}</h1>
-		<p>Tieteellinen koe japanin ääntämyksestä</p>
-	</header>
-	<hr />
-	<p>Tietoa japanin sana-aksentista.</p>
-	<p>Selitys.</p>
-	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
+<h1>Tietoa sana-aksentista</h1>
+<section class="infoCard" id="infoCard1">
+	<p class="wordyExplanation">Tämä ohjelma opettaa sinulle japanin ääntämystä; tarkemmin ottaen sana-aksentteja.
+	Mistä on oikeastaan kyse? Mikä on sana-aksentti?</p>
+	<p class="tightBottom">Kuuntele alla olevat tutut paikannimet:</p>
+	<div class="horizontalFlexContainer">
+		<div class="wordShowSection" style="text-align: center">
+			<p class="leftWord tightBottom">きょうと</p><!--
+			--><button id="kyotoButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+		</div>
+		<div class="wordShowSection" style="text-align: center">
+			<p class="rightWord tightBottom">とうきょう</p><!--
+			--><button id="tokyoButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+		</div>
+	</div>
+	<p class="wordyExplanation">Japanissa jokaisella sanalla on kyseiselle sanalle ominainen painotus, jota ilmaistaan äänenkorkeuden vaihteluilla:
+	sana "きょうと" äännetään laskevalla äänenkorkeudella, kun taas "とうきょう" tasaisella. Kuuletko eron? Tätä kullekin sanalle ominaista äänenkorkeuden
+	kuviota kutsutaan sana-aksentiksi.</p>
+</section>
+<section class="infoCard" id="infoCard2">
+	<p class="wordyExplanation tightBottom">Joskus harvoin käy niin, että kaksi sanaa lausutaan lähes täysin samoin, ja ne eroavat ainoastaan aksentiltaan. Kuuntele:</p>
+	<div class="horizontalFlexContainer">
+		<div class="wordShowSection" style="text-align: center">
+			<p class="leftWord tightBottom">はし</p><!--
+			--><button id="leftHashiButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+		</div>
+		<div class="wordShowSection" style="text-align: center">
+			<p class="rightWord tightBottom">はし</p><!--
+			--><button id="rightHashiButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+		</div>
+	</div>
+	<p class="wordyExplanation">Kuuletko? Sanat ovat lähes samat, mutta eroavat äänenkorkeuden vaihtelultaan. Toinen sana tarkoittaa siltaa ja toinen syömäpuikkoja.</p>
+	<p class="wordyExplanation">Sekaannuksen vaara on siis olemassa, mutta onneksi tällaisia sanapareja ei ole paljoa. Yleisissä sanoissa niitä on ehkä
+	muutamia satoja.</p>
+</section>
+
+
+
+<section class="infoCard" id="infoCard3">
+	<p class="wordyExplanation">Sana-aksentti ei ole välttämätön asia ymmärtämisen kannalta; yleensä kontekstin ymmärtäminen on tärkeämpää. Lisäksi
+	japanin eri murteissa aksentit vaihtelevat hieman. Tässä ohjelmassa kaikki esimerkit ovat Tokiossa puhuttua yleiskieltä.</p>
+
+	<p class="wordyExplanation">Vaikka japanissa kaikilla sanoilla on niille ominaiset aksentit, keskitymme tässä nimenomaan
+	äskeisen esimerkin kaltaisiin hämäävän samankuuloisiin pareihin, sillä ne toimivat erinomaisena harjoitusmateriaalina.</p>
+</section>
+
+
+
+<section class="infoCard" id="infoCard4">
+	<p class="wordyExplanation">Miten sana-aksentit sitten toimivat? Perussääntö on, että joko sana on "tasa-aksentillinen" tai sitten
+	se sisältää yhden "aksenttiytimen".
+
+	<p class="wordyExplanation">Tasa-aksentilliset sanat alkavat pienellä äänenkorkeuden nousulla.
+	Tämän jälkeen äänenkorkeus pysyy tasaisena tai laskee hyvin loivasti.</p>
+
+	<p>Esimerkki tasa-aksentista: いこう
+<button id="heibanButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+	</p>
+
+	<p class="wordyExplanation">Jos sana ei ole tasa-aksentillinen, se sisältää aksenttiytimen. Aksenttiydin on tavu, jota ennen äänenkorkeus nousee, ja jonka kohdalla se äkillisesti laskee.</p>
+
+	<p>Ydin tavulla "こ": いこう
+<button id="kifukuButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+	</p>
+
+</section>
+
+
+
+<section class="infoCard" id="infoCard5">
+	<p class="wordyExplanation">Aksenttiydin voi olla myös sanan ensimmäisellä tavulla, jolloin äänenkorkeus laskee heti sanan alusta</p>
+
+	<p>Ydin tavulla "い": いこう
+<button id="atamadakaButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+	</p>
+
+	<p class="wordyExplanation">Aksenttiydin voi olla myös sanan viimeisellä tavulla, jolloin sana kuulostaa erehdyttävästi tasa-aksentilliselta, sillä aksentin äkillistä laskua ei tapahdu.</p>
+	<p>Ydin tavulla "し": はし
+<button id="odakaButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+</p>
+
+</section>
+
+
+
+<section class="infoCard" id="infoCard6">
+	<p class="wordyExplanation tightBottom">Kuuntele seuraavat kaksi sanaa. Toinen on tasa-aksentillinen ja toisessa on ydin viimeisellä tavulla:</p>
+	<div class="horizontalFlexContainer">
+		<div class="wordShowSection" style="text-align: center">
+			<p class="leftWord tightBottom">はし</p><!--
+			--><button id="leftHashiButton2" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+		</div>
+		<div class="wordShowSection" style="text-align: center">
+			<p class="rightWord tightBottom">はし</p><!--
+			--><button id="rightHashiButton2" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+		</div>
+	</div>
+	<p class="wordyExplanation">Toinen tarkoittaa siltaa, ja toinen reunaa. Japanilainenkaan ei kuule niissä eroa!</p>
+	<p class="wordyExplanation">Ero kuitenkin on olemassa; se kuuluu heti sanan jälkeen tulevissa sijapäätteissä.
+	Vertaa sanoja に-sijapäätteen kanssa:</p>
+
+	<p>Ydin tavulla "し": はし
+<button id="leftHashiniButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+			</p>
+
+	<p>Tasa-aksentti: はし
+<button id="rightHashiniButton" class="wordShowButton"><!--
+			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
+			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
+	</p>
+</section>
+
+
+<section class="infoCard" id="infoCard7">
+	<p class="wordyExplanation">Siinä olikin kaikki tähän hätään. Sana-aksenteista voisi luennoida loputtomiin,
+	mutta tärkeämpää on päästä harjoittelemaan niitä käytännössä. Tämä oli vain pieni esittely, missä käytiin läpi
+	olennaisimmat seikat.</p>
+	<p>Oppimisen iloa!</p>
+</section>
+<button id="prevInfoCard">&lt; Edellinen</button>
+<span id="cardPerCard">( / )</span>
+<button id="nextInfoCard">Seuraava &gt;</button>
+
+<form action="/ok" method="post" style="display: inline">
+<button id="infoOver" style="display: none" >Eteenpäin</button><input type="hidden" value="{{ event_name }}" name="event_ok">
+</form>
+
+{{/partial}}
+
+{{#partial page_script_inline}}
+
+let maxCards = 7;
+
+function getCurrentCard() {
+	let loc = parseInt(location.hash[1]) || 1;
+	loc = Math.max(Math.min(loc, maxCards), 1);
+	return loc;
+}
+
+function updateInfoCard() {
+	let currentInfoCard = getCurrentCard();
+
+	$(".infoCard").hide();
+	$("#infoCard"+currentInfoCard).show();
+	$("#cardPerCard").text("("+currentInfoCard + "/"+maxCards+")");
+
+
+	$("#prevInfoCard").prop('disabled', false);
+	$("#nextInfoCard").show();
+	$("#infoOver").hide();
+
+	if (currentInfoCard == 1) {
+		$("#prevInfoCard").prop('disabled', true);
+	}
+	if (currentInfoCard == maxCards) {
+		$("#nextInfoCard").hide();
+		$("#infoOver").show();
+	}
+}
+
+updateInfoCard();
+
+$("#prevInfoCard").click(function() {
+	location.hash = "#"+(getCurrentCard() - 1);
+	updateInfoCard();
+});
+$("#nextInfoCard").click(function() {
+	location.hash = "#"+(getCurrentCard() + 1);
+	updateInfoCard();
+});
+
+function setWordShowButton(audio_src, button) {
+
+	var audio = new Howl({ src: [audio_src]});
+
+	button.off('click').on('click', function() {
+		console.log("Clicked");
+		button.children(".speakerIconTeal").hide();
+		button.children(".speakerIconPink").show();
+		audio.play();
+	});
+
+	audio.on('end', function() {
+		button.children(".speakerIconTeal").show();
+		button.children(".speakerIconPink").hide();
+	});
+
+}
+
+setWordShowButton("/static/content_audio/kyoto.mp3", $("#kyotoButton"));
+setWordShowButton("/static/content_audio/tokyo.mp3", $("#tokyoButton"));
+
+setWordShowButton("/static/content_audio/hashi1.mp3", $("#leftHashiButton"));
+setWordShowButton("/static/content_audio/hashi2.mp3", $("#rightHashiButton"));
+
+setWordShowButton("/static/content_audio/ikou3.mp3", $("#heibanButton"));
+setWordShowButton("/static/content_audio/ikou2.mp3", $("#kifukuButton"));
+
+setWordShowButton("/static/content_audio/ikou1.mp3", $("#atamadakaButton"));
+setWordShowButton("/static/content_audio/hashi2.mp3", $("#odakaButton"));
+
+setWordShowButton("/static/content_audio/hashi3.mp3", $("#leftHashiButton2"));
+setWordShowButton("/static/content_audio/hashi2.mp3", $("#rightHashiButton2"));
+
+setWordShowButton("/static/content_audio/hashini1.mp3", $("#leftHashiniButton"));
+setWordShowButton("/static/content_audio/hashini2.mp3", $("#rightHashiniButton"));
 
 {{/partial}}
 

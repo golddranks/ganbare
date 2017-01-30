@@ -1,28 +1,39 @@
 {{#partial main_section}}
 
-	<header>
-		<h1>{{ title }}</h1>
-		<p>Tieteellinen koe japanin ääntämyksestä</p>
-	</header>
-	<hr />
 	<h2>Suostumus tietojen keräämiseen</h2>
-	<p>
+	<p class="wordyExplanation">
 	Tämä ohjelma kerää tietoja käyttäjästään tutkimusta varten. Tallennetut tiedot ovat:
-	<ul>
+	</p>
+	<ul class="wordyExplanation">
 	<li>Käyttäjän sähköpostiosoite</li>
+	<li>Käyttäjän vastaukset alkuhaastatteluun</li>
 	<li>Käyttäjän vastaukset harjoituskysymyksiin</li>
 	<li>Käyttäjän mikrofonilla nauhoittamat ääninäytteet</li>
 	</ul>
-	Mitään tietoja ei luovuteta kolmansille osapuolille. Tietoja saatetaan käyttää hyväksi
-	tutkimuksessa ja tutkimustuloksia saatetaan julkaista, mutta kaikki kerätyt tiedot
-	anonymisoidaan niin, että kokeeseen osallistujia ei voi niistä tunnistaa.
-	Tietoja säilytetään maksimissaan kolme vuotta niiden keräämisestä.
+	<p class="wordyExplanation">
+	Sitoudumme käsittelemään tietoja huolellisesti:
 	</p>
-	<form action="/ok" method="post">
+	<ul class="wordyExplanation">
+	<li>Tietoja ei luovuteta kolmansille osapuolille.</li>
+	<li>Kerätyt tiedot anonymisoidaan niin, että kokeeseen osallistujia ei voi niistä tunnistaa.</li>
+	<li>Saatuja tutkimustuloksia – muttei kerättyjä tietoja itsessään – saatetaan julkaista.</li>
+	<li>Tietoja säilytetään maksimissaan kolme vuotta niiden keräämisestä.</li>
+	</ul>
+	<p class="error" id="agreeErrorMsg" style="display: none">Et voi osallistua kokeeseen suostumatta tietojen keräämiseen!</p>
+	<form action="/ok" method="post" id="agreeForm">
 		<input type="checkbox" id="agree" name="agree"><label for="agree">hyväksyn</label>
 		<button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok">
 	</form>
 
+{{/partial}}
+
+{{#partial page_script_inline}}
+$("#agreeForm").submit((e) => {
+	if ( ! $("#agree").is(":checked")) {
+		e.preventDefault();
+		$("#agreeErrorMsg").show();
+	}
+});
 {{/partial}}
 
 {{~> base.html ~}}

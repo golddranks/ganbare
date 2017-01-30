@@ -5,8 +5,18 @@
 		<p>Tieteellinen koe japanin ääntämyksestä</p>
 	</header>
 	<hr />
-	<p>Tervetuloa käyttämään akusento.ganba.re-harjoitusohjelmaa!</p>
-	<p>Ohjelma on betatestausvaiheessa. Tälle sivulle on tulossa tämän tervetulotoivotuksen lisäksi lyhyt selitys, miten tämä ohjelma toimii.</p>
+	<p class="wordyExplanation">Tervetuloa! Tämä ohjelma opettaa sinulle japanin ääntämystä.
+	Samalla autat edistämään tutkimusta japanin ääntämisen opettamisesta ja oppimisesta.</p>
+	<p class="wordyExplanation">Ohjelma on betatestausvaiheessa, joten jos havaitset bugeja tai epäilet että jokin asia on eri tavalla kuin pitäisi,
+	ilmoitathan siitä ohjelman kehittäjälle, Pyry Kontiolle.</p>
+	<p class="wordyExplanation">Ennen varsinaisen harjoittelun aloittamista:</p>
+	<ul class="wordyExplanation">
+	<li>Pyydämme suostumustasi tietojen keräämiseen.</li>
+	<li>Kysymme suhteestasi japanin kieleen</li>
+	<li>Opetamme, mitä japanin "sana-aksentit" ovat.</li>
+	<li>Testaamme, mitä osaat jo valmiiksi.</li>
+	</ul>
+	<p class="wordyExplanation">Kaikkea tätä ei tarvitse tehdä kerralla; ohjelma jatkaa siitä mihin jäätiin, jos suljet sen välissä.</p>
 	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
 
 {{/partial}}
