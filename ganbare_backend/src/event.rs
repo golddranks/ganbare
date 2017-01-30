@@ -48,7 +48,7 @@ pub fn dispatch_event(conn: &PgConnection, user_id: i32) -> Result<Option<Event>
         .select(event_experiences::event_id);
 
     Ok(events::table.filter(events::published.eq(true))
-        .filter(events::required_group.eq(any(groups)))
+        .filter(events::required_group.eq(any(groups)).or(events::required_group.is_null()))
         .filter(events::id.ne(all(finished_events)))
         .order(events::priority.asc())
         .first(conn)
@@ -232,7 +232,7 @@ pub fn is_ongoing(conn: &PgConnection,
 
     let ev_state = state(conn, event_name, user)?;
 
-    if let Some(ev_exp @ (_, EventExperience { event_finish: None, .. })) = ev_state {
+    if let Some(ev_exp @ (Event { published: true, .. }, EventExperience { event_finish: None, .. })) = ev_state {
         Ok(Some(ev_exp))
     } else {
         Ok(None)
