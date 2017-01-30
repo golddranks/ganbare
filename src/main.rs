@@ -3,7 +3,6 @@
 #![feature(custom_derive, custom_attribute, plugin)]
 #![plugin(diesel_codegen)]
 
-extern crate diesel_codegen;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -321,6 +320,8 @@ pub fn main() {
              manager_pages::send_mail_post);
 
     // HTTP API
+    app.post("/api/mic_check?<random_token:string>", "mic_check_rec", http_api::mic_check);
+    app.get("/api/mic_check.ogg?<random_token:string>", "mic_check_play", http_api::mic_check);
     app.get("/api/next_retelling?event=<event_name:string>",
             "next_retelling",
             http_api::next_retelling);

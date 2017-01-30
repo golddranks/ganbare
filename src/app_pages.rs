@@ -26,13 +26,14 @@ fn dispatch_events(conn: &PgConnection,
         "pretest" => redirect("/pretest", 303),
         "pretest_retelling" => redirect("/pretest_retelling", 303),
         "pretest_done" => redirect("/pretest_done", 303),
-        "sorting_ceremony" => redirect("/sorting_ceremony", 303),
+        "sorting_ceremony" => redirect("/sorting", 303),
         "posttest_info" => redirect("/posttest_info", 303),
         "posttest" => redirect("/posttest", 303),
         "posttest_retelling" => redirect("/posttest_retelling", 303),
         "posttest_done" => redirect("/posttest_done", 303),
-        ename => {
-            return Err(internal_error(&format!("I don't know how to handle event {}!", ename)))
+        "training" => return Ok(None),
+        event_name => {
+            return Err(internal_error(&format!("I don't know how to handle event {}!", event_name)))
         }
     };
 

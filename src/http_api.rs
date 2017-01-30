@@ -139,9 +139,11 @@ pub fn new_quiz(req: &mut Request) -> PencilResult {
 
     let new_quiz =
         if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "pretest", &user).err_500()? {
+            debug!("Pretest questions!");
             test::get_new_quiz_pretest(&conn, &user, &ev).err_500()?
         } else if let Some((ev, _)) =
             ganbare::event::is_ongoing(&conn, "posttest", &user).err_500()? {
+            debug!("Posttest questions!");
             test::get_new_quiz_posttest(&conn, &user, &ev).err_500()?
         } else {
             quiz::get_new_quiz(&conn, &user).err_500()?
@@ -765,10 +767,13 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
     let mut file = fs::File::create(&new_path).err_500()?;
     io::copy(req, &mut file).err_500()?;
 
-    let rec_number = event::get_userdata(&conn, &event, &user, "rec_number")
+    let mut rec_number = event::get_userdata(&conn, &event, &user, "rec_number")
         .err_500()?
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0);
+
+    rec_number += 1;
+
     let quiz_number = event::get_userdata(&conn, &event, &user, "quiz_number")
         .err_500()?
         .and_then(|d| d.data.parse::<usize>().ok())
@@ -777,14 +782,14 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
                          &event,
                          &user,
                          Some("rec_number"),
-                         &format!("{}", rec_number + 1)).err_500()?;
+                         &format!("{}", rec_number)).err_500()?;
     event::save_userdata(&conn,
                          &event,
                          &user,
                          Some(&format!("quiz_{}_rec_{}", quiz_number, rec_number)),
                          &filename).err_500()?;
 
-    debug!("Saved user audio: {:?}", filename);
+    debug!("Saved user audio: {:?} with rec_number: {} and quiz_number: {}", filename, rec_number, quiz_number);
 
     jsonify(&()).refresh_cookie(&sess)
 }
@@ -796,6 +801,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     let event_name = req.view_args
         .remove("event_name")
         .expect("Pencil guarantees that event name should exist as an arg.");
+
     let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
 
     match endpoint.as_ref() {
@@ -815,8 +821,13 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
                                     &user,
                                     &format!("quiz_{}_rec_{}", quiz_number, rec_number)
                                 ).err_500()?,
-                else return abort(404)
+                else {
+                    println!("No userdata. rec_number: {}, quiz_number: {}", rec_number, quiz_number);
+                    return abort(404)
+                }
             );
+
+            println!("Getting user audio. rec_number: {}, quiz_number: {}, filename: {}", rec_number, quiz_number, &filename.data);
 
             let mut file_path = USER_AUDIO_DIR.clone();
             file_path.push(&filename.data);
