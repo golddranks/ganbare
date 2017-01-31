@@ -47,7 +47,7 @@ $(function() {
 			});
 
 			group_memberships.forEach(function(group_membership) {
-				if(!group_membership.anonymous && user_groups[group_membership.group_id] === false) {
+				if((showAnon || !group_membership.anonymous) && user_groups[group_membership.group_id] === false) {
 					user_groups[group_membership.group_id] = true;
 				}
 			});

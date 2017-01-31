@@ -465,7 +465,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
     match endpoint.as_str() {
         "update_word" => {
 
-            let item = rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
+            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_word(&conn, id, item, &*IMAGES_DIR).err_500()?,
@@ -477,7 +477,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_exercise" => {
 
-            let item = rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
+            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_exercise(&conn, id, item).err_500()?,
@@ -488,7 +488,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_question" => {
 
-            let item = rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
+            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_question(&conn, id, item).err_500()?,
@@ -499,7 +499,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_answer" => {
 
-            let item = rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
+            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_answer(&conn, id, item, &*IMAGES_DIR).err_500()?,
@@ -510,8 +510,8 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_bundle" => {
 
-            let item: ganbare::models::AudioBundle =
-                rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
+            let item: ganbare::models::AudioBundle = 
+                err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
             if item.id != id {
                 return abort(400);
             }
@@ -856,7 +856,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
 
 
 pub fn mic_check(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (_, _, sess) = auth_user(req, "")?;
 
     let endpoint = req.endpoint().expect("Pencil guarantees this");
 

@@ -85,21 +85,27 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 			let random_token = Math.random().toString().slice(2);
 			rec.removeEventListener("dataAvailable", dataAvailListener);
 			console.log("Recorded data is available!", ev);
-			$.ajax({
-				type: 'POST',
-				url: "/api/mic_check?"+random_token,
-				processData: false,
-				contentType: 'application/octet-stream',
-				data: ev.detail,
-				success: function() {
-					console.log("Recorded audio saved successfully!");
-					doneSemaphore(random_token);
-				}, 
-				error: function(err) {
-					connectionFailMessage(err);
-					console.log("Error with saving recorded audio!");
-				},
-			});
+
+			function sendAudioData() {
+				$.ajax({
+					type: 'POST',
+					url: "/api/mic_check?"+random_token,
+					processData: false,
+					contentType: 'application/octet-stream',
+					data: ev.detail,
+					success: function() {
+						clearError();
+						console.log("Recorded audio saved successfully!");
+						doneSemaphore(random_token);
+					}, 
+					error: function(err) {
+						connectionFailMessage(err);
+						console.log("Error with saving recorded audio!");
+						setTimeout(sendAudioData, 2000);
+					},
+				});
+			}
+			sendAudioData();
 		}
 
 		rec.addEventListener("streamReady", readyListener);
@@ -126,20 +132,22 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 
 function checkMic() {
 	startRecording("miccheck", (recording, start_rec, finished_rec, after_done_rec) => {
-		$("#pretestExplanation").hide();
-		$("#micCheckOk").hide();
-		$("#micCheckExplanation").show();
 		if ( ! recording) {
 			errorMessage("Selaimesi ei tue äänen nauhoitusta!<br>Kokeile Firefoxia tai Chromea.");
 		}
 		start_rec();
 
-		$("#recDone").one('click', function() {
+		console.log("Setting up the rec done button.");
+
+		$("#recDone").prop('disabled', false);
+		$("#recDone").one('click',function() {
+			$("#recDone").prop('disabled', true);
 			finished_rec();
 			after_done_rec((random_token) => {
-				console.log("Random token:", random_token);
+				console.log("Recording done. Random token:", random_token);
 				$("#micCheckExplanation").hide();
 				$("#micCheckOk").show();
+				// HTML5 is required because Chrome doesn't support audio/ogg; codecs=opus without it
 				let recording = new Howl({ src: ["/api/mic_check.ogg?"+random_token], format: ['opus'], html5: true});
 				recording.play();
 			});
@@ -147,8 +155,26 @@ function checkMic() {
 	})
 }
 
-$("#checkMic").click(checkMic);
-$("#checkMicAgain").click(checkMic);
+$("#checkMic").click(function() {
+	$("#pretestExplanation").hide();
+	$("#micCheckOk").hide();
+	$("#micCheckExplanation").show();
+	$("#recStart").prop('disabled', false);
+	$("#recDone").prop('disabled', true);
+});
+
+$("#checkMicAgain").click(function() {
+	$("#pretestExplanation").hide();
+	$("#micCheckOk").hide();
+	$("#micCheckExplanation").show();
+	$("#recStart").prop('disabled', false);
+	$("#recDone").prop('disabled', true);
+});
+
+$("#recStart").click(function() {
+	$("#recStart").prop('disabled', true);
+	checkMic();
+});
 
 });
 

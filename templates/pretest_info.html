@@ -11,20 +11,22 @@
 </div>
 <section id="pretestExplanation">
 	<h1>Testi</h1>
-	<p>Ennen harjoittelun aloittamista testaamme vielä lyhyesti, kuinka hyvä olet aksenteissa jo valmiiksi.
+	<p class="wordyExplanation">Ennen harjoittelun aloittamista testaamme vielä lyhyesti, kuinka hyvä olet aksenteissa jo valmiiksi.
 	Älä stressaa turhia, vaan vastaa parhaasi mukaan kysymyksiin.</p>
-	<p>Normaalisti emme välitä, vaikka pitäisit taukoja välissä harjoitellessasi aksentteja, mutta ole hyvä
+	<p class="wordyExplanation">Normaalisti emme välitä, vaikka pitäisit taukoja välissä harjoitellessasi aksentteja, mutta ole hyvä
 	ja tee tämän testi yhteen putkeen. Varaa itsellesi aikaa reilu viisi minuuttia ja meluton, häiriötön
 	tila, jossa olet mieluusti yksin.</p>
-	<p>Testissä nauhoitetaan yhdessä vaiheessa ääntäsi mikrofonin avustuksella. Nauhoitus toimii vain
-	Chrome- ja Firefox-selaimilla, joten varmistathan etukäteen että käytät yhteensopivaa selainta.</p>
-	<p>Ennen testin aloittamista tarkistamme mikrofonin ja kaiuttimien toimivuuden.</p>
-	<button id="checkMic">Tarkistus</button>
+	<button id="checkMic">Seuraava ></button>
 </section>
 <section id="micCheckExplanation" style="display: none">
 	<h1>Testi</h1>
-	<p>Mikrofonin nauhoittaa nyt ääntäsi. Sano normaaliin ääneen: "testi, testi", ja paina sitten "OK".</p>
-	<button id="recDone">OK</button>
+	<p class="wordyExplanation">Testissä nauhoitetaan yhdessä vaiheessa ääntäsi mikrofonin avustuksella. Nauhoitus toimii vain
+	Chrome- ja Firefox-selaimilla, joten varmistathan etukäteen että käytät yhteensopivaa selainta.</p>
+	<p class="wordyExplanation">Ennen testin aloittamista tarkistamme mikrofonin ja kaiuttimien toimivuuden.</p>
+	<p class="wordyExplanation">Paina "nauhoita"-painiketta ja
+	sano normaaliin ääneen: "testi, testi", ja paina sitten "OK".</p>
+	<button id="recStart">Nauhoita</button>
+	<button id="recDone" disabled>OK</button>
 </section>
 
 <section id="micCheckOk" style="display: none">
@@ -32,7 +34,7 @@
 	<p>Kuulitko oman äänesi? Jos kuulit, kaikki on kunnossa, ja voit aloittaa kokeen.</p>
 	<p>Jos et kuullut, varmista että kaiuttimet ovat päällä ja mikrofoni toimii, ja paina "tarkista uudelleen".</p>
 	<button id="checkMicAgain">tarkista uudelleen</button>
-	<form action="/ok" method="post"><button>Aloita koe</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
+	<form action="/ok" method="post" style="display: inline-block"><button>Aloita koe</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
 </section>
 
 {{/partial}}

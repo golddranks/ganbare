@@ -12,6 +12,24 @@ function getRandomColor() {
     return color;
 }
 
+function createSemaphore(count: number) : (argument?: any) =>void {
+
+	var semaphore = count;
+	var closureCallback: (argument: any)=>void = null;
+	var closureArg: any = null;
+
+	return (argument?: any) => {
+		if (closureCallback === null && typeof argument === "function") {
+			closureCallback = argument;
+		} else if (closureArg === null) {
+			closureArg = argument;
+		};
+		semaphore--;
+		if (semaphore > 0) { return; };
+		closureCallback(closureArg);
+	};
+}
+
 function accentuate(word: string): string {
 
 	var empty = '<span class="accent">';
@@ -151,6 +169,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 	});
 
 	var proto_trash_button = $('<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>');
+	var proto_update_button = $('<button class="compact narrUpdateButton" style="float: right;"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>');
 	let proto_audio_button = $('<button class="compact" style="background-color: white;" title="undefined"><img src="/static/images/speaker_teal.png" class="soundicon"></button>');
 	let proto_bundle = $('<div class="bordered weak" style="display: inline-block;" title="undefined"></div>');
 	let proto_span = $('<span></span>');
@@ -424,6 +443,48 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							c_item.remove();
 							questions.splice(index, 1);
 							check_init_autocreate_buttons();
+						}, 
+					});
+				});
+
+			var update_button = proto_update_button.clone()
+				.appendTo(c_header)
+				.click(function() {
+					let a1_data = {
+									question_id: question.id,
+									a_audio_bundle: null,
+									q_audio_bundle: words[0].audio_bundle,
+									answer_text: words[0].explanation,
+								};
+					let a2_data = {
+									question_id: question.id,
+									a_audio_bundle: null,
+									q_audio_bundle: words[1].audio_bundle,
+									answer_text: words[1].explanation,
+								};
+					let sema = createSemaphore(3);
+					sema(() => {
+						c_item.remove();
+						createQuestionEntry(tuple, 0);
+					})
+					$.ajax({
+						type: 'PUT',
+						url: "/api/questions/answers/"+answers[0].id,
+						contentType: "application/json",
+						data: JSON.stringify(a1_data),
+						success: function(resp) {
+							answers[0] = resp;
+							sema();
+						}, 
+					});
+					$.ajax({
+						type: 'PUT',
+						url: "/api/questions/answers/"+answers[1].id,
+						contentType: "application/json",
+						data: JSON.stringify(a2_data),
+						success: function(resp) {
+							answers[1] = resp;
+							sema();
 						}, 
 					});
 				});

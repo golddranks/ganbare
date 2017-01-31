@@ -277,8 +277,6 @@ var timesAudioPlayed = 0;
 var correct = new Howl({ src: ['/static/sfx/correct.m4a', '/static/sfx/correct.mp3']});
 var wrong = new Howl({ src: ['/static/sfx/wrong.m4a', '/static/sfx/wrong.mp3']});
 var bell = new Howl({ src: ['/static/sfx/bell.m4a', '/static/sfx/bell.mp3']});
-var speakerIconTeal = $("#speakerIconTeal");
-var speakerIconPink = $("#speakerIconPink");
 
 /* question-related things */
 var prototypeAnswer = $(".answer").remove();
@@ -300,6 +298,7 @@ var topmessage = $(".topmessageparagraph");
 /* word- and exercise-related things */
 var wordSection = $("#wordSection");
 var wordSectionSlideContainer = $("#wordSectionSlideContainer");
+var userWordShowButton = $("#userWordShowButton");
 var wordShowButton = $("#wordShowButton");
 var wordShowSection = $(".wordShowSection");
 var wordShowKana = $("#wordShowKana");
@@ -467,13 +466,28 @@ function setWordShowButton(audio: Howl) {
 	wordShowButton.off('click').on('click', function() {
 		timesAudioPlayed++;
 		audio.play(); 
-		speakerIconTeal.hide();
-		speakerIconPink.show();
+		wordShowButton.children(".speakerIconTeal").hide();
+		wordShowButton.children(".speakerIconPink").show();
 	});
 
 	audio.on('end', function() {
-		speakerIconTeal.show();
-		speakerIconPink.hide();
+		wordShowButton.children(".speakerIconTeal").show();
+		wordShowButton.children(".speakerIconPink").hide();
+	});
+
+}
+
+function setUserWordShowButton(audio: Howl) {
+
+	userWordShowButton.off('click').on('click', function() {
+		audio.play(); 
+		userWordShowButton.children(".speakerIconTeal").hide();
+		userWordShowButton.children(".speakerIconPink").show();
+	});
+
+	audio.on('end', function() {
+		userWordShowButton.children(".speakerIconTeal").show();
+		userWordShowButton.children(".speakerIconPink").hide();
 	});
 
 }
@@ -483,6 +497,7 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 	quiz_data.sent = true;
 	console.log("answerExercise! isCorrect: ", isCorrect, " exercise: ", exercise);
 	wordShowButton.off('click');
+	userWordShowButton.off('click');
 	exerciseFailureButton.off('click');
 	exerciseSuccessButton.off('click');
 	var nextQuestion = createSemaphore(2);
@@ -773,27 +788,33 @@ function showExercise(exercise: ExerciseJson) {
 			wordExplanation.html(exercise.explanation);
 		
 			var exerciseAudio = new Howl({ src: ['/api/audio.mp3?'+exercise.asked_id]});
-		
+	
+			// HTML5 is required because Chrome doesn't support audio/ogg; codecs=opus without it
+			var userAudio = new Howl({ src: ['/api/user_audio.ogg?event='+exercise.event_name+'&last'], html5: true});
+			
 			setLoadError(exerciseAudio, "exerciseAudio", exercise);
-			setWordShowButton(exerciseAudio);
-		
+
 			exerciseSuccessButton.one('click', ()=> { answerExercise(true, exercise, quiz_data); });
-		
 			exerciseFailureButton.one('click', ()=> { answerExercise(false, exercise, quiz_data); });
 		
-			exerciseAudio.once('end', function(){
+			setWordShowButton(exerciseAudio);
 
-				var userAudio = new Howl({ src: ['/api/user_audio.ogg?event='+exercise.event_name+'&last']});
-				userAudio.play();
-				setTimeout(function() {
-					wordButtonLabel.text("Itsearvio");
-					wordButtonLabel.show();
-					exerciseFailureButton.show();
-					exerciseSuccessButton.show();
-					wordShowButton.fadeIn();
-					buttonSection.slideDown(normalSpeed);
-				}, 1100);
-			});
+			if (recording_supported) {
+				setUserWordShowButton(userAudio);
+		
+				exerciseAudio.once('end', function(){
+	
+					userAudio.play();
+					setTimeout(function() {
+						wordButtonLabel.text("Itsearvio");
+						wordButtonLabel.show();
+						exerciseFailureButton.show();
+						exerciseSuccessButton.show();
+						wordShowButton.fadeIn();
+						buttonSection.slideDown(normalSpeed);
+					}, 1100);
+				});
+			}
 		
 			quiz_data.answered = false;
 			exerciseOkButton.one("click", function() {
