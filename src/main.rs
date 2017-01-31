@@ -142,15 +142,13 @@ pub fn background_control_thread() {
         }
 
         while let Some(oldest) = AUDIO_REMOVE_QUEUE.read().unwrap().back().cloned() {
-                if oldest.0 + chrono::Duration::minutes(10) < UTC::now() {
-                    let _ = AUDIO_REMOVE_QUEUE.write().unwrap().pop_back();
-                    TEMP_AUDIO.write().unwrap().remove(&oldest.1);
-                    debug!("Removed an old temp audio recording: {:?}", oldest);
-                } else {
-                    break;
-                }
+            if oldest.0 + chrono::Duration::minutes(10) < UTC::now() {
+                let _ = AUDIO_REMOVE_QUEUE.write().unwrap().pop_back();
+                TEMP_AUDIO.write().unwrap().remove(&oldest.1);
+                debug!("Removed an old temp audio recording: {:?}", oldest);
+            } else {
+                break;
             }
-
         }
     }
 }

@@ -2,12 +2,20 @@
 
 $(function() {
 
+	$("#show_anon").change(function() {
+		groupHeader.html("<th>Users</th>");
+		usersList.html("");
+		pendingUsersList.html("");
+		userActivityRows.html("");
+		showUserTable(usersResp, $(this).is(":checked"));
+	});
+
 	var groupHeader = $("#groupHeader");
 	var usersList = $("#usersList");
 	var pendingUsersList = $("#pendingUsersList");
 	var userActivityRows = $("#userActivityRows");
-	
-	$.getJSON("/api/users", function(resp){
+
+	function showUserTable(resp, showAnon: boolean) {
 		var users = resp[0];
 		var groups = resp[1];
 		var pending_users = resp[2];
@@ -33,7 +41,7 @@ $(function() {
 			var user_groups = new Array();
 			groups.forEach(function(group) {
 				user_groups[group.id] = false;
-				if (group.anonymous) {
+				if (group.anonymous && !showAnon) {
 					user_groups[group.id] = null;
 				}
 			});
@@ -230,6 +238,13 @@ $(function() {
 			var user_list = $('<li></li>').appendTo(pendingUsersList);
 			user_list.text(pending_user.email);
 		});
+	}
+
+	let usersResp;
+	
+	$.getJSON("/api/users", (resp) => {
+		usersResp = resp;
+		showUserTable(resp, false);
 	});
 
 })
