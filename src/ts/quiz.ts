@@ -109,7 +109,7 @@ function checkRecordingSupport(): boolean {
 
 let global_rec = null;
 
-function startRecording(eventName: string, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void, doneCB: (afterDone: ()=>void)=> void)=> void) {
+function startRecording(eventName: string, callback: (recording: boolean, startCB: ()=>void, finishedCB: ()=> void, doneCB: (afterDone: (resp)=>void)=> void)=> void) {
 	if (Recorder.isRecordingSupported()) {
 		let rec;
 		if (global_rec === null) {
@@ -132,7 +132,7 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 
 		let doneSemaphore = createSemaphore(2);
 
-		function doneCB(afterDone: ()=>void) {
+		function doneCB(afterDone: (resp)=>void) {
 			doneSemaphore(afterDone);
 		}
 
@@ -152,9 +152,9 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 				processData: false,
 				contentType: 'application/octet-stream',
 				data: ev.detail,
-				success: function() {
+				success: function(resp) {
 					console.log("Recorded audio saved successfully!");
-					doneSemaphore();
+					doneSemaphore(resp);
 				}, 
 				error: function(err) {
 					connectionFailMessage(err);
@@ -180,9 +180,8 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 			callback(true, startCB, finishedCB, doneCB);
 		}
 	} else {
-		callback(false, ()=>{}, ()=>{}, (afterDone: ()=>void)=>{ afterDone(); });
+		callback(false, ()=>{}, ()=>{}, (afterDone: (resp)=>void)=>{ afterDone(null); });
 	}
-
 }
 
 
@@ -377,6 +376,7 @@ function cleanState() : void {
 	exerciseFailureButton.hide();
 	exerciseSuccessButton.hide();
 	wordShowButton.hide();
+	userWordShowButton.hide();
 	wordButtonLabel.hide();
 	wordOkButton.hide();
 	avatar.hide();
@@ -423,18 +423,21 @@ function breakTime(future: FutureJson) : void {
 	questionStatus.slideDown(normalSpeed);
 }
 
-function createSemaphore(count: number) : (callback?: ()=>void) =>void {
+function createSemaphore(count: number) : (argument?: any) =>void {
 
 	var semaphore = count;
-	var closureCallback: ()=>void = null;
+	var closureCallback: (argument: any)=>void = null;
+	var closureArg: any = null;
 
-	return (callback?: ()=>void) => {
-		if (closureCallback === null && callback !== undefined) {
-			closureCallback = callback;
+	return (argument?: any) => {
+		if (closureCallback === null && typeof argument === "function") {
+			closureCallback = argument;
+		} else if (closureArg === null) {
+			closureArg = argument;
 		};
 		semaphore--;
 		if (semaphore > 0) { return; };
-		closureCallback();
+		closureCallback(closureArg);
 	};
 }
 
@@ -788,9 +791,7 @@ function showExercise(exercise: ExerciseJson) {
 			wordExplanation.html(exercise.explanation);
 		
 			var exerciseAudio = new Howl({ src: ['/api/audio.mp3?'+exercise.asked_id]});
-	
-			// HTML5 is required because Chrome doesn't support audio/ogg; codecs=opus without it
-			var userAudio = new Howl({ src: ['/api/user_audio.ogg?event='+exercise.event_name+'&last'], html5: true});
+			let userAudio = null;
 			
 			setLoadError(exerciseAudio, "exerciseAudio", exercise);
 
@@ -799,22 +800,22 @@ function showExercise(exercise: ExerciseJson) {
 		
 			setWordShowButton(exerciseAudio);
 
-			if (recording_supported) {
-				setUserWordShowButton(userAudio);
-		
-				exerciseAudio.once('end', function(){
-	
-					userAudio.play();
-					setTimeout(function() {
-						wordButtonLabel.text("Itsearvio");
-						wordButtonLabel.show();
-						exerciseFailureButton.show();
-						exerciseSuccessButton.show();
-						wordShowButton.fadeIn();
-						buttonSection.slideDown(normalSpeed);
-					}, 1100);
-				});
-			}
+			let audioFinishedAndUserAudioUploaded = createSemaphore(2);
+
+			exerciseAudio.once('end', function(){
+
+				audioFinishedAndUserAudioUploaded();
+
+				setTimeout(function() {
+					wordButtonLabel.text("Itsearvio");
+					wordButtonLabel.show();
+					exerciseFailureButton.show();
+					exerciseSuccessButton.show();
+					wordShowButton.fadeIn();
+					buttonSection.slideDown(normalSpeed);
+				}, 1100);
+			});
+
 		
 			quiz_data.answered = false;
 			exerciseOkButton.one("click", function() {
@@ -830,6 +831,20 @@ function showExercise(exercise: ExerciseJson) {
 					wordShowKana.html(accentuate(exercise.word, true));
 					exerciseAudio.play();
 					timesAudioPlayed++;
+					when_recording_done((resp) => {
+						if (resp !== null) {
+							console.log("Recording done & uploaded. Now fetching audio from:", '/api/user_audio.ogg?event='+exercise.event_name+'&last');
+							// HTML5 is required because Chrome doesn't support audio/ogg; codecs=opus without it
+							userAudio = new Howl({ src: [
+								'/api/user_audio.ogg?event='+exercise.event_name+'&quiz_number='+resp[0]+'&rec_number='+resp[1]
+								], html5: true});
+							audioFinishedAndUserAudioUploaded(() => {
+								userAudio.play();
+								userWordShowButton.fadeIn();
+							});
+							setUserWordShowButton(userAudio);
+						}
+					});
 				} else {
 					wordButtonLabel.text("Vastattu!");
 					when_recording_done(() => { answerExercise(true, exercise, quiz_data); });

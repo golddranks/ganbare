@@ -791,10 +791,11 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
 
     debug!("Saved user audio: {:?} with rec_number: {} and quiz_number: {}", filename, rec_number, quiz_number);
 
-    jsonify(&()).refresh_cookie(&sess)
+    jsonify(&(quiz_number, rec_number)).refresh_cookie(&sess)
 }
 
 pub fn get_useraudio(req: &mut Request) -> PencilResult {
+
     let (conn, user, sess) = auth_user(req, "")?;
     let endpoint = req.endpoint().expect("Pencil guarantees this");
 
@@ -804,7 +805,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
 
     let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
 
-    match endpoint.as_ref() {
+    let (quiz_number, rec_number) = match endpoint.as_ref() {
         "get_last_useraudio" => {
 
             let rec_number = event::get_userdata(&conn, &event, &user, "rec_number")
@@ -815,43 +816,63 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
                 .err_500()?
                 .and_then(|d| d.data.parse::<usize>().ok())
                 .unwrap_or(0);
-            let filename = try_or!(
-                event::get_userdata(&conn,
-                                    &event,
-                                    &user,
-                                    &format!("quiz_{}_rec_{}", quiz_number, rec_number)
-                                ).err_500()?,
-                else {
-                    debug!("No userdata. rec_number: {}, quiz_number: {}", rec_number, quiz_number);
-                    return abort(404)
-                }
-            );
+            (quiz_number, rec_number)
+        },
+        "get_useraudio" => {
 
-            debug!("Getting user audio. rec_number: {}, quiz_number: {}, filename: {}", rec_number, quiz_number, &filename.data);
-
-            let mut file_path = USER_AUDIO_DIR.clone();
-            file_path.push(&filename.data);
-
-            use pencil::{PencilError, HTTPError};
-            use std::str::FromStr;
-
-            send_file(file_path.to_str().expect("The path should be fully ASCII"),
-                      mime::Mime::from_str("audio/ogg").unwrap(),
-                      false,
-                      req.headers().get())
-                .refresh_cookie(&sess)
-                .map_err(|e| match e {
-                    PencilError::PenHTTPError(HTTPError::NotFound) => {
-                        error!("Audio file not found? The audio file database/folder is borked? \
-                                {:?}",
-                               file_path);
-                        internal_error(e)
-                    }
-                    _ => internal_error(e),
-                })
-        }
+            let quiz_number = err_400!(req.view_args
+                .remove("quiz_number")
+                .and_then(|d| d.parse::<usize>().ok()),
+                "quiz_number must be specified");
+            let rec_number = err_400!(req.view_args
+                .remove("rec_number")
+                .and_then(|d| d.parse::<usize>().ok()),
+                "rec_number must be specified");
+            (quiz_number, rec_number)
+        },
         _ => unreachable!(),
-    }
+    };
+
+    let filename = try_or!(
+        event::get_userdata(&conn,
+                            &event,
+                            &user,
+                            &format!("quiz_{}_rec_{}", quiz_number, rec_number)
+                        ).err_500()?,
+        else {
+            debug!("No userdata. rec_number: {}, quiz_number: {}", rec_number, quiz_number);
+            return abort(404)
+        }
+    );
+    debug!("Getting user audio. rec_number: {}, quiz_number: {}, filename: {}", rec_number, quiz_number, &filename.data);
+    let mut file_path = USER_AUDIO_DIR.clone();
+    file_path.push(&filename.data);
+    use pencil::{PencilError, HTTPError};
+    use hyper::header::{CacheControl, CacheDirective};
+    use std::str::FromStr;
+    send_file(file_path.to_str().expect("The path should be fully ASCII"),
+              mime::Mime::from_str("audio/ogg").unwrap(),
+              false,
+              req.headers().get())
+        .refresh_cookie(&sess)
+        .map(|mut resp| {
+            resp.headers.set(
+                CacheControl(vec![
+                    CacheDirective::NoCache,
+                    CacheDirective::NoStore,
+                ])
+            );
+            resp
+        })
+        .map_err(|e| match e {
+            PencilError::PenHTTPError(HTTPError::NotFound) => {
+                error!("Audio file not found? The audio file database/folder is borked? \
+                        {:?}",
+                       file_path);
+                internal_error(e)
+            }
+            _ => internal_error(e),
+        })
 }
 
 

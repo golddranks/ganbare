@@ -363,6 +363,9 @@ pub fn main() {
     app.get("/api/user_audio.ogg?event=<event_name:string>&last",
             "get_last_useraudio",
             http_api::get_useraudio);
+    app.get("/api/user_audio.ogg?event=<event_name:string>&quiz_number=<quiz_number:int>&rec_number=<rec_number:int>",
+            "get_useraudio",
+            http_api::get_useraudio);
     app.post("/api/user_audio?event=<event_name:string>",
              "post_useraudio",
              http_api::post_useraudio);
