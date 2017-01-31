@@ -4,11 +4,8 @@ Need to do before release:
 
 - Check that asking sentences works
 - Check that question priority works
-
 - Add a test completed -page
-
-- Test that recording and playing works on chrome
-- Review all the code changes
+- Fix the stereo sounds -> mono
 
 Stretch goals:
 - Remove old mail confirmations
