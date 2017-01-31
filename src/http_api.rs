@@ -822,12 +822,12 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
                                     &format!("quiz_{}_rec_{}", quiz_number, rec_number)
                                 ).err_500()?,
                 else {
-                    println!("No userdata. rec_number: {}, quiz_number: {}", rec_number, quiz_number);
+                    debug!("No userdata. rec_number: {}, quiz_number: {}", rec_number, quiz_number);
                     return abort(404)
                 }
             );
 
-            println!("Getting user audio. rec_number: {}, quiz_number: {}, filename: {}", rec_number, quiz_number, &filename.data);
+            debug!("Getting user audio. rec_number: {}, quiz_number: {}, filename: {}", rec_number, quiz_number, &filename.data);
 
             let mut file_path = USER_AUDIO_DIR.clone();
             file_path.push(&filename.data);
@@ -854,12 +854,6 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     }
 }
 
-use std::collections::HashMap;
-use std::sync::RwLock;
-
-lazy_static! {
-    pub static ref TEMP_AUDIO: RwLock<HashMap<u64, Vec<u8>>> = RwLock::new(HashMap::new());
-}
 
 pub fn mic_check(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
@@ -876,23 +870,20 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
             let mut audio = vec![];
             std::io::copy(req, &mut audio).err_500()?;
             let mut map = TEMP_AUDIO.write().err_500()?;
+            let mut queue = AUDIO_REMOVE_QUEUE.write().err_500()?;
             map.insert(random_token, audio);
+            queue.push_front((UTC::now(), random_token));
             jsonify(&()).refresh_cookie(&sess)
         },
         "mic_check_play" => {
             use std::str::FromStr;
-
-            println!("{:?}, {:?}", req, req.headers());
 
             let map = TEMP_AUDIO.read().err_500()?;
             let audio = err_400!(map.get(&random_token), "No such audio clip!");
             let mut resp = Response::from(&audio[..]);
             let mime = mime::Mime::from_str("audio/ogg").unwrap();
             resp.headers.set::<hyper::header::ContentType>(hyper::header::ContentType(mime));
-            resp.refresh_cookie(&sess).map(|r| {
-                println!("{:?} {:?}", &r, &r.headers);
-                r
-            })
+            resp.refresh_cookie(&sess)
         },
         _ => unreachable!(),
     }

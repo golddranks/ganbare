@@ -197,6 +197,15 @@ pub fn complete_pending_email_confirm(conn: &PgConnection,
     Ok(user)
 }
 
+pub fn clean_old_pendings(conn: &PgConnection, duration: chrono::duration::Duration) -> Result<usize> {
+    use schema::pending_email_confirms;
+    let deadline = chrono::UTC::now() - duration;
+    diesel::delete(pending_email_confirms::table
+            .filter(pending_email_confirms::added.lt(deadline)))
+        .execute(conn)
+        .chain_err(|| "Couldn't delete the old pending requests.")
+}
+
 pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &PgConnection,
                                             how_old: chrono::Duration,
                                             nag_grace_period: chrono::Duration,

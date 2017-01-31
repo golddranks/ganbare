@@ -62,6 +62,16 @@ pub fn source_maps(req: &mut Request) -> PencilResult {
     send_from_directory("src", file_path, false, None)
 }
 
+use std::collections::{HashMap, VecDeque};
+use std::sync::RwLock;
+use chrono::DateTime;
+use chrono::UTC;
+
+lazy_static! {
+    pub static ref TEMP_AUDIO: RwLock<HashMap<u64, Vec<u8>>> = RwLock::new(HashMap::new());
+    pub static ref AUDIO_REMOVE_QUEUE: RwLock<VecDeque<(DateTime<UTC>, u64)>> = RwLock::new(VecDeque::new());
+}
+
 pub fn background_control_thread() {
     use std::thread::sleep;
     use std::error::Error;
@@ -119,8 +129,29 @@ pub fn background_control_thread() {
             }
         };
 
+        match ganbare::email::clean_old_pendings(&conn, chrono::Duration::days(14)) {
+            Ok(count) => {
+                if count != 0 {
+                    info!("Deleted {} unanswered email confirmations.", count);
+                }
+            }
+            Err(e) => {
+                error!("background_control_thread::clean_old_pendings: Error: {}",
+                       e)
+            }
+        }
 
-        // FIXME delete email confirms that are too old
+        while let Some(oldest) = AUDIO_REMOVE_QUEUE.read().unwrap().back().cloned() {
+                if oldest.0 + chrono::Duration::minutes(10) < UTC::now() {
+                    let _ = AUDIO_REMOVE_QUEUE.write().unwrap().pop_back();
+                    TEMP_AUDIO.write().unwrap().remove(&oldest.1);
+                    debug!("Removed an old temp audio recording: {:?}", oldest);
+                } else {
+                    break;
+                }
+            }
+
+        }
     }
 }
 

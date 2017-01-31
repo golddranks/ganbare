@@ -124,16 +124,17 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 
 }
 
-$("#checkMic").click(function() {
+function checkMic() {
 	startRecording("miccheck", (recording, start_rec, finished_rec, after_done_rec) => {
 		$("#pretestExplanation").hide();
+		$("#micCheckOk").hide();
 		$("#micCheckExplanation").show();
 		if ( ! recording) {
 			errorMessage("Selaimesi ei tue äänen nauhoitusta!<br>Kokeile Firefoxia tai Chromea.");
 		}
 		start_rec();
 
-		$("#recDone").click(function() {
+		$("#recDone").one('click', function() {
 			finished_rec();
 			after_done_rec((random_token) => {
 				console.log("Random token:", random_token);
@@ -143,17 +144,11 @@ $("#checkMic").click(function() {
 				recording.play();
 			});
 		});
-		
 	})
-});
+}
 
-$("#checkMicAgain").click(function() {
-	$("#micCheckOk").hide();
-	$("#micCheckExplanation").show();
-});
-
-let testi = new Howl({ src: ["/static/content_audio/test.ogg"], format: ['opus'], html5: true});
-testi.play();
+$("#checkMic").click(checkMic);
+$("#checkMicAgain").click(checkMic);
 
 });
 
