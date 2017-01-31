@@ -8,7 +8,7 @@ DEPLOY_DOMAIN=akusento.ganba.re
 
 rsync -r images $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
 rsync -r audio $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
-ssh $DEPLOY_SERVER <<EOF
+ssh $DEPLOY_SERVER /bin/sh <<EOF
 docker pull golddranks/ganbare_run
 docker stop ganbare_runner_production && docker rm ganbare_runner_production
 docker run -d --restart=unless-stopped \

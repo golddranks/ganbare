@@ -14,7 +14,7 @@ DEPLOY_BUILD_NUMBER="Build number: $(cat build_number.txt) Commit: $(git log HEA
 
 rsync -r images $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
 rsync -r audio $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
-ssh $DEPLOY_SERVER <<EOF
+ssh $DEPLOY_SERVER /bin/sh <<EOF
 docker pull golddranks/ganbare_run
 docker stop ganbare_runner_testing && docker rm ganbare_runner_testing
 docker run -d --restart=unless-stopped \
