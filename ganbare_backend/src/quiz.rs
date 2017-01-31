@@ -43,7 +43,7 @@ pub struct QuestionJson {
 #[derive(RustcEncodable, Debug, Clone)]
 pub struct ExerciseJson {
     pub quiz_type: &'static str,
-    pub event_name: Option<&'static str>,
+    pub event_name: &'static str,
     pub asked_id: i32,
     pub word: String,
     pub explanation: String,
@@ -1136,7 +1136,7 @@ pub fn pi_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
 
             Quiz::E(ExerciseJson {
                 quiz_type: "exercise",
-                event_name: None,
+                event_name: "training",
                 asked_id: pi.id,
                 word: word.word.nfc().collect::<String>(),
                 explanation: word.explanation,
@@ -1235,7 +1235,7 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
 
             let quiz_json = ExerciseJson {
                 quiz_type: "exercise",
-                event_name: None,
+                event_name: "training",
                 asked_id: pending_item.id,
                 word: word.word.nfc().collect::<String>(),
                 explanation: word.explanation,
@@ -1397,7 +1397,7 @@ pub fn test_item(conn: &PgConnection,
 
             Quiz::E(ExerciseJson {
                 quiz_type: "exercise",
-                event_name: None,
+                event_name: "pretest or posttest",
                 asked_id: pending_item.id,
                 word: word.word.nfc().collect::<String>(),
                 explanation: word.explanation,

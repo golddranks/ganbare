@@ -12,7 +12,8 @@ fn dispatch_events(conn: &PgConnection,
 
     let event = match event::dispatch_event(conn, user.id).err_500()? {
         Some(e) => e,
-        None => return Ok(None),
+        None => return Ok(None), // FIXME this actually never happens any more, since
+                                    // the event "training" is the default mode
     };
 
     event::initiate(conn, &*event.name, user).err_500()?;

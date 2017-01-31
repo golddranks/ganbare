@@ -210,7 +210,7 @@ pub fn get_new_quiz_pretest(conn: &PgConnection,
 
     if let Some(Quiz::E(ref mut e)) = quiz {
         e.must_record = true;
-        e.event_name = Some("pretest");
+        e.event_name = "pretest";
     }
 
     Ok(quiz)
@@ -230,7 +230,7 @@ pub fn get_new_quiz_posttest(conn: &PgConnection,
 
     if let Some(Quiz::E(ref mut e)) = quiz {
         e.must_record = true;
-        e.event_name = Some("posttest");
+        e.event_name = "posttest";
     }
 
     Ok(quiz)
