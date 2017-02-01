@@ -199,6 +199,20 @@ pub fn initiate(conn: &PgConnection,
     Ok(Some((ev, exp)))
 }
 
+pub fn require_started(conn: &PgConnection,
+                    event_name: &str,
+                    user: &User)
+                    -> Result<(Event, EventExperience)> {
+
+    let ev_state = state(conn, event_name, user)?;
+
+    if let Some(ev_exp @ (Event { published: true, .. }, .. )) = ev_state {
+        Ok(ev_exp)
+    } else {
+        Err(ErrorKind::AccessDenied.to_err())
+    }
+}
+
 pub fn require_done(conn: &PgConnection,
                     event_name: &str,
                     user: &User)

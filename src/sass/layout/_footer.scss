@@ -19,7 +19,7 @@
 		text-align: center;
 
 
-		@include breakpoint(xxsmall) {
+		@include breakpoint(xsmall) {
 			display: none;
 		}
 

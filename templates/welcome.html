@@ -5,19 +5,65 @@
 		<p>Tieteellinen koe japanin ääntämyksestä</p>
 	</header>
 	<hr />
+<section class="infoCard" id="infoCard1">
 	<p class="wordyExplanation">Tervetuloa! Tämä ohjelma opettaa sinulle japanin ääntämystä.
 	Samalla autat edistämään tutkimusta japanin ääntämisen opettamisesta ja oppimisesta.</p>
-	<p class="wordyExplanation">Ohjelma on betatestausvaiheessa, joten jos havaitset bugeja tai epäilet että jokin asia on eri tavalla kuin pitäisi,
+	<p class="wordyExplanation">Ohjelma on betatestaus&shy;vaiheessa, joten jos havaitset bugeja tai epäilet että jokin asia on eri tavalla kuin pitäisi,
 	ilmoitathan siitä ohjelman kehittäjälle, Pyry Kontiolle.</p>
+</section>
+<section class="infoCard" id="infoCard2">
 	<p class="wordyExplanation">Ennen varsinaisen harjoittelun aloittamista:</p>
 	<ul class="wordyExplanation">
 	<li>Pyydämme suostumustasi tietojen keräämiseen.</li>
-	<li>Kysymme suhteestasi japanin kieleen</li>
+	<li>Kysymme suhteestasi japanin kieleen.</li>
 	<li>Opetamme, mitä japanin "sana-aksentit" ovat.</li>
 	<li>Testaamme, mitä osaat jo valmiiksi.</li>
 	</ul>
 	<p class="wordyExplanation">Kaikkea tätä ei tarvitse tehdä kerralla; ohjelma jatkaa siitä mihin jäätiin, jos suljet sen välissä.</p>
-	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
+</section>
+
+<button id="nextInfoCard">Eteenpäin &gt;</button>
+
+<form action="/ok" method="post" style="display: inline">
+<button id="infoOver" style="display: none" >Eteenpäin &gt;</button><input type="hidden" value="{{ event_name }}" name="event_ok">
+</form>
+
+{{/partial}}
+
+
+{{#partial page_script_inline}}
+
+let maxCards = 2;
+
+function getCurrentCard() {
+	let loc = parseInt(location.hash[1]) || 1;
+	loc = Math.max(Math.min(loc, maxCards), 1);
+	return loc;
+}
+
+function updateInfoCard() {
+	let currentInfoCard = getCurrentCard();
+
+	$(".infoCard").hide();
+	$("#infoCard"+currentInfoCard).show();
+	$("#cardPerCard").text("("+currentInfoCard + "/"+maxCards+")");
+
+
+	$("#nextInfoCard").show();
+	$("#infoOver").hide();
+
+	if (currentInfoCard == maxCards) {
+		$("#nextInfoCard").hide();
+		$("#infoOver").show();
+	}
+}
+
+updateInfoCard();
+
+$("#nextInfoCard").click(function() {
+	location.hash = "#"+(getCurrentCard() + 1);
+	updateInfoCard();
+});
 
 {{/partial}}
 

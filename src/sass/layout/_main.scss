@@ -56,10 +56,16 @@
 			}
 		}
 
+		hr {
+			position: relative;
+			left: -2em;
+			width: calc(100% + 4em);
+		}
+
 		@include breakpoint(xsmall) {
 			min-width: 0;
 			width: 100%;
-			padding: 3em 2em 0 2em;
+			padding: 3em 2em 0.5em 2em;
 
 			.avatar {
 				&:before {
@@ -81,6 +87,8 @@
 			hr {
 				margin-top: (_size(element-margin) * 0.8);
 				margin-bottom: (_size(element-margin) * 0.8);
+				left: -1em;
+				width: calc(100% + 2em);
 			}
 			.optional {
 				display: none;

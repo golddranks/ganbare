@@ -1,44 +1,45 @@
 
 {{#partial page_script_link}}
 <script src="/static/js/howler.min.js"></script>
+<script src="/static/ts/accentuate.js"></script>
 {{/partial}}
 
 {{#partial main_section}}
 
-<h1>Tietoa sana-aksentista</h1>
+<h1>Sana-aksentista</h1>
 <section class="infoCard" id="infoCard1">
 	<p class="wordyExplanation">Tämä ohjelma opettaa sinulle japanin ääntämystä; tarkemmin ottaen sana-aksentteja.
-	Mistä on oikeastaan kyse? Mikä on sana-aksentti?</p>
-	<p class="tightBottom">Kuuntele alla olevat tutut paikannimet:</p>
+	Mutta mikä oikeastaan on sana-aksentti?</p>
+	<p class="tightBottom">Kuuntele nämä paikannimet:</p>
 	<div class="horizontalFlexContainer">
 		<div class="wordShowSection" style="text-align: center">
-			<p class="leftWord tightBottom">きょうと</p><!--
+			<p class="leftWord tightBottom"><span class="accentuate">きょ・うと</span></p><!--
 			--><button id="kyotoButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
 		</div>
 		<div class="wordShowSection" style="text-align: center">
-			<p class="rightWord tightBottom">とうきょう</p><!--
+			<p class="rightWord tightBottom"><span class="accentuate">とうきょう</span></p><!--
 			--><button id="tokyoButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
 		</div>
 	</div>
-	<p class="wordyExplanation">Japanissa jokaisella sanalla on kyseiselle sanalle ominainen painotus, jota ilmaistaan äänenkorkeuden vaihteluilla:
-	sana "きょうと" äännetään laskevalla äänenkorkeudella, kun taas "とうきょう" tasaisella. Kuuletko eron? Tätä kullekin sanalle ominaista äänenkorkeuden
+	<p class="wordyExplanation">Japanissa jokaisella sanalla on sille ominainen painotus, jota ilmaistaan äänenkorkeuden vaihteluilla:
+	sana きょうと äännetään laskevalla äänenkorkeudella, kun taas とうきょう tasaisella. Kuuletko eron? Tätä kullekin sanalle ominaista äänenkorkeuden
 	kuviota kutsutaan sana-aksentiksi.</p>
 </section>
 <section class="infoCard" id="infoCard2">
 	<p class="wordyExplanation tightBottom">Joskus harvoin käy niin, että kaksi sanaa lausutaan lähes täysin samoin, ja ne eroavat ainoastaan aksentiltaan. Kuuntele:</p>
 	<div class="horizontalFlexContainer">
 		<div class="wordShowSection" style="text-align: center">
-			<p class="leftWord tightBottom">はし</p><!--
+			<p class="leftWord tightBottom"><span class="accentuate">は・し</span></p><!--
 			--><button id="leftHashiButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
 		</div>
 		<div class="wordShowSection" style="text-align: center">
-			<p class="rightWord tightBottom">はし</p><!--
+			<p class="rightWord tightBottom"><span class="accentuate">はし</span></p><!--
 			--><button id="rightHashiButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
@@ -62,21 +63,21 @@
 
 
 <section class="infoCard" id="infoCard4">
-	<p class="wordyExplanation">Miten sana-aksentit sitten toimivat? Perussääntö on, että joko sana on "tasa-aksentillinen" tai sitten
-	se sisältää yhden "aksenttiytimen".
+	<p class="wordyExplanation">Miten sana-aksentit sitten toimivat? Perus&shy;sääntö on, että joko sana on "tasa-aksen&shy;tilli&shy;nen" tai sitten
+	se sisältää yhden "aksentti&shy;ytimen".
 
-	<p class="wordyExplanation">Tasa-aksentilliset sanat alkavat pienellä äänenkorkeuden nousulla.
-	Tämän jälkeen äänenkorkeus pysyy tasaisena tai laskee hyvin loivasti.</p>
+	<p class="wordyExplanation tightBottom">Tasa-aksentilliset sanat alkavat pienellä äänen&shy;korkeuden nou&shy;sulla.
+	Tämän jälkeen äänen&shy;korkeus pysyy tasaisena tai laskee hyvin loivasti.</p>
 
-	<p>Esimerkki tasa-aksentista: いこう
+	<p>Esimerkki: <span class="accentuate">いこう</span>
 <button id="heibanButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
 	</p>
 
-	<p class="wordyExplanation">Jos sana ei ole tasa-aksentillinen, se sisältää aksenttiytimen. Aksenttiydin on tavu, jota ennen äänenkorkeus nousee, ja jonka kohdalla se äkillisesti laskee.</p>
+	<p class="wordyExplanation tightBottom">Jos sana ei ole tasa-aksen&shy;tilli&shy;nen, se sisältää aksenttiytimen. Aksenttiydin on tavu, jota ennen äänenkorkeus nousee, ja jonka kohdalla se äkillisesti laskee.</p>
 
-	<p>Ydin tavulla "こ": いこう
+	<p>Ydin tavulla "こ": <span class="accentuate">いこ・う</span>
 <button id="kifukuButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
@@ -89,14 +90,14 @@
 <section class="infoCard" id="infoCard5">
 	<p class="wordyExplanation">Aksenttiydin voi olla myös sanan ensimmäisellä tavulla, jolloin äänenkorkeus laskee heti sanan alusta</p>
 
-	<p>Ydin tavulla "い": いこう
+	<p>Ydin tavulla "い": <span class="accentuate">い・こう</span>
 <button id="atamadakaButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
 	</p>
 
 	<p class="wordyExplanation">Aksenttiydin voi olla myös sanan viimeisellä tavulla, jolloin sana kuulostaa erehdyttävästi tasa-aksentilliselta, sillä aksentin äkillistä laskua ei tapahdu.</p>
-	<p>Ydin tavulla "し": はし
+	<p>Ydin tavulla "し": <span class="accentuate">はし・</span>
 <button id="odakaButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
@@ -110,13 +111,13 @@
 	<p class="wordyExplanation tightBottom">Kuuntele seuraavat kaksi sanaa. Toinen on tasa-aksentillinen ja toisessa on ydin viimeisellä tavulla:</p>
 	<div class="horizontalFlexContainer">
 		<div class="wordShowSection" style="text-align: center">
-			<p class="leftWord tightBottom">はし</p><!--
+			<p class="leftWord tightBottom"><span class="accentuate">はし</span></p><!--
 			--><button id="leftHashiButton2" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
 		</div>
 		<div class="wordShowSection" style="text-align: center">
-			<p class="rightWord tightBottom">はし</p><!--
+			<p class="rightWord tightBottom"><span class="accentuate">はし・</span></p><!--
 			--><button id="rightHashiButton2" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
@@ -126,13 +127,13 @@
 	<p class="wordyExplanation">Ero kuitenkin on olemassa; se kuuluu heti sanan jälkeen tulevissa sijapäätteissä.
 	Vertaa sanoja に-sijapäätteen kanssa:</p>
 
-	<p>Ydin tavulla "し": はし
+	<p>Ydin tavulla "し": <span class="accentuate">はし・に</span>
 <button id="leftHashiniButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
 			</p>
 
-	<p>Tasa-aksentti: はし
+	<p>Tasa-aksentti: <span class="accentuate">はしに</span>
 <button id="rightHashiniButton" class="wordShowButton"><!--
 			--><img src="/static/images/speaker_teal.png"  class="soundicon" class="speakerIconTeal"><!--
 			--><img src="/static/images/speaker_pink.png" class="soundicon" class="speakerIconPink" style="display:none;"></button>
@@ -147,7 +148,7 @@
 	<p>Oppimisen iloa!</p>
 </section>
 <button id="prevInfoCard">&lt; Edellinen</button>
-<span id="cardPerCard">( / )</span>
+<span id="cardPerCard"> / </span>
 <button id="nextInfoCard">Seuraava &gt;</button>
 
 <form action="/ok" method="post" style="display: inline">
@@ -171,7 +172,7 @@ function updateInfoCard() {
 
 	$(".infoCard").hide();
 	$("#infoCard"+currentInfoCard).show();
-	$("#cardPerCard").text("("+currentInfoCard + "/"+maxCards+")");
+	$("#cardPerCard").text(currentInfoCard + "/"+maxCards);
 
 
 	$("#prevInfoCard").prop('disabled', false);

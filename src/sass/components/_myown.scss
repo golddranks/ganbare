@@ -141,12 +141,6 @@
 			left: 0.4em;
 		}
 
-		hr {
-			position: relative;
-			left: -2em;
-			width: calc(100% + 4em);
-		}
-
 }
 
 
@@ -208,6 +202,12 @@
 		padding: 0.2em;
 }
 
+@include breakpoint(xsmall) {
+	input[type="submit"], input[type="reset"], input[type="button"], button, .answerButton, .button {
+		padding: 0 0.5em;
+	}
+}
+
 @include breakpoint(xxsmall) {
 
 	#main {
@@ -219,7 +219,7 @@
 	}
 
 	p {
-		margin-bottom: (_size(element-margin) * 0.4);
+		margin-bottom: (_size(element-margin) * 0.6);
 	}
 
 	#quiz {
@@ -257,7 +257,7 @@
 	@include vendor('justify-content', 'center');
 
 	&>* {
-		margin: 1em;
+		margin: 0.5em;
 	}
 }
 

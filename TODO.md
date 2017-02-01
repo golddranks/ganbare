@@ -2,8 +2,7 @@
 
 Need to do before release:
 
-- Add question functionality in manager screen
-- Test that the screens work with a smartphone
+- Find & fix broken skill names
 
 - Check that asking sentences works
 - Check that question priority works

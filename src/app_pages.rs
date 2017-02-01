@@ -107,7 +107,7 @@ pub fn text_pages(req: &mut Request) -> PencilResult {
     let endpoint_string = req.endpoint().expect("Pencil guarantees that this is always set.");
     let endpoint = endpoint_string.as_ref();
 
-    event::require_ongoing(&conn, endpoint, &user).err_401()?;
+    event::require_started(&conn, endpoint, &user).err_401()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), endpoint.into());
 
