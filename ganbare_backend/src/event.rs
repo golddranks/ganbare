@@ -268,7 +268,9 @@ pub fn remove_exp(conn: &PgConnection, event_id: i32, user_id: i32) -> Result<bo
         diesel::delete(event_experiences::table.filter(event_experiences::event_id.eq(event_id))
                 .filter(event_experiences::user_id.eq(user_id))).execute(conn)?;
 
-    Ok(count_exp == 1 && count_userdata == 1)
+    debug!("Removing event exp! Userdata rows: {}, exp rows: {}", count_userdata, count_exp);
+
+    Ok(count_exp == 1)
 }
 
 pub fn save_userdata(conn: &PgConnection,

@@ -2,7 +2,6 @@
 
 Need to do before release:
 
-- Add event removing
 - Add question functionality in manager screen
 - Test that the screens work with a smartphone
 
