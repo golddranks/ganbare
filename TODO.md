@@ -2,16 +2,15 @@
 
 Need to do before release:
 
+- Add event removing
+- Add question functionality in manager screen
+- Test that the screens work with a smartphone
+
 - Check that asking sentences works
 - Check that question priority works
-- Test that the screens work with a smartphone
-- Fix the wonky stereo sounds -> mono
 - Remove/edit mispronounced items
-- Add event removing
 - Edit the high-priority items
-- Add question functionality
 - Choose the test questions
-- Upload the retelling test images
 - Final testing
 
 Stretch goals:
