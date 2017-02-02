@@ -11,6 +11,7 @@ DEPLOY_EMAIL_SERVER=smtp.mailgun.org:587
 DEPLOY_EMAIL_SMTP_USERNAME=postmaster@ganba.re
 DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_testing_email_password)
 DEPLOY_BUILD_NUMBER="Build number: $(cat build_number.txt) Commit: $(git log HEAD --oneline --no-walk)"
+DEPLOY_CONTENT_SECURITY_POLICY="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com"
 
 rsync -r images $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
 rsync -r audio $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
@@ -30,6 +31,7 @@ docker run -d --restart=unless-stopped \
 -e "GANBARE_EMAIL_SMTP_PASSWORD=$DEPLOY_EMAIL_SMTP_PASSWORD" \
 -e "GANBARE_SITE_LINK=$DEPLOY_SITE_LINK" \
 -e "GANBARE_BUILD_NUMBER=$DEPLOY_BUILD_NUMBER" \
+-e "GANBARE_CONTENT_SECURITY_POLICY=$DEPLOY_CONTENT_SECURITY_POLICY"
 -e "RUST_LOG=ganbare=debug,ganbare_backend=debug" \
 -v $DEPLOY_STATIC_DIR/audio:/ganbare/audio \
 -v $DEPLOY_STATIC_DIR/images:/ganbare/images \
