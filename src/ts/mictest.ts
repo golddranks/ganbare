@@ -130,10 +130,26 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 
 }
 
+function mediaPlaybackRequiresUserGesture() { 
+  var audio = document.createElement('audio');
+  audio.play();
+  return audio.paused;
+}
+
 function checkMic() {
 	startRecording("miccheck", (recording, start_rec, finished_rec, after_done_rec) => {
+		let errors = "";
 		if ( ! recording) {
-			errorMessage("Selaimesi ei tue äänen nauhoitusta!<br>Kokeile Firefoxia tai Chromea.");
+			errors += "Selaimesi ei tue äänen nauhoitusta!<br>"
+		}
+		if ( ! Howler.codecs("opus")) {
+			errors += "Selaimesi ei tue opus-ääniformaattia!<br>"
+		}
+		if ( mediaPlaybackRequiresUserGesture()) {
+			errors += "Selaimesi ei tue äänen toistamista ilman käyttäjän syötettä!<br>"
+		}
+		if (errors !== "") {
+			errorMessage(errors+"Kokeile Firefoxia tai Chromea.<br>(työpöytä-, ei mobiiliversio)");
 		}
 		start_rec();
 

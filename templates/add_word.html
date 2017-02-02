@@ -6,14 +6,15 @@
 -->
 <html>
 	<head>
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+		<script src="{{jquery_url}}"></script>
+		<script>window.jQuery || document.write('<script src="/static/js/jquery.min.js">\x3C/script>')</script>
 		<script src="static/ts/add_word.js"></script>
 		<title>{{ title }}</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<!--[if lte IE 8]><script src="static/js/html5shiv.js"></script><![endif]-->
 		<link rel="stylesheet" href="static/css/main.css" />
-		<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300" rel='stylesheet' type='text/css'>
+		<link href="{{ font_stylesheet }}" rel='stylesheet' type='text/css'>
 		<!--[if lte IE 9]><link rel="stylesheet" href="static/css/ie9.css" /><![endif]-->
 		<!--[if lte IE 8]><link rel="stylesheet" href="static/css/ie8.css" /><![endif]-->
 		<noscript><link rel="stylesheet" href="static/css/noscript.css" /></noscript>

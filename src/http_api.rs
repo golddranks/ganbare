@@ -888,6 +888,7 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
 
     match endpoint.as_ref() {
         "mic_check_rec" => {
+            debug!("mic_check_rec with random token: {}", random_token);
             let mut audio = vec![];
             std::io::copy(req, &mut audio).err_500()?;
             let mut map = TEMP_AUDIO.write().err_500()?;
@@ -897,6 +898,7 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
             jsonify(&()).refresh_cookie(&sess)
         },
         "mic_check_play" => {
+            debug!("mic_check_play with random token: {}", random_token);
             use std::str::FromStr;
 
             let map = TEMP_AUDIO.read().err_500()?;

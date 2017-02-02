@@ -174,8 +174,8 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
 
         if let Some(&Origin { host: Host { ref hostname, .. }, .. }) = origin {
             if hostname != &**SITE_DOMAIN {
-                println!("Someone tried to do a request with a wrong Origin: {} Possible CSRF?",
-                         hostname);
+                println!("Someone tried to do a request with a wrong Origin: {} Possible CSRF? Details: {:?}, {:?}",
+                         hostname, origin, referer);
                 return Some(pencil::abort(403));
             }
         }
