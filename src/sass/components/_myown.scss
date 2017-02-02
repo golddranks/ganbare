@@ -342,7 +342,7 @@ button,
 }
 
 .dropTarget {
-	border-color: _palette(highlight);
+	border: 1px solid _palette(highlight) !important;
 	* {pointer-events: none;}
 }
 
@@ -519,8 +519,7 @@ span.accent {
 }
 
 .vertical{
-    writing-mode:tb-rl;
-	@include vendor('transform', 'translate(20px, -2px) rotate(90deg)');
+	transform: translate(20px, -2px) rotate(90deg);
     white-space:nowrap;
     display:block;
     bottom:0;
