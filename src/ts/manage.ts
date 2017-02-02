@@ -156,6 +156,54 @@ prifilter_toggle.change(() => {
 	drawList(nugget_resp, bundle_resp, narrator_resp);
 });
 
+let currentlyDragged = null;
+
+function dropHandler(event) {
+    event.preventDefault();  
+    event.stopPropagation();
+    $(this).removeClass("dropTarget");
+    console.log("drop:", event);
+    this.append(currentlyDragged);
+    let file = $(currentlyDragged).data("file");
+    currentlyDragged = null;
+    file.bundle_id = $(this).data("bundle_id");
+	$.ajax({
+		type: 'PUT',
+		url: "/api/audio_files/"+file.id,
+		contentType: "application/json",
+		data: JSON.stringify(file),
+		success: function(resp) {
+			console.log("Updated audio_file!");
+		},
+	});
+}
+
+function dragEnterHandler(event) {
+    event.preventDefault();  
+    event.stopPropagation();
+    $(this).addClass("dropTarget");
+}
+
+function dragOverHandler(event) {
+    event.preventDefault();  
+    event.stopPropagation();
+}
+
+function dragLeaveHandler(event) {
+    event.preventDefault();  
+    event.stopPropagation();
+    $(this).removeClass("dropTarget");
+}
+
+function dragStartHandler(event) {
+	this.style.opacity = '0.4';
+	currentlyDragged = this;
+	setTimeout(() => {$(this).parent().addClass("dropTarget")}, 0);
+}
+function dragEndHandler(event) {
+	this.style.opacity = '1.0';
+}
+
 function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 	loading_msg.hide();
@@ -178,7 +226,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 	var proto_trash_button = $('<button class="compact narrDelButton" style="float: right;"><i class="fa fa-trash" aria-hidden="true"></i></button>');
 	var proto_update_button = $('<button class="compact narrUpdateButton" style="float: right;"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>');
-	let proto_audio_button = $('<button class="compact" style="background-color: white;" title="undefined"><img src="/static/images/speaker_teal.png" class="soundicon"></button>');
+	let proto_audio_button = $('<button class="compact" style="background-color: white;" draggable="true" title="undefined"><img draggable="false" src="/static/images/speaker_teal.png" class="soundicon"></button>');
 	let proto_bundle = $('<div class="bordered weak" style="display: inline-block;" title="undefined"></div>');
 	let proto_span = $('<span></span>');
 
@@ -207,6 +255,12 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			}
 			setup_editor();
 
+			bundle_html.data("bundle_id", id);
+			bundle_html.on("drop", dropHandler);
+			bundle_html.on("dragenter", dragEnterHandler);
+			bundle_html.on("dragleave", dragLeaveHandler);
+			bundle_html.on("dragover", dragOverHandler);
+
 			audio_bundles[id].files.forEach(function(file) {
 				var narrator_published = narrators[file.narrators_id].published;
 				if ( ! narrator_published) {
@@ -215,8 +269,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				var narrator_name = narrators[file.narrators_id].name;
 				var narrator_color = narrators[file.narrators_id].color;
 				var audio_button = proto_audio_button.clone().appendTo(bundle_html);
+				audio_button.data("file", file);
 				audio_button.prop('title', 'ID: '+file.id+' Narrator: '+narrator_name);
 				audio_button.css('background-color', narrator_color);
+				audio_button.on('dragstart', dragStartHandler);
+				audio_button.on('dragend', dragEndHandler);
 				audio_button.click(function() {
 					var audio = new Howl({ src: ['/api/audio/'+file.id+'.mp3']});
 					audio.play();

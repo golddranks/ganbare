@@ -522,6 +522,17 @@ pub fn update_item(req: &mut Request) -> PencilResult {
 
             json = jsonify(&updated_item);
         }
+        "update_audio_file" => {
+
+            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
+
+            let updated_item = try_or!(
+                audio::update_file(&conn, id, &item).err_500()?,
+                else return abort(404)
+            );
+
+            json = jsonify(&updated_item);
+        }
         "update_narrator" => {
 
             let item: ganbare::models::Narrator = err_400!(rustc_serialize::json::decode(&text),

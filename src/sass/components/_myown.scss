@@ -341,6 +341,11 @@ button,
 	 border-color: #f0f0f0;
 }
 
+.dropTarget {
+	border-color: _palette(highlight);
+	* {pointer-events: none;}
+}
+
 .fileUpload {
     position: relative;
     overflow: hidden;

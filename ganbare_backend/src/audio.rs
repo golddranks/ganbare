@@ -302,6 +302,16 @@ pub fn update_narrator(conn: &PgConnection, narrator: &Narrator) -> Result<Optio
     Ok(narrator)
 }
 
+pub fn update_file(conn: &PgConnection, id: i32, file: &UpdateAudioFile) -> Result<Option<AudioFile>> {
+    use schema::audio_files;
+
+    let file: Option<AudioFile> =
+        diesel::update(audio_files::table.filter(audio_files::id.eq(id))).set(file)
+            .get_result(conn)
+            .optional()?;
+    Ok(file)
+}
+
 pub fn get_create_bundle(conn: &PgConnection, listname: &str) -> Result<AudioBundle> {
     use schema::audio_bundles;
 

@@ -383,6 +383,9 @@ pub fn main() {
     app.put("/api/bundles/<id:int>",
             "update_bundle",
             http_api::update_item);
+    app.put("/api/audio_files/<id:int>",
+            "update_audio_file",
+            http_api::update_item);
     app.get("/api/narrators", "get_narrators", http_api::get_all);
     app.delete("/api/narrators/<id_from:int>?merge_with=<id_to:int>",
                "merge_narrator",

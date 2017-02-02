@@ -166,7 +166,8 @@ pub struct NewAudioFile<'a> {
     pub file_sha2: &'a[u8],
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations,
+Identifiable, Debug, RustcEncodable, AsChangeset)]
 #[table_name="audio_files"]
 #[belongs_to(Narrator, foreign_key = "narrators_id")]
 #[belongs_to(AudioBundle, foreign_key = "bundle_id")]
@@ -178,6 +179,16 @@ pub struct AudioFile {
     pub file_path: String,
     pub mime: String,
     pub file_sha2: Option<Vec<u8>>,
+}
+
+#[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[table_name="audio_files"]
+pub struct UpdateAudioFile {
+    pub narrators_id: Option<i32>,
+    pub bundle_id: Option<i32>,
+    pub file_path: Option<String>,
+    pub mime: Option<String>,
+    pub file_sha2: Option<Option<Vec<u8>>>,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable,
