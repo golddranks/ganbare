@@ -429,7 +429,9 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
     let mut result = text.to_string();
     for url_match in URL_REGEX.captures_iter(text) {
 
-        let url = url_match.at(1).expect("The whole match won't match without this submatch.");
+        let url = url_match.get(1)
+            .expect("The whole match won't match without this submatch.")
+            .as_str();
 
         info!("Outbound link found: {}", url);
 
@@ -450,8 +452,12 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
                 .map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
 
             let extension = {
-                let guess = EXTENSION_GUESS.captures_iter(url).next().and_then(|c| c.at(0));
-                let file_extension = url_match.at(2);
+                let guess: Option<&str> = EXTENSION_GUESS
+                    .captures_iter(url)
+                    .next()
+                    .and_then(|c| c.get(0))
+                    .map(|g| g.as_str());
+                let file_extension = url_match.get(2).map(|m| m.as_str());
                 let content_type = resp.headers.get::<ContentType>();
                 let final_guess = file_extension.or_else(|| guess).unwrap_or(".noextension");
 

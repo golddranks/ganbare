@@ -4,29 +4,30 @@ version = "0.1.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [dependencies]
-diesel = { version = "0.9", features = ["chrono"]}
-diesel_codegen = {version = "0.9", default-features = false, features = ["postgres", "dotenv"] }
+diesel = { version = "0.10", features = ["chrono"]}
+diesel_codegen = {version = "0.10", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
 dotenv_macros = "0.10"
 rust-crypto = "0.2"
 error-chain = { git = "https://github.com/golddranks/error-chain.git", branch = "tweaks_for_ganbare"}
-clap = "2"
+clap = "2.20"
 chrono = { version = "0.2", features = ["rustc-serialize"]}
 rpassword = "0.3"
 rand = "0.3"
 rustc-serialize = "0.3"
 binary_macros = "0.2"
-env_logger = "0.3"
+env_logger = "0.4"
 data-encoding = "1.1"
-lazy_static = "*"
-handlebars = "0.16"
-log = "*"
-time = "*"
+lazy_static = "0.2"
+pencil = { git = "https://github.com/golddranks/pencil", branch = "modifications_for_ganbare" }
+log = "0.3"
+time = "0.1"
 lettre = "0.6"
-mime = "*"
+mime = "0.2"
 tempdir = "0.3"
-regex = "0.1"
-email = "*"
-unicode-normalization = "*"
-hyper = "*"
+regex = "0.2"
+email = "0.0"
+unicode-normalization = "0.1"
+hyper = "0.9"
 try_map = "0.2"
+handlebars = "0.16"

@@ -1,5 +1,5 @@
 extern crate lettre;
-extern crate handlebars;
+extern crate pencil;
 extern crate email as rust_email;
 
 use data_encoding;
@@ -8,7 +8,7 @@ use self::lettre::transport::smtp::response::Response as EmailResponse;
 use self::lettre::transport::smtp::SmtpTransportBuilder;
 use self::lettre::transport::EmailTransport;
 use self::lettre::email::EmailBuilder;
-use self::handlebars::Handlebars;
+use self::pencil::Handlebars;
 use std::net::ToSocketAddrs;
 use std::collections::BTreeMap;
 use rustc_serialize::json::{Json, ToJson};

@@ -64,9 +64,9 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
     for mut w in words {
         let before = format!("{:?}", w);
 
-        w.explanation = r2.replace_all(&w.explanation, "");
+        w.explanation = r2.replace_all(&w.explanation, "").into_owned();
         w.explanation = w.explanation.replace(r3, "");
-        w.explanation = r4.replace_all(&w.explanation, "<br>");
+        w.explanation = r4.replace_all(&w.explanation, "<br>").into_owned();
 
         logger.push(format!("Tidied a span/br tag!\n{}\n→\n{:?}\n", before, w));
 
@@ -81,9 +81,9 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
     for mut a in answers {
         let before = format!("{:?}", a);
 
-        a.answer_text = r2.replace_all(&a.answer_text, "");
+        a.answer_text = r2.replace_all(&a.answer_text, "").into_owned();
         a.answer_text = a.answer_text.replace(r3, "");
-        a.answer_text = r4.replace_all(&a.answer_text, "<br>");
+        a.answer_text = r4.replace_all(&a.answer_text, "<br>").into_owned();
 
         logger.push(format!("Tidied a span/br tag!\n{}\n→\n{:?}\n", before, a));
 
@@ -220,7 +220,7 @@ fn clean_unused_images() {
     for w in words {
 
         for img_match in IMG_REGEX.captures_iter(&w.explanation) {
-            let img = img_match.at(1).expect("The whole match won't match without this submatch.");
+            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
             db_files.insert(img.to_string());
         }
     }
@@ -232,7 +232,7 @@ fn clean_unused_images() {
 
     for a in answers {
         for img_match in IMG_REGEX.captures_iter(&a.answer_text) {
-            let img = img_match.at(1).expect("The whole match won't match without this submatch.");
+            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
             db_files.insert(img.to_string());
         }
     }
@@ -271,7 +271,7 @@ fn add_br_between_images_and_text() {
         .unwrap();
 
     for mut w in words {
-        let new_text = BR_IMG_REGEX.replace_all(&w.explanation, "$1<br>$2");
+        let new_text = BR_IMG_REGEX.replace_all(&w.explanation, "$1<br>$2").into_owned();
         if new_text != w.explanation {
             println!("Added a br tag:\n{:?}\n→\n{:?}\n",
                      w.explanation,
@@ -287,7 +287,7 @@ fn add_br_between_images_and_text() {
             .unwrap();
 
     for mut a in answers {
-        let new_text = BR_IMG_REGEX.replace_all(&a.answer_text, "$1<br>$2");
+        let new_text = BR_IMG_REGEX.replace_all(&a.answer_text, "$1<br>$2").into_owned();
         if new_text != a.answer_text {
             println!("Added a br tag:\n{:?}\n→\n{:?}\n",
                      a.answer_text,
