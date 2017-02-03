@@ -290,20 +290,27 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		n_list.append("<h2>No skill nuggets exist at the moment.</h2>");
 	}
 
+	let shown_nuggets = new Array();
+	for (let i = 0, len = nugget_resp.length; i < len; i++) {
+		// Drawing only high-priority items
+		let tuple = nugget_resp[i];
+		if ( ! priority_filter_toggle || tuple[1][0].some((w) => { return w.priority == priority_filter_value })) {
+			shown_nuggets.push(tuple);
+		}
+	}
+	$("#filteredAmount").text("Showing "+shown_nuggets.length+" of "+nugget_resp.length+" skills");
+
 	let nugget_index = 0;
 	function drawNuggetAsync() {
 		for (let i = 0; i < 5; i++) {
-			let tuple = nugget_resp[nugget_index];
+			let tuple = shown_nuggets[nugget_index];
 
 			if (tuple === undefined) {
 				loading_msg.hide();
 				return; // Nothing left to render;
 			}
+			drawNugget(tuple, nugget_index);
 
-			// Drawing only high-priority items
-			if ( ! priority_filter_toggle || tuple[1][0].some((w) => { return w.priority == priority_filter_value })) {
-				drawNugget(tuple, nugget_index);
-			}
 			nugget_index += 1;
 		}
 		setTimeout(drawNuggetAsync, 0);
