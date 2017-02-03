@@ -510,8 +510,8 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_bundle" => {
 
-            let item: ganbare::models::AudioBundle = 
-                err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
+            let item: ganbare::models::AudioBundle = err_400!(rustc_serialize::json::decode(&text),
+                                                              "Error decoding JSON");
             if item.id != id {
                 return abort(400);
             }
@@ -800,7 +800,10 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
                          Some(&format!("quiz_{}_rec_{}", quiz_number, rec_number)),
                          &filename).err_500()?;
 
-    debug!("Saved user audio: {:?} with rec_number: {} and quiz_number: {}", filename, rec_number, quiz_number);
+    debug!("Saved user audio: {:?} with rec_number: {} and quiz_number: {}",
+           filename,
+           rec_number,
+           quiz_number);
 
     jsonify(&(quiz_number, rec_number)).refresh_cookie(&sess)
 }
@@ -828,19 +831,19 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
                 .and_then(|d| d.data.parse::<usize>().ok())
                 .unwrap_or(0);
             (quiz_number, rec_number)
-        },
+        }
         "get_useraudio" => {
 
             let quiz_number = err_400!(req.view_args
-                .remove("quiz_number")
-                .and_then(|d| d.parse::<usize>().ok()),
-                "quiz_number must be specified");
+                                           .remove("quiz_number")
+                                           .and_then(|d| d.parse::<usize>().ok()),
+                                       "quiz_number must be specified");
             let rec_number = err_400!(req.view_args
-                .remove("rec_number")
-                .and_then(|d| d.parse::<usize>().ok()),
-                "rec_number must be specified");
+                                          .remove("rec_number")
+                                          .and_then(|d| d.parse::<usize>().ok()),
+                                      "rec_number must be specified");
             (quiz_number, rec_number)
-        },
+        }
         _ => unreachable!(),
     };
 
@@ -855,7 +858,10 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
             return abort(404)
         }
     );
-    debug!("Getting user audio. rec_number: {}, quiz_number: {}, filename: {}", rec_number, quiz_number, &filename.data);
+    debug!("Getting user audio. rec_number: {}, quiz_number: {}, filename: {}",
+           rec_number,
+           quiz_number,
+           &filename.data);
     let mut file_path = USER_AUDIO_DIR.clone();
     file_path.push(&filename.data);
     use pencil::{PencilError, HTTPError};
@@ -867,12 +873,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
               req.headers().get())
         .refresh_cookie(&sess)
         .map(|mut resp| {
-            resp.headers.set(
-                CacheControl(vec![
-                    CacheDirective::NoCache,
-                    CacheDirective::NoStore,
-                ])
-            );
+            resp.headers.set(CacheControl(vec![CacheDirective::NoCache, CacheDirective::NoStore]));
             resp
         })
         .map_err(|e| match e {
@@ -893,9 +894,11 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
     let endpoint = req.endpoint().expect("Pencil guarantees this");
 
     let random_token = err_400!(req.view_args
-        .remove("random_token")
-        .expect("Pencil guarantees that event name should exist as an arg.")
-        .parse::<u64>(), "The token must be parseable to u64!");
+                                    .remove("random_token")
+                                    .expect("Pencil guarantees that event name should exist as \
+                                             an arg.")
+                                    .parse::<u64>(),
+                                "The token must be parseable to u64!");
 
     match endpoint.as_ref() {
         "mic_check_rec" => {
@@ -907,7 +910,7 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
             map.insert(random_token, audio);
             queue.push_front((UTC::now(), random_token));
             jsonify(&()).refresh_cookie(&sess)
-        },
+        }
         "mic_check_play" => {
             debug!("mic_check_play with random token: {}", random_token);
             use std::str::FromStr;
@@ -918,7 +921,7 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
             let mime = mime::Mime::from_str("audio/ogg").unwrap();
             resp.headers.set::<hyper::header::ContentType>(hyper::header::ContentType(mime));
             resp.refresh_cookie(&sess)
-        },
+        }
         _ => unreachable!(),
     }
 }

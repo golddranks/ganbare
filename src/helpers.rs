@@ -5,7 +5,8 @@ use dotenv;
 use std::net::{SocketAddr, ToSocketAddrs};
 use ganbare::PgConnection;
 use std::collections::BTreeMap;
-use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, CookiePair, Cookie};
+use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, CookiePair,
+             Cookie};
 use ganbare::models::{User, Session};
 use std::net::IpAddr;
 use time;

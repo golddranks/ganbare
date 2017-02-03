@@ -68,8 +68,10 @@ use chrono::DateTime;
 use chrono::UTC;
 
 lazy_static! {
-    pub static ref TEMP_AUDIO: RwLock<HashMap<u64, Vec<u8>>> = RwLock::new(HashMap::new());
-    pub static ref AUDIO_REMOVE_QUEUE: RwLock<VecDeque<(DateTime<UTC>, u64)>> = RwLock::new(VecDeque::new());
+    pub static ref TEMP_AUDIO: RwLock<HashMap<u64, Vec<u8>>> =
+        RwLock::new(HashMap::new());
+    pub static ref AUDIO_REMOVE_QUEUE: RwLock<VecDeque<(DateTime<UTC>, u64)>> =
+        RwLock::new(VecDeque::new());
 }
 
 pub fn background_control_thread() {
@@ -174,8 +176,11 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
 
         if let Some(&Origin { host: Host { ref hostname, .. }, .. }) = origin {
             if hostname != &**SITE_DOMAIN {
-                println!("Someone tried to do a request with a wrong Origin: {} Possible CSRF? Details: {:?}, {:?}",
-                         hostname, origin, referer);
+                println!("Someone tried to do a request with a wrong Origin: {} Possible CSRF? \
+                          Details: {:?}, {:?}",
+                         hostname,
+                         origin,
+                         referer);
                 return Some(pencil::abort(403));
             }
         }
@@ -349,8 +354,12 @@ pub fn main() {
              manager_pages::send_mail_post);
 
     // HTTP API
-    app.post("/api/mic_check?<random_token:string>", "mic_check_rec", http_api::mic_check);
-    app.get("/api/mic_check.ogg?<random_token:string>", "mic_check_play", http_api::mic_check);
+    app.post("/api/mic_check?<random_token:string>",
+             "mic_check_rec",
+             http_api::mic_check);
+    app.get("/api/mic_check.ogg?<random_token:string>",
+            "mic_check_play",
+            http_api::mic_check);
     app.get("/api/next_retelling?event=<event_name:string>",
             "next_retelling",
             http_api::next_retelling);
@@ -363,7 +372,8 @@ pub fn main() {
     app.get("/api/user_audio.ogg?event=<event_name:string>&last",
             "get_last_useraudio",
             http_api::get_useraudio);
-    app.get("/api/user_audio.ogg?event=<event_name:string>&quiz_number=<quiz_number:int>&rec_number=<rec_number:int>",
+    app.get("/api/user_audio.ogg?event=<event_name:string>&quiz_number=<quiz_number:\
+             int>&rec_number=<rec_number:int>",
             "get_useraudio",
             http_api::get_useraudio);
     app.post("/api/user_audio?event=<event_name:string>",
