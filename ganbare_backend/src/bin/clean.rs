@@ -329,6 +329,50 @@ fn fix_skill_names() {
     }
 }
 
+fn merge_redundant_skills() {
+    use schema::{words, quiz_questions, exercises, skill_nuggets};
+    use diesel::expression::dsl::*;
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let originals: Vec<(i32, i64, String)> =
+        sql::<(
+        diesel::types::Integer,
+        diesel::types::BigInt,
+        diesel::types::Text,
+        )>(r###"
+SELECT MIN(id), COUNT(id), skill_summary FROM skill_nuggets GROUP BY skill_summary HAVING COUNT(id) > 1;
+"###).get_results(&conn).expect("DB error");
+
+    for o in originals {
+        let original_id = o.0;
+        let original_summary = &o.2;
+
+        let dupes: Vec<SkillNugget> = skill_nuggets::table
+            .filter(skill_nuggets::skill_summary.eq(original_summary).and(skill_nuggets::id.ne(original_id)))
+            .get_results(&conn).expect("DB error");
+
+        for d in dupes {
+            println!("Going to remove {:?}, replacing with {:?}", d, o);
+            diesel::update(words::table.filter(words::skill_nugget.eq(d.id)))
+                .set(words::skill_nugget.eq(original_id))
+                .execute(&conn)
+                .expect("DB error");
+            diesel::update(quiz_questions::table.filter(quiz_questions::skill_id.eq(d.id)))
+                .set(quiz_questions::skill_id.eq(original_id))
+                .execute(&conn)
+                .expect("DB error");
+            diesel::update(exercises::table.filter(exercises::skill_id.eq(d.id)))
+                .set(exercises::skill_id.eq(original_id))
+                .execute(&conn)
+                .expect("DB error");
+            diesel::delete(skill_nuggets::table.filter(skill_nuggets::id.eq(d.id)))
+                .execute(&conn)
+                .expect("DB errer");
+        }
+    }
+}
+
 fn add_audio_file_hashes() {
     use schema::audio_files;
 
@@ -463,4 +507,6 @@ fn main() {
     check_skill_levels();
     println!("Fix priority levels (words that are accompanied by sentences ought to have higher priority levels).");
     check_priority_levels();
+    println!("Merge redundant skills");
+    merge_redundant_skills();
 }

@@ -147,12 +147,16 @@ var narrator_resp = null;
 prifilter_value.change(() => {
 	n_list.html("");
 	priority_filter_value = prifilter_value.val();
+	loading_msg.show();
+	loading_msg.text("Loaded. Rendering content. ");
 	drawList(nugget_resp, bundle_resp, narrator_resp);
 });
 
 prifilter_toggle.change(() => {
 	n_list.html("");
 	priority_filter_toggle = prifilter_toggle.is(":checked");
+	loading_msg.show();
+	loading_msg.text("Loaded. Rendering content. ");
 	drawList(nugget_resp, bundle_resp, narrator_resp);
 });
 
