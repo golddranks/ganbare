@@ -452,8 +452,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
                 .map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
 
             let extension = {
-                let guess: Option<&str> = EXTENSION_GUESS
-                    .captures_iter(url)
+                let guess: Option<&str> = EXTENSION_GUESS.captures_iter(url)
                     .next()
                     .and_then(|c| c.get(0))
                     .map(|g| g.as_str());

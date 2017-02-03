@@ -41,10 +41,10 @@ pub fn exists(conn: &PgConnection, path: &PathBuf) -> Result<bool> {
     let mut file_hash = [0_u8; 64];
     hasher.result(&mut file_hash);
 
-    let audio_file: Option<AudioFile> = audio_files::table
-        .filter(audio_files::file_sha2.eq(&file_hash[..]))
-        .get_result(conn)
-        .optional()?;
+    let audio_file: Option<AudioFile> =
+        audio_files::table.filter(audio_files::file_sha2.eq(&file_hash[..]))
+            .get_result(conn)
+            .optional()?;
 
     Ok(audio_file.is_some())
 }
@@ -302,7 +302,10 @@ pub fn update_narrator(conn: &PgConnection, narrator: &Narrator) -> Result<Optio
     Ok(narrator)
 }
 
-pub fn update_file(conn: &PgConnection, id: i32, file: &UpdateAudioFile) -> Result<Option<AudioFile>> {
+pub fn update_file(conn: &PgConnection,
+                   id: i32,
+                   file: &UpdateAudioFile)
+                   -> Result<Option<AudioFile>> {
     use schema::audio_files;
 
     let file: Option<AudioFile> =

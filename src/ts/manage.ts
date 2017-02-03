@@ -206,8 +206,6 @@ function dragEndHandler(event) {
 
 function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
-	loading_msg.hide();
-
 	var audio_bundles = {};
 
 	bundle_resp.forEach(function(tuple) {
@@ -294,6 +292,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			let tuple = nugget_resp[nugget_index];
 
 			if (tuple === undefined) {
+				loading_msg.hide();
 				return; // Nothing left to render;
 			}
 
@@ -823,6 +822,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				let q_skill_level = Math.max(2, skill_level);
 				let e_skill_level = Math.max(2, skill_level);
 
+				if (words.length !== 2) {
+					console.log("There isn't two words at skill level "+skill_level+" of skill "+nugget.skill_summary+", but ", words.length);
+					return;
+				}
+
 				let name = null;
 				if (stripAccents(words[0].word) == stripAccents(words[1].word)) {
 					name = stripAccents(words[0].word);
@@ -830,7 +834,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 					name = nugget.skill_summary;
 				}
 
-				if (words.length == 2 && q_skill_levels[q_skill_level] === undefined) {
+				if (q_skill_levels[q_skill_level] === undefined) {
 	
 					var c_item = $('<li class="autocreate_q"></li>').appendTo(c_list);
 					var c_body = $('<div></div>');
@@ -872,7 +876,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						});
 					});
 				}
-				if (words.length == 2 && e_skill_levels[e_skill_level] === undefined) {
+				if (e_skill_levels[e_skill_level] === undefined) {
 
 					var c_item = $('<li class="autocreate_e"></li>').appendTo(c_list);
 					var c_body = $('<div></div>');
