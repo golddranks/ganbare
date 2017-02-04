@@ -136,11 +136,11 @@ $.getJSON("/api/narrators", function(resp){
 				.appendTo(narr_vertical);
 			$('<label for="'+narrator.id+'_published"></label>')
 				.appendTo(narr_vertical);
-			var narr_name = $('<span class="narrName">'+narrator.id+' '+narrator.name+'</span>')
-				.appendTo(narr_vertical);
 			var trash_button = $('<button class="compact narrDelButton"><i class="fa fa-trash" aria-hidden="true"></i></button>')
 				.appendTo(narr_vertical);
 			var merge_button = $('<button class="compact narrMergeButton"><i class="fa fa-compress" aria-hidden="true"></i></button>')
+				.appendTo(narr_vertical);
+			var narr_name = $('<span class="narrName">'+narrator.id+' '+narrator.name+'</span>')
 				.appendTo(narr_vertical);
 			narr_name.off('click').one('click', editCell_cb);
 			published_button.change(function() {
