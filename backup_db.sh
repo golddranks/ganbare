@@ -11,11 +11,16 @@ fi
 
 if [ -z $1 ]
 then
-echo "Usage: backup_db.sh <name of the database>" && exit 1
+echo "Usage: backup_db.sh <name of the database> <name of the backup>" && exit 1
+fi
+
+if [ -z $2 ]
+then
+echo "Usage: backup_db.sh <name of the database> <name of the backup>" && exit 1
 fi
 
 echo "Starting backup!"
-BACKUP_DIR="backups/$(date -u +"%Y-%m-%dT%H-%M-%SZ")-$(xxd -l 4 -p /dev/urandom )"
+BACKUP_DIR="backups/$(date -u +"%Y-%m-%dT%H-%M-%SZ")-$(xxd -l 4 -p /dev/urandom )_$2"
 mkdir -p $BACKUP_DIR || { echo "Can't create the directory $BACKUP_DIR! Aborting."; exit 1; }
 echo "Backing up to: $BACKUP_DIR Audio dir: $GANBARE_AUDIO_DIR Images dir: $GANBARE_IMAGES_DIR"
 pg_dump -F d -h localhost $1 -f "$BACKUP_DIR/db_dump"
