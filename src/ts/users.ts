@@ -83,6 +83,18 @@ $(function() {
 
 			var user_item = $('<tr></tr>').appendTo(userActivityRows);
 			var user_email_cell = $('<th>'+user.email+'</th>').appendTo(user_item);
+			user_email_cell.click(function () {
+				$.getJSON("/api/users/"+user.id+"/skills", function(resp) {
+					let userDetails = $("#userDetails");
+					userDetails.html("");
+					let list = $("<ul></ul>").appendTo(userDetails);
+					resp.forEach((s) => {
+						let skill = s[0];
+						let data = s[1];
+						$("<li>Skill name: "+skill.skill_summary+" Skill level: "+data.skill_level+"</li>").appendTo(list);
+					});
+				})
+			});
 			$('<button class="compact narrDelButton"><i class="fa fa-trash" aria-hidden="true"></i></button>')
 				.appendTo(user_email_cell)
 				.click(function() {

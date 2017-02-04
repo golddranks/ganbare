@@ -381,6 +381,7 @@ pub fn main() {
              http_api::post_useraudio);
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
+    app.get("/api/users/<id:int>/skills", "get_skills", http_api::get_user_details);
     app.get("/api/events", "get_events", http_api::get_all);
     app.put("/api/events/<id:int>",
             "update_event",

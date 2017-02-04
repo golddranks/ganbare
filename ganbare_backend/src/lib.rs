@@ -139,6 +139,17 @@ pub mod skill {
         })
     }
 
+    pub fn get_skill_data(conn: &PgConnection, user_id: i32) -> Result<Vec<(SkillNugget, SkillData)>> {
+        use schema::{skill_nuggets, skill_data};
+
+        let data: Vec<(SkillNugget, SkillData)> = skill_nuggets::table
+            .inner_join(skill_data::table)
+            .filter(skill_data::user_id.eq(user_id))
+            .get_results(conn)?;
+
+        Ok(data)
+    }
+
     pub fn get_skill_nuggets(conn: &PgConnection)
                              -> Result<Vec<(SkillNugget,
                                             (Vec<Word>,

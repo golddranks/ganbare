@@ -512,7 +512,8 @@ pub struct NewSkillData {
     pub skill_level: i32,
 }
 
-#[derive(Identifiable, Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Identifiable, Insertable, Queryable, Associations,
+Debug, AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="skill_data"]
 #[primary_key(user_id, skill_nugget)]
 #[belongs_to(User, foreign_key = "user_id")]

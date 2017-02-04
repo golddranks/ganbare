@@ -409,6 +409,24 @@ pub fn get_all(req: &mut Request) -> PencilResult {
     json.refresh_cookie(&sess)
 }
 
+pub fn get_user_details(req: &mut Request) -> PencilResult {
+    let (conn, _, sess) = auth_user(req, "editors")?;
+
+    let id =
+        req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
+    let id = id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
+    let endpoint = req.endpoint().expect("Pencil guarantees this");
+    let json = match endpoint.as_ref() {
+        "get_skills" => {
+            let items = skill::get_skill_data(&conn, id).err_500()?;
+            jsonify(&items)
+        }
+        _ => return Err(internal_error("no such endpoint!")),
+    };
+
+    json.refresh_cookie(&sess)
+}
+
 pub fn set_published(req: &mut Request) -> PencilResult {
     let (conn, _, sess) = auth_user(req, "editors")?;
 
