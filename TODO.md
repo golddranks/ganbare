@@ -2,13 +2,13 @@
 
 Need to do before release:
 
-- Find & fix broken skill names
-
 - Check that asking sentences works
 - Check that question priority works
+
 - Remove/edit mispronounced items
-- Edit the high-priority items
 - Choose the test questions
+
+- Edit the high-priority items
 - Final testing
 
 Stretch goals:

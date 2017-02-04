@@ -136,9 +136,11 @@ var main = $("#main");
 var n_list = $("#main ul");
 var prifilter_value = $("#priorityFilterValue");
 var prifilter_toggle = $("#priorityFilterToggle");
+var pubstuff_toggle = $("#onlyPublishedStuffToggle");
 
 let priority_filter_value = prifilter_value.val();
 let priority_filter_toggle = prifilter_toggle.is(":checked");
+let pubstuff_value = pubstuff_toggle.is(":checked");
 
 var nugget_resp = null;
 var bundle_resp = null;
@@ -160,7 +162,16 @@ prifilter_toggle.change(() => {
 	drawList(nugget_resp, bundle_resp, narrator_resp);
 });
 
+pubstuff_toggle.change(() => {
+	n_list.html("");
+	pubstuff_value = pubstuff_toggle.is(":checked");
+	loading_msg.show();
+	loading_msg.text("Loaded. Rendering content. ");
+	drawList(nugget_resp, bundle_resp, narrator_resp);
+});
+
 let currentlyDragged = null;
+let dropTargets = new Array();
 
 function dropHandler(event) {
     event.preventDefault();  
@@ -171,6 +182,11 @@ function dropHandler(event) {
     let file = $(currentlyDragged).data("file");
     currentlyDragged = null;
     file.bundle_id = $(this).data("bundle_id");
+
+    while(dropTargets.length > 0) {
+    	$(dropTargets.pop()).removeClass("dropTarget");
+	}
+
 	$.ajax({
 		type: 'PUT',
 		url: "/api/audio_files/"+file.id,
@@ -185,6 +201,7 @@ function dropHandler(event) {
 function dragEnterHandler(event) {
     event.preventDefault();  
     event.stopPropagation();
+	dropTargets.push(this);
     $(this).addClass("dropTarget");
 }
 
@@ -200,6 +217,7 @@ function dragLeaveHandler(event) {
 }
 
 function dragStartHandler(event) {
+	dropTargets.push(this);
 	this.style.opacity = '0.4';
 	currentlyDragged = this;
 	setTimeout(() => {$(this).parent().addClass("dropTarget")}, 0);
@@ -292,9 +310,19 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 	let shown_nuggets = new Array();
 	for (let i = 0, len = nugget_resp.length; i < len; i++) {
+
 		// Drawing only high-priority items
 		let tuple = nugget_resp[i];
-		if ( ! priority_filter_toggle || tuple[1][0].some((w) => { return w.priority == priority_filter_value })) {
+		let words = tuple[1][0];
+		var questions = tuple[1][1];
+		var exercises = tuple[1][2];
+
+		let thereIsPriorityStuff = words.some((w) => { return w.priority == priority_filter_value });
+		let thereIsPublishedStuff = words.some((i) => { return i.published })
+				|| questions.some((i) => { return i.published })
+				|| exercises.some((i) => { return i.published });
+
+		if (( ! priority_filter_toggle || thereIsPriorityStuff ) && ( ! pubstuff_value || thereIsPublishedStuff ) ) {
 			shown_nuggets.push(tuple);
 		}
 	}

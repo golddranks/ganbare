@@ -773,7 +773,11 @@ function showExercise(exercise: ExerciseJson) {
 		console.log("showExercise!");
 		word_avatar.show();
 		word_avatar.css('opacity', '0');
-		wordStatus.text("Äännä parhaasi mukaan!").show();
+		if (recording_supported) {
+			wordStatus.html("Äännä parhaasi mukaan!<br>Äänesi nauhoitetaan.").show();
+		} else {
+			wordStatus.html("Äännä parhaasi mukaan!<br>(Selaimesi ei tue äänen nauhoitusta).").show();
+		}
 		if (testing) {
 			exerciseOkButton.text("Ok, sana äännetty!");
 		}
