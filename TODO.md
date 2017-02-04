@@ -2,9 +2,6 @@
 
 Need to do before release:
 
-- Check that asking sentences works
-- Check that question priority works
-
 - Remove/edit mispronounced items
 - Choose the test questions
 
