@@ -2,34 +2,52 @@
 
 $(function() {
 
-function moraize(word: string): {mora:string, accent:string}[] {
+// Accentuate 1.0
+
+function moraize(word: string): {mora:string, rising: boolean, falling: boolean, flatEnd: boolean}[] {
 
 	function isYouon(i: number): boolean {
 		return (word.charAt(i) === "ゃ" || word.charAt(i) === "ゅ" || word.charAt(i) === "ょ")
 	};
 
-	function isAccented(i: number): boolean {
-		return (word.charAt(i) === "・" || word.charAt(i) === "／" || word.charAt(i) === "＝")
+	function isRising(i: number): boolean {
+		return (word.charAt(i) === "／")
 	}
 
-	let moras: {mora:string, accent:string}[] = new Array();
+	function isFalling(i: number): boolean {
+		return (word.charAt(i) === "・")
+	}
+
+	function isFlatEnd(i: number): boolean {
+		return (word.charAt(i) === "＝")
+	}
+
+	let moras: {mora:string, rising: boolean, falling: boolean, flatEnd: boolean}[] = new Array();
+	let rising = false;
 	for (let i = 0, len = word.length; i < len; i++) {
 		if (isYouon(i)) {
 			moras[moras.length-1].mora += word.charAt(i);
-		} else if (isAccented(i)) {
-			moras[moras.length-1].accent = word.charAt(i);
+		} else if (isRising(i)) {
+			rising = true;
+		} else if (isFalling(i)) {
+			moras[moras.length-1].falling = true;
+		} else if (isFlatEnd(i)) {
+			moras[moras.length-1].flatEnd = true;
 		} else {
-			moras.push({mora: word.charAt(i), accent: null});
+			moras.push({mora: word.charAt(i), rising: rising, falling: false, flatEnd: false});
+			rising = false;
 		}
 	}
+
+	console.log("moraized:", moras);
 
 	return moras;
 }
 
 function accentuate(word: string, showAccent: boolean): string {
-	
+
 	if (!showAccent) {		
-		return word.replace("・", "").replace("*", "");		
+		return word.replace("・", "").replace("*", "").replace("＝", "").replace("／", "");		
 	}
 	let moras = moraize(word);
 
@@ -44,16 +62,16 @@ function accentuate(word: string, showAccent: boolean): string {
 	var start_end_flat_short = '<span class="accent" style="background-image: url(/static/images/accent_start_end_flat_short.png);">';
 	var peak = '<span class="accent" style="background-image: url(/static/images/accent_peak.png);">';
 	
-	function isAccentMark(i: number): boolean {
-		return (moras[i].accent === "・")
+	function isFalling(i: number): boolean {
+		return (moras[i].falling)
 	};
 
-	function isRisingAccentMark(i: number): boolean {
-		return (moras[i].accent === "／")
+	function isRising(i: number): boolean {
+		return (moras[i].rising)
 	};
 
-	function isFlatAccentMark(i: number): boolean {
-		return (moras[i].accent === "＝")
+	function isFlat(i: number): boolean {
+		return (moras[i].flatEnd)
 	};
 
 	function pushAccents(accentuated: string[], accent: string, i: number): void {
@@ -94,21 +112,21 @@ function accentuate(word: string, showAccent: boolean): string {
 		for (var i = 0, len = moras.length; i < len; i++) {
 
 			let accent = null;
-			if (isRisingAccentMark(i-1) && isAccentMark(i)) {
+			if (isRising(i) && isFalling(i)) {
 				accent = peak;
 				started = true;
 				ended = true;
-			} else if (isRisingAccentMark(i-1) && isFlatAccentMark(i)) {
+			} else if (isRising(i) && isFlat(i)) {
 				accent = start_end_flat;
 				started = true;
 				ended = true;
-			} else if (isRisingAccentMark(i-1)) {
+			} else if (isRising(i)) {
 				accent = start;
 				started = true;
-			} else if (isAccentMark(i)) {
+			} else if (isFalling(i)) {
 				accent = end;
 				ended = true;
-			} else if (isFlatAccentMark(i)) {
+			} else if (isFlat(i)) {
 				accent = flat_end;
 				ended = true;
 			} else if (!ended && started) {
@@ -124,12 +142,12 @@ function accentuate(word: string, showAccent: boolean): string {
 		for (var i = 0, len = moras.length; i < len; i++) {
 
 			let accent = null;
-			if (i === 0 && isAccentMark(i)) {
+			if (i === 0 && isFalling(i)) {
 				accent = start_end;
 				ended = true;
 			} else if (moras.length === 1) {
 				accent = start_end_flat_short;
-			} else if (i === 1 && !ended && isAccentMark(i)) {
+			} else if (i === 1 && !ended && isFalling(i)) {
 				accent = peak;
 				ended = true;
 			} else if (i === 1 && !ended && i === len-1) {
@@ -138,10 +156,10 @@ function accentuate(word: string, showAccent: boolean): string {
 				accent = start;
 			} else if (i > 1 && !ended && i === len-1) {
 				accent = flat_end;
-			} else if (i > 1 && !ended && isAccentMark(i)) {
+			} else if (i > 1 && !ended && isFalling(i)) {
 				accent = end;
 				ended = true;
-			} else if (i > 1 && !ended && !isAccentMark(i)) {
+			} else if (i > 1 && !ended && !isFalling(i)) {
 				accent = middle;
 			} else {
 				accent = empty;

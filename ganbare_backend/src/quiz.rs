@@ -150,6 +150,12 @@ fn log_answer_due_item(conn: &PgConnection,
         due_item.due_date = chrono::UTC::now() +
                             chrono::Duration::seconds(due_item.due_delay as i64);
         if due_item.correct_streak_overall > 3 {
+
+            debug!("Skill bump because of correct_streak_overall > 3! Skill: {} Of user: {} Bumped by: {}",
+                   skill_id,
+                   due_item.user_id,
+                   1);
+
             skill::log_by_id(conn, due_item.user_id, skill_id, 1)?;
         };
     }
@@ -167,6 +173,11 @@ fn log_answer_new_due_item(conn: &PgConnection,
     use schema::due_items;
 
     // Diesel doesn't have UPSERT so we have to initialize separately.
+
+    debug!("Skill bump because of first time bonus! Skill: {} Of user: {} Bumped by: {}",
+           skill_id,
+           user_id,
+           1);
 
     skill::log_by_id(conn, user_id, skill_id, 1)?; // First time bonus!
 
@@ -216,6 +227,11 @@ fn log_answer_word(conn: &PgConnection, user: &User, answered: &WAnsweredData) -
     stats.all_spent_time_ms += answered.full_spent_time_ms as i64;
     stats.all_words += 1;
     let _: UserStats = stats.save_changes(conn)?;
+
+    debug!("Skill bump because of newly learned word! Skill: {} Of user: {} Bumped by: {}",
+           word.skill_nugget,
+           user.id,
+           1);
 
     skill::log_by_id(conn, user.id, word.skill_nugget, 1)?;
 

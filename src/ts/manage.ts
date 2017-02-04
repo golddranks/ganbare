@@ -584,7 +584,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						let sema = createSemaphore(3);
 						sema(() => {
 							c_item.remove();
-							createQuestionEntry(tuple, 0);
+							createQuestionEntry(tuple, index);
 						})
 						$.ajax({
 							type: 'PUT',
@@ -770,10 +770,24 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 		function createExerciseEntry(tuple, index) {
 			var exercise = tuple[0];
-			var words = tuple[1];
+			var exercise_word_junction = tuple[1];
+
+			let actual_words = new Array();
+			words.forEach((w) => {
+				if (w.id == exercise_word_junction[0].id || w.id == exercise_word_junction[1].id) {
+					actual_words.push(w);
+				}
+			});
+
+			let name = null;
+			if (stripAccents(actual_words[0].word) == stripAccents(actual_words[1].word)) {
+				name = stripAccents(actual_words[0].word);
+			} else {
+				name = nugget.skill_summary;
+			}
 
 			var c_item = $('<li style="width: 100%"></li>').appendTo(c_list);
-			var c_header = $("<h3>Exercise ("+exercise.id+"): " + nugget.skill_summary + "</h3>").appendTo(c_item);
+			var c_header = $("<h3>Exercise ("+exercise.id+"): " + name + "</h3>").appendTo(c_item);
 			var trash_button = proto_trash_button.clone()
 				.appendTo(c_header)
 				.click(function() {
@@ -875,10 +889,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 				if (q_skill_levels[q_skill_level] === undefined) {
 	
-					var c_item = $('<li class="autocreate_q"></li>').appendTo(c_list);
-					var c_body = $('<div></div>');
+					let c_item = $('<li class="autocreate_q"></li>').appendTo(c_list);
+					let c_body = $('<div></div>');
 					c_body.appendTo(c_item);
-					var c_button = $('<input type="button" value="Autocreate question '+name+', skill '+q_skill_level+'" class="linklike">');
+					let c_button = $('<input type="button" value="Autocreate question '+name+', skill '+q_skill_level+'" class="linklike">');
 					c_button.appendTo(c_body);
 
 					let question_data = [{
@@ -910,19 +924,20 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							success: function(resp) {
 								c_item.remove();
 								questions.push(resp);
-								createQuestionEntry(resp, 0);
+								createQuestionEntry(resp, questions.length);
 							},
 						});
 					});
 				}
+
 				if (e_skill_levels[e_skill_level] === undefined) {
 
-					var c_item = $('<li class="autocreate_e"></li>').appendTo(c_list);
-					var c_body = $('<div></div>');
+					let c_item = $('<li class="autocreate_e"></li>').appendTo(c_list);
+					let c_body = $('<div></div>');
 					c_body.appendTo(c_item);
-					var c_button = $('<input type="button" value="autocreate exercise '+name+', skill '+e_skill_level+'" class="linklike">');
+					let c_button = $('<input type="button" value="autocreate exercise '+name+', skill '+e_skill_level+'" class="linklike">');
 					c_button.appendTo(c_body);
-					var exercise_data = [{
+					let exercise_data = [{
 								skill_id: nugget.id,
 								skill_level: e_skill_level,
 								},
@@ -943,7 +958,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							success: function(resp) {
 								c_item.remove();
 								exercises.push(resp);
-								createExerciseEntry(resp, 0);
+								createExerciseEntry(resp, exercises.length);
 							},
 						});
 					});
