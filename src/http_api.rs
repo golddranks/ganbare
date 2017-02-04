@@ -298,6 +298,10 @@ pub fn del_item(req: &mut Request) -> PencilResult {
             }
             jsonify(&())
         }
+        "del_due_and_pending_items" => {
+            manage::del_due_and_pending_items(&conn, id).err_500()?;
+            jsonify(&())
+        }
         "del_skill" => {
             if skill::remove(&conn, id).err_500()?.is_none() {
                 return abort(404);

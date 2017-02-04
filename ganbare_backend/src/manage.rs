@@ -342,6 +342,33 @@ pub fn post_exercise(conn: &PgConnection,
     Ok(q.id)
 }
 
+pub fn del_due_and_pending_items(conn: &PgConnection, user_id: i32)  -> Result<()> {
+    use schema::{due_items, pending_items, question_data, exercise_data};
+    use diesel::expression::dsl::any;
+
+    let p = diesel::update(
+            pending_items::table
+                .filter(pending_items::user_id.eq(user_id).and(pending_items::pending.eq(true)))
+        )
+        .set(pending_items::pending.eq(false))
+        .execute(conn)?;
+
+    let due_items = due_items::table.filter(due_items::user_id.eq(user_id)).select(due_items::id);
+
+    let q = diesel::delete(question_data::table.filter(question_data::due.eq(any(due_items))))
+        .execute(conn)?;
+
+    let e = diesel::delete(exercise_data::table.filter(exercise_data::due.eq(any(due_items))))
+        .execute(conn)?;
+
+    let d = diesel::delete(due_items::table.filter(due_items::user_id.eq(user_id)))
+        .execute(conn)?;
+
+    debug!("Deactivated {} pending items and deleted {} due items. ({} questions, {} exercises)", p, d, q, e);
+
+    Ok(())
+}
+
 pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
     use schema::{words, question_answers};
     use diesel::result::TransactionError::*;

@@ -433,6 +433,7 @@ pub fn main() {
             http_api::user);
     app.get("/api/groups", "get_groups", http_api::get_all);
     app.delete("/api/users/<id:int>", "del_user", http_api::del_item);
+    app.delete("/api/users/<id:int>/due_and_pending_items", "del_due_and_pending_items", http_api::del_item);
     app.delete("/api/skills/<id:int>", "del_skill", http_api::del_item);
     app.delete("/api/events/<id:int>/<user_id:int>",
                "del_event_exp",
