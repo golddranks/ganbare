@@ -33,8 +33,8 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
     let user = user::add_user(&conn, email, new_password, &*RUNTIME_PEPPER).err_500()?;
     user::join_user_group_by_name(&conn, &user, "admins").err_500()?;
     user::join_user_group_by_name(&conn, &user, "editors").err_500()?;
-    user::join_user_group_by_name(&conn, &user, "input_group").err_500()?;
-    user::join_user_group_by_name(&conn, &user, "output_group").err_500()?;
+    user::join_user_group_by_name(&conn, &user, "questions").err_500()?;
+    user::join_user_group_by_name(&conn, &user, "exercises").err_500()?;
 
     if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
         do_logout(&conn, &old_sess).err_500()?;

@@ -44,8 +44,8 @@ fn dispatch_events(conn: &PgConnection,
 fn main_quiz(req: &mut Request, conn: &PgConnection, user: &User) -> PencilResult {
     let mut context = new_template_context();
 
-    if !user::check_user_group(conn, user.id, "input_group").err_500()? &&
-       !user::check_user_group(conn, user.id, "output_group").err_500()? {
+    if !user::check_user_group(conn, user.id, "questions").err_500()? &&
+       !user::check_user_group(conn, user.id, "exercises").err_500()? {
         context.insert("alert_msg".into(),
                        "Et kuulu mihinkään harjoitusryhmään!".into());
     }
@@ -149,7 +149,7 @@ pub fn pre_post_test(req: &mut Request) -> PencilResult {
 pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
     use rand::{Rng, thread_rng};
 
-    let (conn, user, sess) = auth_user(req, "ready_for_sorting")?;
+    let (conn, user, sess) = auth_user(req, "sort")?;
 
     let (_, _) = event::require_ongoing(&conn, "sorting_ceremony", &user).err_401()?;
 
@@ -162,23 +162,23 @@ pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
     } else if user::check_user_group(&conn, user.id, "japani4").err_500()? {
         "japani4"
     } else {
-        "ready_for_sorting"
+        "sort"
     };
 
-    if user::remove_user_group_by_name(&conn, user.id, "input_group").err_500()? {
-        debug!("Removed old input_group");
+    if user::remove_user_group_by_name(&conn, user.id, "questions").err_500()? {
+        debug!("Removed old questions group");
     };
-    if user::remove_user_group_by_name(&conn, user.id, "output_group").err_500()? {
-        debug!("Removed old output_group");
+    if user::remove_user_group_by_name(&conn, user.id, "exercises").err_500()? {
+        debug!("Removed old exercises group");
     };
 
     let mut membership = {
         let subjects_size = user::group_size(&conn, group_name).err_500()?;
         let quota = subjects_size / 2 + subjects_size % 2;
         let s_input_size =
-            user::group_intersection_size(&conn, group_name, "input_group").err_500()?;
+            user::group_intersection_size(&conn, group_name, "questions").err_500()?;
         let s_output_size =
-            user::group_intersection_size(&conn, group_name, "output_group").err_500()?;
+            user::group_intersection_size(&conn, group_name, "exercises").err_500()?;
         let sort_to_input: bool = if s_input_size < quota && s_output_size < quota {
             thread_rng().gen::<bool>()
         } else if s_input_size >= quota {
@@ -190,9 +190,9 @@ pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
         };
 
         if sort_to_input {
-            user::join_user_group_by_name(&conn, &user, "input_group").err_500()?
+            user::join_user_group_by_name(&conn, &user, "questions").err_500()?
         } else {
-            user::join_user_group_by_name(&conn, &user, "output_group").err_500()?
+            user::join_user_group_by_name(&conn, &user, "exercises").err_500()?
         }
     };
     use ganbare::SaveChangesDsl;

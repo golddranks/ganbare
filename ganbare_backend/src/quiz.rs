@@ -710,13 +710,13 @@ fn choose_cooldown_q_or_e(conn: &PgConnection,
 
 fn choose_new_q_or_e(conn: &PgConnection, user_id: i32) -> Result<Option<QuizType>> {
 
-    if user::check_user_group(conn, user_id, "input_group")? {
+    if user::check_user_group(conn, user_id, "questions")? {
         if let Some(q) = choose_new_question(conn, user_id)? {
             return Ok(Some(QuizType::Question(q.id)));
         }
     }
 
-    if user::check_user_group(conn, user_id, "output_group")? {
+    if user::check_user_group(conn, user_id, "exercises")? {
         if let Some(e) = choose_new_exercise(conn, user_id)? {
             return Ok(Some(QuizType::Exercise(e.id)));
         }

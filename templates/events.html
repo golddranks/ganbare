@@ -35,17 +35,12 @@
 			});
 			var eventCell = $('<th></th>')
 				.appendTo(eventHeader);
-			if (event.published === true) {
-				var eventNameSpan = $('<span>'+event.name+'</span>')
-				.appendTo(eventCell);
-			} else {
-				var eventNameSpan = $('<span><strike>'+event.name+'</strike></span>')
-				.appendTo(eventCell);
-			}
+
 			var groupSelect = $('<select><option value="null"'+((event.required_group===null)?' selected':'')+'>None</option></select>')
 				.appendTo(eventCell);
 			groupResp.forEach(function(group) {
-				$('<option value="'+group.id+'"'+((event.required_group===group.id)?' selected':'')+'>'+group.group_name+'</option>').appendTo(groupSelect);
+				$('<option value="'+group.id+'"'+((event.required_group===group.id)?' selected':'')+'>'+group.group_name+'</option>')
+				.appendTo(groupSelect);
 			});
 
 			groupSelect.change(function() {
@@ -60,25 +55,34 @@
 				});
 			});
 
-			eventNameSpan.click(function() {
-				$.ajax({
-					type: 'PUT',
-					url: "/api/events/"+event.id,
-					contentType: "application/json",
-					data: JSON.stringify({id: event.id, published: !event.published }),
-					success: function(resp) {
-						location.reload();
-					},
-				});
-			});
+			var priority = $('<input type="number" value="'+event.priority+'" style="margin-bottom: 1em">').appendTo(eventCell);
 
-			var priority = $('<input type="number" value="'+event.priority+'">').appendTo(eventCell);
 			priority.change(function() {
 				$.ajax({
 					type: 'PUT',
 					url: "/api/events/"+event.id,
 					contentType: "application/json",
 					data: JSON.stringify({id: event.id, priority: parseInt($(this).val())}),
+					success: function(resp) {
+						location.reload();
+					},
+				});
+			});
+
+			if (event.published === true) {
+				var eventNameSpan = $('<span class="vertical">'+event.name+'</span>')
+				.appendTo(eventCell);
+			} else {
+				var eventNameSpan = $('<span class="vertical"><strike>'+event.name+'</strike></span>')
+				.appendTo(eventCell);
+			}
+
+			eventNameSpan.click(function() {
+				$.ajax({
+					type: 'PUT',
+					url: "/api/events/"+event.id,
+					contentType: "application/json",
+					data: JSON.stringify({id: event.id, published: !event.published }),
 					success: function(resp) {
 						location.reload();
 					},
