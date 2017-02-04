@@ -253,8 +253,12 @@ $(function() {
 						alert("Done!");
 					});
 				});
-			let last_seen_time = sessions[0].split("T");
-			var last_seen = $('<td>'+last_seen_time[0]+'<br>'+last_seen_time[1].slice(0,8)+'</td>').appendTo(user_item);
+			if (sessions[0] !== undefined) {
+				let last_seen_time = sessions[0].split("T");
+				$('<td>'+last_seen_time[0]+'<br>'+last_seen_time[1].slice(0,8)+'</td>').appendTo(user_item);
+			} else {
+				$('<td>Never</td>').appendTo(user_item);
+			}
 		});
 
 		if (pending_users.length === 0) {
