@@ -564,7 +564,8 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						data: "",
 						success: function() {
 							c_item.remove();
-							questions.splice(index, 1);
+							let removeIndex = questions.indexOf(tuple);
+							questions.splice(removeIndex, 1);
 							check_init_autocreate_buttons();
 						}, 
 					});
@@ -814,7 +815,8 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						data: "",
 						success: function() {
 							c_item.remove();
-							exercises.splice(index, 1);
+							let removeIndex = exercises.indexOf(tuple);
+							exercises.splice(removeIndex, 1);
 							check_init_autocreate_buttons();
 						}, 
 					});
@@ -872,19 +874,21 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			let q_skill_levels = new Array();
 			questions.forEach((q_a) => {
 				let q = q_a[0];
-				if ( q_skill_levels[q.skill_level] === undefined ) {
-					q_skill_levels[q.skill_level] = new Array();
+				let q_skill_level = Math.max(2, q.skill_level);
+				if ( q_skill_levels[q_skill_level] === undefined ) {
+					q_skill_levels[q_skill_level] = new Array();
 				}
-				q_skill_levels[q.skill_level].push(q);
+				q_skill_levels[q_skill_level].push(q);
 			});
 	
 			let e_skill_levels = new Array();
 			exercises.forEach((e_a) => {
 				let e = e_a[0];
-				if ( e_skill_levels[e.skill_level] === undefined ) {
-					e_skill_levels[e.skill_level] = new Array();
+				let e_skill_level = Math.max(2, e.skill_level);
+				if ( e_skill_levels[e_skill_level] === undefined ) {
+					e_skill_levels[e_skill_level] = new Array();
 				}
-				e_skill_levels[e.skill_level].push(e);
+				e_skill_levels[e_skill_level].push(e);
 			});
 	
 			word_skill_levels.forEach(function(words, skill_level) {
