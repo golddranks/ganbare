@@ -19,10 +19,10 @@ binary_macros = "0.2"
 env_logger = "0.4"
 data-encoding = "1.1"
 lazy_static = "0.2"
-pencil = { git = "https://github.com/golddranks/pencil", branch = "modifications_for_ganbare" }
+pencil = { git = "https://github.com/golddranks/pencil", branch = "modifications_for_ganbare", default-features = false }
 log = "0.3"
 time = "0.1"
-lettre = "0.6"
+lettre = { git = "https://github.com/lettre/lettre/" }
 mime = "0.2"
 tempdir = "0.3"
 regex = "0.2"
