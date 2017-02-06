@@ -2,6 +2,9 @@ use super::schema::*;
 use chrono::{DateTime, UTC};
 use try_map::FallibleMapExt;
 
+use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+
+
 #[derive(Insertable)]
 #[table_name="users"]
 pub struct NewUser<'a> {
@@ -361,7 +364,8 @@ pub struct UpdateWord {
     pub priority: Option<i32>,
 }
 
-#[derive(Insertable, Identifiable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Insertable, Identifiable, Queryable, Associations, Debug,
+AsChangeset)]
 #[table_name="due_items"]
 #[belongs_to(User, foreign_key = "user_id")]
 #[has_many(question_data, foreign_key = "due")]
@@ -377,6 +381,22 @@ pub struct DueItem {
     pub item_type: String,
 }
 
+impl Encodable for DueItem {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_struct("DueItem", 8, |s| {
+            s.emit_struct_field("id", 0, |s| s.emit_i32(self.id))?;
+            s.emit_struct_field("user_id", 1, |s| s.emit_i32(self.user_id))?;
+            s.emit_struct_field("due_date", 2, |s| s.emit_str(&self.due_date.to_rfc3339()))?;
+            s.emit_struct_field("due_delay", 3, |s| s.emit_i32(self.due_delay))?;
+            s.emit_struct_field("cooldown_delay", 4, |s| s.emit_str(&self.cooldown_delay.to_rfc3339()))?;
+            s.emit_struct_field("correct_streak_overall", 5, |s| s.emit_i32(self.correct_streak_overall))?;
+            s.emit_struct_field("correct_streak_this_time", 6, |s| s.emit_i32(self.correct_streak_this_time))?;
+            s.emit_struct_field("item_type", 7, |s| s.emit_str(&self.item_type))?;
+            Ok(())
+        })
+    }
+}
+
 #[derive(Insertable)]
 #[table_name="due_items"]
 pub struct NewDueItem<'a> {
@@ -389,7 +409,8 @@ pub struct NewDueItem<'a> {
     pub item_type: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug,
+AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="pending_items"]
 #[belongs_to(User, foreign_key = "user_id")]
 #[belongs_to(AudioFile, foreign_key = "audio_file_id")]
@@ -464,7 +485,8 @@ pub struct EAnsweredData {
     pub reflected_time_ms: i32,
 }
 
-#[derive(Identifiable, Insertable, Queryable, Associations, Debug, Clone, AsChangeset)]
+#[derive(Identifiable, Insertable, Queryable, Associations, Debug, Clone,
+AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="w_asked_data"]
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(Word, foreign_key = "word_id")]
@@ -487,7 +509,8 @@ pub struct WAnsweredData {
     pub active_answer_time_ms: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Debug,
+AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="question_data"]
 #[belongs_to(DueItem, foreign_key = "due")]
 pub struct QuestionData {
@@ -495,7 +518,8 @@ pub struct QuestionData {
     pub due: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Debug,
+AsChangeset, RustcEncodable, RustcDecodable)]
 #[table_name="exercise_data"]
 #[belongs_to(DueItem, foreign_key = "due")]
 #[belongs_to(Exercise, foreign_key = "exercise_id")]
@@ -546,8 +570,6 @@ pub struct UserMetrics {
     pub streak_limit: i32,
     pub cooldown_delay: i32,
 }
-
-use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
 
 impl Encodable for UserMetrics {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {

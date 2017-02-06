@@ -83,18 +83,7 @@ $(function() {
 
 			var user_item = $('<tr></tr>').appendTo(userActivityRows);
 			var user_email_cell = $('<th>'+user.email+'</th>').appendTo(user_item);
-			user_email_cell.click(function () {
-				$.getJSON("/api/users/"+user.id+"/skills", function(resp) {
-					let userDetails = $("#userDetails");
-					userDetails.html("");
-					let list = $("<ul></ul>").appendTo(userDetails);
-					resp.forEach((s) => {
-						let skill = s[0];
-						let data = s[1];
-						$("<li>Skill name: "+skill.skill_summary+" Skill level: "+data.skill_level+"</li>").appendTo(list);
-					});
-				})
-			});
+			user_email_cell.click(() => list_user_skills(user.id));
 			$('<button class="compact narrDelButton"><i class="fa fa-trash" aria-hidden="true"></i></button>')
 				.appendTo(user_email_cell)
 				.click(function() {
@@ -277,5 +266,58 @@ $(function() {
 		usersResp = resp;
 		showUserTable(resp, false);
 	});
+
+function format_date(d) {
+	d = d.split("T");
+	let date = d[0];
+	let time = d[1].slice(0, 8);
+	return date+" "+time;
+}
+
+function list_user_skills(user_id: number) {
+	$.getJSON("/api/users/"+user_id+"/skills", function(skill_resp) {
+		let userDetails = $("#userDetails");
+		userDetails.html("");
+		let list = $("<ul></ul>").appendTo(userDetails);
+		let skills = new Array();
+		skill_resp.forEach((s) => {
+			let skill = s[0];
+			let data = s[1];
+			skills[skill.id] = {skill: skill, skill_data: data, asked: new Array()};
+		});
+		$.getJSON("/api/users/"+user_id+"/asked_items", function(asked_resp) {
+			let q_data = asked_resp[0];
+			let e_data = asked_resp[1];
+			let w_data = asked_resp[2];
+			q_data.forEach(function(data) {
+				let due_item = data[0];
+				let q = data[2];
+				skills[q.skill_id].asked.push({due_item: due_item, quiz: q});
+			});
+			e_data.forEach(function(data) {
+				let due_item = data[0];
+				let e = data[2];
+				skills[e.skill_id].asked.push({due_item: due_item, quiz: e});
+			});
+			w_data.forEach(function(data) {
+				let pending = data[0];
+				let w = data[2];
+				skills[w.skill_nugget].asked.push({due_item: pending, quiz: w});
+			});
+			skills.forEach(function(s) {
+				$("<li><h2>Skill name: "+s.skill.skill_summary+" Skill level: "+s.skill_data.skill_level+"</h2></li>").appendTo(list);
+				s.asked.forEach(function(q) {
+					if (q.due_item.item_type === "word") {
+						$("<li>"+ q.due_item.item_type +": "+q.quiz.word+"</li>").appendTo(list);
+					} else if (q.due_item.item_type === "question") {
+						$("<li>"+ q.due_item.item_type +": "+q.quiz.q_name+" Due: "+format_date(q.due_item.due_date)+" Correct streak: "+q.due_item.correct_streak_overall+" Correct streak this time: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
+					} else if (q.due_item.item_type === "exercise") {
+						$("<li>"+ q.due_item.item_type +": "+s.skill.skill_summary+" Due: "+format_date(q.due_item.due_date)+" Correct streak: "+q.due_item.correct_streak_overall+" Correct streak this time: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
+					}
+				});
+			});
+		});
+	})
+}
 
 })

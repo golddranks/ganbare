@@ -421,6 +421,10 @@ pub fn get_user_details(req: &mut Request) -> PencilResult {
             let items = skill::get_skill_data(&conn, id).err_500()?;
             jsonify(&items)
         }
+        "get_asked_items" => {
+            let items = skill::get_asked_items(&conn, id).err_500()?;
+            jsonify(&items)
+        }
         _ => return Err(internal_error("no such endpoint!")),
     };
 

@@ -150,6 +150,62 @@ pub mod skill {
         Ok(data)
     }
 
+    pub fn get_asked_items(conn: &PgConnection, user_id: i32)
+        -> Result<(
+            Vec<(DueItem, QuestionData, QuizQuestion)>,
+            Vec<(DueItem, ExerciseData, Exercise)>,
+            Vec<(PendingItem, WAskedData, Word)>
+        )> {
+        use schema::{due_items, question_data, exercise_data, quiz_questions,
+            exercises, words, pending_items, w_asked_data};
+
+        let data_q: Vec<(DueItem, QuestionData)> = due_items::table
+            .inner_join(question_data::table)
+            .filter(due_items::user_id.eq(user_id))
+            .get_results(conn)?;
+
+        let mut questions: Vec<QuizQuestion> = vec![];
+
+        for &(ref due, ref data) in &data_q {
+            let q = quiz_questions::table
+                .filter(quiz_questions::id.eq(data.question_id))
+                .get_result(conn)?;
+            questions.push(q);
+        }
+
+        let data_e: Vec<(DueItem, ExerciseData)> = due_items::table
+            .inner_join(exercise_data::table)
+            .filter(due_items::user_id.eq(user_id))
+            .get_results(conn)?;
+
+        let mut exercises: Vec<Exercise> = vec![];
+
+        for &(ref due, ref data) in &data_e {
+            exercises.push(exercises::table
+                .filter(exercises::id.eq(data.exercise_id))
+                .get_result(conn)?);
+        }
+
+        let data_w: Vec<(PendingItem, WAskedData)> = pending_items::table
+            .inner_join(w_asked_data::table)
+            .filter(pending_items::user_id.eq(user_id))
+            .get_results(conn)?;
+
+        let mut words: Vec<Word> = vec![];
+
+        for &(ref pend, ref data) in &data_w {
+            words.push(words::table
+                .filter(words::id.eq(data.word_id))
+                .get_result(conn)?);
+        }
+
+        let q = data_q.into_iter().zip(questions.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
+        let e = data_e.into_iter().zip(exercises.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
+        let w = data_w.into_iter().zip(words.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
+
+        Ok((q, e, w))
+    }
+
     pub fn get_skill_nuggets(conn: &PgConnection)
                              -> Result<Vec<(SkillNugget,
                                             (Vec<Word>,
