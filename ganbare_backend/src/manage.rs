@@ -419,7 +419,8 @@ pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: 
 }
 
 use regex::Regex;
-use hyper::Client;
+use reqwest::Client;
+use reqwest::header::ContentType;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -437,19 +438,17 @@ lazy_static! {
         = RwLock::new(HashMap::<String, String>::new());
 
     static ref HTTP_CLIENT: Client
-        = Client::new();
+        = Client::new().expect("If this fails, we are done for anyway.");
 }
 
 pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
     use time;
     use rand::{thread_rng, Rng};
-    use hyper::header::ContentType;
     use mime::Mime;
     use mime::TopLevel::Image;
     use mime::SubLevel::{Png, Jpeg, Gif};
     use std::fs;
     use std::io;
-    use hyper::header::Connection as HttpConnection;
 
     info!("Sanitizing text: {}", text);
 
@@ -472,32 +471,30 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
         } else {
 
             info!("Downloading the link target.");
-
-            let mut resp = HTTP_CLIENT.get(url)
-                .header(HttpConnection::close())
+            let desanitized_url = url.replace("&amp;", "&");
+            let req = HTTP_CLIENT.get(&desanitized_url);
+            let mut resp = req
                 .send()
                 .map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
 
             let extension = {
-                let guess: Option<&str> = EXTENSION_GUESS.captures_iter(url)
+                let fuzzy_guess_url: Option<&str> = EXTENSION_GUESS.captures_iter(url)
                     .next()
                     .and_then(|c| c.get(0))
                     .map(|g| g.as_str());
                 let file_extension = url_match.get(2).map(|m| m.as_str());
-                let content_type = resp.headers.get::<ContentType>();
-                let final_guess = file_extension.or_else(|| guess).unwrap_or(".noextension");
+                let content_type = resp.headers().get::<ContentType>();
 
-                debug!("File extension: {:?}, Content type: {:?}, Guess: {:?}, Final guess: {:?}",
+                debug!("Original file extension: {:?}, Guess from URL: {:?}, Content type: {:?}",
                        file_extension,
-                       content_type,
-                       guess,
-                       final_guess);
+                       guess_url,
+                       content_type);
 
                 match content_type {
                     Some(&ContentType(Mime(Image, Png, _))) => ".png",
                     Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
                     Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
-                    Some(_) | None => final_guess,
+                    Some(_) | None => file_extension.or_else(|| fuzzy_guess_url).unwrap_or(".noextension"),
                 }
             };
 

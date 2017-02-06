@@ -26,7 +26,7 @@ extern crate rustc_serialize;
 extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;
-extern crate hyper;
+extern crate reqwest;
 
 pub use try_map::{FallibleMapExt, FlipResultExt};
 

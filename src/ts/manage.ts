@@ -896,8 +896,14 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				let e_skill_level = Math.max(2, skill_level);
 
 				if (words.length !== 2) {
-					console.log("There isn't two words at skill level "+skill_level+" of skill "+nugget.skill_summary+", but ", words.length);
-					return;
+
+					let pub_words = words.filter((w) => { return (w.published); });
+
+					if (pub_words.length !== 2) {
+						console.log("There isn't two words at skill level "+skill_level+" of skill "+nugget.skill_summary+", but ", words.length);
+						return;
+					}
+					words = pub_words;
 				}
 
 				let name = null;
