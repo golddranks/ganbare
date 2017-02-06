@@ -137,10 +137,12 @@ var n_list = $("#main ul");
 var prifilter_value = $("#priorityFilterValue");
 var prifilter_toggle = $("#priorityFilterToggle");
 var pubstuff_toggle = $("#onlyPublishedStuffToggle");
+var unpubstuff_toggle = $("#onlyUnPublishedStuffToggle");
 
 let priority_filter_value = prifilter_value.val();
 let priority_filter_toggle = prifilter_toggle.is(":checked");
 let pubstuff_value = pubstuff_toggle.is(":checked");
+let unpubstuff_value = unpubstuff_toggle.is(":checked");
 
 var nugget_resp = null;
 var bundle_resp = null;
@@ -165,6 +167,18 @@ prifilter_toggle.change(() => {
 pubstuff_toggle.change(() => {
 	n_list.html("");
 	pubstuff_value = pubstuff_toggle.is(":checked");
+	unpubstuff_value = false;
+	unpubstuff_toggle.prop("checked", false);
+	loading_msg.show();
+	loading_msg.text("Loaded. Rendering content. ");
+	drawList(nugget_resp, bundle_resp, narrator_resp);
+});
+
+unpubstuff_toggle.change(() => {
+	n_list.html("");
+	unpubstuff_value = unpubstuff_toggle.is(":checked");
+	pubstuff_value = false;
+	pubstuff_toggle.prop("checked", false);
 	loading_msg.show();
 	loading_msg.text("Loaded. Rendering content. ");
 	drawList(nugget_resp, bundle_resp, narrator_resp);
@@ -322,11 +336,13 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				|| questions.some((i) => { return i.published })
 				|| exercises.some((i) => { return i.published });
 
-		if (( ! priority_filter_toggle || thereIsPriorityStuff ) && ( ! pubstuff_value || thereIsPublishedStuff ) ) {
+		if (( ! priority_filter_toggle || thereIsPriorityStuff )
+			&& ( ! pubstuff_value || thereIsPublishedStuff )
+			&& ( ! unpubstuff_value || ! thereIsPublishedStuff ) ) {
 			shown_nuggets.push(tuple);
 		}
 	}
-	$("#filteredAmount").text("Showing "+shown_nuggets.length+" of "+nugget_resp.length+" skills");
+	$("#filteredAmount").show().text("Showing "+shown_nuggets.length+" of "+nugget_resp.length+" skills");
 
 	let nugget_index = 0;
 	function drawNuggetAsync() {
@@ -971,10 +987,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 	}; // function drawNugget ends
 }; // function drawList ends
 
-var loading_msg = $('<p>Loading... </p>').insertAfter(prifilter_value);
+var loading_msg = $('#loadingMsg');
 
 function tryDraw() {
 	if (nugget_resp !== null && bundle_resp !== null && narrator_resp !== null) {
+		$("#filteredAmount").hide();
 		loading_msg.text("Loaded. Rendering content. ");
 		setTimeout(() => { drawList(nugget_resp, bundle_resp, narrator_resp); }, 0);
 	}

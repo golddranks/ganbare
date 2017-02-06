@@ -149,9 +149,9 @@ fn log_answer_due_item(conn: &PgConnection,
         };
         due_item.due_date = chrono::UTC::now() +
                             chrono::Duration::seconds(due_item.due_delay as i64);
-        if due_item.correct_streak_overall > 3 {
+        if due_item.correct_streak_overall > 2 {
 
-            debug!("Skill bump because of correct_streak_overall > 3! Skill: {} Of user: {} Bumped by: {}",
+            debug!("Skill bump because of correct_streak_overall > 2! Skill: {} Of user: {} Bumped by: {}",
                    skill_id,
                    due_item.user_id,
                    1);

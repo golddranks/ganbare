@@ -166,7 +166,7 @@ pub mod skill {
 
         let mut questions: Vec<QuizQuestion> = vec![];
 
-        for &(ref due, ref data) in &data_q {
+        for &(_, ref data) in &data_q {
             let q = quiz_questions::table
                 .filter(quiz_questions::id.eq(data.question_id))
                 .get_result(conn)?;
@@ -180,7 +180,7 @@ pub mod skill {
 
         let mut exercises: Vec<Exercise> = vec![];
 
-        for &(ref due, ref data) in &data_e {
+        for &(_, ref data) in &data_e {
             exercises.push(exercises::table
                 .filter(exercises::id.eq(data.exercise_id))
                 .get_result(conn)?);
@@ -193,7 +193,7 @@ pub mod skill {
 
         let mut words: Vec<Word> = vec![];
 
-        for &(ref pend, ref data) in &data_w {
+        for &(_, ref data) in &data_w {
             words.push(words::table
                 .filter(words::id.eq(data.word_id))
                 .get_result(conn)?);

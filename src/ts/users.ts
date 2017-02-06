@@ -310,9 +310,9 @@ function list_user_skills(user_id: number) {
 					if (q.due_item.item_type === "word") {
 						$("<li>"+ q.due_item.item_type +": "+q.quiz.word+"</li>").appendTo(list);
 					} else if (q.due_item.item_type === "question") {
-						$("<li>"+ q.due_item.item_type +": "+q.quiz.q_name+" Due: "+format_date(q.due_item.due_date)+" Correct streak: "+q.due_item.correct_streak_overall+" Correct streak this time: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
+						$("<li>"+ q.due_item.item_type +": "+q.quiz.q_name+" Due: "+format_date(q.due_item.due_date)+" Streak: "+q.due_item.correct_streak_overall+" Microstreak: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
 					} else if (q.due_item.item_type === "exercise") {
-						$("<li>"+ q.due_item.item_type +": "+s.skill.skill_summary+" Due: "+format_date(q.due_item.due_date)+" Correct streak: "+q.due_item.correct_streak_overall+" Correct streak this time: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
+						$("<li>"+ q.due_item.item_type +": "+s.skill.skill_summary+" Due: "+format_date(q.due_item.due_date)+" Streak: "+q.due_item.correct_streak_overall+" Microstreak: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
 					}
 				});
 			});
