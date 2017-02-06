@@ -1,7 +1,6 @@
 #![feature(field_init_shorthand)]
 
 extern crate ganbare_backend;
-extern crate hyper;
 #[macro_use]
 extern crate clap;
 extern crate dotenv;

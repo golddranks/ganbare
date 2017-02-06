@@ -487,7 +487,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
 
                 debug!("Original file extension: {:?}, Guess from URL: {:?}, Content type: {:?}",
                        file_extension,
-                       guess_url,
+                       fuzzy_guess_url,
                        content_type);
 
                 match content_type {
