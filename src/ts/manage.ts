@@ -382,8 +382,9 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 					success: function() {
 						n_item.remove();
 					}, 
-					error: function() {
-						alert("Can't remove this! (Try removing things that depend on it first.)");
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
 					},
 				});
 			});
@@ -406,7 +407,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							words.splice(index, 1);
 							c_item.remove();
 							check_init_autocreate_buttons();
-						}, 
+						},
+						error: function(resp) {
+							console.log("Error with posting to /api!", resp);
+							alert("Error with posting to /api/");
+						},
 					});
 				});
 
@@ -442,6 +447,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						word.skill_level = updated_value;
 						console.log("Updated skill_level!");
 					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
+					},
 				});
 			});
 
@@ -458,6 +467,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						word.priority = updated_value;
 						console.log("Updated priority!");
 					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
+					},
 				});
 			});
 
@@ -471,6 +484,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						word.audio_bundle = updated_value;
 						update_bundle_cb(updated_value);
 						console.log("Updated audio bundle!");
+					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
 					},
 				});
 			});
@@ -510,6 +527,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 								w_word.html(accentuate(word.word));
 							}
 						},
+						error: function(resp) {
+							console.log("Error with posting to /api!", resp);
+							alert("Error with posting to /api/");
+						},
 					};
 					$.ajax(request);
 				});
@@ -535,6 +556,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							word.explanation = wordLatestResp.explanation;
 							w_explanation.html(word.explanation);
 						}
+					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
 					},
 				};
 				$.ajax(request);
@@ -567,7 +592,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							let removeIndex = questions.indexOf(tuple);
 							questions.splice(removeIndex, 1);
 							check_init_autocreate_buttons();
-						}, 
+						},
+						error: function(resp) {
+							console.log("Error with posting to /api!", resp);
+							alert("Error with posting to /api/");
+						},
 					});
 				});
 
@@ -611,7 +640,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							success: function(resp) {
 								answers[0] = resp;
 								sema();
-							}, 
+							},
+							error: function(resp) {
+								console.log("Error with posting to /api!", resp);
+								alert("Error with posting to /api/");
+							},
 						});
 						$.ajax({
 							type: 'PUT',
@@ -621,7 +654,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							success: function(resp) {
 								answers[1] = resp;
 								sema();
-							}, 
+							},
+							error: function(resp) {
+								console.log("Error with posting to /api!", resp);
+								alert("Error with posting to /api/");
+							},
 						});
 					});
 			}
@@ -634,7 +671,9 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				checkbox.prop("checked", true);
 			};
 			checkbox.change(function() {
-				var request= { type: 'PUT', url: null };
+				var request= { type: 'PUT',
+					url: null,
+				};
 				if (this.checked) {
 					request.url = '/api/questions/'+question.id+'?publish';
 				} else {
@@ -659,6 +698,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 						question.skill_level = updated_value;
 						console.log("Updated skill_level!");
 					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
+					},
 				});
 			});
 
@@ -673,6 +716,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							ans.q_audio_bundle = updated_value;
 							update_bundle_cb(updated_value);
 							console.log("Updated audio bundle!");
+						},
+						error: function(resp) {
+							console.log("Error with posting to /api!", resp);
+							alert("Error with posting to /api/");
 						},
 					});
 				});
@@ -702,6 +749,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							q_explanation.html(question.q_explanation);
 						}
 					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
+					},
 				};
 				$.ajax(request);
 			});
@@ -726,6 +777,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							question_text.html(question.question_text);
 						}
 					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
+					},
 				};
 				$.ajax(request);
 			});
@@ -745,6 +800,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							ans.q_audio_bundle = updated_value;
 							update_bundle_cb(updated_value);
 							console.log("Updated audio bundle!");
+						},
+						error: function(resp) {
+							console.log("Error with posting to /api!", resp);
+							alert("Error with posting to /api/");
 						},
 					});
 				});
@@ -770,6 +829,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							ans.answer_text = answer_latestResp.answer_text;
 							qa_button.html(ans.answer_text);
 						}
+					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
 					},
 				};
 				$.ajax(request);
@@ -818,7 +881,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 							let removeIndex = exercises.indexOf(tuple);
 							exercises.splice(removeIndex, 1);
 							check_init_autocreate_buttons();
-						}, 
+						},
+						error: function(resp) {
+							console.log("Error with posting to /api!", resp);
+							alert("Error with posting to /api/");
+						},
 					});
 				});
 
@@ -852,6 +919,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 					success: function(resp) {
 						exercise.skill_level = updated_value;
 						console.log("Updated skill_level!");
+					},
+					error: function(resp) {
+						console.log("Error with posting to /api!", resp);
+						alert("Error with posting to /api/");
 					},
 				});
 			});
@@ -953,9 +1024,9 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 								createQuestionEntry(resp, questions.length);
 							},
 							error: function(resp) {
-								console.log("Error with posting to /api/exercises", resp);
-								alert("Error with posting to /api/exercises");
-							}
+								console.log("Error with posting to /api!", resp);
+								alert("Error with posting to /api/");
+							},
 						});
 					});
 				}
@@ -991,9 +1062,9 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 								createExerciseEntry(resp, exercises.length);
 							},
 							error: function(resp) {
-								console.log("Error with posting to /api/exercises", resp);
-								alert("Error with posting to /api/exercises");
-							}
+								console.log("Error with posting to /api!", resp);
+								alert("Error with posting to /api/");
+							},
 						});
 					});
 				}
