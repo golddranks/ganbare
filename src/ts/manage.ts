@@ -144,12 +144,15 @@ let priority_filter_toggle = prifilter_toggle.is(":checked");
 let pubstuff_value = pubstuff_toggle.is(":checked");
 let unpubstuff_value = unpubstuff_toggle.is(":checked");
 
+let show_nuggets = new Array();
+
 var nugget_resp = null;
 var bundle_resp = null;
 var narrator_resp = null;
 
 prifilter_value.change(() => {
 	n_list.html("");
+	show_nuggets = new Array();
 	priority_filter_value = prifilter_value.val();
 	loading_msg.show();
 	loading_msg.text("Loaded. Rendering content. ");
@@ -158,6 +161,7 @@ prifilter_value.change(() => {
 
 prifilter_toggle.change(() => {
 	n_list.html("");
+	show_nuggets = new Array();
 	priority_filter_toggle = prifilter_toggle.is(":checked");
 	loading_msg.show();
 	loading_msg.text("Loaded. Rendering content. ");
@@ -166,6 +170,7 @@ prifilter_toggle.change(() => {
 
 pubstuff_toggle.change(() => {
 	n_list.html("");
+	show_nuggets = new Array();
 	pubstuff_value = pubstuff_toggle.is(":checked");
 	unpubstuff_value = false;
 	unpubstuff_toggle.prop("checked", false);
@@ -176,6 +181,7 @@ pubstuff_toggle.change(() => {
 
 unpubstuff_toggle.change(() => {
 	n_list.html("");
+	show_nuggets = new Array();
 	unpubstuff_value = unpubstuff_toggle.is(":checked");
 	pubstuff_value = false;
 	pubstuff_toggle.prop("checked", false);
@@ -322,7 +328,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 		n_list.append("<h2>No skill nuggets exist at the moment.</h2>");
 	}
 
-	let shown_nuggets = new Array();
+	shown_nuggets = new Array();
 	for (let i = 0, len = nugget_resp.length; i < len; i++) {
 
 		// Drawing only high-priority items
