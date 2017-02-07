@@ -314,6 +314,8 @@ pub fn post_question(conn: &PgConnection,
                      -> Result<i32> {
     use schema::{question_answers, quiz_questions};
 
+    debug!("Post question: {:?} and answers: {:?}", question, answers);
+
     let q: QuizQuestion = diesel::insert(&question).into(quiz_questions::table)
         .get_result(conn)?;
 

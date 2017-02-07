@@ -921,27 +921,27 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 					let c_button = $('<input type="button" value="Autocreate question '+name+', skill '+q_skill_level+'" class="linklike">');
 					c_button.appendTo(c_body);
 
-					let question_data = [{
-								q_name: name,
-								q_explanation: "Kuuntele ja vastaa kysymykseen",
-								question_text: "Mistä asiasta on kyse?",
-								skill_id: nugget.id,
-								published: false,
-								skill_level: q_skill_level,
-								},
-								[{
-									question_id: 0,
-									a_audio_bundle: null,
-									q_audio_bundle: words[0].audio_bundle,
-									answer_text: words[0].explanation,
-								},
-								{
-									question_id: 0,
-									a_audio_bundle: null,
-									q_audio_bundle: words[1].audio_bundle,
-									answer_text: words[1].explanation,
-								}]];
 					c_button.click(function() {
+						let question_data = [{
+									q_name: name,
+									q_explanation: "Kuuntele ja vastaa kysymykseen",
+									question_text: "Mistä asiasta on kyse?",
+									skill_id: nugget.id,
+									published: false,
+									skill_level: q_skill_level,
+									},
+									[{
+										question_id: 0,
+										a_audio_bundle: null,
+										q_audio_bundle: words[0].audio_bundle,
+										answer_text: words[0].explanation,
+									},
+									{
+										question_id: 0,
+										a_audio_bundle: null,
+										q_audio_bundle: words[1].audio_bundle,
+										answer_text: words[1].explanation,
+									}]];
 						$.ajax({
 							url: "/api/questions",
 							contentType: "application/json",
@@ -963,19 +963,19 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 					c_body.appendTo(c_item);
 					let c_button = $('<input type="button" value="autocreate exercise '+name+', skill '+e_skill_level+'" class="linklike">');
 					c_button.appendTo(c_body);
-					let exercise_data = [{
-								skill_id: nugget.id,
-								skill_level: e_skill_level,
-								},
-								[{
-									exercise_id: 0,
-									id: words[0].id,
-								},
-								{
-									exercise_id: 0,
-									id: words[1].id,
-								}]];
 					c_button.click(function() {
+						let exercise_data = [{
+									skill_id: nugget.id,
+									skill_level: e_skill_level,
+									},
+									[{
+										exercise_id: 0,
+										id: words[0].id,
+									},
+									{
+										exercise_id: 0,
+										id: words[1].id,
+									}]];
 						$.ajax({
 							url: "/api/exercises",
 							contentType: "application/json",
