@@ -278,7 +278,7 @@ pub fn update_answer(conn: &PgConnection,
 
 pub fn update_variant(conn: &PgConnection,
                      id: i32,
-                     mut item: UpdateExerciseVariant)
+                    item: UpdateExerciseVariant)
                      -> Result<Option<ExerciseVariant>> {
 
     use schema::exercise_variants;
@@ -346,20 +346,25 @@ pub fn post_exercise(conn: &PgConnection,
                      mut answers: Vec<ExerciseVariant>)
                      -> Result<i32> {
     use schema::{exercises, exercise_variants};
+    
+    conn.transaction(|| -> Result<i32> {
+    
+        let q: Exercise = diesel::insert(&exercise).into(exercises::table)
+            .get_result(conn)?;
+    
+        for aa in &mut answers {
+            aa.exercise_id = q.id;
+            diesel::insert(aa).into(exercise_variants::table)
+                .execute(conn)?;
+        }
+        Ok(q.id)
 
-    let q: Exercise = diesel::insert(&exercise).into(exercises::table)
-        .get_result(conn)?;
+    }).chain_err(|| ErrorKind::from("Transaction failed"))
 
-    for aa in &mut answers {
-        aa.exercise_id = q.id;
-        diesel::insert(aa).into(exercise_variants::table)
-            .execute(conn)?;
-    }
-    Ok(q.id)
 }
 
 pub fn del_due_and_pending_items(conn: &PgConnection, user_id: i32)  -> Result<()> {
-    use schema::{due_items, pending_items, question_data, exercise_data};
+    use schema::{due_items, pending_items, question_data, exercise_data, e_asked_data, q_asked_data, e_answered_data, q_answered_data};
     use diesel::expression::dsl::any;
 
     let p = diesel::update(
@@ -368,6 +373,10 @@ pub fn del_due_and_pending_items(conn: &PgConnection, user_id: i32)  -> Result<(
         )
         .set(pending_items::pending.eq(false))
         .execute(conn)?;
+
+    let pending: Vec<PendingItem> = pending_items::table
+                .filter(pending_items::user_id.eq(user_id))
+                .get_results(conn)?;
 
     let due_items = due_items::table.filter(due_items::user_id.eq(user_id)).select(due_items::id);
 
@@ -380,7 +389,26 @@ pub fn del_due_and_pending_items(conn: &PgConnection, user_id: i32)  -> Result<(
     let d = diesel::delete(due_items::table.filter(due_items::user_id.eq(user_id)))
         .execute(conn)?;
 
-    debug!("Deactivated {} pending items and deleted {} due items. ({} questions, {} exercises)", p, d, q, e);
+    let mut asks = 0;
+    let mut answers = 0;
+
+    for p in &pending {
+
+        answers += diesel::delete(e_answered_data::table.filter(e_answered_data::id.eq(p.id)))
+            .execute(conn)?;
+    
+        answers += diesel::delete(q_answered_data::table.filter(q_answered_data::id.eq(p.id)))
+            .execute(conn)?;
+    
+        asks += diesel::delete(e_asked_data::table.filter(e_asked_data::id.eq(p.id)))
+            .execute(conn)?;
+    
+        asks += diesel::delete(q_asked_data::table.filter(q_asked_data::id.eq(p.id)))
+            .execute(conn)?;
+
+    }
+
+    debug!("Deactivated {} pending items and deleted {} due items. ({} questions, {} exercises, {} asks, {} answers)", p, d, q, e, asks, answers);
 
     Ok(())
 }
