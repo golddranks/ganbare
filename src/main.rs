@@ -468,6 +468,9 @@ pub fn main() {
     app.put("/api/exercises/<id:int>",
             "update_exercise",
             http_api::update_item);
+    app.put("/api/exercises/variants/<id:int>",
+            "update_variant",
+            http_api::update_item);
     app.get("/api/new_quiz", "new_quiz", http_api::new_quiz);
     app.post("/api/next_quiz", "next_quiz", http_api::next_quiz);
     app.get("/api/audio/<audio_name:string>",

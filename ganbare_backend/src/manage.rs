@@ -276,6 +276,20 @@ pub fn update_answer(conn: &PgConnection,
     Ok(item)
 }
 
+pub fn update_variant(conn: &PgConnection,
+                     id: i32,
+                     mut item: UpdateExerciseVariant)
+                     -> Result<Option<ExerciseVariant>> {
+
+    use schema::exercise_variants;
+
+    let item =
+        diesel::update(exercise_variants::table.filter(exercise_variants::id.eq(id))).set(&item)
+            .get_result(conn)
+            .optional()?;
+    Ok(item)
+}
+
 pub fn remove_word(conn: &PgConnection, id: i32) -> Result<Option<Word>> {
     use schema::words;
 

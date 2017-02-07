@@ -144,7 +144,7 @@ let priority_filter_toggle = prifilter_toggle.is(":checked");
 let pubstuff_value = pubstuff_toggle.is(":checked");
 let unpubstuff_value = unpubstuff_toggle.is(":checked");
 
-let show_nuggets = new Array();
+let shown_nuggets = new Array();
 
 var nugget_resp = null;
 var bundle_resp = null;
@@ -152,7 +152,7 @@ var narrator_resp = null;
 
 prifilter_value.change(() => {
 	n_list.html("");
-	show_nuggets = new Array();
+	shown_nuggets = new Array();
 	priority_filter_value = prifilter_value.val();
 	loading_msg.show();
 	loading_msg.text("Loaded. Rendering content. ");
@@ -161,7 +161,7 @@ prifilter_value.change(() => {
 
 prifilter_toggle.change(() => {
 	n_list.html("");
-	show_nuggets = new Array();
+	shown_nuggets = new Array();
 	priority_filter_toggle = prifilter_toggle.is(":checked");
 	loading_msg.show();
 	loading_msg.text("Loaded. Rendering content. ");
@@ -170,7 +170,7 @@ prifilter_toggle.change(() => {
 
 pubstuff_toggle.change(() => {
 	n_list.html("");
-	show_nuggets = new Array();
+	shown_nuggets = new Array();
 	pubstuff_value = pubstuff_toggle.is(":checked");
 	unpubstuff_value = false;
 	unpubstuff_toggle.prop("checked", false);
@@ -181,7 +181,7 @@ pubstuff_toggle.change(() => {
 
 unpubstuff_toggle.change(() => {
 	n_list.html("");
-	show_nuggets = new Array();
+	shown_nuggets = new Array();
 	unpubstuff_value = unpubstuff_toggle.is(":checked");
 	pubstuff_value = false;
 	pubstuff_toggle.prop("checked", false);
@@ -952,7 +952,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 					},
 				});
 			});
-
+			$("<p>Word ID: "+actual_words[0].id+" Word ID: "+actual_words[1].id+"</p>").appendTo(c_info);
 		};
 		exercises.forEach(createExerciseEntry);
 
@@ -1062,7 +1062,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 					let c_item = $('<li class="autocreate_e"></li>').appendTo(c_list);
 					let c_body = $('<div></div>');
 					c_body.appendTo(c_item);
-					let c_button = $('<input type="button" value="autocreate exercise '+name+', skill '+e_skill_level+'" class="linklike">');
+					let c_button = $('<input type="button" value="Autocreate exercise '+name+', skill '+e_skill_level+'" class="linklike">');
 					c_button.appendTo(c_body);
 					c_button.click(function() {
 						let exercise_data = [{
