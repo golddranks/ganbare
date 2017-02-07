@@ -615,7 +615,11 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				}
 			});
 
-			if (same_skill_words.length == 2) {
+			if (same_skill_words.length !== 2) { // Trying to check only the published ones as a fallback
+				same_skill_words = same_skill_words.filter((w) => { return (w.published); });
+			}
+
+			if (same_skill_words.length === 2) {
 				proto_update_button
 					.clone()
 					.appendTo(c_header)

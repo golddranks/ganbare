@@ -2,10 +2,7 @@
 
 Need to do before release:
 
-- Remove/edit mispronounced items
 - Choose the test questions
-
-- Edit the high-priority items
 - Final testing
 
 Stretch goals:
