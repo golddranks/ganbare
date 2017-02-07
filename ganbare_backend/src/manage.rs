@@ -478,6 +478,8 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
             let mut resp = req
                 .send()
                 .map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
+            
+            assert!(resp.status().is_success());
 
             let extension = {
                 let fuzzy_guess_url: Option<&str> = EXTENSION_GUESS.captures_iter(url)

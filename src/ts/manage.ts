@@ -952,6 +952,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 								questions.push(resp);
 								createQuestionEntry(resp, questions.length);
 							},
+							error: function(resp) {
+								console.log("Error with posting to /api/exercises", resp);
+								alert("Error with posting to /api/exercises");
+							}
 						});
 					});
 				}
@@ -986,6 +990,10 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 								exercises.push(resp);
 								createExerciseEntry(resp, exercises.length);
 							},
+							error: function(resp) {
+								console.log("Error with posting to /api/exercises", resp);
+								alert("Error with posting to /api/exercises");
+							}
 						});
 					});
 				}
