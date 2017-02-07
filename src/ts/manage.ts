@@ -424,7 +424,13 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				checkbox.prop("checked", true);
 			};
 			checkbox.change(function() {
-				var request= { type: 'PUT', url: null };
+				var request = {
+					type: 'PUT',
+					url: null,
+					error: function(resp) {
+						alert("Error when setting the published toggle.");
+					},
+				};
 				if (this.checked) {
 					request.url = '/api/words/'+word.id+'?publish';
 				} else {
@@ -671,8 +677,12 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				checkbox.prop("checked", true);
 			};
 			checkbox.change(function() {
-				var request= { type: 'PUT',
+				var request= {
+					type: 'PUT',
 					url: null,
+					error: function(resp) {
+						alert("Error when setting the published toggle.");
+					},
 				};
 				if (this.checked) {
 					request.url = '/api/questions/'+question.id+'?publish';
@@ -898,7 +908,13 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				checkbox.prop("checked", true);
 			};
 			checkbox.change(function() {
-				var request= { type: 'PUT', url: null };
+				var request= {
+					type: 'PUT',
+					url: null,
+					error: function(resp) {
+						alert("Error when setting the published toggle.");
+					},
+				};
 				if (this.checked) {
 					request.url = '/api/exercises/'+exercise.id+'?publish';
 				} else {
