@@ -1,9 +1,12 @@
 # To Do list
 
-Need to do before release:
-
-- Choose the test questions
+Need to do before beta release:
+- Choose the pretest questions
 - Final testing
+
+After starting the beta
+- Choose the posttest questions
+- Edit more sentences
 
 Stretch goals:
 - Make the survey to close the buttons when answered but before the answer is saved (needs to join the event of closing the buttons & getting response from server)
