@@ -34,7 +34,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     }
     let audio_id = audio_id.parse::<i32>()
         .expect("Pencil guarantees that Line ID should be an integer.");
-    let (file_name, mime_type) = audio::get_file(&conn, audio_id).map_err(|e| match e.kind() {
+    let (file_name, mime_type) = audio::get_file_path(&conn, audio_id).map_err(|e| match e.kind() {
             &ErrorKind::FileNotFound => abort(404).unwrap_err(),
             e => internal_error(e),
         })?;

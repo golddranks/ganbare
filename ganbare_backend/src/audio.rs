@@ -489,11 +489,25 @@ pub fn get_narrators(conn: &PgConnection) -> Result<Vec<Narrator>> {
     Ok(narrators)
 }
 
-pub fn get_file(conn: &PgConnection, line_id: i32) -> Result<(String, mime::Mime)> {
+pub fn get_audio_file_by_id(conn: &PgConnection, file_id: i32) -> Result<AudioFile> {
     use schema::audio_files::dsl::*;
     use diesel::result::Error::NotFound;
 
-    let file: AudioFile = audio_files.filter(id.eq(line_id))
+    let file: AudioFile = audio_files.filter(id.eq(file_id))
+        .get_result(&*conn)
+        .map_err(|e| match e {
+            e @ NotFound => e.caused_err(|| ErrorKind::FileNotFound),
+            e => e.caused_err(|| "Couldn't get the file!"),
+        })?;
+
+    Ok(file)
+}
+
+pub fn get_file_path(conn: &PgConnection, file_id: i32) -> Result<(String, mime::Mime)> {
+    use schema::audio_files::dsl::*;
+    use diesel::result::Error::NotFound;
+
+    let file: AudioFile = audio_files.filter(id.eq(file_id))
         .get_result(&*conn)
         .map_err(|e| match e {
             e @ NotFound => e.caused_err(|| ErrorKind::FileNotFound),

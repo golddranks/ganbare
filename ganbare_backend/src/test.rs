@@ -193,12 +193,12 @@ pub fn get_new_quiz_pretest(conn: &PgConnection,
                       QuizSerialized::Word("は・る", 1356),
                       QuizSerialized::Question("か・く", 5420),
                       QuizSerialized::Exercise("は・る", 5287),
-                      QuizSerialized::Word("／あ・きがきた", 4759),
-                      QuizSerialized::Word("あ／き・がきた", 5061),
+                      QuizSerialized::Word("／あ・きがきた", 5061),
+                      QuizSerialized::Word("あ／き・がきた", 4759),
                       QuizSerialized::Question("あ／き・がきた", 5045),
-                      QuizSerialized::Word("／あ・しが生えてる", 7289),
-                      QuizSerialized::Word("あ／し・が生えてる", 7290),
-                      QuizSerialized::Exercise("あ／し・が生えてる", 7290),
+                      QuizSerialized::Word("／あ・しが生えてる", 7290),
+                      QuizSerialized::Word("あ／し・が生えてる", 7289),
+                      QuizSerialized::Exercise("あ／し・が生えてる", 7289),
                     ];
 
     let mut quiz = get_new_quiz_test(conn, user, event, &quizes)?;

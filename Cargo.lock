@@ -1,9 +1,9 @@
 [root]
 name = "ganbare"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "diesel_codegen 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "diesel_codegen 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ganbare_backend 0.3.0",
@@ -202,12 +202,12 @@ dependencies = [
 
 [[package]]
 name = "diesel_codegen"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "diesel 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel_codegen_shared 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "diesel_infer_schema 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "diesel_infer_schema 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -223,7 +223,7 @@ dependencies = [
 
 [[package]]
 name = "diesel_infer_schema"
-version = "0.1.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "diesel 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -375,7 +375,7 @@ dependencies = [
  "clap 2.20.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "data-encoding 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "diesel_codegen 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "diesel_codegen 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv_macros 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "email 0.0.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1246,9 +1246,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum data-encoding 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f13f03d68d1906eb3222536f5756953e30de4dff4417e5d428414fb8edb26723"
 "checksum dbghelp-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "97590ba53bcb8ac28279161ca943a924d1fd4a8fb3fa63302591647c4fc5b850"
 "checksum diesel 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4f0828cb2cbb0f3372b17e88c64571baab2848e69d4784e64e2ecc3db38298e8"
-"checksum diesel_codegen 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2a6652438f59f0d6be0c0063ee8094947d916553f362e93d8a4cf58c5b9baaa6"
+"checksum diesel_codegen 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bfc2216368d51c9dac930dd167de4eff79dd7f26f5843d27bc9e7e382d9173fe"
 "checksum diesel_codegen_shared 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f9ab9e0a0226311a1f250038da43d425119d6a8458edcd3e81e74c49a2c084bd"
-"checksum diesel_infer_schema 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "40a6f1aae75557d2c47a8cc6404b9712f368f96f4ab5224f062de39434c021e8"
+"checksum diesel_infer_schema 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9dc1835b105296e78c9904dc60b20c0ddb4856a3a43c8a0a9946de8bc6b75c61"
 "checksum dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "eea1395d2df3b5344dc577809296d9578303296e8d105c408aa80ed67d598ef1"
 "checksum dotenv_codegen 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "db383639c143d2346388b345e15853a3bccf0501e1a27e9c27667645541fe0c5"
 "checksum dotenv_macros 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5150bcfa87a2f96095966d7bb9109247382afced681c68e67038a5a7da1b3e5b"
