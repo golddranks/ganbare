@@ -1110,7 +1110,7 @@ fn ask_new_exercise(conn: &PgConnection, id: i32) -> Result<(Exercise, Word, i32
     Ok((exercise, word, audio_file.id))
 }
 
-pub fn pi_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
+pub fn penditem_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
     use schema::{q_asked_data, e_asked_data, w_asked_data};
 
     Ok(match pi {
@@ -1193,7 +1193,7 @@ pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Q
             .optional()?;
 
     let quiz_type = match pending_item {
-        Some(ref pi) => pi_to_quiz(conn, pi)?,
+        Some(ref pi) => penditem_to_quiz(conn, pi)?,
         None => return Ok(None),
     };
 
@@ -1298,28 +1298,35 @@ pub fn get_word_id(conn: &PgConnection, word: &str) -> Result<i32> {
         .get_result(conn)?)
 }
 
-pub fn get_exercise_id(conn: &PgConnection, skill_summary: &str) -> Result<i32> {
-    use schema::{exercises, skill_nuggets};
+pub fn get_exercise_id(conn: &PgConnection, word: &str) -> Result<(i32, i32)> {
+    use schema::{words, exercises, exercise_variants};
 
-    Ok(exercises::table.inner_join(skill_nuggets::table)
-        .filter(skill_nuggets::skill_summary.eq(skill_summary).and(exercises::skill_level.le(2)))
-        .select(exercises::id)
+    let word: Word = words::table
+        .filter(words::word.eq(word))
+        .get_result(conn)?;
+
+    Ok(exercises::table.inner_join(exercise_variants::table)
+        .filter(exercise_variants::id.eq(word.id))
+        .select((exercises::id, exercise_variants::id))
         .get_result(conn)?)
 }
 
-pub fn get_question_id(conn: &PgConnection, skill_summary: &str) -> Result<i32> {
-    use schema::{quiz_questions, skill_nuggets};
+pub fn get_question_id(conn: &PgConnection, answer_text: &str) -> Result<(i32, i32)> {
+    use schema::{quiz_questions, question_answers, audio_bundles};
 
-    Ok(quiz_questions::table.inner_join(skill_nuggets::table)
-        .filter(skill_nuggets::skill_summary.eq(skill_summary)
-            .and(quiz_questions::skill_level.le(2)))
-        .select(quiz_questions::id)
+    let bundle: AudioBundle = audio_bundles::table
+        .filter(audio_bundles::listname.eq(answer_text))
+        .get_result(conn)?;
+
+    Ok(quiz_questions::table.inner_join(question_answers::table)
+        .filter(question_answers::q_audio_bundle.eq(bundle.id))
+        .select((quiz_questions::id, question_answers::id))
         .get_result(conn)?)
 }
 
 pub enum QuizSerialized {
     Word(&'static str, i32),
-    Question(&'static str, i32, i32),
+    Question(&'static str, i32),
     Exercise(&'static str, i32),
 }
 
@@ -1330,11 +1337,13 @@ pub fn test_item(conn: &PgConnection,
     let pending_item;
     let test_item = match *quiz_str {
         QuizSerialized::Word(s, audio_id) => {
+            let w_id = quiz::get_word_id(conn, s).chain_err(|| format!("Word {} not found", s))?;
+            
             pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id))?;
 
             let asked_data = WAskedData {
                 id: pending_item.id,
-                word_id: quiz::get_word_id(conn, s).chain_err(|| format!("Word {} not found", s))?,
+                word_id: w_id,
                 show_accents: false,
             };
 
@@ -1354,17 +1363,19 @@ pub fn test_item(conn: &PgConnection,
                 show_accents: asked_data.show_accents,
             })
         }
-        QuizSerialized::Question(s, audio_id, variant_id) => {
+        QuizSerialized::Question(s, audio_id) => {
+
+            let (q_id, a_id) = quiz::get_question_id(conn, s)
+                        .chain_err(|| format!("Question {} not found", s))?;
 
             pending_item = new_pending_item(conn, user.id, QuizType::Question(audio_id))?;
 
             let asked_data = QAskedData {
-                id:pending_item.id,
-                question_id:
-                    quiz::get_question_id(conn, s)
-                        .chain_err(|| format!("Question {} not found", s))?,
-                correct_qa_id: variant_id,
+                id: pending_item.id,
+                question_id: q_id,
+                correct_qa_id: a_id,
             };
+
             register_future_q_answer(conn, &asked_data)?;
 
             let (question, answers, _) = try_or!{ load_question(conn, asked_data.question_id)?,
@@ -1390,17 +1401,15 @@ pub fn test_item(conn: &PgConnection,
         }
         QuizSerialized::Exercise(word, audio_id) => {
 
+            let (e_id, w_id) = quiz::get_exercise_id(conn, word)
+                        .chain_err(|| format!("Exercise {} not found", word))?;
+
             pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id))?;
-            let exercise_name = word.replace('*', "").replace('・', "");
 
             let asked_data = EAskedData {
                 id: pending_item.id,
-                exercise_id:
-                    quiz::get_exercise_id(conn, &exercise_name)
-                        .chain_err(|| format!("Exercise {} not found", exercise_name))?,
-                word_id:
-                    quiz::get_word_id(conn, word)
-                        .chain_err(|| format!("Word {} not found", word))?,
+                exercise_id: e_id,
+                word_id: w_id,
             };
 
             register_future_e_answer(conn, &asked_data)?;

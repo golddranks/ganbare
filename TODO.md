@@ -1,7 +1,6 @@
 # To Do list
 
 Need to do before beta release:
-- Choose the pretest questions
 - Final testing
 
 After starting the beta
