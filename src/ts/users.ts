@@ -278,7 +278,6 @@ function list_user_skills(user_id: number) {
 	$.getJSON("/api/users/"+user_id+"/skills", function(skill_resp) {
 		let userDetails = $("#userDetails");
 		userDetails.html("");
-		let list = $("<ul></ul>").appendTo(userDetails);
 		let skills = new Array();
 		skill_resp.forEach((s) => {
 			let skill = s[0];
@@ -292,18 +291,29 @@ function list_user_skills(user_id: number) {
 			q_data.forEach(function(data) {
 				let due_item = data[0];
 				let q = data[2];
-				skills[q.skill_id].asked.push({due_item: due_item, quiz: q});
+				let skill = skills[q.skill_id];
+				if (skill !== undefined) {
+					skill.asked.push({due_item: due_item, quiz: q});
+				}
 			});
 			e_data.forEach(function(data) {
 				let due_item = data[0];
 				let e = data[2];
-				skills[e.skill_id].asked.push({due_item: due_item, quiz: e});
+				let skill = skills[e.skill_id];
+				if (skill !== undefined) {
+					skill.asked.push({due_item: due_item, quiz: e});
+				}
 			});
 			w_data.forEach(function(data) {
 				let pending = data[0];
 				let w = data[2];
-				skills[w.skill_nugget].asked.push({due_item: pending, quiz: w});
+				let skill = skills[w.skill_nugget];
+				if (skill !== undefined) {
+					skill.asked.push({due_item: pending, quiz: w});
+				}
 			});
+			$("<p>Skills: "+skills.length+"</p>").appendTo(userDetails);
+			let list = $("<ul></ul>").appendTo(userDetails);
 			skills.forEach(function(s) {
 				$("<li><h2>Skill name: "+s.skill.skill_summary+" Skill level: "+s.skill_data.skill_level+"</h2></li>").appendTo(list);
 				s.asked.forEach(function(q) {
