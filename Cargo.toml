@@ -17,7 +17,7 @@ env_logger = "0.4"
 log = "0.3"
 lazy_static = "0.2"
 time = "0.1"
-handlebars = { version = "0.25", features = ["partial_legacy"] }
+handlebars ="0.25"
 unicode-normalization = "0.1"
 regex = "0.2"
 tempdir = "0.3"

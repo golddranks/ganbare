@@ -673,7 +673,7 @@ dependencies = [
 [[package]]
 name = "pencil"
 version = "0.3.0"
-source = "git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare#b5ee44db2052a229e672a67fb8eeaf792c61fa7d"
+source = "git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare#d55e72ce30200ccb9438255990ad5c3b66adde88"
 dependencies = [
  "formdata 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 0.25.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -681,7 +681,7 @@ dependencies = [
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime_guess 1.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "typemap 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
