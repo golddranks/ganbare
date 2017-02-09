@@ -127,6 +127,7 @@
 								alreadyAnswered = false;
 								surveyBox.slideUp(400, function() {
 									increment();
+									surveyBox.css('opacity', '1.0');
 									surveyBox.fadeIn();
 								});
 							},
@@ -160,7 +161,10 @@
 						var button = $('<button class="multilineButton">'+a+'</button>');
 
 						button.appendTo($('<p></p>').appendTo(answerButtons));
-						button.one('click', function() { answerQuestion({q: question, a: button.html()}, i)});
+						button.one('click', function() {
+							surveyBox.css('opacity', '0.4');
+							answerQuestion({q: question, a: button.html()}, i)}
+						);
 					});
 
 				} else if (answers === "textfield") {
