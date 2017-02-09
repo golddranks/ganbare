@@ -398,7 +398,7 @@ pub fn auth_user(req: &mut Request,
     };
     let end = Instant::now();
     let lag = end.duration_since(start);
-    if lag > std::time::Duration::from_millis(20) {
+    if lag > std::time::Duration::from_millis(80) {
         debug!("Authenticating took {:?} ms", lag.subsec_nanos()/1_000_000);
     }
     result
