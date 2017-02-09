@@ -19,8 +19,8 @@ use ganbare::user;
 use ganbare::session;
 use ganbare::errors;
 use std::path::PathBuf;
-pub use std::time::Duration;
 pub use try_map::{FallibleMapExt, FlipResultExt};
+pub use std::time::{Instant, Duration};
 
 lazy_static! {
 
@@ -168,7 +168,15 @@ lazy_static! {
 }
 
 pub fn db_connect() -> Result<PgConnection> {
-    db::connect(&*DATABASE_URL)
+
+    let start = Instant::now();
+    let conn = db::connect(&*DATABASE_URL)?;
+    let end = Instant::now();
+    let lag = end.duration_since(start);
+    if lag > std::time::Duration::from_millis(10) {
+        debug!("Connecting to DB took {:?} ms", lag.subsec_nanos()/1_000_000);
+    }
+    Ok(conn)
 }
 
 
@@ -373,6 +381,9 @@ macro_rules! include_templates(
 pub fn auth_user(req: &mut Request,
                  required_group: &str)
                  -> StdResult<(PgConnection, User, Session), PencilError> {
+
+    let start = Instant::now();
+    let result =
     match try_auth_user(req)? {
         Some((conn, user, sess)) => {
             if user::check_user_group(&conn, user.id, required_group).err_500()? {
@@ -384,7 +395,13 @@ pub fn auth_user(req: &mut Request,
         None => {
             Err(abort(401).unwrap_err()) // User isn't logged in
         }
+    };
+    let end = Instant::now();
+    let lag = end.duration_since(start);
+    if lag > std::time::Duration::from_millis(20) {
+        debug!("Authenticating took {:?} ms", lag.subsec_nanos()/1_000_000);
     }
+    result
 
 }
 
@@ -446,7 +463,6 @@ pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration,
                                        random_max_millis: u64,
                                        function: F)
                                        -> O {
-    use std::time::Instant;
     use std::thread;
     use rand::{Rng, OsRng};
     let mut os_rng = OsRng::new().expect("If the OS RNG is not present, just crash.");

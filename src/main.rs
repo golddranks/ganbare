@@ -244,8 +244,10 @@ fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
 fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
     let start = req.extensions_data.get::<KeyType>().unwrap();
     let end = Instant::now();
-
-    debug!("Request: {:?}", end.duration_since(*start));
+    let lag = end.duration_since(*start);
+    if lag > std::time::Duration::from_millis(100) {
+        debug!("Requesting {} took {:?} s, {:?} ms", req.url, lag.as_secs(), lag.subsec_nanos()/1_000_000, );
+    }
 }
 
 
