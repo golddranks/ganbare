@@ -5,7 +5,8 @@ use dotenv;
 use std::net::{SocketAddr, ToSocketAddrs};
 use ganbare::PgConnection;
 use std::collections::BTreeMap;
-use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, CookiePair,
+use cookie::Cookie as CookiePair;
+use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie,
              Cookie};
 use ganbare::models::{User, Session};
 use std::net::IpAddr;
@@ -171,10 +172,13 @@ pub fn db_connect() -> Result<PgConnection> {
 }
 
 
-pub fn get_cookie(cookies: &Cookie) -> Option<&str> {
-    for c in &cookies.0 {
-        if c.name == "session_id" {
-            return Some(c.value.as_ref());
+pub fn get_cookie<'a>(cookies: &'a Cookie) -> Option<&'a str> {
+    for c in cookies.0.iter().map(String::as_str) {
+        match CookiePair::parse(c) {
+            Ok(c) => if c.name() == "session_id" {
+                return Some( c.value().long_or_panic() );
+            },
+            Err(_) => return None,
         }
     }
     None
@@ -231,24 +235,22 @@ pub trait CookieProcessor {
 
 impl CookieProcessor for Response {
     fn refresh_cookie(mut self, sess: &Session) -> PencilResult {
-        let mut cookie = CookiePair::new("session_id".to_owned(), session::to_hex(sess));
-        cookie.path = Some("/".to_owned());
-        cookie.httponly = true;
-        if *PARANOID {
-            cookie.secure = true;
-        }
-        cookie.domain = Some(SITE_DOMAIN.to_owned());
-        cookie.expires = Some(time::now_utc() + time::Duration::weeks(2));
-        self.set_cookie(SetCookie(vec![cookie]));
+        let cookie = CookiePair::build("session_id", session::to_hex(sess))
+            .path("/")
+            .http_only(true)
+            .secure(*PARANOID)
+            .domain(SITE_DOMAIN.as_str())
+            .expires(time::now_utc() + time::Duration::weeks(2));
+        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish())]));
         Ok(self)
     }
 
     fn expire_cookie(mut self) -> Self {
-        let mut cookie = CookiePair::new("session_id".to_owned(), "".to_owned());
-        cookie.path = Some("/".to_owned());
-        cookie.domain = Some(SITE_DOMAIN.to_owned());
-        cookie.expires = Some(time::at_utc(time::Timespec::new(0, 0)));
-        self.set_cookie(SetCookie(vec![cookie]));
+        let cookie = CookiePair::build("session_id", "")
+            .path("/")
+            .domain(SITE_DOMAIN.as_str())
+            .expires(time::at_utc(time::Timespec::new(0, 0)));
+        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish())]));
         self
     }
 }

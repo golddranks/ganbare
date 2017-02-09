@@ -25,6 +25,8 @@ extern crate chrono;
 extern crate regex;
 extern crate unicode_normalization;
 extern crate url;
+extern crate cookie;
+extern crate typemap;
 
 #[macro_use]
 mod helpers;
@@ -209,7 +211,7 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
     None
 }
 
-fn set_headers(resp: &mut pencil::Response) {
+fn set_headers(_req: &Request, resp: &mut pencil::Response) {
     use hyper::header::*;
 
     header! {
@@ -224,6 +226,28 @@ fn set_headers(resp: &mut pencil::Response) {
         });
     }
 }
+
+
+use std::time::Instant;
+struct KeyType;
+impl typemap::Key for KeyType { type Value = Instant; }
+
+fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
+    let start = Instant::now();
+
+    req.extensions_data.insert::<KeyType>(start);
+    None
+}
+
+
+
+fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
+    let start = req.extensions_data.get::<KeyType>().unwrap();
+    let end = Instant::now();
+
+    debug!("Request: {:?}", end.duration_since(*start));
+}
+
 
 use pencil::Pencil;
 
@@ -272,6 +296,8 @@ pub fn main() {
     app.enable_static_file_handling();
     app.before_request(csrf_check);
     app.after_request(set_headers);
+    app.before_request(resp_time_start);
+    app.after_request(resp_time_stop);
 
     // DEBUGGING
     #[cfg(debug_assertions)]
