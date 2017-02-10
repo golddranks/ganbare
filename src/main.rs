@@ -50,7 +50,7 @@ pub use ganbare::errors::{Error, ErrorKind};
 pub fn favicon(_: &mut Request) -> PencilResult {
     use pencil::helpers::send_file;
     send_file("static/images/speaker_pink.png",
-              "image/x-icon".parse().unwrap(),
+              "image/x-icon".parse().expect("We now statically this mime is good"),
               false,
               None)
 }
@@ -266,7 +266,8 @@ fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
 
 
 fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
-    let start = req.extensions_data.get::<KeyType>().unwrap();
+    let start = req.extensions_data.get::<KeyType>()
+        .expect("We inserted this in resp_time_start, and if this is run and that isn't, there's a bug somewhere.");
     let end = Instant::now();
     let lag = end.duration_since(*start);
     if lag > std::time::Duration::from_millis(300) {
@@ -320,9 +321,9 @@ pub fn main() {
                        "posttest_done.html");
 
     app.enable_static_file_handling();
+    app.before_request(resp_time_start);
     app.before_request(csrf_check);
     app.after_request(set_headers);
-    app.before_request(resp_time_start);
     app.after_request(resp_time_stop);
 
     // DEBUGGING
