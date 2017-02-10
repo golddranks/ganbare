@@ -113,11 +113,13 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 		}
 
 		function finishedCB() {
+			$(".recordIcon").removeClass("recordingNow");
 			console.log("Stopping recording.");
 			rec.stop();
 		}
 
 		function startCB() {
+			$(".recordIcon").addClass("recordingNow");
 			console.log("Start recording.");
 			rec.start();
 		}
@@ -205,7 +207,7 @@ function showRetelling(retelling: Retelling) {
 	startRecording(event_name, (recording_supported, start_recording, finished_recording, when_recording_done) => {
 		answerList.hide();
 		questionText.hide();
-		questionText.html("Kerro, mitä kuvassa tapahtuu.<br>Nauhoitus käynnissä.");
+		questionText.html('Kerro, mitä kuvassa tapahtuu.<br>Nauhoitus käynnissä.<img src="/static/images/record.png" class="recordIcon">');
 		questionSectionFlexContainer.show();
 		questionSection.show();
 		questionExplanation.html("Kuuntele, mitä kuvassa tapahtuu.<br>Selitys loppuu äänimerkkiin. Selityksen loputtua<br>on sinun vuorosi kertoa kuulemasi uudestaan.<br>Äänesi nauhoitetaan.");
