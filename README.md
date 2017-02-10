@@ -1,6 +1,13 @@
 # Ganbare
 A web service that helps me to do what I do. (Protip: Something related to Japanese language and language learning. And science.) I license the server code itself as copyleft open source for now, but the contents of the app (example sentences, audio, images etc.) are not licensed, and they are not in this repository. The `static` folder contains some CC 3.0 BY licensed assets that are not by me. If you use this code, kindly inform me too.
 
+## Requirements to build
+
+* A working nightly Rust environment (`rustc 1.17.0-nightly (c49d10207 2017-02-07)` as of writing this)
+* A TypeScript compiler (`tsc -v` prints `Version 2.1.4`)
+* A Sass compiler (`sass -v` prints `Sass 3.4.23 (Selective Steve)`)
+* Preferably the diesel command line tool installed (`cargo install diesel_cli`)
+
 ## How to start (1. setup a database 2. create an .env file 3. start the server)
 
     $ docker run --name ganbare-postgres -d --restart=unless-stopped -e POSTGRES_USER=$USER -e POSTGRES_DB=ganbare_dev -p 127.0.0.1:5432:5432 golddranks/ganbare_database
@@ -29,13 +36,13 @@ The following have defaults, and you may omit them:
     GANBARE_IMAGES_DIR defaults to "images" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
     GANBARE_CONTENT_SECURITY_POLICY Sets the contents of Content-Security-Policy header. Defaults to "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com"
 
-During build, you need the following: 
+During build, you need the following env var too: 
 
     GANBARE_BUILDTIME_PEPPER=some 32-byte random value encoded with Base64 (usually 44 ASCII characters) for peppering the password hashes.
 
-After creating an `.env` file, start the server:
+After creating an `.env` file, start the server: (`./build_everything.sh` ensures that not only Rust but TypeScript and SCSS files are built too.)
 
-    $ cargo run
+    $ ./build_everything.sh && cargo run
 
 Navigate to localhost:8080 with your browser. For debug builds, directories `static`, `migrations` and `templates`, `audio` and `images` are used runtime.
 For release builds, only `static`, `audio` and `images` are used, as `migrations` and `templates` are compiled statically inside the binary.

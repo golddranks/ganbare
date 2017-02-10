@@ -1,7 +1,4 @@
 #!/bin/sh
-tsc
-echo "TypeScript built."
-sass src/sass/main.scss static/css/main.css
-echo "SCSS built."
-cargo build
+./build_static.sh && \
+cargo build && \
 echo "Backend built."

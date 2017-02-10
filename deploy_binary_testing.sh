@@ -9,7 +9,7 @@ DEPLOY_SITE_LINK=https://testing.ganba.re/
 DEPLOY_EMAIL_DOMAIN=ganba.re
 DEPLOY_EMAIL_SERVER=smtp.mailgun.org:587
 DEPLOY_EMAIL_SMTP_USERNAME=postmaster@ganba.re
-DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_testing_email_password)
+DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_email_password)
 DEPLOY_BUILD_NUMBER="Build number: $(cat build_number.txt) Commit: $(git log HEAD --oneline --no-walk)"
 DEPLOY_PARANOID=false
 
