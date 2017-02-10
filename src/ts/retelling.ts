@@ -238,22 +238,6 @@ function showRetelling(retelling: Retelling) {
 			});
 		});
 
-		retellingAudio.once('end', () => { setTimeout(() => {
-			questionExplanation.slideUp(normalSpeed);
-			questionText.slideDown(normalSpeed);
-			ping.play();
-			start_recording();
-			buttonSection.slideDown(quiteFast);
-				
-			setTimeout(() => {
-				console.log("Time is full.");
-				finished_recording();
-				answerList.slideUp();
-				buttonSection.slideUp();
-			}, 24000);
-	
-		}, 1000);});
-
 		when_recording_done(() => {
 			questionExplanation.text("Vastattu. Seuraava kysymys!");
 			questionExplanation.fadeIn();
@@ -267,11 +251,29 @@ function showRetelling(retelling: Retelling) {
 			}); }, 1800);
 		});
 
-		answerButton.one('click', () => {
+		let isRecordingOver = false;
+		function recordingOver() {
+			if (isRecordingOver) {
+				return;
+			}
+			isRecordingOver = true;
 			finished_recording();
 			answerList.slideUp();
 			buttonSection.slideUp();
-		});
+		}
+
+		retellingAudio.once('end', () => { setTimeout(() => {
+			questionExplanation.slideUp(normalSpeed);
+			questionText.slideDown(normalSpeed);
+			ping.play();
+			start_recording();
+			buttonSection.slideDown(quiteFast);
+
+			setTimeout(recordingOver, 24000);
+	
+		}, 1000);});
+
+		answerButton.one('click', recordingOver);
 	});
 }
 
