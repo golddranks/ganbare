@@ -460,7 +460,7 @@ pub fn time_it<O, F: FnOnce() -> O>(log_duration: Duration,
     let end = Instant::now();
     let lag = end.duration_since(start);
     if lag > log_duration {
-        debug!("{} took {:?}!", log_msg, lag);
+        debug!("{} took {}s {}ms!", log_msg, lag.as_secs(), lag.subsec_nanos()/1_000_000);
     }
     res
 }

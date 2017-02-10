@@ -861,7 +861,7 @@ function showExercise(exercise: ExerciseJson) {
 		word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
 		
 			let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
-			setTimeout( start_recording, 1500);
+			setTimeout( start_recording, 1200);
 			console.log("Exercise started");
 			wordShowSection.slideDown();
 			exerciseOkButton.show();
