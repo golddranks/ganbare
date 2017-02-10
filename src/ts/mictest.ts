@@ -31,6 +31,7 @@ function connectionFailMessage(e) : void {
 }
 
 function errorMessage(e) : void {
+	console.log(e);
 	errorSection.show();
 	errorStatus.html(e);
 	main.addClass("errorOn");
@@ -59,11 +60,13 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 		}
 
 		function finishedCB() {
+			$(".recordIcon").removeClass("recordingNow");
 			console.log("Stopping recording.");
 			rec.stop();
 		}
 
 		function startCB() {
+			$(".recordIcon").addClass("recordingNow");
 			console.log("Start recording.");
 			rec.start();
 		}
@@ -164,10 +167,13 @@ function checkMic() {
 		}
 		start_rec();
 
-		console.log("Setting up the rec done button.");
+		let recDoneRun = false;
 
-		$("#recDone").prop('disabled', false);
-		$("#recDone").one('click',function() {
+		function recDone() {
+			if (recDoneRun) {
+				return;
+			}
+			recDoneRun = true;
 			$("#recDone").prop('disabled', true);
 			finished_rec();
 			after_done_rec((random_token) => {

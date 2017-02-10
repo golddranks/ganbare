@@ -194,11 +194,13 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 		}
 
 		function finishedCB() {
+			$(".recordIcon").removeClass("recordingNow");
 			console.log("Stopping recording.");
 			rec.stop();
 		}
 
 		function startCB() {
+			$(".recordIcon").addClass("recordingNow");
 			console.log("Start recording.");
 			rec.start();
 		}
@@ -847,7 +849,7 @@ function showExercise(exercise: ExerciseJson) {
 		word_avatar.show();
 		word_avatar.css('opacity', '0');
 		if (recording_supported) {
-			wordStatus.html("Äännä parhaasi mukaan!<br>Äänesi nauhoitetaan.").show();
+			wordStatus.html('Äännä parhaasi mukaan!<br>Äänesi nauhoitetaan.<img src="/static/images/record.png" class="recordIcon">').show();
 		} else {
 			wordStatus.html("Äännä parhaasi mukaan!<br>(Selaimesi ei tue äänen nauhoitusta).").show();
 		}
@@ -859,8 +861,8 @@ function showExercise(exercise: ExerciseJson) {
 		word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
 		
 			let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
-			start_recording();
-			console.log("exercise started");
+			setTimeout( start_recording, 1500);
+			console.log("Exercise started");
 			wordShowSection.slideDown();
 			exerciseOkButton.show();
 			buttonSection.show();

@@ -539,6 +539,25 @@ span.accent {
 	font-size: 11px;
 }
 
+.recordIcon {
+	width: 2em;
+	height: 2em;
+	opacity: 0;
+	vertical-align: -24%;
+	margin-left: 0.4em;
+	margin-right: 0.4em;
+}
+
+@keyframes blinking {
+    0%   {opacity: 0.2;}
+    50%   {opacity: 1.0;}
+    100%   {opacity: 0.2;}
+}
+.recordIcon.recordingNow {
+	animation-direction: alternate;
+	animation: blinking 1.2s ease-in-out infinite;
+}
+
 .narrName {
 	 display: inline-block;
 	 overflow: hidden;
