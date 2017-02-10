@@ -803,15 +803,18 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
     use rand::Rng;
     use time;
 
-    let cl = err_400!(req.headers().get::<ContentLength>(), "Content-Length must be set!").0;
-    debug!("post_useraudio. Content-Length: {:?}", cl);
-    if cl > 60_000 {
-        return Ok(bad_request("Too big audio file! It must be under 60kB"));
-    }
-
     let event_name = req.view_args
         .remove("event_name")
         .expect("Pencil guarantees that Line ID should exist as an arg.");
+
+    let cl = err_400!(req.headers().get::<ContentLength>(), "Content-Length must be set!").0;
+    debug!("post_useraudio. Content-Length: {:?}", cl);
+    
+    if cl > 60_000 && event_name != "pretest_retelling" && event_name != "posttest_retelling" {
+        return Ok(bad_request("Too big audio file! It must be under 60kB"));
+    } else if cl > 180_000 {
+        return Ok(bad_request("Too big audio file! It must be under 180kB"));
+    } 
 
     let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
 

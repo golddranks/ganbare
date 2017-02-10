@@ -140,6 +140,13 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 		function dataAvailListener(ev: RecordingDataAvailableEvent) {
 			rec.removeEventListener("dataAvailable", dataAvailListener);
 			console.log("Recorded data is available!", ev);
+
+			if (ev.detail.length > 180000) {
+				errorMessage("Ääni oli niin pitkä että sitä ei voida lähettää :(");
+				setTimeout(function() { clearError() }, 3000);
+				return;
+			}
+
 			$.ajax({
 				type: 'POST',
 				url: "/api/user_audio?event="+eventName,
@@ -207,7 +214,7 @@ function showRetelling(retelling: Retelling) {
 	startRecording(event_name, (recording_supported, start_recording, finished_recording, when_recording_done) => {
 		answerList.hide();
 		questionText.hide();
-		questionText.html('Kerro, mitä kuvassa tapahtuu.<br>Nauhoitus käynnissä.<img src="/static/images/record.png" class="recordIcon">');
+		questionText.html('Kerro, mitä kuvassa tapahtuu.<br>Aikaa on max 24 sekuntia.<br>Nauhoitus käynnissä.<img src="/static/images/record.png" class="recordIcon">');
 		questionSectionFlexContainer.show();
 		questionSection.show();
 		questionExplanation.html("Kuuntele, mitä kuvassa tapahtuu.<br>Selitys loppuu äänimerkkiin. Selityksen loputtua<br>on sinun vuorosi kertoa kuulemasi uudestaan.<br>Äänesi nauhoitetaan.");
@@ -237,21 +244,30 @@ function showRetelling(retelling: Retelling) {
 			ping.play();
 			start_recording();
 			buttonSection.slideDown(quiteFast);
+				
+			setTimeout(() => {
+				console.log("Time is full.");
+				finished_recording();
+				answerList.slideUp();
+				buttonSection.slideUp();
+			}, 24000);
+	
 		}, 1000);});
 
+		when_recording_done(() => {
+			questionExplanation.text("Vastattu. Seuraava kysymys!");
+			questionExplanation.fadeIn();
+			setTimeout(() => { questionExplanation.slideUp(normalSpeed, ()=> {
+				var jqxhr = $.getJSON("/api/next_retelling?event="+event_name, showRetelling);
+				jqxhr.fail(function(e) {
+					console.log("Connection fails with getJSON. (/api/next_retelling)");
+					connectionFailMessage(e);
+					setTimeout(start, 3000);
+				});
+			}); }, 1800);
+		});
+
 		answerButton.one('click', () => {
-			when_recording_done(() => {
-				questionExplanation.text("Vastattu. Seuraava kysymys!");
-				questionExplanation.fadeIn();
-				setTimeout(() => { questionExplanation.slideUp(normalSpeed, ()=> {
-					var jqxhr = $.getJSON("/api/next_retelling?event="+event_name, showRetelling);
-					jqxhr.fail(function(e) {
-						console.log("Connection fails with getJSON. (/api/next_retelling)");
-						connectionFailMessage(e);
-						setTimeout(start, 3000);
-					});
-				}); }, 1800);
-			});
 			finished_recording();
 			answerList.slideUp();
 			buttonSection.slideUp();
