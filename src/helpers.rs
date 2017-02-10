@@ -382,27 +382,20 @@ pub fn auth_user(req: &mut Request,
                  required_group: &str)
                  -> StdResult<(PgConnection, User, Session), PencilError> {
 
-    let start = Instant::now();
-    let result =
-    match try_auth_user(req)? {
-        Some((conn, user, sess)) => {
-            if user::check_user_group(&conn, user.id, required_group).err_500()? {
-                Ok((conn, user, sess))
-            } else {
-                Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
+    time_it(Duration::from_millis(100), "authenticating", || {
+        match try_auth_user(req)? {
+            Some((conn, user, sess)) => {
+                if user::check_user_group(&conn, user.id, required_group).err_500()? {
+                    Ok((conn, user, sess))
+                } else {
+                    Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
+                }
+            }
+            None => {
+                Err(abort(401).unwrap_err()) // User isn't logged in
             }
         }
-        None => {
-            Err(abort(401).unwrap_err()) // User isn't logged in
-        }
-    };
-    let end = Instant::now();
-    let lag = end.duration_since(start);
-    if lag > std::time::Duration::from_millis(80) {
-        debug!("Authenticating took {:?} ms", lag.subsec_nanos()/1_000_000);
-    }
-    result
-
+    })
 }
 
 pub fn try_auth_user(req: &mut Request)
