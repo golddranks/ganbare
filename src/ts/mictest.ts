@@ -86,6 +86,13 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 			rec.removeEventListener("dataAvailable", dataAvailListener);
 			console.log("Recorded data is available!", ev);
 
+			if (ev.detail.length > 60000) {
+				errorMessage("Ääni oli niin pitkä että sitä ei voida lähettää :(");
+				getReadyForFirstTest();
+				setTimeout(function() { clearError() }, 3000);
+				return;
+			}
+
 			function sendAudioData() {
 				$.ajax({
 					type: 'POST',
@@ -98,9 +105,13 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 						console.log("Recorded audio saved successfully!");
 						doneSemaphore(random_token);
 					}, 
-					error: function(err) {
+					error: function(xhr, textStatus, err) {
+						if (xhr.status === 400) {
+							errorMessage("Audio file was too big. :(");
+							return;
+						}
 						connectionFailMessage(err);
-						console.log("Error with saving recorded audio!");
+						console.log("Error with saving recorded audio! xhr:", xhr, 'textStatus:', textStatus, 'err:', err);
 						setTimeout(sendAudioData, 2000);
 					},
 				});
@@ -167,17 +178,24 @@ function checkMic() {
 				let recording = new Howl({ src: ["/api/mic_check.ogg?"+random_token], format: ['opus'], html5: true});
 				recording.play();
 			});
-		});
+		}
+
+		setTimeout(recDone, 8000);
+		console.log("Setting up the rec done button.");
+		$("#recDone").prop('disabled', false);
+		$("#recDone").one('click', recDone);
 	})
 }
 
-$("#checkMic").click(function() {
+function getReadyForFirstTest() {
 	$("#pretestExplanation").hide();
 	$("#micCheckOk").hide();
 	$("#micCheckExplanation").show();
 	$("#recStart").prop('disabled', false);
 	$("#recDone").prop('disabled', true);
-});
+}
+
+$("#checkMic").click(getReadyForFirstTest);
 
 $("#checkMicAgain").click(function() {
 	$("#pretestExplanation").hide();

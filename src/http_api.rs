@@ -5,6 +5,7 @@ use pencil::{abort, jsonify, Response, redirect};
 use pencil::helpers::{send_file, send_from_directory};
 use rustc_serialize;
 use regex;
+use std::io::{self, Read};
 
 
 use ganbare::audio;
@@ -15,6 +16,7 @@ use ganbare::manage;
 use ganbare::event;
 use ganbare::user;
 use ganbare::test;
+use hyper::header::ContentLength;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
@@ -480,7 +482,6 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         .parse::<i32>()
         .expect("Pencil guarantees that Line ID should be an integer.");
 
-    use std::io::Read;
     let mut text = String::new();
     req.read_to_string(&mut text).err_500()?;
 
@@ -621,7 +622,6 @@ pub fn post_question(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "editors")?;
 
-    use std::io::Read;
     let mut text = String::new();
     req.read_to_string(&mut text).err_500()?;
 
@@ -679,7 +679,6 @@ pub fn post_exercise(req: &mut Request) -> PencilResult {
 
     let (conn, _, sess) = auth_user(req, "editors")?;
 
-    use std::io::Read;
     let mut text = String::new();
     req.read_to_string(&mut text).err_500()?;
 
@@ -729,7 +728,6 @@ pub fn save_eventdata(req: &mut Request) -> PencilResult {
     let key = req.view_args.remove("key");
     let (event, _) = event::require_ongoing(&conn, &eventname, &user).err_401()?;
 
-    use std::io::Read;
     let mut text = String::new();
     req.read_to_string(&mut text).err_500()?;
 
@@ -773,7 +771,6 @@ pub fn user(req: &mut Request) -> PencilResult {
         }
         "set_metrics" => {
 
-            use std::io::Read;
             use ganbare::models::UpdateUserMetrics;
 
             let mut text = String::new();
@@ -804,6 +801,12 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
     use rand::Rng;
     use time;
 
+    let cl = err_400!(req.headers().get::<ContentLength>(), "Content-Length must be set!").0;
+    debug!("post_useraudio. Content-Length: {:?}", cl);
+    if cl > 60_000 {
+        return Ok(bad_request("Too big audio file! It must be under 60kB"));
+    }
+
     let event_name = req.view_args
         .remove("event_name")
         .expect("Pencil guarantees that Line ID should exist as an arg.");
@@ -818,7 +821,7 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
     new_path.push(&filename);
 
     let mut file = fs::File::create(&new_path).err_500()?;
-    io::copy(req, &mut file).err_500()?;
+    io::copy(&mut req.take(cl), &mut file).err_500()?;
 
     let mut rec_number = event::get_userdata(&conn, &event, &user, "rec_number")
         .err_500()?
@@ -944,13 +947,23 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
 
     match endpoint.as_ref() {
         "mic_check_rec" => {
-            debug!("mic_check_rec with random token: {}", random_token);
-            let mut audio = vec![];
-            std::io::copy(req, &mut audio).err_500()?;
-            let mut map = TEMP_AUDIO.write().err_500()?;
-            let mut queue = AUDIO_REMOVE_QUEUE.write().err_500()?;
-            map.insert(random_token, audio);
-            queue.push_front((UTC::now(), random_token));
+            let cl = err_400!(req.headers().get::<ContentLength>(), "Content-Length must be set!").0;
+            debug!("mic_check_rec with random token: {}. Content-Length: {:?}", random_token, cl);
+            if cl > 60_000 {
+                return Ok(bad_request("Too big audio file! It must be under 60kB"));
+            }
+            let mut audio = Vec::with_capacity(cl as usize);
+            io::copy(&mut req.take(cl), &mut audio).err_500()?;
+            debug!("mic_check_rec audio read into vec. Next: saving it into a temp storage");
+            {
+                let mut map = TEMP_AUDIO.write().err_500()?;
+                map.insert(random_token, audio);
+            }
+            {
+                let mut queue = AUDIO_REMOVE_QUEUE.write().err_500()?;
+                queue.push_front((UTC::now(), random_token));
+            }
+            debug!("mic_check_rec done with random token: {} ", random_token);
             jsonify(&()).refresh_cookie(&sess)
         }
         "mic_check_play" => {

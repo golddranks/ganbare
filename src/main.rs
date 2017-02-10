@@ -145,11 +145,35 @@ pub fn background_control_thread() {
             }
         }
 
-        while let Some(oldest) = AUDIO_REMOVE_QUEUE.read().unwrap().back().cloned() {
-            if oldest.0 + chrono::Duration::minutes(10) < UTC::now() {
-                let _ = AUDIO_REMOVE_QUEUE.write().unwrap().pop_back();
-                TEMP_AUDIO.write().unwrap().remove(&oldest.1);
-                debug!("Removed an old temp audio recording: {:?}", oldest);
+        while let Ok(Some(oldest)) = AUDIO_REMOVE_QUEUE
+            .try_read()
+            .or_else(|e| { debug!("The queue is locked. Skipping."); Err(e) } )
+            .and_then(|q| Ok(q.back().cloned()))
+        {
+            if oldest.0 + chrono::Duration::minutes(1) < UTC::now() {
+                let que_len = {
+                    let mut queue = match AUDIO_REMOVE_QUEUE.try_write() {
+                        Ok(guard) => guard,
+                        Err(_) => {
+                            debug!("The queue is locked. Skipping.");
+                            break;
+                        }
+                    };
+                    let _ = queue.pop_back();
+                    queue.len()
+                };
+                let map_len = {
+                    let mut map = match TEMP_AUDIO.try_write() {
+                        Ok(guard) => guard,
+                        Err(_) => {
+                            debug!("The map is locked. Skipping.");
+                            break;
+                        } 
+                    };
+                    map.remove(&oldest.1);
+                    map.len()
+                };
+                debug!("Removed an old temp audio recording: {:?}. queue length: {}, map length: {}", oldest, que_len, map_len);
             } else {
                 break;
             }
