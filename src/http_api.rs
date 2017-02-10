@@ -237,7 +237,9 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
             ganbare::event::is_ongoing(&conn, "posttest", &user).err_500()? {
             test::get_next_quiz_posttest(&conn, &user, answer, &ev).err_500()?
         } else {
-            quiz::get_next_quiz(&conn, &user, answer).err_500_debug(&user, &*req)?
+            time_it(Duration::from_millis(150), "next_quiz", || {
+                quiz::get_next_quiz(&conn, &user, answer).err_500_debug(&user, &*req)
+            })?
         };
 
     match new_quiz {
