@@ -29,3 +29,4 @@ url = "1.2"
 multi_mut = "0.1"
 cookie = { git = "https://github.com/golddranks/cookie-rs", branch = "experiments" }
 typemap = "0.3"
+error-chain = { git = "https://github.com/golddranks/error-chain", branch = "new_constructor"}

@@ -11,6 +11,8 @@ extern crate mime;
 #[macro_use]
 extern crate hyper;
 
+#[macro_use]
+extern crate error_chain;
 
 pub extern crate ganbare_backend;
 

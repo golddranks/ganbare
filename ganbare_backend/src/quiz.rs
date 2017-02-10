@@ -1080,10 +1080,10 @@ fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, 
     use rand::Rng;
 
     let (question, answers, q_audio_bundles) = try_or!{ load_question(conn, id)?,
-                else return Err(
+                else bail!(
                     ErrorKind::DatabaseOdd(
                         "This function was called on the premise that the data exists!"
-                    ).to_err()) };
+                    )) };
 
     let mut rng = thread_rng();
     let random_answer_index = rng.gen_range(0, answers.len());
@@ -1097,10 +1097,10 @@ fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, 
 
 fn ask_new_exercise(conn: &PgConnection, id: i32) -> Result<(Exercise, Word, i32)> {
     let (exercise, _, mut words) = try_or!( load_exercise(conn, id)?,
-                else return Err(
+                else bail!(
                     ErrorKind::DatabaseOdd(
                         "This function was called on the premise that the data exists!"
-                    ).to_err()) );
+                    )) );
 
     let random_answer_index = thread_rng().gen_range(0, words.len());
     let word = words.swap_remove(random_answer_index);
@@ -1120,10 +1120,10 @@ pub fn penditem_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
                 .get_result(conn)?;
 
             let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
-                else return Err(
+                else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    ).to_err()) };
+                    )) };
 
             let mut answer_choices: Vec<_> =
                 answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
@@ -1145,10 +1145,10 @@ pub fn penditem_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
                 .get_result(conn)?;
 
             let word = try_or!{ load_word(conn, asked.word_id)?,
-                else return Err(
+                else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    ).to_err()) };
+                    )) };
 
             Quiz::E(ExerciseJson {
                 quiz_type: "exercise",
@@ -1166,10 +1166,10 @@ pub fn penditem_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
                 .get_result(conn)?;
 
             let word = try_or!{ load_word(conn, asked.word_id)?,
-                else return Err(
+                else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    ).to_err()) };
+                    )) };
 
             Quiz::W(WordJson {
                 quiz_type: "word",
@@ -1357,10 +1357,10 @@ pub fn test_item(conn: &PgConnection,
             register_future_w_answer(conn, &asked_data)?;
 
             let word = try_or!{ load_word(conn, asked_data.word_id)?,
-                else return Err(
+                else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    ).to_err()) };
+                    )) };
 
             Quiz::W(WordJson {
                 quiz_type: "word",
@@ -1390,10 +1390,10 @@ pub fn test_item(conn: &PgConnection,
             register_future_q_answer(conn, &asked_data)?;
 
             let (question, answers, _) = try_or!{ load_question(conn, asked_data.question_id)?,
-                else return Err(
+                else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    ).to_err()) };
+                    )) };
 
             let mut answer_choices: Vec<_> =
                 answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
@@ -1431,10 +1431,10 @@ pub fn test_item(conn: &PgConnection,
             register_future_e_answer(conn, &asked_data)?;
 
             let word = try_or!{ load_word(conn, asked_data.word_id)?,
-                else return Err(
+                else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    ).to_err()) };
+                    )) };
 
             Quiz::E(ExerciseJson {
                 quiz_type: "exercise",

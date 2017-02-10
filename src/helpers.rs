@@ -491,7 +491,7 @@ macro_rules! parse {
     ($expression:expr) => {
         $expression
             .map(String::to_string)
-            .ok_or(ErrorKind::FormParseError.to_err())?;
+            .ok_or(Error::from_kind(ErrorKind::FormParseError))?;
     }
 }
 

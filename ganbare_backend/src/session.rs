@@ -32,7 +32,7 @@ fn token_to_bin(sessid: &str) -> Result<Vec<u8>> {
     if sessid.len() == SESSID_BITS / 4 {
         base16::decode(sessid.as_bytes()).chain_err(|| ErrorKind::BadSessId)
     } else {
-        Err(ErrorKind::BadSessId.to_err())
+        bail!(ErrorKind::BadSessId)
     }
 }
 

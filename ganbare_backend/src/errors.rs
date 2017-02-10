@@ -1,13 +1,13 @@
 error_chain! {
         foreign_links {
-            ::std::str::ParseBoolError, ParseBoolError;
-            ::std::env::VarError, VarError;
-            ::std::num::ParseIntError, ParseIntError;
-            ::std::num::ParseFloatError, ParseFloatError;
-            ::std::io::Error, StdIoError;
-            ::diesel::result::Error, DieselError;
-            ::diesel::migrations::RunMigrationsError, DieselMigrationError;
-            ::std::fmt::Error, FmtError;
+            ParseBoolError(::std::str::ParseBoolError);
+            VarError(::std::env::VarError);
+            ParseIntError(::std::num::ParseIntError);
+            ParseFloatError(::std::num::ParseFloatError);
+            StdIoError(::std::io::Error);
+            DieselError(::diesel::result::Error);
+            DieselMigrationError(::diesel::migrations::RunMigrationsError);
+            FmtError(::std::fmt::Error);
         }
         errors {
             InvalidInput {

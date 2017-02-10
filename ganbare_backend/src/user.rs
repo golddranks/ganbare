@@ -32,8 +32,8 @@ fn get_user_pass_by_email(conn: &PgConnection, user_email: &str) -> Result<(User
         .filter(users::email.eq(user_email))
         .first(&*conn)
         .map_err(|e| match e {
-            e @ NotFound => e.caused_err(|| ErrorKind::NoSuchUser(user_email.into())),
-            e => e.caused_err(|| "Error when trying to retrieve user!"),
+            e @ NotFound => Error::from_err(e, ErrorKind::NoSuchUser(user_email.into())),
+            e => Error::from_err(e, "Error when trying to retrieve user!".into()),
         })
 }
 
@@ -112,7 +112,7 @@ pub fn set_password(conn: &PgConnection,
     let (u, p): (User, Option<Password>) = users::table.left_outer_join(passwords::table)
         .filter(users::email.eq(user_email))
         .first(&*conn)
-        .map_err(|e| e.caused_err(|| "Error when trying to retrieve user!"))?;
+        .chain_err(|| "Error when trying to retrieve user!")?;
     if p.is_none() {
 
         let pw = password::set_password(password, pepper)
@@ -216,8 +216,8 @@ pub fn remove_user_by_email(conn: &PgConnection, rm_email: &str) -> Result<User>
     diesel::delete(users.filter(email.eq(rm_email)))
         .get_result(conn)
         .map_err(|e| match e {
-            e @ NotFound => e.caused_err(|| ErrorKind::NoSuchUser(rm_email.into())),
-            e => e.caused_err(|| "Couldn't remove the user!"),
+            e @ NotFound => Error::from_err(e,  ErrorKind::NoSuchUser(rm_email.into())),
+            e => Error::from_err(e, "Couldn't remove the user!".into()),
         })
 }
 

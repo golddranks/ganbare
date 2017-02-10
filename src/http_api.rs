@@ -637,29 +637,29 @@ pub fn post_question(req: &mut Request) -> PencilResult {
 
     fn parse_qq(qq: &UpdateQuestion) -> Result<NewQuizQuestion> {
         let qq = NewQuizQuestion {
-            skill_id: qq.skill_id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
-            q_name: qq.q_name.as_ref().ok_or_else(|| ErrorKind::FormParseError.to_err())?.as_str(),
+            skill_id: qq.skill_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            q_name: qq.q_name.as_ref().ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?.as_str(),
             q_explanation: qq.q_explanation
                 .as_ref()
-                .ok_or_else(|| ErrorKind::FormParseError.to_err())?
+                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
                 .as_str(),
             question_text: qq.question_text
                 .as_ref()
-                .ok_or_else(|| ErrorKind::FormParseError.to_err())?
+                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
                 .as_str(),
-            skill_level: qq.skill_level.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
+            skill_level: qq.skill_level.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
         };
         Ok(qq)
     }
 
     fn parse_aa(aa: &UpdateAnswer) -> Result<NewAnswer> {
         let aa = NewAnswer {
-            question_id: aa.question_id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
+            question_id: aa.question_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
             a_audio_bundle: aa.a_audio_bundle.unwrap_or(None),
-            q_audio_bundle: aa.q_audio_bundle.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
+            q_audio_bundle: aa.q_audio_bundle.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
             answer_text: aa.answer_text
                 .as_ref()
-                .ok_or_else(|| ErrorKind::FormParseError.to_err())?
+                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
                 .as_str(),
         };
         Ok(aa)
@@ -695,16 +695,16 @@ pub fn post_exercise(req: &mut Request) -> PencilResult {
 
     fn parse_qq(qq: &UpdateExercise) -> Result<NewExercise> {
         let qq = NewExercise {
-            skill_id: qq.skill_id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
-            skill_level: qq.skill_level.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
+            skill_id: qq.skill_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            skill_level: qq.skill_level.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
         };
         Ok(qq)
     }
 
     fn parse_aa(aa: &UpdateExerciseVariant) -> Result<ExerciseVariant> {
         let aa = ExerciseVariant {
-            id: aa.id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
-            exercise_id: aa.exercise_id.ok_or_else(|| ErrorKind::FormParseError.to_err())?,
+            id: aa.id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            exercise_id: aa.exercise_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
         };
         Ok(aa)
     }

@@ -97,7 +97,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
 
         let lowest_fieldset = str::parse::<i32>(&parse!(form.get("lowest_fieldset")))?;
         if lowest_fieldset > 10 {
-            return Err(ErrorKind::FormParseError.to_err());
+            bail!(ErrorKind::FormParseError);
         }
 
         let q_name = parse!(form.get("name"));
@@ -111,7 +111,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
             let q_variations =
                 str::parse::<i32>(&parse!(form.get(&format!("choice_{}_q_variations", i))))?;
             if lowest_fieldset > 100 {
-                return Err(ErrorKind::FormParseError.to_err());
+                bail!(ErrorKind::FormParseError);
             }
 
             let mut q_variants = Vec::with_capacity(q_variations as usize);
@@ -124,13 +124,14 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                     file.do_not_delete_on_drop();
                     q_variants.push((file.path.clone(),
                                      file.filename()
-                                         .map_err(|_| ErrorKind::FormParseError.to_err())?,
+                                         .map_err(|_| Error::from_kind(ErrorKind::FormParseError))?,
                                      file.content_type()
-                                         .ok_or_else(|| ErrorKind::FormParseError.to_err())?));
+                                         .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+                                    ));
                 }
             }
             if q_variants.is_empty() {
-                return Err(Error::from("Can't create a question with 0 audio files for question!"));
+                bail!("Can't create a question with 0 audio files for question!");
             }
             let answer_audio = files.get(&format!("choice_{}_answer_audio", i));
             let answer_audio_path;
@@ -143,9 +144,10 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                     answer_audio_path =
                         Some((cloned_path.path.clone(),
                               cloned_path.filename()
-                                  .map_err(|_| ErrorKind::FormParseError.to_err())?,
+                                  .map_err(|_| Error::from_kind(ErrorKind::FormParseError))?,
                               cloned_path.content_type()
-                                  .ok_or_else(|| ErrorKind::FormParseError.to_err())?))
+                                  .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+                            ))
                 }
             } else {
                 answer_audio_path = None;
@@ -201,7 +203,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
 
         let num_variants = str::parse::<i32>(&parse!(form.get("audio_variations")))?;
         if num_variants > 20 {
-            return Err(ErrorKind::FormParseError.to_err());
+            bail!(ErrorKind::FormParseError);
         }
 
         let word = parse!(form.get("word"));
@@ -217,9 +219,10 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
                 let mut file = file.clone();
                 file.do_not_delete_on_drop();
                 files.push((file.path.clone(),
-                            file.filename().map_err(|_| ErrorKind::FormParseError.to_err())?,
+                            file.filename().map_err(|_| Error::from_kind(ErrorKind::FormParseError))?,
                             file.content_type()
-                                .ok_or_else(|| ErrorKind::FormParseError.to_err())?));
+                                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
+                            ));
             }
         }
 

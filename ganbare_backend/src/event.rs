@@ -209,7 +209,7 @@ pub fn require_started(conn: &PgConnection,
     if let Some(ev_exp @ (Event { published: true, .. }, .. )) = ev_state {
         Ok(ev_exp)
     } else {
-        Err(ErrorKind::AccessDenied.to_err())
+        bail!(ErrorKind::AccessDenied)
     }
 }
 
@@ -223,7 +223,7 @@ pub fn require_done(conn: &PgConnection,
     if let Some(ev_exp @ (_, EventExperience { event_finish: Some(_), .. })) = ev_state {
         Ok(ev_exp)
     } else {
-        Err(ErrorKind::AccessDenied.to_err())
+        bail!(ErrorKind::AccessDenied)
     }
 }
 
@@ -235,7 +235,7 @@ pub fn require_ongoing(conn: &PgConnection,
     if let Some(ev_exp) = is_ongoing(conn, event_name, user)? {
         Ok(ev_exp)
     } else {
-        Err(ErrorKind::AccessDenied.to_err())
+        bail!(ErrorKind::AccessDenied)
     }
 }
 
