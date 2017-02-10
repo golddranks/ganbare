@@ -1,5 +1,5 @@
 #!/bin/sh
-DEPLOY_STATIC_DIR=/srv/ganbare_testing
+DEPLOY_ROOT_DIR=/srv/ganbare_testing
 DEPLOY_SERVER=ganba.re
 DEPLOY_DB_NAME=ganbare_testing
 DEPLOY_LOCAL_PEPPER=$(cat .env.ganbare_testing_runtime_pepper)
@@ -12,14 +12,13 @@ DEPLOY_EMAIL_SMTP_USERNAME=postmaster@ganba.re
 DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_email_password)
 DEPLOY_BUILD_NUMBER="Build number: $(cat build_number.txt) Commit: $(git log HEAD --oneline --no-walk)"
 DEPLOY_PARANOID=false
+DEPLOY_CONTAINER_NAME=ganbare_runner_testing
 
-rsync -r images $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
-rsync -r audio $DEPLOY_SERVER:$DEPLOY_STATIC_DIR/
 ssh $DEPLOY_SERVER /bin/sh <<EOF
 docker pull golddranks/ganbare_run
-docker stop ganbare_runner_testing && docker rm ganbare_runner_testing
+docker stop $DEPLOY_CONTAINER_NAME && docker rm $DEPLOY_CONTAINER_NAME
 docker run -d --restart=unless-stopped \
---name ganbare_runner_testing \
+--name $DEPLOY_CONTAINER_NAME \
 --link ganbare-postgres \
 -p $DEPLOY_PORT:8080 \
 -e "GANBARE_DATABASE_URL=postgres://\$(whoami)@ganbare-postgres/$DEPLOY_DB_NAME" \
@@ -33,8 +32,8 @@ docker run -d --restart=unless-stopped \
 -e "GANBARE_BUILD_NUMBER=$DEPLOY_BUILD_NUMBER" \
 -e "GANBARE_PARANOID=$DEPLOY_PARANOID" \
 -e "RUST_LOG=ganbare=debug,ganbare_backend=debug" \
--v $DEPLOY_STATIC_DIR/audio:/ganbare/audio \
--v $DEPLOY_STATIC_DIR/images:/ganbare/images \
--v $DEPLOY_STATIC_DIR/user_audio:/ganbare/user_audio \
+-v $DEPLOY_ROOT_DIR/audio:/ganbare/audio \
+-v $DEPLOY_ROOT_DIR/images:/ganbare/images \
+-v $DEPLOY_ROOT_DIR/user_audio:/ganbare/user_audio \
 golddranks/ganbare_run
 EOF

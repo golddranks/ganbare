@@ -99,7 +99,7 @@ RUN curl -sL http://www.openssl.org/source/openssl-1.0.2j.tar.gz | tar xz --stri
 
 # Install Rustup, and a Rust toolchain
 # Why nightly? Because Diesel uses compiler plugins only available on nightly.
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-02-02 && \
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-02-09 && \
     rustup target add x86_64-unknown-linux-musl
 
 # Install diesel_cli
@@ -149,7 +149,7 @@ CMD /etc/init.d/postgresql start && \
     psql -c '\q' -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
     do sleep 1; psql -c '\q' -h /var/run/postgresql -d postgres; done && \
     diesel database reset && \
-    cargo build --release --target=x86_64-unknown-linux-musl
+    cargo build --release --target=x86_64-unknown-linux-musl --features "$BUILD_FEATURES"
 
 
 # AFTER RUNNING?

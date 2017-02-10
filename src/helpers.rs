@@ -336,19 +336,21 @@ impl<T, E> CarrierInternal<T, E> for std::result::Result<T, E>
 }
 
 macro_rules! err_400 {
-    ($t:expr , $format_string:expr $(, $param:expr)* ) => { match CarrierInternal::ok_or($t) {
-        Ok(a) => { a },
-        Err(e) => {
-            use std::error::Error;
-            return Ok(bad_request(
-                format!(
-                    concat!(
-                        "<h1>HTTP 400 Bad Request {:?}: ", $format_string, "</h1>"
-                    ), e.description() $(, $param)*
-                )
-            ))
-        },
-    } }
+    ($t:expr , $format_string:expr $(, $param:expr)* ) => {
+        match CarrierInternal::ok_or($t) {
+            Ok(a) => { a },
+            Err(e) => {
+                use std::error::Error;
+                return Ok(bad_request(
+                    format!(
+                        concat!(
+                            "<h1>HTTP 400 Bad Request {:?}: ", $format_string, "</h1>"
+                        ), e.description() $(, $param)*
+                    )
+                ))
+            },
+        }
+    }
 }
 
 #[cfg(debug_assertions)]
@@ -377,12 +379,54 @@ macro_rules! include_templates(
     } }
 );
 
+#[cfg(feature="perf_trace")]
+macro_rules! time_it {
+    ($comment:expr , $code:expr) => {
+        {
+            let start = Instant::now();
+    
+            let res = $code;
+    
+            let end = Instant::now();
+            let lag = end.duration_since(start);
+            debug!("{}:{} time_it {} took {}s {}ms!",
+                file!(),
+                line!(),
+                $comment,
+                lag.as_secs(),
+                lag.subsec_nanos()/1_000_000);
+            res
+        }
+    };
+    ($code:expr) => {
+        {
+            let start = Instant::now();
+    
+            let res = $code;
+    
+            let end = Instant::now();
+            let lag = end.duration_since(start);
+            debug!("{}:{} time_it took {}s {}ms!",
+                file!(),
+                line!(),
+                lag.as_secs(),
+                lag.subsec_nanos()/1_000_000);
+            res
+        }
+    }
+}
+
+#[cfg(not(feature="perf_trace"))]
+macro_rules! time_it {
+    ($comment:expr , $code:expr) => {{ $code }};
+    ($code:expr) => {{ $code }}
+}
 
 pub fn auth_user(req: &mut Request,
                  required_group: &str)
                  -> StdResult<(PgConnection, User, Session), PencilError> {
 
-    time_it(Duration::from_millis(100), "authenticating", || {
+    time_it!{"authentication",
         match try_auth_user(req)? {
             Some((conn, user, sess)) => {
                 if user::check_user_group(&conn, user.id, required_group).err_500()? {
@@ -395,7 +439,7 @@ pub fn auth_user(req: &mut Request,
                 Err(abort(401).unwrap_err()) // User isn't logged in
             }
         }
-    })
+    }
 }
 
 pub fn try_auth_user(req: &mut Request)
@@ -449,20 +493,6 @@ macro_rules! parse {
             .map(String::to_string)
             .ok_or(ErrorKind::FormParseError.to_err())?;
     }
-}
-
-pub fn time_it<O, F: FnOnce() -> O>(log_duration: Duration,
-                                    log_msg: &str,
-                                       function: F)
-                                       -> O {
-    let start = Instant::now();
-    let res = function();
-    let end = Instant::now();
-    let lag = end.duration_since(start);
-    if lag > log_duration {
-        debug!("{} took {}s {}ms!", log_msg, lag.as_secs(), lag.subsec_nanos()/1_000_000);
-    }
-    res
 }
 
 

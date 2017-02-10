@@ -11,7 +11,7 @@ DEPLOY_IMAGES_DIR=/srv/ganbare_testing/images
 pg_dump -h localhost --data-only --column-inserts -t audio_bundles -t narrators -t skill_nuggets -t audio_files -t words -t quiz_questions -t question_answers $LOCAL_DB_NAME -f new_items_temp.sql
 rsync -r new_items_temp.sql $DEPLOY_SERVER:
 rm new_items_temp.sql
-ssh $DEPLOY_SERVER <<EOF
+ssh $DEPLOY_SERVER /bin/sh <<EOF
 psql -h localhost -d $DEPLOY_DB_NAME -f new_items_temp.sql
 rm new_items_temp.sql
 EOF

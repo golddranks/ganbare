@@ -7,6 +7,7 @@ A web service that helps me to do what I do. (Protip: Something related to Japan
 * A TypeScript compiler (`tsc -v` prints `Version 2.1.4`)
 * A Sass compiler (`sass -v` prints `Sass 3.4.23 (Selective Steve)`)
 * Preferably the diesel command line tool installed (`cargo install diesel_cli`)
+* Having `psql` installed for poking the database also helps tremendously.
 
 ## How to start (1. setup a database 2. create an .env file 3. start the server)
 
