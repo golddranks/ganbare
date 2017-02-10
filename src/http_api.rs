@@ -44,11 +44,12 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     let mut file_path = AUDIO_DIR.clone();
     file_path.push(&file_name);
 
-    send_file(file_path.to_str().expect("The path SHOULD be valid unicode!"),
-              mime_type,
-              false,
-              req.headers().get())
-        .refresh_cookie(&sess)
+    time_it(Duration::from_millis(100), "get_audio", || {
+        send_file(file_path.to_str().expect("The path SHOULD be valid unicode!"),
+                      mime_type,
+                      false,
+                      req.headers().get())
+    })  .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Audio file not found? The audio file database/folder is borked? {:?}",
@@ -85,11 +86,12 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
     let mut file_path = AUDIO_DIR.clone();
     file_path.push(&file_name);
 
-    send_file(file_path.to_str().expect("The saved file path SHOULD be valid unicode!"),
+    time_it(Duration::from_millis(100), "quiz_audio", || {
+        send_file(file_path.to_str().expect("The saved file path SHOULD be valid unicode!"),
               mime_type,
               false,
               req.headers().get())
-        .refresh_cookie(&sess)
+    })  .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Audio file not found? The audio file database/folder is borked? {:?}",
@@ -110,11 +112,12 @@ pub fn get_image(req: &mut Request) -> PencilResult {
 
     use pencil::{PencilError, HTTPError};
 
-    send_from_directory(IMAGES_DIR.to_str().expect("The image dir path should be valid unicode!"),
+    time_it(Duration::from_millis(900), "send_from_directory", || {
+        send_from_directory(IMAGES_DIR.to_str().expect("The image dir path should be valid unicode!"),
                         file_name,
                         false,
                         req.headers().get())
-        .refresh_cookie(&sess)
+    })  .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Image file not found! {}", file_name);
@@ -146,7 +149,9 @@ pub fn new_quiz(req: &mut Request) -> PencilResult {
             debug!("Posttest questions!");
             test::get_new_quiz_posttest(&conn, &user, &ev).err_500()?
         } else {
-            quiz::get_new_quiz(&conn, &user).err_500()?
+            time_it(Duration::from_millis(150), "new_quiz", || {
+                quiz::get_new_quiz(&conn, &user).err_500()
+            })?
         };
 
     match new_quiz {

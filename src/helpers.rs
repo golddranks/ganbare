@@ -458,6 +458,20 @@ macro_rules! parse {
     }
 }
 
+pub fn time_it<O, F: FnOnce() -> O>(log_duration: Duration,
+                                    log_msg: &str,
+                                       function: F)
+                                       -> O {
+    let start = Instant::now();
+    let res = function();
+    let end = Instant::now();
+    let lag = end.duration_since(start);
+    if lag > log_duration {
+        debug!("{} took {:?}!", log_msg, lag);
+    }
+    res
+}
+
 
 pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration,
                                        random_max_millis: u64,
