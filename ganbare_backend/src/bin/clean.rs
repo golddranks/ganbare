@@ -471,6 +471,83 @@ fn check_priority_levels() {
 
 }
 
+fn replace_images() {
+    use schema::{words, question_answers};
+
+    let new_images = std::fs::read_dir("src/bin/image_cleanup").unwrap();
+    let mut image_names = vec![];
+
+    for f in new_images {
+        let fname = f.unwrap().file_name();
+        let fname = fname.to_str().unwrap();
+        image_names.push((fname[0..fname.len()-4].to_owned(), fname[fname.len()-4..fname.len()].to_owned()));
+    }
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
+        .get_results(&conn)
+        .unwrap();
+
+    for mut w in words {
+        for &(ref i, ref ext) in &image_names {
+            if w.explanation.contains(i) {
+                let stitched = {
+                    let mut pieces = w.explanation.splitn(2, i);
+                    let before = pieces.next().unwrap();
+                    let ext_after = pieces.next().unwrap();
+                    let after = ext_after.splitn(2, '"').skip(1).next().unwrap();
+                    format!("{}{}{}\"{}", before, i, ext, after)
+                };
+                if w.explanation != stitched {
+                    println!("{} → {}", w.explanation, stitched);
+                    w.explanation = stitched;
+                    let _: Word = w.save_changes(&conn).unwrap();
+                }
+            }
+        }
+    }
+
+    let answers: Vec<Answer> =
+        question_answers::table.filter(question_answers::answer_text.like("%<img%"))
+            .get_results(&conn)
+            .unwrap();
+
+    for mut a in answers {
+        for &(ref i, ref ext) in &image_names {
+            if a.answer_text.contains(i) {
+                let stitched = {
+                    let mut pieces = a.answer_text.splitn(2, i);
+                    let before = pieces.next().unwrap();
+                    let ext_after = pieces.next().unwrap();
+                    let after = ext_after.splitn(2, '"').skip(1).next().unwrap();
+    
+                    format!("{}{}{}\"{}", before, i, ext, after)
+                };
+                if a.answer_text != stitched {
+                    println!("{} → {}", a.answer_text, stitched);
+                    a.answer_text = stitched;
+                    let _: Answer = a.save_changes(&conn).unwrap();
+                }
+
+            }
+        }
+    }
+
+    let new_images = std::fs::read_dir("src/bin/image_cleanup").unwrap();
+
+    for f in new_images {
+        let fname = f.unwrap().file_name();
+        let mut old_path = PathBuf::from("src/bin/image_cleanup");
+        let mut new_path = IMAGE_DIR.to_owned();
+        old_path.push(&fname);
+        new_path.push(&fname);
+        println!("{:?} → {:?}", old_path, new_path);
+        std::fs::rename(old_path, new_path).unwrap();
+    }
+
+}
+
 fn main() {
     use clap::*;
 
@@ -506,4 +583,6 @@ fn main() {
     check_priority_levels();
     println!("Merge redundant skills");
     merge_redundant_skills();
+    println!("Replace oversized images");
+    replace_images();
 }
