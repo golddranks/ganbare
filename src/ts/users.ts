@@ -285,6 +285,7 @@ function list_user_skills(user_id: number) {
 			skills[skill.id] = {skill: skill, skill_data: data, asked: new Array()};
 		});
 		$.getJSON("/api/users/"+user_id+"/asked_items", function(asked_resp) {
+			console.log(asked_resp);
 			let q_data = asked_resp[0];
 			let e_data = asked_resp[1];
 			let w_data = asked_resp[2];
@@ -318,11 +319,11 @@ function list_user_skills(user_id: number) {
 				$("<li><h2>Skill name: "+s.skill.skill_summary+" Skill level: "+s.skill_data.skill_level+"</h2></li>").appendTo(list);
 				s.asked.forEach(function(q) {
 					if (q.due_item.item_type === "word") {
-						$("<li>"+ q.due_item.item_type +": "+q.quiz.word+"</li>").appendTo(list);
+						$("<li>"+ q.due_item.item_type +" ("+q.quiz.id+"): "+q.quiz.word+"</li>").appendTo(list);
 					} else if (q.due_item.item_type === "question") {
-						$("<li>"+ q.due_item.item_type +": "+q.quiz.q_name+" Due: "+format_date(q.due_item.due_date)+" Streak: "+q.due_item.correct_streak_overall+" Microstreak: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
+						$("<li>"+ q.due_item.item_type +" ("+q.quiz.id+"): "+": "+q.quiz.q_name+" Due: "+format_date(q.due_item.due_date)+" Streak: "+q.due_item.correct_streak_overall+" Microstreak: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
 					} else if (q.due_item.item_type === "exercise") {
-						$("<li>"+ q.due_item.item_type +": "+s.skill.skill_summary+" Due: "+format_date(q.due_item.due_date)+" Streak: "+q.due_item.correct_streak_overall+" Microstreak: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
+						$("<li>"+ q.due_item.item_type +" ("+q.quiz.id+"): "+s.skill.skill_summary+" Due: "+format_date(q.due_item.due_date)+" Streak: "+q.due_item.correct_streak_overall+" Microstreak: "+q.due_item.correct_streak_this_time+"</li>").appendTo(list);
 					}
 				});
 			});
