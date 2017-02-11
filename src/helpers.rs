@@ -20,7 +20,7 @@ use ganbare::errors;
 use std::path::PathBuf;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 pub use std::time::{Instant, Duration};
-use hyper::header::{IfModifiedSince, LastModified, HttpDate};
+use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
 
 lazy_static! {
 
@@ -315,6 +315,7 @@ impl HeaderProcessor for Response {
 
     fn set_static_cache(mut self) -> Self {
         self.headers.set(LastModified(HttpDate(*TIME_AT_SERVER_START)));
+        self.headers.set(CacheControl(vec![CacheDirective::MaxAge(*CACHE_MAX_AGE)]));
         self
     }
 }
