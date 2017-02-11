@@ -47,11 +47,11 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     file_path.push(&file_name);
 
     time_it!("get_audio",
-        send_file(file_path.to_str().expect("The path SHOULD be valid unicode!"),
-                      mime_type,
-                      false,
-                      req.headers().get())
-        ).refresh_cookie(&sess)
+             send_file(file_path.to_str().expect("The path SHOULD be valid unicode!"),
+                       mime_type,
+                       false,
+                       req.headers().get()))
+        .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Audio file not found? The audio file database/folder is borked? {:?}",
@@ -89,11 +89,11 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
     file_path.push(&file_name);
 
     time_it!("quiz_audio",
-        send_file(file_path.to_str().expect("The saved file path SHOULD be valid unicode!"),
-              mime_type,
-              false,
-              req.headers().get())
-    ).refresh_cookie(&sess)
+             send_file(file_path.to_str().expect("The saved file path SHOULD be valid unicode!"),
+                       mime_type,
+                       false,
+                       req.headers().get()))
+        .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Audio file not found? The audio file database/folder is borked? {:?}",
@@ -115,11 +115,12 @@ pub fn get_image(req: &mut Request) -> PencilResult {
     use pencil::{PencilError, HTTPError};
 
     time_it!("get_image",
-        send_from_directory(IMAGES_DIR.to_str().expect("The image dir path should be valid unicode!"),
-                        file_name,
-                        false,
-                        req.headers().get())
-    ).refresh_cookie(&sess)
+             send_from_directory(IMAGES_DIR.to_str()
+                                     .expect("The image dir path should be valid unicode!"),
+                                 file_name,
+                                 false,
+                                 req.headers().get()))
+        .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Image file not found! {}", file_name);
@@ -143,20 +144,20 @@ pub fn new_quiz(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
 
     let new_quiz =
-        if let Some((ev, _)) =
-            time_it!("is_ongoing pretest", ganbare::event::is_ongoing(&conn, "pretest", &user).err_500())?
-        {
+        if let Some((ev, _)) = time_it!("is_ongoing pretest",
+                                        ganbare::event::is_ongoing(&conn, "pretest", &user)
+                                            .err_500())? {
             debug!("Pretest questions!");
             test::get_new_quiz_pretest(&conn, &user, &ev).err_500()?
-        } else if let Some((ev, _)) =
-            time_it!("is_ongoing posttest", ganbare::event::is_ongoing(&conn, "posttest", &user).err_500())?
-        {
+        } else if let Some((ev, _)) = time_it!("is_ongoing posttest",
+                                               ganbare::event::is_ongoing(&conn,
+                                                                          "posttest",
+                                                                          &user)
+                                                   .err_500())? {
             debug!("Posttest questions!");
             test::get_new_quiz_posttest(&conn, &user, &ev).err_500()?
         } else {
-            time_it!("new_quiz",
-                quiz::get_new_quiz(&conn, &user).err_500()
-            )?
+            time_it!("new_quiz", quiz::get_new_quiz(&conn, &user).err_500())?
         };
 
     match new_quiz {
@@ -240,9 +241,8 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
             ganbare::event::is_ongoing(&conn, "posttest", &user).err_500()? {
             test::get_next_quiz_posttest(&conn, &user, answer, &ev).err_500()?
         } else {
-            time_it! ("next_quiz",
-                quiz::get_next_quiz(&conn, &user, answer).err_500_debug(&user, &*req)
-            )?
+            time_it!("next_quiz",
+                     quiz::get_next_quiz(&conn, &user, answer).err_500_debug(&user, &*req))?
         };
 
     match new_quiz {
@@ -638,7 +638,10 @@ pub fn post_question(req: &mut Request) -> PencilResult {
     fn parse_qq(qq: &UpdateQuestion) -> Result<NewQuizQuestion> {
         let qq = NewQuizQuestion {
             skill_id: qq.skill_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
-            q_name: qq.q_name.as_ref().ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?.as_str(),
+            q_name: qq.q_name
+                .as_ref()
+                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
+                .as_str(),
             q_explanation: qq.q_explanation
                 .as_ref()
                 .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
@@ -656,7 +659,8 @@ pub fn post_question(req: &mut Request) -> PencilResult {
         let aa = NewAnswer {
             question_id: aa.question_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
             a_audio_bundle: aa.a_audio_bundle.unwrap_or(None),
-            q_audio_bundle: aa.q_audio_bundle.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            q_audio_bundle: aa.q_audio_bundle
+                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
             answer_text: aa.answer_text
                 .as_ref()
                 .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
@@ -810,14 +814,16 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
         .remove("event_name")
         .expect("Pencil guarantees that Line ID should exist as an arg.");
 
-    let cl = err_400!(req.headers().get::<ContentLength>(), "Content-Length must be set!").0;
+    let cl = err_400!(req.headers().get::<ContentLength>(),
+                      "Content-Length must be set!")
+        .0;
     debug!("post_useraudio. Content-Length: {:?}", cl);
-    
+
     if cl > 60_000 && event_name != "pretest_retelling" && event_name != "posttest_retelling" {
         return Ok(bad_request("Too big audio file! It must be under 60kB"));
     } else if cl > 180_000 {
         return Ok(bad_request("Too big audio file! It must be under 180kB"));
-    } 
+    }
 
     let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
 
@@ -955,8 +961,12 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
 
     match endpoint.as_ref() {
         "mic_check_rec" => {
-            let cl = err_400!(req.headers().get::<ContentLength>(), "Content-Length must be set!").0;
-            debug!("mic_check_rec with random token: {}. Content-Length: {:?}", random_token, cl);
+            let cl = err_400!(req.headers().get::<ContentLength>(),
+                              "Content-Length must be set!")
+                .0;
+            debug!("mic_check_rec with random token: {}. Content-Length: {:?}",
+                   random_token,
+                   cl);
             if cl > 60_000 {
                 return Ok(bad_request("Too big audio file! It must be under 60kB"));
             }

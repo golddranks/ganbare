@@ -175,8 +175,7 @@ pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
     let mut membership = {
         let subjects_size = user::group_size(&conn, group_name).err_500()?;
         let quota = subjects_size / 2 + subjects_size % 2;
-        let s_input_size =
-            user::group_intersection_size(&conn, group_name, "questions").err_500()?;
+        let s_input_size = user::group_intersection_size(&conn, group_name, "questions").err_500()?;
         let s_output_size =
             user::group_intersection_size(&conn, group_name, "exercises").err_500()?;
         let sort_to_input: bool = if s_input_size < quota && s_output_size < quota {

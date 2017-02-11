@@ -1,7 +1,4 @@
 #![feature(inclusive_range_syntax)]
-#![feature(field_init_shorthand)]
-#![feature(custom_derive, custom_attribute, plugin)]
-#![plugin(diesel_codegen)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -52,9 +49,9 @@ pub use ganbare::errors::{Error, ErrorKind};
 pub fn favicon(_: &mut Request) -> PencilResult {
     use pencil::helpers::send_file;
     send_file("static/images/speaker_pink.png",
-            "image/x-icon".parse().expect("We now statically this mime is good"),
-            false,
-            None)
+              "image/x-icon".parse().expect("We now statically this mime is good"),
+              false,
+              None)
 }
 
 #[cfg(debug_assertions)]
@@ -103,23 +100,23 @@ pub fn background_control_thread() {
         sleep(Duration::from_secs(5));
 
         match ganbare::email::send_nag_emails(&conn,
-                                            chrono::Duration::hours(26),
-                                            chrono::Duration::days(2),
-                                            &*EMAIL_SERVER,
-                                            &*EMAIL_SMTP_USERNAME,
-                                            &*EMAIL_SMTP_PASSWORD,
-                                            &*SITE_DOMAIN,
-                                            &*SITE_LINK,
-                                            &*app.handlebars_registry
-                                                .read()
-                                                .expect("The registry is basically \
-                                                        read-only after startup."),
-                                            (&*EMAIL_ADDRESS, &*EMAIL_NAME)) {
+                                              chrono::Duration::hours(26),
+                                              chrono::Duration::days(2),
+                                              &*EMAIL_SERVER,
+                                              &*EMAIL_SMTP_USERNAME,
+                                              &*EMAIL_SMTP_PASSWORD,
+                                              &*SITE_DOMAIN,
+                                              &*SITE_LINK,
+                                              &*app.handlebars_registry
+                                                  .read()
+                                                  .expect("The registry is basically \
+                                                           read-only after startup."),
+                                              (&*EMAIL_ADDRESS, &*EMAIL_NAME)) {
             Ok(()) => (),
             Err(e) => {
                 error!("background_control_thread::send_nag_emails: Error: {}. Cause: {:?}",
-                    e.description(),
-                    e.cause());
+                       e.description(),
+                       e.cause());
             }
         };
 
@@ -131,7 +128,7 @@ pub fn background_control_thread() {
             }
             Err(e) => {
                 error!("background_control_thread::clean_old_sessions: Error: {}",
-                    e)
+                       e)
             }
         };
 
@@ -143,15 +140,16 @@ pub fn background_control_thread() {
             }
             Err(e) => {
                 error!("background_control_thread::clean_old_pendings: Error: {}",
-                    e)
+                       e)
             }
         }
 
-        while let Ok(Some(oldest)) = AUDIO_REMOVE_QUEUE
-            .try_read()
-            .or_else(|e| { debug!("The queue is locked. Skipping."); Err(e) } )
-            .and_then(|q| Ok(q.back().cloned()))
-        {
+        while let Ok(Some(oldest)) = AUDIO_REMOVE_QUEUE.try_read()
+            .or_else(|e| {
+                debug!("The queue is locked. Skipping.");
+                Err(e)
+            })
+            .and_then(|q| Ok(q.back().cloned())) {
             if oldest.0 + chrono::Duration::minutes(1) < UTC::now() {
                 let que_len = {
                     let mut queue = match AUDIO_REMOVE_QUEUE.try_write() {
@@ -170,12 +168,16 @@ pub fn background_control_thread() {
                         Err(_) => {
                             debug!("The map is locked. Skipping.");
                             break;
-                        } 
+                        }
                     };
                     map.remove(&oldest.1);
                     map.len()
                 };
-                debug!("Removed an old temp audio recording: {:?}. queue length: {}, map length: {}", oldest, que_len, map_len);
+                debug!("Removed an old temp audio recording: {:?}. queue length: {}, map length: \
+                        {}",
+                       oldest,
+                       que_len,
+                       map_len);
             } else {
                 break;
             }
@@ -194,8 +196,8 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
 
     if req.host_domain() != &**SITE_DOMAIN {
         return Some(Ok(bad_request(format!("The host field is wrong. Expected: {}, Got: {}",
-                                        &**SITE_DOMAIN,
-                                        req.host_domain()))));
+                                           &**SITE_DOMAIN,
+                                           req.host_domain()))));
     }
 
     if method_mutating || (*PARANOID && url.starts_with("/api")) {
@@ -258,7 +260,9 @@ use std::time::Instant;
 
 #[allow(dead_code)]
 struct KeyType;
-impl typemap::Key for KeyType { type Value = Instant; }
+impl typemap::Key for KeyType {
+    type Value = Instant;
+}
 
 #[allow(unused_variables)]
 fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
@@ -276,11 +280,15 @@ fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
 fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
     #[cfg(feature="perf_trace")]
     {
-        let start = req.extensions_data.get::<KeyType>()
-            .expect("We inserted this in resp_time_start, and if this is run and that isn't, there's a bug somewhere.");
+        let start = req.extensions_data
+            .get::<KeyType>()
+            .expect("We inserted this in resp_time_start, and if this is run and that isn't, \
+                     there's a bug somewhere.");
         let end = Instant::now();
         let lag = end.duration_since(*start);
-        debug!("Request {} took {:?}s {:?}ms", req.url, lag.as_secs(), lag.subsec_nanos()/1_000_000, );
+        debug!("Request {} took {:?}s {:?}ms",
+            req.url, lag.as_secs(),
+            lag.subsec_nanos()/1_000_000, );
     }
 }
 
@@ -299,36 +307,36 @@ pub fn main() {
     let mut app = Pencil::new(".");
 
     include_templates!(app,
-                    "templates",
-                    "base.html",
-                    "fresh_install.html",
-                    "welcome.html",
-                    "join.html",
-                    "reset_password.html",
-                    "send_mail.html",
-                    "retelling.html",
-                    "hello.html",
-                    "main.html",
-                    "confirm.html",
-                    "add_quiz.html",
-                    "add_word.html",
-                    "survey.html",
-                    "audio.html",
-                    "send_pw_reset_email.html",
-                    "events.html",
-                    "manage.html",
-                    "change_password.html",
-                    "add_users.html",
-                    "email_confirm_email.html",
-                    "pw_reset_email.html",
-                    "users.html",
-                    "slacker_heatenings.html",
-                    "agreement.html",
-                    "info.html",
-                    "pretest_info.html",
-                    "pretest_done.html",
-                    "posttest_info.html",
-                    "posttest_done.html");
+                       "templates",
+                       "base.html",
+                       "fresh_install.html",
+                       "welcome.html",
+                       "join.html",
+                       "reset_password.html",
+                       "send_mail.html",
+                       "retelling.html",
+                       "hello.html",
+                       "main.html",
+                       "confirm.html",
+                       "add_quiz.html",
+                       "add_word.html",
+                       "survey.html",
+                       "audio.html",
+                       "send_pw_reset_email.html",
+                       "events.html",
+                       "manage.html",
+                       "change_password.html",
+                       "add_users.html",
+                       "email_confirm_email.html",
+                       "pw_reset_email.html",
+                       "users.html",
+                       "slacker_heatenings.html",
+                       "agreement.html",
+                       "info.html",
+                       "pretest_info.html",
+                       "pretest_done.html",
+                       "posttest_info.html",
+                       "posttest_done.html");
 
     app.enable_static_file_handling();
     app.before_request(resp_time_start);
@@ -447,16 +455,20 @@ pub fn main() {
              http_api::post_useraudio);
     app.get("/api/nuggets", "get_nuggets", http_api::get_all);
     app.get("/api/users", "get_users", http_api::get_all);
-    app.get("/api/users/<id:int>/skills", "get_skills", http_api::get_user_details);
-    app.get("/api/users/<id:int>/asked_items", "get_asked_items", http_api::get_user_details);
+    app.get("/api/users/<id:int>/skills",
+            "get_skills",
+            http_api::get_user_details);
+    app.get("/api/users/<id:int>/asked_items",
+            "get_asked_items",
+            http_api::get_user_details);
     app.get("/api/events", "get_events", http_api::get_all);
     app.put("/api/events/<id:int>",
             "update_event",
             http_api::update_item);
     app.get("/api/bundles", "get_bundles", http_api::get_all);
     app.delete("/api/bundles/<id_from:int>?merge_with=<id_to:int>",
-            "merge_bundle",
-            http_api::merge_item);
+               "merge_bundle",
+               http_api::merge_item);
     app.delete("/api/bundles/<id:int>", "del_bundle", http_api::del_item);
     app.put("/api/bundles/<id:int>",
             "update_bundle",
@@ -466,11 +478,11 @@ pub fn main() {
             http_api::update_item);
     app.get("/api/narrators", "get_narrators", http_api::get_all);
     app.delete("/api/narrators/<id_from:int>?merge_with=<id_to:int>",
-            "merge_narrator",
-            http_api::merge_item);
+               "merge_narrator",
+               http_api::merge_item);
     app.delete("/api/narrators/<id:int>",
-            "del_narrator",
-            http_api::del_item);
+               "del_narrator",
+               http_api::del_item);
     app.put("/api/narrators/<id:int>",
             "update_narrator",
             http_api::update_item);
@@ -485,11 +497,11 @@ pub fn main() {
     app.post("/api/exercises", "post_exercise", http_api::post_exercise);
     app.delete("/api/words/<id:int>", "del_word", http_api::del_item);
     app.delete("/api/questions/<id:int>",
-            "del_question",
-            http_api::del_item);
+               "del_question",
+               http_api::del_item);
     app.delete("/api/exercises/<id:int>",
-            "del_exercise",
-            http_api::del_item);
+               "del_exercise",
+               http_api::del_item);
     app.put("/api/users/<user_id:int>?add_group=<group_id:int>",
             "add_group",
             http_api::user);
@@ -501,11 +513,13 @@ pub fn main() {
             http_api::user);
     app.get("/api/groups", "get_groups", http_api::get_all);
     app.delete("/api/users/<id:int>", "del_user", http_api::del_item);
-    app.delete("/api/users/<id:int>/due_and_pending_items", "del_due_and_pending_items", http_api::del_item);
+    app.delete("/api/users/<id:int>/due_and_pending_items",
+               "del_due_and_pending_items",
+               http_api::del_item);
     app.delete("/api/skills/<id:int>", "del_skill", http_api::del_item);
     app.delete("/api/events/<id:int>/<user_id:int>",
-            "del_event_exp",
-            http_api::del_item);
+               "del_event_exp",
+               http_api::del_item);
     app.put("/api/questions/<id:int>?publish",
             "publish_questions",
             http_api::set_published);
@@ -552,13 +566,16 @@ pub fn main() {
             "put_eventdata",
             http_api::save_eventdata);
     app.post("/api/eventdata/<eventname:string>",
-            "post_eventdata",
-            http_api::save_eventdata);
+             "post_eventdata",
+             http_api::save_eventdata);
 
     std::thread::spawn(background_control_thread);
 
-    info!("Ready. Running on {}, serving at {}",
-        *SERVER_BINDING,
-        *SITE_DOMAIN);
-    app.run_threads(*SERVER_BINDING, 25);
+    let threads = 25;
+
+    info!("Ready. Running on {}, serving at {} with {} threads",
+          *SERVER_BINDING,
+          *SITE_DOMAIN,
+          threads);
+    app.run_threads(*SERVER_BINDING, threads);
 }

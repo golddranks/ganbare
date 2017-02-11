@@ -13,7 +13,7 @@ DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_email_password)
 DEPLOY_BUILD_NUMBER="Build number: $(cat build_number.txt) Commit: $(git log HEAD --oneline --no-walk)"
 DEPLOY_PARANOID=true
 DEPLOY_CONTAINER_NAME=ganbare_runner_production
-DEPLOY_LOGLEVEL=ganbare=debug,ganbare_backend=debug,pencil=debug,hyper=debug
+DEPLOY_LOGLEVEL=ganbare=debug,ganbare_backend=debug
 
 ssh $DEPLOY_SERVER /bin/sh <<EOF
 docker pull golddranks/ganbare_run

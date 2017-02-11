@@ -388,9 +388,15 @@ impl Encodable for DueItem {
             s.emit_struct_field("user_id", 1, |s| s.emit_i32(self.user_id))?;
             s.emit_struct_field("due_date", 2, |s| s.emit_str(&self.due_date.to_rfc3339()))?;
             s.emit_struct_field("due_delay", 3, |s| s.emit_i32(self.due_delay))?;
-            s.emit_struct_field("cooldown_delay", 4, |s| s.emit_str(&self.cooldown_delay.to_rfc3339()))?;
-            s.emit_struct_field("correct_streak_overall", 5, |s| s.emit_i32(self.correct_streak_overall))?;
-            s.emit_struct_field("correct_streak_this_time", 6, |s| s.emit_i32(self.correct_streak_this_time))?;
+            s.emit_struct_field("cooldown_delay",
+                                   4,
+                                   |s| s.emit_str(&self.cooldown_delay.to_rfc3339()))?;
+            s.emit_struct_field("correct_streak_overall",
+                                   5,
+                                   |s| s.emit_i32(self.correct_streak_overall))?;
+            s.emit_struct_field("correct_streak_this_time",
+                                   6,
+                                   |s| s.emit_i32(self.correct_streak_this_time))?;
             s.emit_struct_field("item_type", 7, |s| s.emit_str(&self.item_type))?;
             Ok(())
         })

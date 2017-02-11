@@ -409,7 +409,7 @@ pub fn save(conn: &PgConnection,
         bundle_id: bundle_id,
         file_path: file_path,
         mime: mime,
-        file_sha2: &audio_file_hash(&file_path, audio_dir)?[..],
+        file_sha2: &audio_file_hash(file_path, audio_dir)?[..],
     };
 
     let audio_file: AudioFile = diesel::insert(&new_q_audio).into(audio_files::table)

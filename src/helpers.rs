@@ -6,8 +6,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use ganbare::PgConnection;
 use std::collections::BTreeMap;
 use cookie::Cookie as CookiePair;
-use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie,
-             Cookie};
+use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, Cookie};
 use ganbare::models::{User, Session};
 use std::net::IpAddr;
 use time;
@@ -174,18 +173,21 @@ pub fn db_connect() -> Result<PgConnection> {
     let end = Instant::now();
     let lag = end.duration_since(start);
     if lag > std::time::Duration::from_millis(10) {
-        debug!("Connecting to DB took {:?} ms", lag.subsec_nanos()/1_000_000);
+        debug!("Connecting to DB took {:?} ms",
+               lag.subsec_nanos() / 1_000_000);
     }
     Ok(conn)
 }
 
 
-pub fn get_cookie<'a>(cookies: &'a Cookie) -> Option<&'a str> {
+pub fn get_cookie(cookies: &Cookie) -> Option<&str> {
     for c in cookies.0.iter().map(String::as_str) {
         match CookiePair::parse(c) {
-            Ok(c) => if c.name() == "session_id" {
-                return Some( c.value().long_or_panic() );
-            },
+            Ok(c) => {
+                if c.name() == "session_id" {
+                    return Some(c.value().long_or_panic());
+                }
+            }
             Err(_) => return None,
         }
     }
@@ -384,9 +386,9 @@ macro_rules! time_it {
     ($comment:expr , $code:expr) => {
         {
             let start = Instant::now();
-    
+
             let res = $code;
-    
+
             let end = Instant::now();
             let lag = end.duration_since(start);
             debug!("{}:{} time_it {} took {}s {}ms!",
@@ -401,9 +403,9 @@ macro_rules! time_it {
     ($code:expr) => {
         {
             let start = Instant::now();
-    
+
             let res = $code;
-    
+
             let end = Instant::now();
             let lag = end.duration_since(start);
             debug!("{}:{} time_it took {}s {}ms!",

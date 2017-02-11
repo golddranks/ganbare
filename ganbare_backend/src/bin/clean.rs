@@ -1,5 +1,3 @@
-#![feature(field_init_shorthand)]
-
 extern crate ganbare_backend;
 #[macro_use]
 extern crate clap;
@@ -307,7 +305,7 @@ fn fix_skill_names() {
     std::fs::File::open("src/bin/skill_cleanup.txt").unwrap().read_to_string(&mut cleanup_str)
         .expect("Why can't it read to a string?");
     let cleanup = cleanup_str.lines().map(|l| {
-        let words = l.split_at(l.find("\t").unwrap());
+        let words = l.split_at(l.find('\t').unwrap());
         (words.0, &words.1[1..])
     });
 
