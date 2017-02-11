@@ -23,8 +23,7 @@ $.get("/api/build_number", function(resp) {
 	let build = resp[0];
 	let commit = resp[1];
 	let release = resp[2];
-	let perf_trace = resp[3];
-	$("#build_number").html("Build number: "+build+"<br>Commit: "+commit+"<br>Optimised: "+release+"<br>Perf trace: "+perf_trace);
+	$("#build_number").html("Build number: "+build+"<br>Commit: "+commit+"<br>Optimised: "+release);
 });
 {{/partial}}
 

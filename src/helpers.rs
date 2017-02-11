@@ -24,6 +24,13 @@ use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, Cache
 
 lazy_static! {
 
+    pub static ref PERF_TRACE: bool = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_PERF_TRACE")
+            .map(|s| s.parse().unwrap_or(false))
+            .unwrap_or(false)
+    };
+
     pub static ref SERVER_THREADS: usize = {
         dotenv::dotenv().ok();
         env::var("GANBARE_SERVER_THREADS")
@@ -189,62 +196,39 @@ lazy_static! {
 
 }
 
-pub fn get_version_info() -> (&'static str, &'static str, bool, bool) {
+pub fn get_version_info() -> (&'static str, &'static str, bool) {
 
     #[cfg(not(debug_assertions))]
     let is_release = true;
     #[cfg(debug_assertions)]
     let is_release = false;
 
-    #[cfg(feature="perf_trace")]
-    let perf_trace = true;
-    #[cfg(not(feature="perf_trace"))]
-    let perf_trace = false;
-
-    (&*BUILD_NUMBER, &*COMMIT_NAME, is_release, perf_trace)
+    (&*BUILD_NUMBER, &*COMMIT_NAME, is_release)
 }
 
-#[cfg(feature="perf_trace")]
 macro_rules! time_it {
     ($comment:expr , $code:expr) => {
         {
-            let start = Instant::now();
-
-            let res = $code;
-
-            let end = Instant::now();
-            let lag = end.duration_since(start);
-            debug!("{}:{} time_it {} took {}s {}ms!",
-                file!(),
-                line!(),
-                $comment,
-                lag.as_secs(),
-                lag.subsec_nanos()/1_000_000);
-            res
+            if *PERF_TRACE {
+                let start = Instant::now();
+    
+                let res = $code;
+    
+                let end = Instant::now();
+                let lag = end.duration_since(start);
+                debug!("{}:{} time_it {} took {}s {}ms!",
+                    file!(),
+                    line!(),
+                    $comment,
+                    lag.as_secs(),
+                    lag.subsec_nanos()/1_000_000);
+                res
+            } else {
+                $code
+            }
         }
     };
-    ($code:expr) => {
-        {
-            let start = Instant::now();
-
-            let res = $code;
-
-            let end = Instant::now();
-            let lag = end.duration_since(start);
-            debug!("{}:{} time_it took {}s {}ms!",
-                file!(),
-                line!(),
-                lag.as_secs(),
-                lag.subsec_nanos()/1_000_000);
-            res
-        }
-    }
-}
-
-#[cfg(not(feature="perf_trace"))]
-macro_rules! time_it {
-    ($comment:expr , $code:expr) => {{ $code }};
-    ($code:expr) => {{ $code }}
+    ($code:expr) => { time_it!("", $code) };
 }
 
 pub fn db_connect() -> Result<PgConnection> {

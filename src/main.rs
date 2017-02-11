@@ -267,9 +267,7 @@ impl typemap::Key for KeyType {
 
 #[allow(unused_variables)]
 fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
-    #[cfg(feature="perf_trace")]
-    {
-        debug!("Got request {}", req.url);
+    if *PERF_TRACE {
         let start = Instant::now();
         req.extensions_data.insert::<KeyType>(start);
     }
@@ -279,8 +277,7 @@ fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
 
 #[allow(unused_variables)]
 fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
-    #[cfg(feature="perf_trace")]
-    {
+    if *PERF_TRACE {
         let start = req.extensions_data
             .get::<KeyType>()
             .expect("We inserted this in resp_time_start, and if this is run and that isn't, \
