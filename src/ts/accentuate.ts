@@ -2,6 +2,32 @@
 
 $(function() {
 
+/* menu */
+
+var main = $("#main");
+var settingsArea = $("#settings");
+var menuButton = $("#menuButton");
+
+function toggleMenu(event: Event) : void {
+	settingsArea.toggle();
+	main.toggleClass("menuOn");
+	event.stopPropagation(); 
+}
+
+function cancelMenu(event: Event): void {
+	settingsArea.hide();
+	main.removeClass("menuOn");
+	event.stopPropagation(); 
+}
+
+settingsArea.hide();
+settingsArea.click(cancelMenu);
+$("body").click(cancelMenu);
+menuButton.click(toggleMenu);
+$("#settingsMenu").click(function( event ) { event.stopPropagation(); });
+
+/* menu ends */
+
 // Accentuate 1.0
 
 function moraize(word: string): {mora:string, rising: boolean, falling: boolean, flatEnd: boolean}[] {

@@ -76,6 +76,7 @@ lazy_static! {
         RwLock::new(VecDeque::new());
 }
 
+#[allow(unused_mut)]
 pub fn background_control_thread() {
     use std::thread::sleep;
     use std::error::Error;
@@ -92,7 +93,6 @@ pub fn background_control_thread() {
         };
     }
 
-    #[allow(unused_mut)]
     let mut app = Pencil::new(".");
     include_templates!(app, "templates", "slacker_heatenings.html");
 
@@ -303,7 +303,6 @@ pub fn main() {
     ganbare::db::check(&conn).expect("Something funny with the DB!");
     info!("Database OK.");
 
-    #[allow(unused_mut)]
     let mut app = Pencil::new(".");
 
     include_templates!(app,

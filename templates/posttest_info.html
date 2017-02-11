@@ -1,4 +1,11 @@
 {{#partial main_section}}
+	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
+	<section id="settings" style="display: none;">
+		<ul id="settingsMenu">
+			<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
+			<li><a href="/change_password">Vaihda salasanaa</a></li>
+		</ul>
+	</section>
 
 	<header>
 		<h1>{{ title }}</h1>
@@ -10,5 +17,36 @@
 	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
 
 {{/partial}}
+
+{{#partial page_script_inline}}
+
+/* menu */
+
+var main = $("#main");
+var settingsArea = $("#settings");
+var menuButton = $("#menuButton");
+
+function toggleMenu(event: Event) : void {
+	settingsArea.toggle();
+	main.toggleClass("menuOn");
+	event.stopPropagation(); 
+}
+
+function cancelMenu(event: Event): void {
+	settingsArea.hide();
+	main.removeClass("menuOn");
+	event.stopPropagation(); 
+}
+
+settingsArea.hide();
+settingsArea.click(cancelMenu);
+$("body").click(cancelMenu);
+menuButton.click(toggleMenu);
+$("#settingsMenu").click(function( event ) { event.stopPropagation(); });
+
+/* menu ends */
+
+{{/partial}}
+
 
 {{~> base.html ~}}

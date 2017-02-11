@@ -5,6 +5,13 @@
 {{/partial}}
 
 {{#partial main_section}}
+	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
+	<section id="settings" style="display: none;">
+		<ul id="settingsMenu">
+			<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
+			<li><a href="/change_password">Vaihda salasanaa</a></li>
+		</ul>
+	</section>
 
 <h1>Sana-aksentista</h1>
 <section class="infoCard" id="infoCard1">
