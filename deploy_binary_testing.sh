@@ -13,6 +13,7 @@ DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_email_password)
 DEPLOY_BUILD_NUMBER="Build number: $(cat build_number.txt) Commit: $(git log HEAD --oneline --no-walk)"
 DEPLOY_PARANOID=false
 DEPLOY_CONTAINER_NAME=ganbare_runner_testing
+DEPLOY_LOGLEVEL=ganbare=debug,ganbare_backend=debug,pencil=debug,hyper=debug
 
 ssh $DEPLOY_SERVER /bin/sh <<EOF
 docker pull golddranks/ganbare_run
@@ -31,7 +32,7 @@ docker run -d --restart=unless-stopped \
 -e "GANBARE_SITE_LINK=$DEPLOY_SITE_LINK" \
 -e "GANBARE_BUILD_NUMBER=$DEPLOY_BUILD_NUMBER" \
 -e "GANBARE_PARANOID=$DEPLOY_PARANOID" \
--e "RUST_LOG=ganbare=debug,ganbare_backend=debug" \
+-e "RUST_LOG=$DEPLOY_LOGLEVEL" \
 -v $DEPLOY_ROOT_DIR/audio:/ganbare/audio \
 -v $DEPLOY_ROOT_DIR/images:/ganbare/images \
 -v $DEPLOY_ROOT_DIR/user_audio:/ganbare/user_audio \
