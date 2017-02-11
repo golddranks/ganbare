@@ -1,8 +1,5 @@
 # To Do list
 
-Need to do before beta release:
-- Final testing
-
 After starting the beta
 - Choose the posttest questions
 - Edit more sentences

@@ -91,7 +91,7 @@ pub fn background_control_thread() {
         };
     }
 
-
+    #[allow(unused_mut)]
     let mut app = Pencil::new(".");
     include_templates!(app, "templates", "slacker_heatenings.html");
 
