@@ -19,6 +19,9 @@ fn save_answer_test_item(conn: &PgConnection,
     let mut pending_item: PendingItem =
         pending_items::table.filter(pending_items::id.eq(answered_id))
             .get_result(conn)?;
+
+    assert!(pending_item.test_item);
+
     if !pending_item.pending {
         info!("The user tried to answer to the same question twice! Ignoring the later answer.");
         return Ok(());
@@ -84,6 +87,8 @@ fn get_new_quiz_test(conn: &PgConnection,
         let pending_item: PendingItem =
             pending_items::table.filter(pending_items::id.eq(pending_test_item))
                 .get_result(conn)?;
+
+        assert!(pending_item.test_item);
 
         println!("Returning a pending item ID {}.", pending_item.id);
 

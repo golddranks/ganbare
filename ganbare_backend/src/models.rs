@@ -430,6 +430,7 @@ pub struct PendingItem {
     pub asked_date: DateTime<UTC>,
     pub pending: bool,
     pub item_type: String,
+    pub test_item: bool,
 }
 
 #[derive(Insertable, Associations, Debug, AsChangeset)]
@@ -438,6 +439,7 @@ pub struct NewPendingItem<'a> {
     pub user_id: i32,
     pub audio_file_id: i32,
     pub item_type: &'a str,
+    pub test_item: bool,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, Clone, AsChangeset)]

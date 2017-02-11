@@ -1,0 +1,1 @@
+ALTER TABLE pending_items ADD COLUMN test_item BOOLEAN NOT NULL DEFAULT false;

@@ -229,7 +229,7 @@ pub mod skill {
 
         let data_w: Vec<(PendingItem, WAskedData)> = pending_items::table
             .inner_join(w_asked_data::table)
-            .filter(pending_items::user_id.eq(user_id))
+            .filter(pending_items::user_id.eq(user_id).and(pending_items::test_item.eq(false)))
             .get_results(conn)?;
 
         let mut words: Vec<Word> = vec![];

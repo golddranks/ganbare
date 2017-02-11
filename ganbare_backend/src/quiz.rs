@@ -75,7 +75,8 @@ pub struct WordJson {
 
 fn new_pending_item(conn: &PgConnection,
                     user_id: i32,
-                    quiz_n_audio: QuizType)
+                    quiz_n_audio: QuizType,
+                    test_item: bool)
                     -> Result<PendingItem> {
     use schema::pending_items;
     use self::QuizType::*;
@@ -87,9 +88,10 @@ fn new_pending_item(conn: &PgConnection,
     };
 
     Ok(diesel::insert(&NewPendingItem {
-            user_id: user_id,
-            audio_file_id: audio_file_id,
-            item_type: item_type,
+            user_id,
+            audio_file_id,
+            item_type,
+            test_item,
         }).into(pending_items::table)
         .get_result(conn)?)
 }
@@ -283,7 +285,8 @@ fn log_answer_question(conn: &PgConnection,
 
         let pending_item = new_pending_item(conn,
                                             user.id,
-                                            QuizType::Question(pending_item.audio_file_id))?;
+                                            QuizType::Question(pending_item.audio_file_id),
+                                            false)?;
         let asked_data = QAskedData {
             id: pending_item.id,
             question_id: asked.question_id,
@@ -376,7 +379,8 @@ fn log_answer_exercise(conn: &PgConnection,
 
         let pending_item = new_pending_item(conn,
                                             user.id,
-                                            QuizType::Exercise(pending_item.audio_file_id))?;
+                                            QuizType::Exercise(pending_item.audio_file_id),
+                                            false)?;
         let asked_data = EAskedData {
             id: pending_item.id,
             exercise_id: asked.exercise_id,
@@ -827,7 +831,7 @@ WHERE
             FROM pending_items
             JOIN w_asked_data
             ON pending_items.id=w_asked_data.id
-            WHERE user_id={}
+            WHERE user_id={} AND pending_items.test_item=false
     )
 ORDER BY words.priority DESC, RANDOM();
 "###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
@@ -906,7 +910,7 @@ WHERE
             FROM pending_items
             JOIN w_asked_data
             ON pending_items.id=w_asked_data.id
-            WHERE user_id={}
+            WHERE user_id={} AND pending_items.test_item=false
     )
 ORDER BY words.priority DESC, RANDOM();
 "###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
@@ -1188,7 +1192,7 @@ pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Q
 
     let pending_item: Option<PendingItem> =
         pending_items::table.filter(pending_items::user_id.eq(user_id))
-            .filter(pending_items::pending.eq(true))
+            .filter(pending_items::pending.eq(true).and(pending_items::test_item.eq(false)))
             .get_result(conn)
             .optional()?;
 
@@ -1209,7 +1213,7 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
 
             let (question, right_a_id, answers, q_audio_id) = ask_new_question(conn, id)?;
 
-            let pending_item = new_pending_item(conn, user.id, QuizType::Question(q_audio_id))?;
+            let pending_item = new_pending_item(conn, user.id, QuizType::Question(q_audio_id), false)?;
 
             let asked_data = QAskedData {
                 id: pending_item.id,
@@ -1239,7 +1243,7 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
 
             let (exercise, word, audio_id) = ask_new_exercise(conn, id)?;
 
-            let pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id))?;
+            let pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id), false)?;
 
             let asked_data = EAskedData {
                 id: pending_item.id,
@@ -1269,7 +1273,7 @@ pub fn return_word(conn: &PgConnection, user: &User, the_word: Word) -> Result<O
     let audio_file = audio::load_random_from_bundle(&*conn, the_word.audio_bundle)?;
     let show_accents = user::check_user_group(conn, user.id, "show_accents")?;
 
-    let pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_file.id))?;
+    let pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_file.id), false)?;
 
     let asked_data = WAskedData {
         id: pending_item.id,
@@ -1346,7 +1350,7 @@ pub fn test_item(conn: &PgConnection,
 
             assert_eq!(w.audio_bundle, a.bundle_id);
             
-            pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id))?;
+            pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id), true)?;
 
             let asked_data = WAskedData {
                 id: pending_item.id,
@@ -1379,7 +1383,7 @@ pub fn test_item(conn: &PgConnection,
 
             assert_eq!(ans.q_audio_bundle, a.bundle_id);
 
-            pending_item = new_pending_item(conn, user.id, QuizType::Question(audio_id))?;
+            pending_item = new_pending_item(conn, user.id, QuizType::Question(audio_id), true)?;
 
             let asked_data = QAskedData {
                 id: pending_item.id,
@@ -1420,7 +1424,7 @@ pub fn test_item(conn: &PgConnection,
 
             assert_eq!(w.audio_bundle, a.bundle_id);
 
-            pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id))?;
+            pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id), true)?;
 
             let asked_data = EAskedData {
                 id: pending_item.id,
