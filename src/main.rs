@@ -338,8 +338,10 @@ pub fn main() {
                        "posttest_done.html");
 
     app.enable_static_file_handling_with_cache(Duration::from_secs(*CACHE_MAX_AGE as u64));
-    app.before_request(check_if_cached);
+
+    // Note: resp_time_start MUST be the first one
     app.before_request(resp_time_start);
+    app.before_request(check_if_cached);
     app.before_request(csrf_check);
     app.after_request(set_headers);
     app.after_request(resp_time_stop);
