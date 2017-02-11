@@ -6,7 +6,7 @@
 {{#partial main_section}}
 
 	<h1>Manager</h1>
-	<p style="max-width: 28em; margin: auto;">Ganbare build version: <span id="build_number"></span></p>
+	<p style="max-width: 28em; margin: auto;" id="build_number"></p>
 	<p><input type="checkbox" id="priorityFilterToggle" checked="checked"><label for="priorityFilterToggle">Priority filter</label>
 	<input type="number" value="2" id="priorityFilterValue"></p>
 	<p>Show only <input type="checkbox" id="onlyPublishedStuffToggle" checked="checked"><label for="onlyPublishedStuffToggle">published</label>
@@ -19,7 +19,13 @@
 {{/partial}}
 
 {{#partial page_script_inline}}
-$("#build_number").load("/api/build_number");
+$.get("/api/build_number", function(resp) {
+	let build = resp[0];
+	let commit = resp[1];
+	let release = resp[2];
+	let perf_trace = resp[3];
+	$("#build_number").html("Build number: "+build+"<br>Commit: "+commit+"<br>Optimised: "+release+"<br>Perf trace: "+perf_trace);
+});
 {{/partial}}
 
 {{~> base.html main_class="fullwidth" ~}}

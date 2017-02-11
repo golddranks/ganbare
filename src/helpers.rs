@@ -163,6 +163,12 @@ lazy_static! {
             .unwrap_or_else(|_| "not set".into())
     };
 
+    pub static ref COMMIT_NAME : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_COMMIT_NAME")
+            .unwrap_or_else(|_| "not set".into())
+    };
+
     pub static ref CONTENT_SECURITY_POLICY : String = {
         dotenv::dotenv().ok();
         env::var("GANBARE_CONTENT_SECURITY_POLICY")
@@ -174,6 +180,21 @@ lazy_static! {
             )
     };
 
+}
+
+pub fn get_version_info() -> (&'static str, &'static str, bool, bool) {
+
+    #[cfg(not(debug_assertions))]
+    let is_release = true;
+    #[cfg(debug_assertions)]
+    let is_release = false;
+
+    #[cfg(feature="perf_trace")]
+    let perf_trace = true;
+    #[cfg(not(feature="perf_trace"))]
+    let perf_trace = false;
+
+    (&*BUILD_NUMBER, &*COMMIT_NAME, is_release, perf_trace)
 }
 
 #[cfg(feature="perf_trace")]
