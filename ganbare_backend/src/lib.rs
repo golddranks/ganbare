@@ -27,6 +27,7 @@ extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;
 extern crate reqwest;
+extern crate dotenv;
 
 pub use try_map::{FallibleMapExt, FlipResultExt};
 
@@ -38,6 +39,45 @@ pub use diesel::pg::PgConnection;
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
 }
+
+
+lazy_static! {
+
+    pub static ref PERF_TRACE: bool = {
+        dotenv::dotenv().ok();
+        std::env::var("GANBARE_PERF_TRACE")
+            .map(|s| s.parse().unwrap_or(false))
+            .unwrap_or(false)
+    };
+}
+
+#[macro_export]
+macro_rules! time_it {
+    ($comment:expr , $code:expr) => {
+        {
+            if *PERF_TRACE {
+                use std::time::Instant;
+                let start = Instant::now();
+    
+                let res = $code;
+    
+                let end = Instant::now();
+                let lag = end.duration_since(start);
+                debug!("{}:{} time_it {} took {}s {}ms!",
+                    file!(),
+                    line!(),
+                    $comment,
+                    lag.as_secs(),
+                    lag.subsec_nanos()/1_000_000);
+                res
+            } else {
+                $code
+            }
+        }
+    };
+    ($code:expr) => { time_it!("", $code) };
+}
+
 
 pub mod schema;
 pub mod models;
@@ -55,6 +95,7 @@ pub mod test;
 
 pub use models::*;
 pub use errors::*;
+
 
 
 

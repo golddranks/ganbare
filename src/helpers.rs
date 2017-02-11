@@ -22,14 +22,9 @@ pub use try_map::{FallibleMapExt, FlipResultExt};
 pub use std::time::{Instant, Duration};
 use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
 
-lazy_static! {
+pub use ganbare_backend::PERF_TRACE;
 
-    pub static ref PERF_TRACE: bool = {
-        dotenv::dotenv().ok();
-        env::var("GANBARE_PERF_TRACE")
-            .map(|s| s.parse().unwrap_or(false))
-            .unwrap_or(false)
-    };
+lazy_static! {
 
     pub static ref SERVER_THREADS: usize = {
         dotenv::dotenv().ok();
@@ -204,31 +199,6 @@ pub fn get_version_info() -> (&'static str, &'static str, bool) {
     let is_release = false;
 
     (&*BUILD_NUMBER, &*COMMIT_NAME, is_release)
-}
-
-macro_rules! time_it {
-    ($comment:expr , $code:expr) => {
-        {
-            if *PERF_TRACE {
-                let start = Instant::now();
-    
-                let res = $code;
-    
-                let end = Instant::now();
-                let lag = end.duration_since(start);
-                debug!("{}:{} time_it {} took {}s {}ms!",
-                    file!(),
-                    line!(),
-                    $comment,
-                    lag.as_secs(),
-                    lag.subsec_nanos()/1_000_000);
-                res
-            } else {
-                $code
-            }
-        }
-    };
-    ($code:expr) => { time_it!("", $code) };
 }
 
 pub fn db_connect() -> Result<PgConnection> {

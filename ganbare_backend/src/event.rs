@@ -295,6 +295,7 @@ pub fn save_userdata(conn: &PgConnection,
                      -> Result<EventUserdata> {
     use schema::event_userdata;
 
+    time_it!("save_userdata",
     match key {
         None => {
             Ok(diesel::insert(&NewEventUserdata {
@@ -324,7 +325,7 @@ pub fn save_userdata(conn: &PgConnection,
                     .get_result(conn)?)
             }
         }
-    }
+    })
 }
 
 pub fn get_userdata(conn: &PgConnection,
@@ -334,11 +335,13 @@ pub fn get_userdata(conn: &PgConnection,
                     -> Result<Option<EventUserdata>> {
     use schema::event_userdata;
 
-    let result: Option<EventUserdata> = event_userdata::table.filter(event_userdata::key.eq(key))
+    let result: Option<EventUserdata> = time_it!("get_userdata",
+    event_userdata::table.filter(event_userdata::key.eq(key))
         .filter(event_userdata::user_id.eq(user.id))
         .filter(event_userdata::event_id.eq(event.id))
         .get_result(conn)
-        .optional()?;
+        .optional()
+    )?;
 
     Ok(result)
 }

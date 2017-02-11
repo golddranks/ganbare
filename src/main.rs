@@ -11,6 +11,7 @@ extern crate hyper;
 #[macro_use]
 extern crate error_chain;
 
+#[macro_use]
 pub extern crate ganbare_backend;
 
 extern crate try_map;
