@@ -52,6 +52,7 @@ pub fn favicon(_: &mut Request) -> PencilResult {
               "image/x-icon".parse().expect("We now statically this mime is good"),
               false,
               None)
+        .set_static_cache()
 }
 
 #[cfg(debug_assertions)]
@@ -292,7 +293,6 @@ fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
     }
 }
 
-
 use pencil::Pencil;
 
 pub fn main() {
@@ -338,7 +338,8 @@ pub fn main() {
                        "posttest_info.html",
                        "posttest_done.html");
 
-    app.enable_static_file_handling();
+    app.enable_static_file_handling_with_cache(Duration::from_secs(*CACHE_MAX_AGE as u64));
+    app.before_request(check_if_cached);
     app.before_request(resp_time_start);
     app.before_request(csrf_check);
     app.after_request(set_headers);
@@ -443,9 +444,6 @@ pub fn main() {
     app.get("/api/build_number",
             "get_build_number",
             http_api::get_build_number);
-    app.get("/api/user_audio.ogg?event=<event_name:string>&last",
-            "get_last_useraudio",
-            http_api::get_useraudio);
     app.get("/api/user_audio.ogg?event=<event_name:string>&quiz_number=<quiz_number:\
              int>&rec_number=<rec_number:int>",
             "get_useraudio",

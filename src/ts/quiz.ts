@@ -912,7 +912,7 @@ function showExercise(exercise: ExerciseJson) {
 					timesAudioPlayed++;
 					when_recording_done((resp) => {
 						if (resp !== null) {
-							console.log("Recording done & uploaded. Now fetching audio from:", '/api/user_audio.ogg?event='+exercise.event_name+'&last');
+							console.log("Recording done & uploaded. Now fetching audio from:", '/api/user_audio.ogg?event='+exercise.event_name+'&quiz_number='+resp[0]+'&rec_number='+resp[1]);
 							// HTML5 is required because Chrome doesn't support audio/ogg; codecs=opus without it
 							userAudio = new Howl({ src: [
 								'/api/user_audio.ogg?event='+exercise.event_name+'&quiz_number='+resp[0]+'&rec_number='+resp[1]

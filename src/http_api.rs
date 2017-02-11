@@ -6,7 +6,7 @@ use pencil::helpers::{send_file, send_from_directory};
 use rustc_serialize;
 use regex;
 use std::io::{self, Read};
-
+use hyper::header::{ContentLength};
 
 use ganbare::audio;
 use ganbare::quiz;
@@ -16,7 +16,6 @@ use ganbare::manage;
 use ganbare::event;
 use ganbare::user;
 use ganbare::test;
-use hyper::header::ContentLength;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
@@ -51,6 +50,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
                        mime_type,
                        false,
                        req.headers().get()))
+        .set_static_cache()
         .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
@@ -93,6 +93,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
                        mime_type,
                        false,
                        req.headers().get()))
+        .set_static_cache()
         .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
@@ -120,6 +121,7 @@ pub fn get_image(req: &mut Request) -> PencilResult {
                                  file_name,
                                  false,
                                  req.headers().get()))
+        .set_static_cache()
         .refresh_cookie(&sess)
         .map_err(|e| match e {
             PencilError::PenHTTPError(HTTPError::NotFound) => {
@@ -879,18 +881,6 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
 
     let (quiz_number, rec_number) = match endpoint.as_ref() {
-        "get_last_useraudio" => {
-
-            let rec_number = event::get_userdata(&conn, &event, &user, "rec_number")
-                .err_500()?
-                .and_then(|d| d.data.parse::<usize>().ok())
-                .unwrap_or(0);
-            let quiz_number = event::get_userdata(&conn, &event, &user, "quiz_number")
-                .err_500()?
-                .and_then(|d| d.data.parse::<usize>().ok())
-                .unwrap_or(0);
-            (quiz_number, rec_number)
-        }
         "get_useraudio" => {
 
             let quiz_number = err_400!(req.view_args
@@ -930,6 +920,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
               mime::Mime::from_str("audio/ogg").unwrap(),
               false,
               req.headers().get())
+        .set_static_cache()
         .refresh_cookie(&sess)
         .map(|mut resp| {
             resp.headers.set(CacheControl(vec![CacheDirective::NoCache, CacheDirective::NoStore]));

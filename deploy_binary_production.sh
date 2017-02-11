@@ -14,6 +14,7 @@ DEPLOY_BUILD_NUMBER="Build number: $(cat build_number.txt) Commit: $(git log HEA
 DEPLOY_PARANOID=true
 DEPLOY_CONTAINER_NAME=ganbare_runner_production
 DEPLOY_LOGLEVEL=ganbare=debug,ganbare_backend=debug
+DEPLOY_CACHE_MAX_AGE=1200
 
 ssh $DEPLOY_SERVER /bin/sh <<EOF
 docker pull golddranks/ganbare_run
@@ -32,6 +33,7 @@ docker run -d --restart=unless-stopped \
 -e "GANBARE_SITE_LINK=$DEPLOY_SITE_LINK" \
 -e "GANBARE_BUILD_NUMBER=$DEPLOY_BUILD_NUMBER" \
 -e "GANBARE_PARANOID=$DEPLOY_PARANOID" \
+-e "GANBARE_CACHE_MAX_AGE=$DEPLOY_CACHE_MAX_AGE" \
 -e "RUST_LOG=$DEPLOY_LOGLEVEL" \
 -v $DEPLOY_ROOT_DIR/audio:/ganbare/audio \
 -v $DEPLOY_ROOT_DIR/images:/ganbare/images \

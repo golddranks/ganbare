@@ -20,8 +20,18 @@ use ganbare::errors;
 use std::path::PathBuf;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 pub use std::time::{Instant, Duration};
+use hyper::header::{IfModifiedSince, LastModified, HttpDate};
 
 lazy_static! {
+
+    pub static ref CACHE_MAX_AGE: u32 = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_CACHE_MAX_AGE")
+            .map(|s| s.parse().unwrap_or(30))
+            .unwrap_or(30)
+    };
+
+    pub static ref TIME_AT_SERVER_START : time::Tm = { let mut tm = time::now_utc(); tm.tm_nsec = 0; tm };
 
     pub static ref DATABASE_URL : String = {
         dotenv::dotenv().ok();
@@ -166,16 +176,54 @@ lazy_static! {
 
 }
 
+#[cfg(feature="perf_trace")]
+macro_rules! time_it {
+    ($comment:expr , $code:expr) => {
+        {
+            let start = Instant::now();
+
+            let res = $code;
+
+            let end = Instant::now();
+            let lag = end.duration_since(start);
+            debug!("{}:{} time_it {} took {}s {}ms!",
+                file!(),
+                line!(),
+                $comment,
+                lag.as_secs(),
+                lag.subsec_nanos()/1_000_000);
+            res
+        }
+    };
+    ($code:expr) => {
+        {
+            let start = Instant::now();
+
+            let res = $code;
+
+            let end = Instant::now();
+            let lag = end.duration_since(start);
+            debug!("{}:{} time_it took {}s {}ms!",
+                file!(),
+                line!(),
+                lag.as_secs(),
+                lag.subsec_nanos()/1_000_000);
+            res
+        }
+    }
+}
+
+#[cfg(not(feature="perf_trace"))]
+macro_rules! time_it {
+    ($comment:expr , $code:expr) => {{ $code }};
+    ($code:expr) => {{ $code }}
+}
+
 pub fn db_connect() -> Result<PgConnection> {
 
-    let start = Instant::now();
-    let conn = db::connect(&*DATABASE_URL)?;
-    let end = Instant::now();
-    let lag = end.duration_since(start);
-    if lag > std::time::Duration::from_millis(10) {
-        debug!("Connecting to DB took {:?} ms",
-               lag.subsec_nanos() / 1_000_000);
-    }
+    let conn = time_it!("connect to db",
+        db::connect(&*DATABASE_URL)
+    )?;
     Ok(conn)
 }
 
@@ -238,12 +286,13 @@ impl<'r, 'a, 'b, 'c> IntoIp for &'r Request<'a, 'b, 'c> {
     }
 }
 
-pub trait CookieProcessor {
+pub trait HeaderProcessor {
     fn refresh_cookie(self, &Session) -> PencilResult;
     fn expire_cookie(self) -> Self;
+    fn set_static_cache(self) -> Self;
 }
 
-impl CookieProcessor for Response {
+impl HeaderProcessor for Response {
     fn refresh_cookie(mut self, sess: &Session) -> PencilResult {
         let cookie = CookiePair::build("session_id", session::to_hex(sess))
             .path("/")
@@ -263,16 +312,27 @@ impl CookieProcessor for Response {
         self.set_cookie(SetCookie(vec![format!("{}", cookie.finish())]));
         self
     }
+
+    fn set_static_cache(mut self) -> Self {
+        self.headers.set(LastModified(HttpDate(*TIME_AT_SERVER_START)));
+        self
+    }
 }
 
-impl CookieProcessor for PencilResult {
+impl HeaderProcessor for PencilResult {
     fn refresh_cookie(self, sess: &Session) -> PencilResult {
         self.and_then(|resp| resp.refresh_cookie(sess))
     }
 
     fn expire_cookie(self) -> Self {
         self.and_then(|resp| {
-            Ok(<Response as CookieProcessor>::expire_cookie(resp))
+            Ok(<Response as HeaderProcessor>::expire_cookie(resp))
+        })
+    }
+
+    fn set_static_cache(self) -> Self {
+        self.and_then(|resp| {
+            Ok(<Response as HeaderProcessor>::set_static_cache(resp))
         })
     }
 }
@@ -381,49 +441,6 @@ macro_rules! include_templates(
     } }
 );
 
-#[cfg(feature="perf_trace")]
-macro_rules! time_it {
-    ($comment:expr , $code:expr) => {
-        {
-            let start = Instant::now();
-
-            let res = $code;
-
-            let end = Instant::now();
-            let lag = end.duration_since(start);
-            debug!("{}:{} time_it {} took {}s {}ms!",
-                file!(),
-                line!(),
-                $comment,
-                lag.as_secs(),
-                lag.subsec_nanos()/1_000_000);
-            res
-        }
-    };
-    ($code:expr) => {
-        {
-            let start = Instant::now();
-
-            let res = $code;
-
-            let end = Instant::now();
-            let lag = end.duration_since(start);
-            debug!("{}:{} time_it took {}s {}ms!",
-                file!(),
-                line!(),
-                lag.as_secs(),
-                lag.subsec_nanos()/1_000_000);
-            res
-        }
-    }
-}
-
-#[cfg(not(feature="perf_trace"))]
-macro_rules! time_it {
-    ($comment:expr , $code:expr) => {{ $code }};
-    ($code:expr) => {{ $code }}
-}
-
 pub fn auth_user(req: &mut Request,
                  required_group: &str)
                  -> StdResult<(PgConnection, User, Session), PencilError> {
@@ -467,6 +484,7 @@ pub fn check_env_vars() {
     let _ = &*DATABASE_URL;
     let _ = &*EMAIL_SERVER;
     let _ = &*SITE_DOMAIN;
+    let _ = &*TIME_AT_SERVER_START;
 }
 
 pub fn do_login<I: IntoIp>(conn: &PgConnection,
@@ -537,4 +555,22 @@ pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration,
     }
 
     result
+}
+
+
+pub fn check_if_cached(req: &mut Request) -> Option<PencilResult> {
+
+    match req.headers().get::<IfModifiedSince>() {
+        Some(&IfModifiedSince(HttpDate(tm))) if tm >= *TIME_AT_SERVER_START => {
+            let mut cached_resp = Response::new_empty();
+            cached_resp.status_code = 304;
+            return Some(Ok(cached_resp));
+        },
+        None => { // No caching requested
+            return None;
+        },
+        Some(_) => { // Stale cache
+            return None;
+        }
+    }
 }

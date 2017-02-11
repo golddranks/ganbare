@@ -674,16 +674,18 @@ dependencies = [
 [[package]]
 name = "pencil"
 version = "0.3.0"
-source = "git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare#7ab5280b2e3b39bc9e00dfb341d0ab36cc17be9c"
+source = "git+https://github.com/golddranks/pencil?branch=modifications_for_ganbare#5a20349cd6914b9b127d197cb3d089bdbd65992d"
 dependencies = [
  "formdata 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 0.25.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.10.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime_guess 1.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "typemap 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
