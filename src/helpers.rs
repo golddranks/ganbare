@@ -24,6 +24,13 @@ use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, Cache
 
 lazy_static! {
 
+    pub static ref SERVER_THREADS: usize = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_SERVER_THREADS")
+            .map(|s| s.parse().unwrap_or(20))
+            .unwrap_or(20)
+    };
+
     pub static ref CACHE_MAX_AGE: u32 = {
         dotenv::dotenv().ok();
         env::var("GANBARE_CACHE_MAX_AGE")

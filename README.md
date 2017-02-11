@@ -37,6 +37,7 @@ The following have defaults, and you may omit them:
     GANBARE_IMAGES_DIR defaults to "images" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
     GANBARE_CONTENT_SECURITY_POLICY Sets the contents of Content-Security-Policy header. Defaults to "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com"
     GANBARE_CACHE_MAX_AGE Sets the max-age of cache control of static files. Defaults to conservative 30 seconds. Change this to a larger number on production!
+    GANBARE_SERVER_THREADS Sets the amount of threads. Defaults to 20. Note that the server is syncronous at the moment, so recommended setting for production are: HAProxy with option http-server-close and server maxconns set to the same value as GANBARE_SERVER_THREADS.
 
 During build, you need the following env var too: 
 

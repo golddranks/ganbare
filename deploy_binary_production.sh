@@ -16,6 +16,7 @@ DEPLOY_PARANOID=true
 DEPLOY_CONTAINER_NAME=ganbare_runner_production
 DEPLOY_LOGLEVEL=ganbare=debug,ganbare_backend=debug
 DEPLOY_CACHE_MAX_AGE=1200
+DEPLOY_SERVER_THREADS=25
 
 ssh $DEPLOY_SERVER /bin/sh <<EOF
 docker pull golddranks/ganbare_run
@@ -36,6 +37,7 @@ docker run -d --restart=unless-stopped \
 -e "GANBARE_COMMIT_NAME=$DEPLOY_COMMIT_NAME" \
 -e "GANBARE_PARANOID=$DEPLOY_PARANOID" \
 -e "GANBARE_CACHE_MAX_AGE=$DEPLOY_CACHE_MAX_AGE" \
+-e "GANBARE_SERVER_THREADS=$DEPLOY_SERVER_THREADS" \
 -e "RUST_LOG=$DEPLOY_LOGLEVEL" \
 -v $DEPLOY_ROOT_DIR/audio:/ganbare/audio \
 -v $DEPLOY_ROOT_DIR/images:/ganbare/images \

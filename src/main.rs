@@ -568,11 +568,9 @@ pub fn main() {
 
     std::thread::spawn(background_control_thread);
 
-    let threads = 25;
-
     info!("Ready. Running on {}, serving at {} with {} threads",
           *SERVER_BINDING,
           *SITE_DOMAIN,
-          threads);
-    app.run_threads(*SERVER_BINDING, threads);
+          *SERVER_THREADS);
+    app.run_threads(*SERVER_BINDING, *SERVER_THREADS);
 }
