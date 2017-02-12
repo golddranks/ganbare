@@ -577,11 +577,12 @@ pub struct UserMetrics {
     pub initial_delay: i32,
     pub streak_limit: i32,
     pub cooldown_delay: i32,
+    pub streak_skill_bump_criteria: i32,
 }
 
 impl Encodable for UserMetrics {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("UserMetrics", 16, |s| {
+        s.emit_struct("UserMetrics", 17, |s| {
             s.emit_struct_field("id", 0, |s| s.emit_i32(self.id))?;
             s.emit_struct_field("new_words_since_break",
                                    1,
@@ -612,6 +613,7 @@ impl Encodable for UserMetrics {
             s.emit_struct_field("initial_delay", 13, |s| s.emit_i32(self.initial_delay))?;
             s.emit_struct_field("streak_limit", 14, |s| s.emit_i32(self.streak_limit))?;
             s.emit_struct_field("cooldown_delay", 15, |s| s.emit_i32(self.cooldown_delay))?;
+            s.emit_struct_field("streak_skill_bump_criteria", 16, |s| s.emit_i32(self.streak_skill_bump_criteria))?;
             Ok(())
         })
     }
@@ -637,11 +639,12 @@ pub struct UpdateUserMetrics {
     pub initial_delay: Option<i32>,
     pub streak_limit: Option<i32>,
     pub cooldown_delay: Option<i32>,
+    pub streak_skill_bump_criteria: Option<i32>,
 }
 
 impl Decodable for UpdateUserMetrics {
     fn decode<D: Decoder>(d: &mut D) -> Result<UpdateUserMetrics, D::Error> {
-        d.read_struct("UserMetrics", 16, |d| {
+        d.read_struct("UserMetrics", 17, |d| {
             Ok(UpdateUserMetrics{
                 id:
                     d.read_struct_field("id", 0, Decodable::decode)?,
@@ -682,6 +685,8 @@ impl Decodable for UpdateUserMetrics {
                     d.read_struct_field("streak_limit", 14, Decodable::decode)?,
                 cooldown_delay:
                     d.read_struct_field("cooldown_delay", 15, Decodable::decode)?,
+                streak_skill_bump_criteria:
+                    d.read_struct_field("streak_skill_bump_criteria", 16, Decodable::decode)?,
             })
         })
     }

@@ -4,7 +4,7 @@ version = "0.3.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [dependencies]
-diesel = { version = "0.10", features = ["chrono"]}
+diesel = { version = "0.10", features = ["chrono", "large-tables"]}
 diesel_codegen = {version = "0.10", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
 dotenv_macros = "0.10"
