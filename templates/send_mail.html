@@ -3,13 +3,13 @@
 	<h1>Send mail</h1>
 
 	{{#if sent}}
-		<strong class="message">Lähetetty!</strong>
+		<strong class="message">Lähetetty!</strong><br>
 	{{/if}}
 	<form action="/send_mail" method="post">
 		<h2>To:</h2>
 		<div id="userGroups">
 		</div>
-		<p><label for="from">From:</label>gamba.re 応援団 &lt;noreply@akusento.ganba.re&gt;</p>
+		<p><label for="from">From:</label>{{ sender_address }}</p>
 		<p><label for="subject">Subject:</label><input type="text" name="subject" id="subject" value="【akusento.ganba.re】" style="text-transform: none;"></p>
 
 		<textarea name="body" id="body" style="text-transform: none;"></textarea>

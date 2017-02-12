@@ -317,14 +317,19 @@ pub fn audio(req: &mut Request) -> PencilResult {
 }
 
 pub fn send_mail_form(req: &mut Request) -> PencilResult {
+    use hyper::header::Referer;
+
     let (_, _, sess) = auth_user(req, "editors")?;
 
-    let sent = req.form_mut().take("sent");
+    let sent = req.headers().get::<Referer>();
 
     let mut context = new_template_context();
+    context.insert("sender_address".into(), EMAIL_ADDRESS.to_string());
 
-    if let Some(sent) = sent {
-        context.insert("sent".into(), sent);
+    if let Some(&Referer(ref sent)) = sent {
+        if sent.ends_with("send_mail") {
+            context.insert("sent".into(), sent.to_owned());
+        }
     }
 
     req.app
@@ -370,7 +375,7 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
                                         &subject,
                                         &body).err_500()?;
 
-    redirect("/send_mail?sent=true", 303).refresh_cookie(&sess)
+    redirect("/send_mail", 303).refresh_cookie(&sess)
 }
 
 pub fn events(req: &mut Request) -> PencilResult {
