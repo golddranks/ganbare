@@ -18,7 +18,7 @@ enum Group {
 pub fn get_user_by_email(conn: &PgConnection, user_email: &str) -> Result<Option<User>> {
     use schema::users::dsl::*;
 
-    Ok(users.filter(email.eq(user_email))
+    Ok(users.filter(sql::lower(email).eq(sql::lower(user_email)))
         .first(conn)
         .optional()?)
 }
@@ -29,11 +29,11 @@ fn get_user_pass_by_email(conn: &PgConnection, user_email: &str) -> Result<(User
     use diesel::result::Error::NotFound;
 
     users::table.inner_join(passwords::table)
-        .filter(users::email.eq(user_email))
+        .filter(sql::lower(users::email).eq(sql::lower(user_email)))
         .first(&*conn)
-        .map_err(|e| match e {
-            e @ NotFound => Error::from_err(e, ErrorKind::NoSuchUser(user_email.into())),
-            e => Error::from_err(e, "Error when trying to retrieve user!".into()),
+        .or_else(|e| match e {
+            e @ NotFound => Err(e).chain_err(|| ErrorKind::NoSuchUser(user_email.into())),
+            e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
         })
 }
 
@@ -110,7 +110,7 @@ pub fn set_password(conn: &PgConnection,
     use schema::{users, passwords};
 
     let (u, p): (User, Option<Password>) = users::table.left_outer_join(passwords::table)
-        .filter(users::email.eq(user_email))
+        .filter(sql::lower(users::email).eq(sql::lower(user_email)))
         .first(&*conn)
         .chain_err(|| "Error when trying to retrieve user!")?;
     if p.is_none() {
@@ -170,7 +170,7 @@ pub fn send_pw_change_email(conn: &PgConnection, email: &str) -> Result<ResetEma
 
     let earlier_email: Option<(ResetEmailSecrets, User)> =
         reset_email_secrets::table.inner_join(users::table)
-            .filter(users::email.eq(email))
+            .filter(sql::lower(users::email).eq(sql::lower(email)))
             .order(reset_email_secrets::added.desc())
             .get_result(conn)
             .optional()?;
@@ -187,7 +187,7 @@ pub fn send_pw_change_email(conn: &PgConnection, email: &str) -> Result<ResetEma
         }
     }
 
-    let user: Option<User> = users::table.filter(users::email.eq(&email))
+    let user: Option<User> = users::table.filter(sql::lower(users::email).eq(sql::lower(&email)))
         .get_result(conn)
         .optional()?;
 
@@ -213,7 +213,7 @@ pub fn remove_user_by_email(conn: &PgConnection, rm_email: &str) -> Result<User>
     use schema::users::dsl::*;
     use diesel::result::Error::NotFound;
 
-    diesel::delete(users.filter(email.eq(rm_email)))
+    diesel::delete(users.filter(sql::lower(email).eq(sql::lower(rm_email))))
         .get_result(conn)
         .map_err(|e| match e {
             e @ NotFound => Error::from_err(e,  ErrorKind::NoSuchUser(rm_email.into())),
@@ -359,17 +359,34 @@ pub fn join_user_group_by_name(conn: &PgConnection,
                                group_name: &str)
                                -> Result<GroupMembership> {
     use schema::{user_groups, group_memberships};
+    use diesel::result::Error::DatabaseError;
+    use diesel::result::DatabaseErrorKind::UniqueViolation;
 
     let group: UserGroup = user_groups::table.filter(user_groups::group_name.eq(group_name))
         .first(conn)?;
 
-    let membership: GroupMembership = diesel::insert(&GroupMembership {
+        // FIXME when diesel gets UPSERT, streamline this
+    let membership: Option<GroupMembership> = diesel::insert(&GroupMembership {
             user_id: user.id,
             group_id: group.id,
             anonymous: false,
         }).into(group_memberships::table)
-        .get_result(conn)?;
-    Ok(membership)
+        .get_result(conn)
+        .optional()
+        .or_else(|e| match e {
+            DatabaseError(UniqueViolation, _) => Ok(None),
+            e => Err(e),
+        })?;
+
+    if let Some(membership) = membership {
+        Ok(membership)
+    } else {
+        Ok(group_memberships::table
+            .filter(group_memberships::user_id.eq(user.id)
+                .and(group_memberships::group_id.eq(group.id)))
+            .get_result(conn)?)
+    }
+
 }
 
 pub fn remove_user_group_by_name(conn: &PgConnection,

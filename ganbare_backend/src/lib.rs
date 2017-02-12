@@ -100,7 +100,10 @@ pub use errors::*;
 
 
 pub mod sql {
-    no_arg_sql_function!(random, ::diesel::types::Numeric);
+    use ::diesel::types;
+
+    no_arg_sql_function!(random, types::Numeric);
+    sql_function!(lower, lower_sql_function, (string: types::Nullable<types::Text>) -> types::Nullable<types::Text>);
 }
 
 

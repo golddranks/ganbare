@@ -88,6 +88,9 @@ pub fn ok(req: &mut Request) -> PencilResult {
 pub fn survey(req: &mut Request) -> PencilResult {
     let (conn, user, sess) = auth_user(req, "")?;
     let (event, _) = event::require_ongoing(&conn, "survey", &user).err_401()?;
+
+    user::join_user_group_by_name(&conn, &user, "nag_emails").err_500()?;
+
     let mut context = new_template_context();
     context.insert("event_name".into(), "survey".into());
     let answered_questions = event::get_userdata(&conn, &event, &user, "answered_questions")
@@ -263,7 +266,7 @@ pub fn login_post(req: &mut Request) -> PencilResult {
         match do_login(&conn, &email, &plaintext_pw, ip).err_500()? {
             Some((_, sess)) => redirect("/", 303).refresh_cookie(&sess),
             None => {
-                warn!("Failed login.");
+                warn!("Failed login: {}", &email);
                 let mut context = new_template_context();
                 context.insert("email".to_string(), email);
                 context.insert("authError".to_string(), "true".to_string());
@@ -503,8 +506,8 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
                                        (&*EMAIL_ADDRESS, &*EMAIL_NAME)).err_500()?;
             redirect("/send_password_reset_email?sent=true", 303)
         }
-        Err(Error(ErrorKind::NoSuchUser(_), _)) => {
-            warn!("Trying to reset the password of non-existent address!");
+        Err(Error(ErrorKind::NoSuchUser(user), _)) => {
+            warn!("Trying to reset the password of non-existent address: {}", user);
             let mut context = new_template_context();
             context.insert("error".to_string(), "No such e-mail address :(".into());
             context.insert("show_form".to_string(), "show_form".into());
