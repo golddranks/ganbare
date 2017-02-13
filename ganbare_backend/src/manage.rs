@@ -20,7 +20,7 @@ pub struct NewQuestion {
     pub skill_nugget: String,
 }
 
-pub fn create_quiz(conn: &PgConnection,
+pub fn create_quiz(conn: &Connection,
                    new_q: NewQuestion,
                    mut answers: Vec<Fieldset>,
                    audio_dir: &Path)
@@ -52,7 +52,7 @@ pub fn create_quiz(conn: &PgConnection,
     };
 
     let quiz: QuizQuestion = diesel::insert(&new_quiz).into(quiz_questions::table)
-        .get_result(&*conn)
+        .get_result(&**conn)
         .chain_err(|| "Couldn't create a new question!")?;
 
     info!("{:?}", &quiz);
@@ -86,7 +86,7 @@ pub fn create_quiz(conn: &PgConnection,
         };
 
         let answer: Answer = diesel::insert(&new_answer).into(question_answers::table)
-            .get_result(&*conn)
+            .get_result(&**conn)
             .chain_err(|| "Couldn't create a new answer!")?;
 
         info!("{:?}", &answer);
@@ -115,7 +115,7 @@ pub struct NewAudio<'a> {
 }
 
 
-pub fn add_audio(conn: &PgConnection, w: NewAudio, audio_dir: &Path) -> Result<AudioBundle> {
+pub fn add_audio(conn: &Connection, w: NewAudio, audio_dir: &Path) -> Result<AudioBundle> {
 
     info!("Add audio {:?}", w);
 
@@ -130,7 +130,7 @@ pub fn add_audio(conn: &PgConnection, w: NewAudio, audio_dir: &Path) -> Result<A
     Ok(bundle)
 }
 
-pub fn create_or_update_word(conn: &PgConnection,
+pub fn create_or_update_word(conn: &Connection,
                              w: NewWordFromStrings,
                              audio_dir: &Path)
                              -> Result<Word> {
@@ -149,7 +149,7 @@ pub fn create_or_update_word(conn: &PgConnection,
     let bundle = bundle.expect("The audio bundle is initialized by now.");
 
     let word = words::table.filter(words::word.eq(&w.word))
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
 
     if let Some(word) = word {
@@ -166,13 +166,13 @@ pub fn create_or_update_word(conn: &PgConnection,
         };
 
         let word = diesel::insert(&new_word).into(words::table)
-            .get_result(conn)?;
+            .get_result(&**conn)?;
         return Ok(word);
     }
 
 }
 
-pub fn get_question(conn: &PgConnection, id: i32) -> Result<Option<(QuizQuestion, Vec<Answer>)>> {
+pub fn get_question(conn: &Connection, id: i32) -> Result<Option<(QuizQuestion, Vec<Answer>)>> {
     if let Some((qq, aas, _)) = quiz::load_question(conn, id)? {
         Ok(Some((qq, aas)))
     } else {
@@ -180,7 +180,7 @@ pub fn get_question(conn: &PgConnection, id: i32) -> Result<Option<(QuizQuestion
     }
 }
 
-pub fn get_exercise(conn: &PgConnection,
+pub fn get_exercise(conn: &Connection,
                     id: i32)
                     -> Result<Option<(Exercise, Vec<ExerciseVariant>)>> {
     if let Some((qq, aas, _)) = quiz::load_exercise(conn, id)? {
@@ -190,36 +190,36 @@ pub fn get_exercise(conn: &PgConnection,
     }
 }
 
-pub fn get_word(conn: &PgConnection, id: i32) -> Result<Option<Word>> {
-    Ok(schema::words::table.filter(schema::words::id.eq(id)).get_result(conn).optional()?)
+pub fn get_word(conn: &Connection, id: i32) -> Result<Option<Word>> {
+    Ok(schema::words::table.filter(schema::words::id.eq(id)).get_result(&**conn).optional()?)
 }
 
-pub fn publish_question(conn: &PgConnection, id: i32, published: bool) -> Result<()> {
+pub fn publish_question(conn: &Connection, id: i32, published: bool) -> Result<()> {
     use schema::quiz_questions;
     diesel::update(quiz_questions::table
         .filter(quiz_questions::id.eq(id)))
         .set(quiz_questions::published.eq(published))
-        .execute(conn)?;
+        .execute(&**conn)?;
     Ok(())
 }
 
-pub fn publish_exercise(conn: &PgConnection, id: i32, published: bool) -> Result<()> {
+pub fn publish_exercise(conn: &Connection, id: i32, published: bool) -> Result<()> {
     use schema::exercises;
     diesel::update(exercises::table
         .filter(exercises::id.eq(id)))
         .set(exercises::published.eq(published))
-        .execute(conn)?;
+        .execute(&**conn)?;
     Ok(())
 }
 
-pub fn publish_word(conn: &PgConnection, id: i32, published: bool) -> Result<()> {
+pub fn publish_word(conn: &Connection, id: i32, published: bool) -> Result<()> {
     use schema::words;
     diesel::update(words::table.filter(words::id.eq(id))).set(words::published.eq(published))
-        .execute(conn)?;
+        .execute(&**conn)?;
     Ok(())
 }
 
-pub fn update_word(conn: &PgConnection,
+pub fn update_word(conn: &Connection,
                    id: i32,
                    mut item: UpdateWord,
                    image_dir: &Path)
@@ -230,36 +230,36 @@ pub fn update_word(conn: &PgConnection,
         .try_map(|s| sanitize_links(&s, image_dir))?;
 
     let item = diesel::update(words::table.filter(words::id.eq(id))).set(&item)
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
     Ok(item)
 }
 
-pub fn update_exercise(conn: &PgConnection,
+pub fn update_exercise(conn: &Connection,
                        id: i32,
                        item: UpdateExercise)
                        -> Result<Option<Exercise>> {
     use schema::exercises;
     let item = diesel::update(exercises::table.filter(exercises::id.eq(id))).set(&item)
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
     Ok(item)
 }
 
 
-pub fn update_question(conn: &PgConnection,
+pub fn update_question(conn: &Connection,
                        id: i32,
                        item: UpdateQuestion)
                        -> Result<Option<QuizQuestion>> {
     use schema::quiz_questions;
     let item = diesel::update(quiz_questions::table.filter(quiz_questions::id.eq(id))).set(&item)
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
     Ok(item)
 }
 
 
-pub fn update_answer(conn: &PgConnection,
+pub fn update_answer(conn: &Connection,
                      id: i32,
                      mut item: UpdateAnswer,
                      image_dir: &Path)
@@ -271,12 +271,12 @@ pub fn update_answer(conn: &PgConnection,
 
     let item =
         diesel::update(question_answers::table.filter(question_answers::id.eq(id))).set(&item)
-            .get_result(conn)
+            .get_result(&**conn)
             .optional()?;
     Ok(item)
 }
 
-pub fn update_variant(conn: &PgConnection,
+pub fn update_variant(conn: &Connection,
                      id: i32,
                     item: UpdateExerciseVariant)
                      -> Result<Option<ExerciseVariant>> {
@@ -285,44 +285,44 @@ pub fn update_variant(conn: &PgConnection,
 
     let item =
         diesel::update(exercise_variants::table.filter(exercise_variants::id.eq(id))).set(&item)
-            .get_result(conn)
+            .get_result(&**conn)
             .optional()?;
     Ok(item)
 }
 
-pub fn remove_word(conn: &PgConnection, id: i32) -> Result<Option<Word>> {
+pub fn remove_word(conn: &Connection, id: i32) -> Result<Option<Word>> {
     use schema::words;
 
-    let word: Option<Word> = diesel::delete(words::table.filter(words::id.eq(id))).get_result(conn)
+    let word: Option<Word> = diesel::delete(words::table.filter(words::id.eq(id))).get_result(&**conn)
         .optional()?;
 
     Ok(word)
 }
 
-pub fn remove_question(conn: &PgConnection, id: i32) -> Result<bool> {
+pub fn remove_question(conn: &Connection, id: i32) -> Result<bool> {
     use schema::{quiz_questions, question_answers};
 
     diesel::delete(question_answers::table.filter(question_answers::question_id.eq(id)))
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     let count =
-        diesel::delete(quiz_questions::table.filter(quiz_questions::id.eq(id))).execute(conn)?;
+        diesel::delete(quiz_questions::table.filter(quiz_questions::id.eq(id))).execute(&**conn)?;
 
     Ok(count == 1)
 }
 
-pub fn remove_exercise(conn: &PgConnection, id: i32) -> Result<bool> {
+pub fn remove_exercise(conn: &Connection, id: i32) -> Result<bool> {
     use schema::{exercises, exercise_variants};
 
     diesel::delete(exercise_variants::table.filter(exercise_variants::exercise_id.eq(id)))
-        .execute(conn)?;
+        .execute(&**conn)?;
 
-    let count = diesel::delete(exercises::table.filter(exercises::id.eq(id))).execute(conn)?;
+    let count = diesel::delete(exercises::table.filter(exercises::id.eq(id))).execute(&**conn)?;
 
     Ok(count == 1)
 }
 
-pub fn post_question(conn: &PgConnection,
+pub fn post_question(conn: &Connection,
                      question: NewQuizQuestion,
                      mut answers: Vec<NewAnswer>)
                      -> Result<i32> {
@@ -331,17 +331,17 @@ pub fn post_question(conn: &PgConnection,
     debug!("Post question: {:?} and answers: {:?}", question, answers);
 
     let q: QuizQuestion = diesel::insert(&question).into(quiz_questions::table)
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     for aa in &mut answers {
         aa.question_id = q.id;
         diesel::insert(aa).into(question_answers::table)
-            .execute(conn)?;
+            .execute(&**conn)?;
     }
     Ok(q.id)
 }
 
-pub fn post_exercise(conn: &PgConnection,
+pub fn post_exercise(conn: &Connection,
                      exercise: NewExercise,
                      mut answers: Vec<ExerciseVariant>)
                      -> Result<i32> {
@@ -350,12 +350,12 @@ pub fn post_exercise(conn: &PgConnection,
     conn.transaction(|| -> Result<i32> {
     
         let q: Exercise = diesel::insert(&exercise).into(exercises::table)
-            .get_result(conn)?;
+            .get_result(&**conn)?;
     
         for aa in &mut answers {
             aa.exercise_id = q.id;
             diesel::insert(aa).into(exercise_variants::table)
-                .execute(conn)?;
+                .execute(&**conn)?;
         }
         Ok(q.id)
 
@@ -363,7 +363,7 @@ pub fn post_exercise(conn: &PgConnection,
 
 }
 
-pub fn del_due_and_pending_items(conn: &PgConnection, user_id: i32)  -> Result<()> {
+pub fn del_due_and_pending_items(conn: &Connection, user_id: i32)  -> Result<()> {
     use schema::{due_items, pending_items, question_data, exercise_data, e_asked_data, q_asked_data, e_answered_data, q_answered_data};
     use diesel::expression::dsl::any;
 
@@ -372,22 +372,22 @@ pub fn del_due_and_pending_items(conn: &PgConnection, user_id: i32)  -> Result<(
                 .filter(pending_items::user_id.eq(user_id).and(pending_items::pending.eq(true)))
         )
         .set(pending_items::pending.eq(false))
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     let pending: Vec<PendingItem> = pending_items::table
                 .filter(pending_items::user_id.eq(user_id))
-                .get_results(conn)?;
+                .get_results(&**conn)?;
 
     let due_items = due_items::table.filter(due_items::user_id.eq(user_id)).select(due_items::id);
 
     let q = diesel::delete(question_data::table.filter(question_data::due.eq(any(due_items))))
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     let e = diesel::delete(exercise_data::table.filter(exercise_data::due.eq(any(due_items))))
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     let d = diesel::delete(due_items::table.filter(due_items::user_id.eq(user_id)))
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     let mut asks = 0;
     let mut answers = 0;
@@ -395,16 +395,16 @@ pub fn del_due_and_pending_items(conn: &PgConnection, user_id: i32)  -> Result<(
     for p in &pending {
 
         answers += diesel::delete(e_answered_data::table.filter(e_answered_data::id.eq(p.id)))
-            .execute(conn)?;
+            .execute(&**conn)?;
     
         answers += diesel::delete(q_answered_data::table.filter(q_answered_data::id.eq(p.id)))
-            .execute(conn)?;
+            .execute(&**conn)?;
     
         asks += diesel::delete(e_asked_data::table.filter(e_asked_data::id.eq(p.id)))
-            .execute(conn)?;
+            .execute(&**conn)?;
     
         asks += diesel::delete(q_asked_data::table.filter(q_asked_data::id.eq(p.id)))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
     }
 
@@ -413,7 +413,7 @@ pub fn del_due_and_pending_items(conn: &PgConnection, user_id: i32)  -> Result<(
     Ok(())
 }
 
-pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
+pub fn replace_audio_bundle(conn: &Connection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
     use schema::{words, question_answers};
     use diesel::result::TransactionError::*;
 
@@ -426,7 +426,7 @@ pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: 
         let count = diesel::update(
                 words::table.filter(words::audio_bundle.eq(bundle_id))
             ).set(words::audio_bundle.eq(new_bundle_id))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
         info!("{} audio bundles in words replaced with a new audio bundle.",
               count);
@@ -434,7 +434,7 @@ pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: 
         let count = diesel::update(
                 question_answers::table.filter(question_answers::a_audio_bundle.eq(bundle_id))
             ).set(question_answers::a_audio_bundle.eq(new_bundle_id))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
         info!("{} audio bundles in question_answers::a_audio_bundle replaced with a new audio \
                bundle.",
@@ -443,7 +443,7 @@ pub fn replace_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: 
         let count = diesel::update(
                 question_answers::table.filter(question_answers::q_audio_bundle.eq(bundle_id))
             ).set(question_answers::q_audio_bundle.eq(new_bundle_id))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
         info!("{} audio bundles in question_answers::q_audio_bundle replaced with a new audio \
                bundle.",

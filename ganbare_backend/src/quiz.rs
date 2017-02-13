@@ -73,7 +73,7 @@ pub struct WordJson {
 /* ANSWERING */
 
 
-fn new_pending_item(conn: &PgConnection,
+fn new_pending_item(conn: &Connection,
                     user_id: i32,
                     quiz_n_audio: QuizType,
                     test_item: bool)
@@ -93,34 +93,34 @@ fn new_pending_item(conn: &PgConnection,
             item_type,
             test_item,
         }).into(pending_items::table)
-        .get_result(conn)?)
+        .get_result(&**conn)?)
 }
 
-fn register_future_q_answer(conn: &PgConnection, data: &QAskedData) -> Result<()> {
+fn register_future_q_answer(conn: &Connection, data: &QAskedData) -> Result<()> {
     use schema::q_asked_data;
 
     diesel::insert(data).into(q_asked_data::table)
-        .execute(conn)?;
+        .execute(&**conn)?;
     Ok(())
 }
 
-fn register_future_e_answer(conn: &PgConnection, data: &EAskedData) -> Result<()> {
+fn register_future_e_answer(conn: &Connection, data: &EAskedData) -> Result<()> {
     use schema::e_asked_data;
 
     diesel::insert(data).into(e_asked_data::table)
-        .execute(conn)?;
+        .execute(&**conn)?;
     Ok(())
 }
 
-fn register_future_w_answer(conn: &PgConnection, data: &WAskedData) -> Result<()> {
+fn register_future_w_answer(conn: &Connection, data: &WAskedData) -> Result<()> {
     use schema::w_asked_data;
 
     diesel::insert(data).into(w_asked_data::table)
-        .execute(conn)?;
+        .execute(&**conn)?;
     Ok(())
 }
 
-fn log_answer_due_item(conn: &PgConnection,
+fn log_answer_due_item(conn: &Connection,
                        mut due_item: DueItem,
                        skill_id: i32,
                        correct: bool,
@@ -162,10 +162,10 @@ fn log_answer_due_item(conn: &PgConnection,
         };
     }
 
-    Ok(due_item.save_changes(conn)?)
+    Ok(due_item.save_changes(&**conn)?)
 }
 
-fn log_answer_new_due_item(conn: &PgConnection,
+fn log_answer_new_due_item(conn: &Connection,
                            user_id: i32,
                            item_type: &str,
                            skill_id: i32,
@@ -194,18 +194,18 @@ fn log_answer_new_due_item(conn: &PgConnection,
     };
 
     let due_item: DueItem = diesel::insert(&new_due_item).into(due_items::table)
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     Ok(log_answer_due_item(conn, due_item, skill_id, correct, metrics)?)
 }
 
-fn log_answer_word(conn: &PgConnection, user: &User, answered: &WAnsweredData) -> Result<()> {
+fn log_answer_word(conn: &Connection, user: &User, answered: &WAnsweredData) -> Result<()> {
     use schema::{user_stats, pending_items, w_asked_data, w_answered_data, words};
 
     let (mut pending_item, asked): (PendingItem, WAskedData) =
         pending_items::table.inner_join(w_asked_data::table)
             .filter(pending_items::id.eq(answered.id))
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
     if !pending_item.pending {
         info!("User is trying to answer twice to the same question! Ignoring the later answer.");
@@ -214,21 +214,21 @@ fn log_answer_word(conn: &PgConnection, user: &User, answered: &WAnsweredData) -
 
     // This Q&A is now considered done
     pending_item.pending = false;
-    let _: PendingItem = pending_item.save_changes(conn)?;
+    let _: PendingItem = pending_item.save_changes(&**conn)?;
 
     diesel::insert(answered).into(w_answered_data::table)
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     let word: Word = words::table.filter(words::id.eq(asked.word_id))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user.id))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     stats.all_active_time_ms += answered.active_answer_time_ms as i64;
     stats.all_spent_time_ms += answered.full_spent_time_ms as i64;
     stats.all_words += 1;
-    let _: UserStats = stats.save_changes(conn)?;
+    let _: UserStats = stats.save_changes(&**conn)?;
 
     debug!("Skill bump because of newly learned word! Skill: {} Of user: {} Bumped by: {}",
            word.skill_nugget,
@@ -240,7 +240,7 @@ fn log_answer_word(conn: &PgConnection, user: &User, answered: &WAnsweredData) -
     Ok(())
 }
 
-fn log_answer_question(conn: &PgConnection,
+fn log_answer_question(conn: &Connection,
                        user: &User,
                        answered: &QAnsweredData,
                        metrics: &UserMetrics)
@@ -251,7 +251,7 @@ fn log_answer_question(conn: &PgConnection,
     let (mut pending_item, asked): (PendingItem, QAskedData) =
         pending_items::table.inner_join(q_asked_data::table)
             .filter(pending_items::id.eq(answered.id))
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
     if !pending_item.pending {
         info!("User is trying to answer twice to the same question! Ignoring the later answer.");
@@ -260,15 +260,15 @@ fn log_answer_question(conn: &PgConnection,
 
     // This Q&A is now considered done
     pending_item.pending = false;
-    let _: PendingItem = pending_item.save_changes(conn)?;
+    let _: PendingItem = pending_item.save_changes(&**conn)?;
 
     let correct = asked.correct_qa_id == answered.answered_qa_id.unwrap_or(-1);
 
     diesel::insert(answered).into(q_answered_data::table)
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user.id))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     stats.all_active_time_ms += answered.full_answer_time_ms as i64;
     stats.all_spent_time_ms += answered.full_spent_time_ms as i64;
@@ -276,7 +276,7 @@ fn log_answer_question(conn: &PgConnection,
     if correct {
         stats.quiz_correct_times += 1;
     }
-    let _: UserStats = stats.save_changes(conn)?;
+    let _: UserStats = stats.save_changes(&**conn)?;
 
 
     // If the answer was wrong, register a new pending question
@@ -301,13 +301,13 @@ fn log_answer_question(conn: &PgConnection,
 
     let question: QuizQuestion =
         quiz_questions::table.filter(quiz_questions::id.eq(asked.question_id))
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
     let questiondata: Option<(QuestionData, DueItem)> =
         question_data::table.inner_join(due_items::table)
             .filter(due_items::user_id.eq(user.id))
             .filter(question_data::question_id.eq(asked.question_id))
-            .get_result(&*conn)
+            .get_result(&**conn)
             .optional()?;
 
     // Update the data for this question (due date, statistics etc.)
@@ -330,11 +330,11 @@ fn log_answer_question(conn: &PgConnection,
             due: due_item.id,
         };
         let _: QuestionData = diesel::insert(&questiondata).into(question_data::table)
-            .get_result(conn)?;
+            .get_result(&**conn)?;
     })
 }
 
-fn log_answer_exercise(conn: &PgConnection,
+fn log_answer_exercise(conn: &Connection,
                        user: &User,
                        answered: &EAnsweredData,
                        metrics: &UserMetrics)
@@ -347,7 +347,7 @@ fn log_answer_exercise(conn: &PgConnection,
     let (mut pending_item, asked): (PendingItem, EAskedData) =
         pending_items::table.inner_join(e_asked_data::table)
             .filter(pending_items::id.eq(answered.id))
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
     if !pending_item.pending {
         info!("User is trying to answer twice to the same question! Ignoring the later answer.");
@@ -356,13 +356,13 @@ fn log_answer_exercise(conn: &PgConnection,
 
     // This Q&A is now considered done
     pending_item.pending = false;
-    let _: PendingItem = pending_item.save_changes(conn)?;
+    let _: PendingItem = pending_item.save_changes(&**conn)?;
 
     diesel::insert(answered).into(e_answered_data::table)
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user.id))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     stats.all_active_time_ms += answered.active_answer_time_ms as i64;
     stats.all_spent_time_ms += answered.full_spent_time_ms as i64;
@@ -370,7 +370,7 @@ fn log_answer_exercise(conn: &PgConnection,
     if answered.answer_level > 0 {
         stats.quiz_correct_times += 1;
     }
-    let _: UserStats = stats.save_changes(conn)?;
+    let _: UserStats = stats.save_changes(&**conn)?;
 
 
     // If the answer was wrong, register a new pending question
@@ -391,13 +391,13 @@ fn log_answer_exercise(conn: &PgConnection,
     }
 
     let exercise: Exercise = exercises::table.filter(exercises::id.eq(asked.exercise_id))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     let exercisedata: Option<(ExerciseData, DueItem)> =
         exercise_data::table.inner_join(due_items::table)
             .filter(due_items::user_id.eq(user.id))
             .filter(exercise_data::exercise_id.eq(asked.exercise_id))
-            .get_result(&*conn)
+            .get_result(&**conn)
             .optional()?;
 
     // Update the data for this word exercise (due date, statistics etc.)
@@ -420,7 +420,7 @@ fn log_answer_exercise(conn: &PgConnection,
             exercise_id: asked.exercise_id,
         };
         let _: ExerciseData = diesel::insert(&exercisedata).into(exercise_data::table)
-            .get_result(conn)
+            .get_result(&**conn)
             .chain_err(|| "Couldn't save the question tally data to database!")?;
     })
 }
@@ -437,13 +437,13 @@ fn log_answer_exercise(conn: &PgConnection,
 /* FETCHING & CHOOSING QUESTIONS */
 
 
-pub fn load_question(conn: &PgConnection,
+pub fn load_question(conn: &Connection,
                      id: i32)
                      -> Result<Option<(QuizQuestion, Vec<Answer>, Vec<AudioBundle>)>> {
     use schema::{quiz_questions, question_answers, audio_bundles};
 
     let qq: Option<QuizQuestion> = quiz_questions::table.filter(quiz_questions::id.eq(id))
-        .get_result(&*conn)
+        .get_result(&**conn)
         .optional()?;
 
     let qq = try_or!{ qq, else return Ok(None) };
@@ -451,20 +451,20 @@ pub fn load_question(conn: &PgConnection,
     let (aas, q_bundles): (Vec<Answer>, Vec<AudioBundle>) =
         question_answers::table.inner_join(audio_bundles::table)
             .filter(question_answers::question_id.eq(qq.id))
-            .load(&*conn)?
+            .load(&**conn)?
             .into_iter()
             .unzip();
 
     Ok(Some((qq, aas, q_bundles)))
 }
 
-pub fn load_exercise(conn: &PgConnection,
+pub fn load_exercise(conn: &Connection,
                      id: i32)
                      -> Result<Option<(Exercise, Vec<ExerciseVariant>, Vec<Word>)>> {
     use schema::{exercises, exercise_variants, words};
 
     let qq: Option<Exercise> = exercises::table.filter(exercises::id.eq(id))
-        .get_result(&*conn)
+        .get_result(&**conn)
         .optional()?;
 
     let qq = try_or!{ qq, else return Ok(None) };
@@ -472,36 +472,36 @@ pub fn load_exercise(conn: &PgConnection,
     let (aas, words): (Vec<ExerciseVariant>, Vec<Word>) =
         exercise_variants::table.inner_join(words::table)
             .filter(exercise_variants::exercise_id.eq(qq.id))
-            .load(&*conn)?
+            .load(&**conn)?
             .into_iter()
             .unzip();
 
     Ok(Some((qq, aas, words)))
 }
 
-fn load_word(conn: &PgConnection, id: i32) -> Result<Option<Word>> {
+fn load_word(conn: &Connection, id: i32) -> Result<Option<Word>> {
     use schema::words;
 
     Ok(words::table.filter(words::id.eq(id))
-        .get_result(&*conn)
+        .get_result(&**conn)
         .optional()?)
 }
 
-fn choose_next_due_item(conn: &PgConnection, user_id: i32) -> Result<Option<(DueItem, QuizType)>> {
+fn choose_next_due_item(conn: &Connection, user_id: i32) -> Result<Option<(DueItem, QuizType)>> {
     use schema::{due_items, question_data, exercise_data};
 
     let due_questions: Option<(DueItem, Option<QuestionData>)> =
         due_items::table.left_outer_join(question_data::table)
             .filter(due_items::user_id.eq(user_id))
             .order(due_items::due_date.asc())
-            .first(conn)
+            .first(&**conn)
             .optional()?;
 
     let due_exercises: Option<(DueItem, Option<ExerciseData>)> =
         due_items::table.left_outer_join(exercise_data::table)
             .filter(due_items::user_id.eq(user_id))
             .order(due_items::due_date.asc())
-            .first(conn)
+            .first(&**conn)
             .optional()?;
 
     let due_item = due_questions.into_iter().zip(due_exercises).next().map(|zipped| match zipped {
@@ -516,36 +516,36 @@ fn choose_next_due_item(conn: &PgConnection, user_id: i32) -> Result<Option<(Due
     Ok(due_item)
 }
 
-pub fn count_overdue_items(conn: &PgConnection, user_id: i32) -> Result<i64> {
+pub fn count_overdue_items(conn: &Connection, user_id: i32) -> Result<i64> {
     use schema::due_items;
 
     let count: i64 = due_items::table.filter(due_items::user_id.eq(user_id))
         .filter(due_items::due_date.lt(chrono::UTC::now()))
         .count()
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     Ok(count)
 }
 
-fn choose_random_overdue_item(conn: &PgConnection, user_id: i32) -> Result<Option<QuizType>> {
+fn choose_random_overdue_item(conn: &Connection, user_id: i32) -> Result<Option<QuizType>> {
     use schema::{due_items, question_data, exercise_data};
 
     let due: Option<DueItem> = due_items::table.filter(due_items::user_id.eq(user_id))
         .filter(due_items::due_date.lt(chrono::UTC::now()))
         .filter(due_items::cooldown_delay.lt(chrono::UTC::now()))
         .order(sql::random)
-        .first(conn)
+        .first(&**conn)
         .optional()?;
 
     Ok(match due {
         Some(ref due) if due.item_type == "question" => {
             Some(QuizType::Question(question_data::table.filter(question_data::due.eq(due.id))
-                .get_result::<QuestionData>(conn)?
+                .get_result::<QuestionData>(&**conn)?
                 .question_id))
         }
         Some(ref due) if due.item_type == "exercise" => {
             Some(QuizType::Exercise(exercise_data::table.filter(exercise_data::due.eq(due.id))
-                .get_result::<ExerciseData>(conn)?
+                .get_result::<ExerciseData>(&**conn)?
                 .exercise_id))
         }
         Some(_) => {
@@ -557,7 +557,7 @@ fn choose_random_overdue_item(conn: &PgConnection, user_id: i32) -> Result<Optio
     })
 }
 
-fn choose_random_overdue_item_include_cooldown(conn: &PgConnection,
+fn choose_random_overdue_item_include_cooldown(conn: &Connection,
                                                user_id: i32)
                                                -> Result<Option<QuizType>> {
     use schema::{due_items, question_data, exercise_data};
@@ -565,18 +565,18 @@ fn choose_random_overdue_item_include_cooldown(conn: &PgConnection,
     let due: Option<DueItem> = due_items::table.filter(due_items::user_id.eq(user_id))
         .filter(due_items::due_date.lt(chrono::UTC::now()))
         .order(sql::random)
-        .first(conn)
+        .first(&**conn)
         .optional()?;
 
     Ok(match due {
         Some(ref due) if due.item_type == "question" => {
             Some(QuizType::Question(question_data::table.filter(question_data::due.eq(due.id))
-                .get_result::<QuestionData>(conn)?
+                .get_result::<QuestionData>(&**conn)?
                 .question_id))
         }
         Some(ref due) if due.item_type == "exercise" => {
             Some(QuizType::Exercise(exercise_data::table.filter(exercise_data::due.eq(due.id))
-                .get_result::<ExerciseData>(conn)?
+                .get_result::<ExerciseData>(&**conn)?
                 .exercise_id))
         }
         Some(_) => {
@@ -588,7 +588,7 @@ fn choose_random_overdue_item_include_cooldown(conn: &PgConnection,
     })
 }
 
-fn choose_new_question(conn: &PgConnection, user_id: i32) -> Result<Option<QuizQuestion>> {
+fn choose_new_question(conn: &Connection, user_id: i32) -> Result<Option<QuizQuestion>> {
     use diesel::expression::dsl::*;
     /*
     use schema::{quiz_questions, question_data, due_items, skill_data};
@@ -608,7 +608,7 @@ fn choose_new_question(conn: &PgConnection, user_id: i32) -> Result<Option<QuizQ
         .filter(quiz_questions::skill_id.eq(any(skills)))
         .filter(quiz_questions::published.eq(true))
         .order(sql::random)
-        .first(conn)
+        .first(&**conn)
         .optional()?;
 */
     let new_question: Option<QuizQuestion> =
@@ -646,13 +646,13 @@ WHERE
     q.id NOT IN ( SELECT question_id FROM due_items JOIN question_data ON id=due WHERE user_id={} )
 ORDER BY RANDOM();
 "###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
 
     Ok(new_question)
 }
 
-fn choose_new_exercise(conn: &PgConnection, user_id: i32) -> Result<Option<Exercise>> {
+fn choose_new_exercise(conn: &Connection, user_id: i32) -> Result<Option<Exercise>> {
     use diesel::expression::dsl::*;
     /*
     use schema::{exercises, exercise_data, due_items, skill_data};
@@ -672,7 +672,7 @@ fn choose_new_exercise(conn: &PgConnection, user_id: i32) -> Result<Option<Exerc
         .filter(exercises::skill_id.eq(any(skills)))
         .filter(exercises::published.eq(true))
         .order(sql::random)
-        .first(conn)
+        .first(&**conn)
         .optional()?;
 */
     let new_exercise: Option<Exercise> =
@@ -704,13 +704,13 @@ WHERE
     e.id NOT IN ( SELECT exercise_id FROM due_items JOIN exercise_data ON id=due WHERE user_id={} )
 ORDER BY RANDOM();
 "###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
 
     Ok(new_exercise)
 }
 
-fn choose_cooldown_q_or_e(conn: &PgConnection,
+fn choose_cooldown_q_or_e(conn: &Connection,
                           user: &User,
                           metrics: &UserMetrics)
                           -> Result<Option<QuizType>> {
@@ -728,7 +728,7 @@ fn choose_cooldown_q_or_e(conn: &PgConnection,
     Ok(None)
 }
 
-fn choose_new_q_or_e(conn: &PgConnection, user_id: i32) -> Result<Option<QuizType>> {
+fn choose_new_q_or_e(conn: &Connection, user_id: i32) -> Result<Option<QuizType>> {
 
     if user::check_user_group(conn, user_id, "questions")? {
         if let Some(q) = choose_new_question(conn, user_id)? {
@@ -744,7 +744,7 @@ fn choose_new_q_or_e(conn: &PgConnection, user_id: i32) -> Result<Option<QuizTyp
     Ok(None)
 }
 
-fn choose_q_or_e(conn: &PgConnection,
+fn choose_q_or_e(conn: &Connection,
                  user: &User,
                  metrics: &UserMetrics)
                  -> Result<Option<QuizType>> {
@@ -775,7 +775,7 @@ fn choose_q_or_e(conn: &PgConnection,
 /// Choose a new word by random.
 /// The word must be published, the required skill level of the word must be smaller
 /// than the user's level on the corresponding skill and the word must not be seen before.
-fn choose_new_random_word(conn: &PgConnection, user_id: i32) -> Result<Option<Word>> {
+fn choose_new_random_word(conn: &Connection, user_id: i32) -> Result<Option<Word>> {
     use diesel::expression::dsl::*;
 
     /* // Diesel doesn't support this complex queries yet, so doing it directly in SQL
@@ -790,7 +790,7 @@ fn choose_new_random_word(conn: &PgConnection, user_id: i32) -> Result<Option<Wo
         .filter(words::id.ne(all(seen)))
         .filter(words::published.eq(true))
         .order(sql::random)
-        .first(conn)
+        .first(&**conn)
         .optional()?;
 */
     let new_word: Option<Word> = sql::<(
@@ -835,7 +835,7 @@ WHERE
     )
 ORDER BY words.priority DESC, RANDOM();
 "###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
 
     Ok(new_word)
@@ -848,7 +848,7 @@ ORDER BY words.priority DESC, RANDOM();
 /// skill level on the corresponding skill must be greater than zero.
 /// This ensures that only words of skills that the user
 /// has experience with are selected.
-fn choose_new_paired_word(conn: &PgConnection, user_id: i32) -> Result<Option<Word>> {
+fn choose_new_paired_word(conn: &Connection, user_id: i32) -> Result<Option<Word>> {
     use diesel::expression::dsl::*;
     /*
     use schema::{pending_items, words, w_asked_data, skill_nuggets, skill_data};
@@ -868,7 +868,7 @@ fn choose_new_paired_word(conn: &PgConnection, user_id: i32) -> Result<Option<Wo
         .filter(words::published.eq(true))
         .filter(words::skill_nugget.eq(any(other_pair_seen)))
         .order(sql::random)
-        .first(conn)
+        .first(&**conn)
         .optional()?;
 */
     let new_word: Option<Word> = sql::<(
@@ -914,13 +914,13 @@ WHERE
     )
 ORDER BY words.priority DESC, RANDOM();
 "###, user_id, user_id)) // Injection isn't possible: user_id is numerical and non-tainted data.
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
 
     Ok(new_word)
 }
 
-fn choose_new_word(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option<Word>> {
+fn choose_new_word(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Word>> {
 
 
     if metrics.new_words_since_break >= metrics.max_words_since_break ||
@@ -946,7 +946,7 @@ fn choose_new_word(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Opt
     Ok(None)
 }
 
-fn clear_limits(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
+fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
     use schema::user_stats;
 
     if chrono::UTC::now() < metrics.break_until {
@@ -964,10 +964,10 @@ fn clear_limits(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option
     if chrono::UTC::now() > (metrics.today.date().and_hms(1, 0, 0) + chrono::Duration::hours(24)) {
 
         let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(metrics.id))
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
         stats.days_used += 1;
-        let _: UserStats = stats.save_changes(conn)?;
+        let _: UserStats = stats.save_changes(&**conn)?;
 
         metrics.today = chrono::UTC::today().and_hms(1, 0, 0);
         metrics.new_words_since_break = 0;
@@ -978,7 +978,7 @@ fn clear_limits(conn: &PgConnection, metrics: &mut UserMetrics) -> Result<Option
     Ok(None)
 }
 
-pub fn things_left_to_do(conn: &PgConnection,
+pub fn things_left_to_do(conn: &Connection,
                          user_id: i32)
                          -> Result<(Option<chrono::DateTime<chrono::UTC>>, bool, bool)> {
 
@@ -991,7 +991,7 @@ pub fn things_left_to_do(conn: &PgConnection,
 }
 
 
-fn check_break(conn: &PgConnection,
+fn check_break(conn: &Connection,
                user: &User,
                metrics: &mut UserMetrics)
                -> Result<Option<Quiz>> {
@@ -1080,7 +1080,7 @@ fn check_break(conn: &PgConnection,
 }
 
 
-fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, Vec<Answer>, i32)> {
+fn ask_new_question(conn: &Connection, id: i32) -> Result<(QuizQuestion, i32, Vec<Answer>, i32)> {
     use rand::Rng;
 
     let (question, answers, q_audio_bundles) = try_or!{ load_question(conn, id)?,
@@ -1099,7 +1099,7 @@ fn ask_new_question(conn: &PgConnection, id: i32) -> Result<(QuizQuestion, i32, 
     Ok((question, right_answer_id, answers, q_audio_file.id))
 }
 
-fn ask_new_exercise(conn: &PgConnection, id: i32) -> Result<(Exercise, Word, i32)> {
+fn ask_new_exercise(conn: &Connection, id: i32) -> Result<(Exercise, Word, i32)> {
     let (exercise, _, mut words) = try_or!( load_exercise(conn, id)?,
                 else bail!(
                     ErrorKind::DatabaseOdd(
@@ -1114,14 +1114,14 @@ fn ask_new_exercise(conn: &PgConnection, id: i32) -> Result<(Exercise, Word, i32
     Ok((exercise, word, audio_file.id))
 }
 
-pub fn penditem_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
+pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
     use schema::{q_asked_data, e_asked_data, w_asked_data};
 
     Ok(match pi {
         pi if pi.item_type == "question" => {
 
             let asked: QAskedData = q_asked_data::table.filter(q_asked_data::id.eq(pi.id))
-                .get_result(conn)?;
+                .get_result(&**conn)?;
 
             let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
                 else bail!(
@@ -1146,7 +1146,7 @@ pub fn penditem_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
         pi if pi.item_type == "exercise" => {
 
             let asked: EAskedData = e_asked_data::table.filter(e_asked_data::id.eq(pi.id))
-                .get_result(conn)?;
+                .get_result(&**conn)?;
 
             let word = try_or!{ load_word(conn, asked.word_id)?,
                 else bail!(
@@ -1167,7 +1167,7 @@ pub fn penditem_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
         pi if pi.item_type == "word" => {
 
             let asked: WAskedData = w_asked_data::table.filter(w_asked_data::id.eq(pi.id))
-                .get_result(conn)?;
+                .get_result(&**conn)?;
 
             let word = try_or!{ load_word(conn, asked.word_id)?,
                 else bail!(
@@ -1187,13 +1187,13 @@ pub fn penditem_to_quiz(conn: &PgConnection, pi: &PendingItem) -> Result<Quiz> {
     })
 }
 
-pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Quiz>> {
+pub fn return_pending_item(conn: &Connection, user_id: i32) -> Result<Option<Quiz>> {
     use schema::pending_items;
 
     let pending_item: Option<PendingItem> =
         pending_items::table.filter(pending_items::user_id.eq(user_id))
             .filter(pending_items::pending.eq(true).and(pending_items::test_item.eq(false)))
-            .get_result(conn)
+            .get_result(&**conn)
             .optional()?;
 
     let quiz_type = match pending_item {
@@ -1206,7 +1206,7 @@ pub fn return_pending_item(conn: &PgConnection, user_id: i32) -> Result<Option<Q
     Ok(Some(quiz_type))
 }
 
-pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Result<Option<Quiz>> {
+pub fn return_q_or_e(conn: &Connection, user: &User, quiztype: QuizType) -> Result<Option<Quiz>> {
 
     match quiztype {
         QuizType::Question(id) => {
@@ -1268,7 +1268,7 @@ pub fn return_q_or_e(conn: &PgConnection, user: &User, quiztype: QuizType) -> Re
     }
 }
 
-pub fn return_word(conn: &PgConnection, user: &User, the_word: Word) -> Result<Option<Quiz>> {
+pub fn return_word(conn: &Connection, user: &User, the_word: Word) -> Result<Option<Quiz>> {
 
     let audio_file = audio::load_random_from_bundle(&*conn, the_word.audio_bundle)?;
     let show_accents = user::check_user_group(conn, user.id, "show_accents")?;
@@ -1294,42 +1294,42 @@ pub fn return_word(conn: &PgConnection, user: &User, the_word: Word) -> Result<O
     Ok(Some(Quiz::W(quiz_json)))
 }
 
-pub fn get_word_by_str(conn: &PgConnection, word: &str) -> Result<Word> {
+pub fn get_word_by_str(conn: &Connection, word: &str) -> Result<Word> {
     use schema::words;
 
     Ok(words::table.filter(words::word.eq(word))
-        .get_result(conn)?)
+        .get_result(&**conn)?)
 }
-pub fn get_word_by_id(conn: &PgConnection, id: i32) -> Result<Word> {
+pub fn get_word_by_id(conn: &Connection, id: i32) -> Result<Word> {
     use schema::words;
 
     Ok(words::table.filter(words::id.eq(id))
-        .get_result(conn)?)
+        .get_result(&**conn)?)
 }
 
-pub fn get_exercise(conn: &PgConnection, word: &str) -> Result<(Exercise, ExerciseVariant)> {
+pub fn get_exercise(conn: &Connection, word: &str) -> Result<(Exercise, ExerciseVariant)> {
     use schema::{words, exercises, exercise_variants};
 
     let word: Word = words::table
         .filter(words::word.eq(word))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     Ok(exercises::table
         .inner_join(exercise_variants::table)
         .filter(exercise_variants::id.eq(word.id))
-        .get_result(conn)?)
+        .get_result(&**conn)?)
 }
 
-pub fn get_question(conn: &PgConnection, answer_text: &str) -> Result<(QuizQuestion, Answer)> {
+pub fn get_question(conn: &Connection, answer_text: &str) -> Result<(QuizQuestion, Answer)> {
     use schema::{quiz_questions, question_answers, audio_bundles};
 
     let bundle: AudioBundle = audio_bundles::table
         .filter(audio_bundles::listname.eq(answer_text))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     Ok(quiz_questions::table.inner_join(question_answers::table)
         .filter(question_answers::q_audio_bundle.eq(bundle.id))
-        .get_result(conn)?)
+        .get_result(&**conn)?)
 }
 
 pub enum QuizSerialized {
@@ -1338,7 +1338,7 @@ pub enum QuizSerialized {
     Exercise(&'static str, i32),
 }
 
-pub fn test_item(conn: &PgConnection,
+pub fn test_item(conn: &Connection,
                  user: &User,
                  quiz_str: &QuizSerialized)
                  -> Result<(Quiz, i32)> {
@@ -1460,7 +1460,7 @@ pub fn test_item(conn: &PgConnection,
 
 /* MAIN LOGIC */
 
-fn get_new_quiz_inner(conn: &PgConnection,
+fn get_new_quiz_inner(conn: &Connection,
                       user: &User,
                       metrics: &mut UserMetrics)
                       -> Result<Option<Quiz>> {
@@ -1523,28 +1523,28 @@ fn get_new_quiz_inner(conn: &PgConnection,
 
 /* PUBLIC APIS */
 
-pub fn get_new_quiz(conn: &PgConnection, user: &User) -> Result<Option<Quiz>> {
+pub fn get_new_quiz(conn: &Connection, user: &User) -> Result<Option<Quiz>> {
     use schema::user_metrics;
 
     let mut metrics: UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user.id))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     let result = get_new_quiz_inner(conn, user, &mut metrics)?;
 
-    let _: UserMetrics = metrics.save_changes(conn)?;
+    let _: UserMetrics = metrics.save_changes(&**conn)?;
 
     Ok(result)
 }
 
 
-pub fn get_next_quiz(conn: &PgConnection,
+pub fn get_next_quiz(conn: &Connection,
                      user: &User,
                      answer_enum: Answered)
                      -> Result<Option<Quiz>> {
     use schema::user_metrics;
 
     let mut metrics: UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user.id))
-        .get_result(conn)?;
+        .get_result(&**conn)?;
 
     match answer_enum {
         Answered::W(answer_word) => {
@@ -1560,7 +1560,7 @@ pub fn get_next_quiz(conn: &PgConnection,
 
     let result = get_new_quiz_inner(conn, user, &mut metrics)?;
 
-    let _: UserMetrics = metrics.save_changes(conn)?;
+    let _: UserMetrics = metrics.save_changes(&**conn)?;
 
     Ok(result)
 }

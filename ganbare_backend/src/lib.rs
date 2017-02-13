@@ -4,10 +4,13 @@
 #![feature(plugin)]
 #![plugin(binary_macros, dotenv_macros)]
 
+
 #[macro_use]
 pub extern crate diesel;
 #[macro_use]
 extern crate diesel_codegen;
+extern crate r2d2;
+extern crate r2d2_diesel;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
@@ -33,7 +36,11 @@ pub use try_map::{FallibleMapExt, FlipResultExt};
 
 pub use diesel::prelude::*;
 
-pub use diesel::pg::PgConnection;
+pub use diesel::pg::PgConnection as DieselPgConnection;
+
+pub type ConnManager = r2d2_diesel::ConnectionManager<DieselPgConnection>;
+pub type Connection = r2d2::PooledConnection<ConnManager>;
+pub use diesel::Connection as ConnectionTrait;
 
 
 macro_rules! try_or {
@@ -111,9 +118,9 @@ pub mod sql {
 pub mod db {
     use super::*;
 
-    pub fn check(conn: &PgConnection) -> Result<bool> {
+    pub fn check(conn: &Connection) -> Result<bool> {
         run_migrations(conn).chain_err(|| "Couldn't run the migrations.")?;
-        let first_user: Option<User> = schema::users::table.first(conn)
+        let first_user: Option<User> = schema::users::table.first(&**conn)
             .optional()
             .chain_err(|| "Couldn't query for the admin user.")?;
 
@@ -124,28 +131,29 @@ pub mod db {
     embed_migrations!();
 
     #[cfg(not(debug_assertions))]
-    fn run_migrations(conn: &PgConnection) -> Result<()> {
+    fn run_migrations(conn: &Connection) -> Result<()> {
         embedded_migrations::run(conn)?;
         Ok(())
     }
 
     #[cfg(debug_assertions)]
-    fn run_migrations(conn: &PgConnection) -> Result<()> {
-        diesel::migrations::run_pending_migrations(conn)?;
+    fn run_migrations(conn: &Connection) -> Result<()> {
+        diesel::migrations::run_pending_migrations(&**conn)?;
         info!("Migrations checked.");
         Ok(())
     }
 
-    pub fn is_installed(conn: &PgConnection) -> Result<bool> {
+    pub fn is_installed(conn: &Connection) -> Result<bool> {
 
         let count: i64 = schema::users::table.count()
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
         Ok(count > 0)
     }
 
-    pub fn connect(database_url: &str) -> Result<PgConnection> {
-        PgConnection::establish(database_url).chain_err(|| "Error connecting to database!")
+    pub fn connect(database_url: &str) -> Result<DieselPgConnection> {
+
+        DieselPgConnection::establish(database_url).chain_err(|| "Error connecting to database!")
     }
 
 }
@@ -163,12 +171,12 @@ pub mod db {
 pub mod skill {
     use super::*;
 
-    pub fn get_create_by_name(conn: &PgConnection, skill_summary: &str) -> Result<SkillNugget> {
+    pub fn get_create_by_name(conn: &Connection, skill_summary: &str) -> Result<SkillNugget> {
         use schema::skill_nuggets;
 
         let skill_nugget: Option<SkillNugget> =
             skill_nuggets::table.filter(skill_nuggets::skill_summary.eq(skill_summary))
-                .get_result(conn)
+                .get_result(&**conn)
                 .optional()
                 .chain_err(|| "Database error with skill_nuggets!")?;
 
@@ -177,24 +185,24 @@ pub mod skill {
             None => {
             diesel::insert(&NewSkillNugget{ skill_summary })
                 .into(skill_nuggets::table)
-                .get_result(conn)
+                .get_result(&**conn)
                 .chain_err(|| "Database error!")?
         }
         })
     }
 
-    pub fn get_skill_data(conn: &PgConnection, user_id: i32) -> Result<Vec<(SkillNugget, SkillData)>> {
+    pub fn get_skill_data(conn: &Connection, user_id: i32) -> Result<Vec<(SkillNugget, SkillData)>> {
         use schema::{skill_nuggets, skill_data};
 
         let data: Vec<(SkillNugget, SkillData)> = skill_nuggets::table
             .inner_join(skill_data::table)
             .filter(skill_data::user_id.eq(user_id))
-            .get_results(conn)?;
+            .get_results(&**conn)?;
 
         Ok(data)
     }
 
-    pub fn get_asked_items(conn: &PgConnection, user_id: i32)
+    pub fn get_asked_items(conn: &Connection, user_id: i32)
         -> Result<(
             Vec<(DueItem, QuestionData, QuizQuestion)>,
             Vec<(DueItem, ExerciseData, Exercise)>,
@@ -206,41 +214,41 @@ pub mod skill {
         let data_q: Vec<(DueItem, QuestionData)> = due_items::table
             .inner_join(question_data::table)
             .filter(due_items::user_id.eq(user_id))
-            .get_results(conn)?;
+            .get_results(&**conn)?;
 
         let mut questions: Vec<QuizQuestion> = vec![];
 
         for &(_, ref data) in &data_q {
             let q = quiz_questions::table
                 .filter(quiz_questions::id.eq(data.question_id))
-                .get_result(conn)?;
+                .get_result(&**conn)?;
             questions.push(q);
         }
 
         let data_e: Vec<(DueItem, ExerciseData)> = due_items::table
             .inner_join(exercise_data::table)
             .filter(due_items::user_id.eq(user_id))
-            .get_results(conn)?;
+            .get_results(&**conn)?;
 
         let mut exercises: Vec<Exercise> = vec![];
 
         for &(_, ref data) in &data_e {
             exercises.push(exercises::table
                 .filter(exercises::id.eq(data.exercise_id))
-                .get_result(conn)?);
+                .get_result(&**conn)?);
         }
 
         let data_w: Vec<(PendingItem, WAskedData)> = pending_items::table
             .inner_join(w_asked_data::table)
             .filter(pending_items::user_id.eq(user_id).and(pending_items::test_item.eq(false)))
-            .get_results(conn)?;
+            .get_results(&**conn)?;
 
         let mut words: Vec<Word> = vec![];
 
         for &(_, ref data) in &data_w {
             words.push(words::table
                 .filter(words::id.eq(data.word_id))
-                .get_result(conn)?);
+                .get_result(&**conn)?);
         }
 
         let q = data_q.into_iter().zip(questions.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
@@ -250,7 +258,7 @@ pub mod skill {
         Ok((q, e, w))
     }
 
-    pub fn get_skill_nuggets(conn: &PgConnection)
+    pub fn get_skill_nuggets(conn: &Connection)
                              -> Result<Vec<(SkillNugget,
                                             (Vec<Word>,
                                              Vec<(QuizQuestion, Vec<Answer>)>,
@@ -259,19 +267,19 @@ pub mod skill {
                      exercise_variants};
 
         let nuggets: Vec<SkillNugget> =
-            skill_nuggets::table.order(skill_nuggets::skill_summary.asc()).get_results(conn)?;
+            skill_nuggets::table.order(skill_nuggets::skill_summary.asc()).get_results(&**conn)?;
 
         let words = Word::belonging_to(&nuggets)
             .order(words::id.asc())
-            .load::<Word>(conn)?
+            .load::<Word>(&**conn)?
             .grouped_by(&nuggets);
 
         let questions = QuizQuestion::belonging_to(&nuggets).order(quiz_questions::id.asc())
-            .load::<QuizQuestion>(conn)?;
+            .load::<QuizQuestion>(&**conn)?;
 
         let q_answers = Answer::belonging_to(&questions)
             .order(question_answers::id.asc())
-            .load::<Answer>(conn)?
+            .load::<Answer>(&**conn)?
             .grouped_by(&questions);
 
         let qs_and_as = questions.into_iter()
@@ -280,11 +288,11 @@ pub mod skill {
             .grouped_by(&nuggets);
 
         let exercises = Exercise::belonging_to(&nuggets).order(exercises::id.asc())
-            .load::<Exercise>(conn)?;
+            .load::<Exercise>(&**conn)?;
 
         let e_answers = ExerciseVariant::belonging_to(&exercises)
             .order(exercise_variants::id.asc())
-            .load::<ExerciseVariant>(conn)?
+            .load::<ExerciseVariant>(&**conn)?
             .grouped_by(&exercises);
 
         let es_and_as = exercises.into_iter()
@@ -299,7 +307,7 @@ pub mod skill {
         Ok(all)
     }
 
-    pub fn log_by_id(conn: &PgConnection,
+    pub fn log_by_id(conn: &Connection,
                      user_id: i32,
                      skill_id: i32,
                      level_increment: i32)
@@ -309,30 +317,30 @@ pub mod skill {
         let skill_data: Option<SkillData> =
             skill_data::table.filter(skill_data::user_id.eq(user_id))
                 .filter(skill_data::skill_nugget.eq(skill_id))
-                .get_result(conn)
+                .get_result(&**conn)
                 .optional()?;
         Ok(if let Some(skill_data) = skill_data {
             diesel::update(skill_data::table
                             .filter(skill_data::user_id.eq(user_id))
                             .filter(skill_data::skill_nugget.eq(skill_id)))
                 .set(skill_data::skill_level.eq(skill_data.skill_level + level_increment))
-                .get_result(conn)?
+                .get_result(&**conn)?
         } else {
             diesel::insert(&SkillData {
                     user_id: user_id,
                     skill_nugget: skill_id,
                     skill_level: level_increment,
                 }).into(skill_data::table)
-                .get_result(conn)?
+                .get_result(&**conn)?
         })
 
     }
 
-    pub fn remove(conn: &PgConnection, id: i32) -> Result<Option<SkillNugget>> {
+    pub fn remove(conn: &Connection, id: i32) -> Result<Option<SkillNugget>> {
         use schema::skill_nuggets;
 
         let skill: Option<SkillNugget> =
-            diesel::delete(skill_nuggets::table.filter(skill_nuggets::id.eq(id))).get_result(conn)
+            diesel::delete(skill_nuggets::table.filter(skill_nuggets::id.eq(id))).get_result(&**conn)
                 .optional()?;
 
         Ok(skill)

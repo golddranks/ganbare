@@ -3,7 +3,7 @@ use quiz::{Answered, Quiz, QuizSerialized};
 use rustc_serialize::json;
 
 
-fn save_answer_test_item(conn: &PgConnection,
+fn save_answer_test_item(conn: &Connection,
                          user: &User,
                          event: &Event,
                          answer_enum: &Answered)
@@ -18,7 +18,7 @@ fn save_answer_test_item(conn: &PgConnection,
 
     let mut pending_item: PendingItem =
         pending_items::table.filter(pending_items::id.eq(answered_id))
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
     assert!(pending_item.test_item);
 
@@ -27,7 +27,7 @@ fn save_answer_test_item(conn: &PgConnection,
         return Ok(());
     }
     pending_item.pending = false;
-    let _: PendingItem = pending_item.save_changes(conn)?;
+    let _: PendingItem = pending_item.save_changes(&**conn)?;
 
     event::save_userdata(conn, event, user, Some("pending_test_item"), "0")?;
 
@@ -50,7 +50,7 @@ fn save_answer_test_item(conn: &PgConnection,
     Ok(())
 }
 
-fn get_new_quiz_test(conn: &PgConnection,
+fn get_new_quiz_test(conn: &Connection,
                      user: &User,
                      event: &Event,
                      quizes: &[QuizSerialized])
@@ -86,7 +86,7 @@ fn get_new_quiz_test(conn: &PgConnection,
         use schema::pending_items;
         let pending_item: PendingItem =
             pending_items::table.filter(pending_items::id.eq(pending_test_item))
-                .get_result(conn)?;
+                .get_result(&**conn)?;
 
         assert!(pending_item.test_item);
 
@@ -98,7 +98,7 @@ fn get_new_quiz_test(conn: &PgConnection,
     Ok(Some(quiz))
 }
 
-pub fn get_next_quiz_pretest(conn: &PgConnection,
+pub fn get_next_quiz_pretest(conn: &Connection,
                              user: &User,
                              answer_enum: Answered,
                              event: &Event)
@@ -108,7 +108,7 @@ pub fn get_next_quiz_pretest(conn: &PgConnection,
 }
 
 
-pub fn get_next_quiz_posttest(conn: &PgConnection,
+pub fn get_next_quiz_posttest(conn: &Connection,
                               user: &User,
                               answer_enum: Answered,
                               event: &Event)
@@ -123,7 +123,7 @@ pub struct RetellingJson {
     audio_src: String,
 }
 
-fn get_new_retelling(conn: &PgConnection,
+fn get_new_retelling(conn: &Connection,
                      user: &User,
                      event: &Event,
                      retellings: &[(&'static str, &'static str)])
@@ -147,7 +147,7 @@ fn get_new_retelling(conn: &PgConnection,
     }))
 }
 
-pub fn get_next_retelling_posttest(conn: &PgConnection,
+pub fn get_next_retelling_posttest(conn: &Connection,
                                    user: &User,
                                    event: &Event)
                                    -> Result<Option<RetellingJson>> {
@@ -164,7 +164,7 @@ pub fn get_next_retelling_posttest(conn: &PgConnection,
     get_new_retelling_posttest(conn, user, event)
 }
 
-pub fn get_next_retelling_pretest(conn: &PgConnection,
+pub fn get_next_retelling_pretest(conn: &Connection,
                                   user: &User,
                                   event: &Event)
                                   -> Result<Option<RetellingJson>> {
@@ -181,7 +181,7 @@ pub fn get_next_retelling_pretest(conn: &PgConnection,
     get_new_retelling_pretest(conn, user, event)
 }
 
-pub fn get_new_quiz_pretest(conn: &PgConnection,
+pub fn get_new_quiz_pretest(conn: &Connection,
                             user: &User,
                             event: &Event)
                             -> Result<Option<Quiz>> {
@@ -216,7 +216,7 @@ pub fn get_new_quiz_pretest(conn: &PgConnection,
     Ok(quiz)
 }
 
-pub fn get_new_quiz_posttest(conn: &PgConnection,
+pub fn get_new_quiz_posttest(conn: &Connection,
                              user: &User,
                              event: &Event)
                              -> Result<Option<Quiz>> {
@@ -236,7 +236,7 @@ pub fn get_new_quiz_posttest(conn: &PgConnection,
     Ok(quiz)
 }
 
-pub fn get_new_retelling_pretest(conn: &PgConnection,
+pub fn get_new_retelling_pretest(conn: &Connection,
                                  user: &User,
                                  event: &Event)
                                  -> Result<Option<RetellingJson>> {
@@ -251,7 +251,7 @@ pub fn get_new_retelling_pretest(conn: &PgConnection,
     get_new_retelling(conn, user, event, &retellings)
 }
 
-pub fn get_new_retelling_posttest(conn: &PgConnection,
+pub fn get_new_retelling_posttest(conn: &Connection,
                                   user: &User,
                                   event: &Event)
                                   -> Result<Option<RetellingJson>> {

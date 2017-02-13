@@ -7,7 +7,7 @@ use ganbare::manage;
 use std::collections::HashSet;
 
 pub fn fresh_install_form(req: &mut Request) -> PencilResult {
-    let conn = ganbare::db::connect(&*DATABASE_URL).err_500()?;
+    let conn = db_connect().err_500()?;
     if ganbare::db::is_installed(&conn).err_500()? {
         return abort(401);
     };
@@ -25,7 +25,7 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
         return Ok(bad_request("passwords don't match"));
     };
 
-    let conn = ganbare::db::connect(&*DATABASE_URL).err_500()?;
+    let conn = db_connect().err_500()?;
     if ganbare::db::is_installed(&conn).err_500()? {
         return abort(401);
     };

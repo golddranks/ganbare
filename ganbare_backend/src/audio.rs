@@ -26,7 +26,7 @@ fn save_file(path: &mut PathBuf, orig_filename: &str, audio_dir: &Path) -> Resul
     Ok(())
 }
 
-pub fn exists(conn: &PgConnection, path: &PathBuf) -> Result<bool> {
+pub fn exists(conn: &Connection, path: &PathBuf) -> Result<bool> {
     use crypto::sha2;
     use crypto::digest::Digest;
     use std::io::Read;
@@ -43,13 +43,13 @@ pub fn exists(conn: &PgConnection, path: &PathBuf) -> Result<bool> {
 
     let audio_file: Option<AudioFile> =
         audio_files::table.filter(audio_files::file_sha2.eq(&file_hash[..]))
-            .get_result(conn)
+            .get_result(&**conn)
             .optional()?;
 
     Ok(audio_file.is_some())
 }
 
-pub fn get_create_narrator(conn: &PgConnection, mut name: &str) -> Result<Narrator> {
+pub fn get_create_narrator(conn: &Connection, mut name: &str) -> Result<Narrator> {
     use schema::narrators;
 
     let narrator: Option<Narrator> = if name == "" {
@@ -57,7 +57,7 @@ pub fn get_create_narrator(conn: &PgConnection, mut name: &str) -> Result<Narrat
         None
     } else {
         narrators::table.filter(narrators::name.eq(name))
-            .get_result(&*conn)
+            .get_result(&**conn)
             .optional()
             .chain_err(|| "Database error with narrators!")?
     };
@@ -67,13 +67,13 @@ pub fn get_create_narrator(conn: &PgConnection, mut name: &str) -> Result<Narrat
         Some(narrator) => narrator,
         None => {
             diesel::insert(&NewNarrator { name: name }).into(narrators::table)
-                .get_result(&*conn)
+                .get_result(&**conn)
                 .chain_err(|| "Database error!")?
         }
     })
 }
 
-pub fn del_narrator(conn: &PgConnection, id: i32) -> Result<bool> {
+pub fn del_narrator(conn: &Connection, id: i32) -> Result<bool> {
     use schema::{narrators, audio_files};
     use diesel::result::TransactionError::*;
 
@@ -83,14 +83,14 @@ pub fn del_narrator(conn: &PgConnection, id: i32) -> Result<bool> {
 
         let audio_files_count = diesel::delete(audio_files::table
             .filter(audio_files::narrators_id.eq(id)))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
         info!("Rows deleted {:?}", audio_files_count);
 
         info!("Deleting narrator with id {:?}", id);
 
         let narrators_count =
-            diesel::delete(narrators::table.filter(narrators::id.eq(id))).execute(conn)?;
+            diesel::delete(narrators::table.filter(narrators::id.eq(id))).execute(&**conn)?;
 
         info!("Rows deleted {:?}", narrators_count);
 
@@ -107,7 +107,7 @@ pub fn del_narrator(conn: &PgConnection, id: i32) -> Result<bool> {
     }
 }
 
-pub fn merge_narrator(conn: &PgConnection, narrator_id: i32, new_narrator_id: i32) -> Result<()> {
+pub fn merge_narrator(conn: &Connection, narrator_id: i32, new_narrator_id: i32) -> Result<()> {
     use schema::{audio_files, narrators};
     use diesel::result::TransactionError::*;
 
@@ -120,12 +120,12 @@ pub fn merge_narrator(conn: &PgConnection, narrator_id: i32, new_narrator_id: i3
         let count = diesel::update(
                 audio_files::table.filter(audio_files::narrators_id.eq(narrator_id))
             ).set(audio_files::narrators_id.eq(new_narrator_id))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
         info!("{} narrators in audio files replaced with a new audio bundle.",
               count);
 
-        diesel::delete(narrators::table.filter(narrators::id.eq(narrator_id))).execute(conn)?;
+        diesel::delete(narrators::table.filter(narrators::id.eq(narrator_id))).execute(&**conn)?;
 
         Ok(())
 
@@ -140,7 +140,7 @@ pub fn merge_narrator(conn: &PgConnection, narrator_id: i32, new_narrator_id: i3
     }
 }
 
-pub fn merge_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
+pub fn merge_audio_bundle(conn: &Connection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
     use schema::{audio_files, audio_bundles};
     use diesel::result::TransactionError::*;
 
@@ -154,7 +154,7 @@ pub fn merge_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i3
         let count = diesel::update(
                 audio_files::table.filter(audio_files::bundle_id.eq(bundle_id))
             ).set(audio_files::bundle_id.eq(new_bundle_id))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
         info!("{} bundles in audio files replaced with a new audio bundle.",
               count);
@@ -162,7 +162,7 @@ pub fn merge_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i3
         // updating words & questions
         manage::replace_audio_bundle(conn, bundle_id, new_bundle_id)?;
 
-        diesel::delete(audio_bundles::table.filter(audio_bundles::id.eq(bundle_id))).execute(conn)?;
+        diesel::delete(audio_bundles::table.filter(audio_bundles::id.eq(bundle_id))).execute(&**conn)?;
         Ok(())
 
     }) {
@@ -176,7 +176,7 @@ pub fn merge_audio_bundle(conn: &PgConnection, bundle_id: i32, new_bundle_id: i3
     }
 }
 
-pub fn del_bundle(conn: &PgConnection, id: i32) -> Result<bool> {
+pub fn del_bundle(conn: &Connection, id: i32) -> Result<bool> {
     use schema::{audio_bundles, audio_files, question_answers, words};
     use diesel::result::TransactionError::*;
 
@@ -186,7 +186,7 @@ pub fn del_bundle(conn: &PgConnection, id: i32) -> Result<bool> {
         // let's find a replacement bundle for all the things that depend on this!
 
         let bundle: AudioBundle = audio_bundles::table.filter(audio_bundles::id.eq(id))
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
         let replacement_bundles = get_bundles_by_name(conn, &bundle.listname)?;
         for bundle in replacement_bundles {
@@ -199,13 +199,13 @@ pub fn del_bundle(conn: &PgConnection, id: i32) -> Result<bool> {
         info!("Deleting audio_files with bundle_id {:?}", id);
 
         let count =
-            diesel::delete(audio_files::table.filter(audio_files::bundle_id.eq(id))).execute(conn)?;
+            diesel::delete(audio_files::table.filter(audio_files::bundle_id.eq(id))).execute(&**conn)?;
 
         info!("Rows deleted {:?}", count);
 
         info!("Deleting words with bundle_id {:?}", id);
 
-        let count = diesel::delete(words::table.filter(words::audio_bundle.eq(id))).execute(conn)?;
+        let count = diesel::delete(words::table.filter(words::audio_bundle.eq(id))).execute(&**conn)?;
 
         info!("Rows deleted {:?}", count);
 
@@ -213,7 +213,7 @@ pub fn del_bundle(conn: &PgConnection, id: i32) -> Result<bool> {
 
         let count = diesel::delete(question_answers::table
             .filter(question_answers::a_audio_bundle.eq(id)))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
         info!("Rows deleted {:?}", count);
 
@@ -221,14 +221,14 @@ pub fn del_bundle(conn: &PgConnection, id: i32) -> Result<bool> {
 
         let count = diesel::delete(question_answers::table
             .filter(question_answers::q_audio_bundle.eq(id)))
-            .execute(conn)?;
+            .execute(&**conn)?;
 
         info!("Rows deleted {:?}", count);
 
         info!("Deleting bundle with id {:?}", id);
 
         let count =
-            diesel::delete(audio_bundles::table.filter(audio_bundles::id.eq(id))).execute(conn)?;
+            diesel::delete(audio_bundles::table.filter(audio_bundles::id.eq(id))).execute(&**conn)?;
 
         info!("Rows deleted {:?}", count);
 
@@ -245,7 +245,7 @@ pub fn del_bundle(conn: &PgConnection, id: i32) -> Result<bool> {
     }
 }
 
-fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>) -> Result<i32> {
+fn default_narrator_id(conn: &Connection, opt_narrator: &mut Option<Narrator>) -> Result<i32> {
     use schema::narrators;
 
     if let Some(ref narrator) = *opt_narrator {
@@ -254,7 +254,7 @@ fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>)
 
         let new_narrator: Narrator =
             diesel::insert(&NewNarrator { name: "anonymous" }).into(narrators::table)
-                .get_result(conn)
+                .get_result(&**conn)
                 .chain_err(|| "Couldn't create a new narrator!")?;
 
         info!("{:?}", &new_narrator);
@@ -264,11 +264,11 @@ fn default_narrator_id(conn: &PgConnection, opt_narrator: &mut Option<Narrator>)
     }
 }
 
-pub fn new_bundle(conn: &PgConnection, name: &str) -> Result<AudioBundle> {
+pub fn new_bundle(conn: &Connection, name: &str) -> Result<AudioBundle> {
     use schema::audio_bundles;
     let bundle: AudioBundle =
         diesel::insert(&NewAudioBundle { listname: name }).into(audio_bundles::table)
-            .get_result(&*conn)
+            .get_result(&**conn)
             .chain_err(|| "Can't insert a new audio bundle!")?;
 
     info!("{:?}", bundle);
@@ -276,7 +276,7 @@ pub fn new_bundle(conn: &PgConnection, name: &str) -> Result<AudioBundle> {
     Ok(bundle)
 }
 
-pub fn change_bundle_name(conn: &PgConnection,
+pub fn change_bundle_name(conn: &Connection,
                           id: i32,
                           new_name: &str)
                           -> Result<Option<AudioBundle>> {
@@ -285,24 +285,24 @@ pub fn change_bundle_name(conn: &PgConnection,
     let bundle: Option<AudioBundle> = diesel::update(audio_bundles::table
         .filter(audio_bundles::id.eq(id)))
         .set(audio_bundles::listname.eq(new_name))
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()?;
 
     Ok(bundle)
 }
 
-pub fn update_narrator(conn: &PgConnection, narrator: &Narrator) -> Result<Option<Narrator>> {
+pub fn update_narrator(conn: &Connection, narrator: &Narrator) -> Result<Option<Narrator>> {
     use schema::narrators;
 
     let narrator: Option<Narrator> =
         diesel::update(narrators::table.filter(narrators::id.eq(narrator.id))).set(narrator)
-            .get_result(conn)
+            .get_result(&**conn)
             .optional()?;
 
     Ok(narrator)
 }
 
-pub fn update_file(conn: &PgConnection,
+pub fn update_file(conn: &Connection,
                    id: i32,
                    file: &UpdateAudioFile)
                    -> Result<Option<AudioFile>> {
@@ -310,17 +310,17 @@ pub fn update_file(conn: &PgConnection,
 
     let file: Option<AudioFile> =
         diesel::update(audio_files::table.filter(audio_files::id.eq(id))).set(file)
-            .get_result(conn)
+            .get_result(&**conn)
             .optional()?;
     Ok(file)
 }
 
-pub fn get_create_bundle(conn: &PgConnection, listname: &str) -> Result<AudioBundle> {
+pub fn get_create_bundle(conn: &Connection, listname: &str) -> Result<AudioBundle> {
     use schema::audio_bundles;
 
     let bundle: Option<AudioBundle> = {
         audio_bundles::table.filter(audio_bundles::listname.eq(listname))
-            .get_result(conn)
+            .get_result(&**conn)
             .optional()?
     };
 
@@ -328,28 +328,28 @@ pub fn get_create_bundle(conn: &PgConnection, listname: &str) -> Result<AudioBun
         Some(bundle) => bundle,
         None => {
             diesel::insert(&NewAudioBundle { listname: listname }).into(audio_bundles::table)
-                .get_result(conn)?
+                .get_result(&**conn)?
         }
     })
 }
 
-pub fn get_bundles_by_name(conn: &PgConnection, listname: &str) -> Result<Vec<AudioBundle>> {
+pub fn get_bundles_by_name(conn: &Connection, listname: &str) -> Result<Vec<AudioBundle>> {
     use schema::audio_bundles;
 
     let bundle: Vec<AudioBundle> = {
         audio_bundles::table.filter(audio_bundles::listname.eq(listname))
-            .get_results(conn)?
+            .get_results(&**conn)?
     };
 
     Ok(bundle)
 }
 
-pub fn get_narrators_by_name(conn: &PgConnection, name: &str) -> Result<Vec<Narrator>> {
+pub fn get_narrators_by_name(conn: &Connection, name: &str) -> Result<Vec<Narrator>> {
     use schema::narrators;
 
     let narr: Vec<Narrator> = {
         narrators::table.filter(narrators::name.eq(name))
-            .get_results(conn)?
+            .get_results(&**conn)?
     };
 
     Ok(narr)
@@ -376,7 +376,7 @@ pub fn audio_file_hash(filename: &str, audio_dir: &Path) -> Result<[u8; 64]> {
 }
 
 
-pub fn save(conn: &PgConnection,
+pub fn save(conn: &Connection,
             mut narrator: &mut Option<Narrator>,
             file: &mut (PathBuf, Option<String>, mime::Mime),
             bundle: &mut Option<AudioBundle>,
@@ -413,7 +413,7 @@ pub fn save(conn: &PgConnection,
     };
 
     let audio_file: AudioFile = diesel::insert(&new_q_audio).into(audio_files::table)
-        .get_result(&*conn)
+        .get_result(&**conn)
         .chain_err(|| "Couldn't create a new audio file!")?;
 
     info!("{:?}", &audio_file);
@@ -423,12 +423,12 @@ pub fn save(conn: &PgConnection,
     Ok(audio_file)
 }
 
-pub fn load_all_from_bundles(conn: &PgConnection,
+pub fn load_all_from_bundles(conn: &Connection,
                              bundles: &[AudioBundle])
                              -> Result<Vec<Vec<AudioFile>>> {
 
     let q_audio_files: Vec<Vec<AudioFile>> = AudioFile::belonging_to(&*bundles)
-        .load(&*conn)
+        .load(&**conn)
         .chain_err(|| "Can't load quiz!")?
         .grouped_by(&*bundles);
 
@@ -443,17 +443,17 @@ pub fn load_all_from_bundles(conn: &PgConnection,
     Ok(q_audio_files)
 }
 
-pub fn load_all_from_bundle(conn: &PgConnection, bundle_id: i32) -> Result<Vec<AudioFile>> {
+pub fn load_all_from_bundle(conn: &Connection, bundle_id: i32) -> Result<Vec<AudioFile>> {
     use schema::audio_files;
 
     let q_audio_files: Vec<AudioFile> =
         audio_files::table.filter(audio_files::bundle_id.eq(bundle_id))
-            .get_results(&*conn)
+            .get_results(&**conn)
             .chain_err(|| "Can't load quiz!")?;
     Ok(q_audio_files)
 }
 
-pub fn load_random_from_bundle(conn: &PgConnection, bundle_id: i32) -> Result<AudioFile> {
+pub fn load_random_from_bundle(conn: &Connection, bundle_id: i32) -> Result<AudioFile> {
     use schema::{audio_files, narrators};
     use rand::{Rng, thread_rng};
 
@@ -461,7 +461,7 @@ pub fn load_random_from_bundle(conn: &PgConnection, bundle_id: i32) -> Result<Au
         audio_files::table.inner_join(narrators::table)
             .filter(narrators::published.eq(true))
             .filter(audio_files::bundle_id.eq(bundle_id))
-            .get_results(&*conn)
+            .get_results(&**conn)
             .chain_err(|| "Can't load quiz!")?;
 
     // Panics if q_audio_files.len() == 0
@@ -470,31 +470,31 @@ pub fn load_random_from_bundle(conn: &PgConnection, bundle_id: i32) -> Result<Au
     Ok(audio_file)
 }
 
-pub fn get_all_bundles(conn: &PgConnection) -> Result<Vec<(AudioBundle, Vec<AudioFile>)>> {
+pub fn get_all_bundles(conn: &Connection) -> Result<Vec<(AudioBundle, Vec<AudioFile>)>> {
     use schema::audio_bundles;
     let bundles: Vec<AudioBundle> = audio_bundles::table.order(audio_bundles::listname.asc())
-        .get_results(conn)?;
+        .get_results(&**conn)?;
 
     let audio_files = AudioFile::belonging_to(&bundles)
-        .load::<AudioFile>(conn)?
+        .load::<AudioFile>(&**conn)?
         .grouped_by(&bundles);
 
     let all = bundles.into_iter().zip(audio_files).collect();
     Ok(all)
 }
 
-pub fn get_narrators(conn: &PgConnection) -> Result<Vec<Narrator>> {
+pub fn get_narrators(conn: &Connection) -> Result<Vec<Narrator>> {
     use schema::narrators;
-    let narrators: Vec<Narrator> = narrators::table.get_results(conn)?;
+    let narrators: Vec<Narrator> = narrators::table.get_results(&**conn)?;
     Ok(narrators)
 }
 
-pub fn get_audio_file_by_id(conn: &PgConnection, file_id: i32) -> Result<AudioFile> {
+pub fn get_audio_file_by_id(conn: &Connection, file_id: i32) -> Result<AudioFile> {
     use schema::audio_files::dsl::*;
     use diesel::result::Error::NotFound;
 
     let file: AudioFile = audio_files.filter(id.eq(file_id))
-        .get_result(&*conn)
+        .get_result(&**conn)
         .map_err(|e| match e {
             e @ NotFound => Error::from_err(e, ErrorKind::FileNotFound),
             e => Error::from_err(e, "Couldn't get the file!".into()),
@@ -503,12 +503,12 @@ pub fn get_audio_file_by_id(conn: &PgConnection, file_id: i32) -> Result<AudioFi
     Ok(file)
 }
 
-pub fn get_file_path(conn: &PgConnection, file_id: i32) -> Result<(String, mime::Mime)> {
+pub fn get_file_path(conn: &Connection, file_id: i32) -> Result<(String, mime::Mime)> {
     use schema::audio_files::dsl::*;
     use diesel::result::Error::NotFound;
 
     let file: AudioFile = audio_files.filter(id.eq(file_id))
-        .get_result(&*conn)
+        .get_result(&**conn)
         .map_err(|e| match e {
             e @ NotFound => Error::from_err(e, ErrorKind::FileNotFound),
             e => Error::from_err(e, "Couldn't get the file!".into()),
@@ -518,10 +518,10 @@ pub fn get_file_path(conn: &PgConnection, file_id: i32) -> Result<(String, mime:
         file.mime.parse().expect("The mimetype from the database should be always valid.")))
 }
 
-pub fn get_all_files(conn: &PgConnection) -> Result<Vec<(String, mime::Mime)>> {
+pub fn get_all_files(conn: &Connection) -> Result<Vec<(String, mime::Mime)>> {
     use schema::audio_files::dsl::*;
 
-    let files: Vec<AudioFile> = audio_files.get_results(conn)?;
+    let files: Vec<AudioFile> = audio_files.get_results(&**conn)?;
 
     let files = files.into_iter()
         .map(|f| {
@@ -533,7 +533,7 @@ pub fn get_all_files(conn: &PgConnection) -> Result<Vec<(String, mime::Mime)>> {
     Ok(files)
 }
 
-pub fn for_quiz(conn: &PgConnection, user: &User, pending_id: i32) -> Result<(String, mime::Mime)> {
+pub fn for_quiz(conn: &Connection, user: &User, pending_id: i32) -> Result<(String, mime::Mime)> {
     use schema::audio_files;
     use schema::pending_items;
     use diesel::result::Error::NotFound;
@@ -542,7 +542,7 @@ pub fn for_quiz(conn: &PgConnection, user: &User, pending_id: i32) -> Result<(St
         .filter(pending_items::id.eq(pending_id))
         .filter(pending_items::user_id.eq(user.id))
         .filter(pending_items::pending.eq(true))
-        .get_result(&*conn)
+        .get_result(&**conn)
         .map_err(|e| match e {
             e @ NotFound => Error::from_err(e, ErrorKind::FileNotFound),
             e => Error::from_err(e, "Couldn't get the file!".into()),

@@ -9,7 +9,7 @@ extern crate dotenv;
 extern crate handlebars;
 extern crate rustc_serialize;
 
-use ganbare_backend::PgConnection;
+use ganbare_backend::Connection;
 use ganbare_backend::errors::*;
 use ganbare_backend::db;
 use ganbare_backend::models::*;
@@ -31,14 +31,14 @@ lazy_static! {
 }
 
 
-pub fn list_skillnuggets(conn: &PgConnection) -> Result<Vec<SkillNugget>> {
+pub fn list_skillnuggets(conn: &Connection) -> Result<Vec<SkillNugget>> {
     use ganbare_backend::schema::skill_nuggets::dsl::*;
 
     skill_nuggets.load::<SkillNugget>(conn).chain_err(|| "Can't load")
 
 }
 
-pub fn list_questions(conn: &PgConnection) -> Result<Vec<QuizQuestion>> {
+pub fn list_questions(conn: &Connection) -> Result<Vec<QuizQuestion>> {
     use ganbare_backend::schema::quiz_questions::dsl::*;
 
     quiz_questions.load::<QuizQuestion>(conn).chain_err(|| "Can't load")

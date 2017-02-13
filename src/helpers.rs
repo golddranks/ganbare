@@ -3,7 +3,6 @@ use std;
 use std::env;
 use dotenv;
 use std::net::{SocketAddr, ToSocketAddrs};
-use ganbare::PgConnection;
 use std::collections::BTreeMap;
 use cookie::Cookie as CookiePair;
 use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, Cookie};
@@ -13,7 +12,6 @@ use time;
 use std::result::Result as StdResult;
 use ganbare::errors::Result;
 use rustc_serialize::base64::FromBase64;
-use ganbare::db;
 use ganbare::user;
 use ganbare::session;
 use ganbare::errors;
@@ -21,6 +19,10 @@ use std::path::PathBuf;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 pub use std::time::{Instant, Duration};
 use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
+
+use r2d2;
+use ganbare_backend::ConnManager;
+use ganbare_backend::Connection;
 
 pub use ganbare_backend::PERF_TRACE;
 
@@ -199,6 +201,12 @@ lazy_static! {
             )
     };
 
+    pub static ref POOL: r2d2::Pool<ConnManager> = {
+       let config = r2d2::Config::default();
+       let manager = ConnManager::new(DATABASE_URL.as_str());
+       
+       r2d2::Pool::new(config, manager).expect("Failed to create pool.")
+    };
 }
 
 pub fn get_version_info() -> (&'static str, &'static str, bool) {
@@ -211,10 +219,11 @@ pub fn get_version_info() -> (&'static str, &'static str, bool) {
     (&*BUILD_NUMBER, &*COMMIT_NAME, is_release)
 }
 
-pub fn db_connect() -> Result<PgConnection> {
+pub fn db_connect() -> Result<Connection> {
+    use ganbare_backend::ResultExt;
 
     let conn = time_it!("connect to db",
-        db::connect(&*DATABASE_URL)
+        POOL.get().chain_err(|| "DB timeout")
     )?;
     Ok(conn)
 }
@@ -243,7 +252,7 @@ pub fn new_template_context() -> BTreeMap<String, String> {
     ctx
 }
 
-pub fn get_user(conn: &PgConnection, req: &Request) -> Result<Option<(User, Session)>> {
+pub fn get_user(conn: &Connection, req: &Request) -> Result<Option<(User, Session)>> {
     if let Some(sess_token) = req.cookies().and_then(get_cookie) {
         Ok(session::check(conn, sess_token, req.remote_addr().ip())?)
     } else {
@@ -437,7 +446,7 @@ macro_rules! include_templates(
 
 pub fn auth_user(req: &mut Request,
                  required_group: &str)
-                 -> StdResult<(PgConnection, User, Session), PencilError> {
+                 -> StdResult<(Connection, User, Session), PencilError> {
 
     time_it!{"authentication",
         match try_auth_user(req)? {
@@ -456,7 +465,7 @@ pub fn auth_user(req: &mut Request,
 }
 
 pub fn try_auth_user(req: &mut Request)
-                     -> StdResult<Option<(PgConnection, User, Session)>, PencilError> {
+                     -> StdResult<Option<(Connection, User, Session)>, PencilError> {
 
     let conn = db_connect().err_500()?;
 
@@ -482,7 +491,7 @@ pub fn check_env_vars() {
     let _ = &*TIME_AT_SERVER_START;
 }
 
-pub fn do_login<I: IntoIp>(conn: &PgConnection,
+pub fn do_login<I: IntoIp>(conn: &Connection,
                            email: &str,
                            plaintext_pw: &str,
                            ip: I)
@@ -496,7 +505,7 @@ pub fn do_login<I: IntoIp>(conn: &PgConnection,
     Ok(Some((user, sess)))
 }
 
-pub fn do_logout(conn: &PgConnection, sess: &Session) -> StdResult<(), PencilError> {
+pub fn do_logout(conn: &Connection, sess: &Session) -> StdResult<(), PencilError> {
     debug!("Logging out session: {:?}", sess);
     session::end(conn, sess).err_500()?;
     Ok(())

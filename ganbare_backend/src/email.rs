@@ -138,7 +138,7 @@ pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item = &'a st
 
 
 
-pub fn add_pending_email_confirm(conn: &PgConnection,
+pub fn add_pending_email_confirm(conn: &Connection,
                                  email: &str,
                                  groups: &[i32])
                                  -> Result<String> {
@@ -150,63 +150,63 @@ pub fn add_pending_email_confirm(conn: &PgConnection,
             groups: groups,
         };
         diesel::insert(&confirm).into(pending_email_confirms::table)
-            .execute(conn)
+            .execute(&**conn)
             .chain_err(|| "Error :(")?;
     }
     Ok(secret)
 }
 
-pub fn get_all_pending_email_confirms(conn: &PgConnection) -> Result<Vec<String>> {
+pub fn get_all_pending_email_confirms(conn: &Connection) -> Result<Vec<String>> {
     use schema::pending_email_confirms;
     let emails: Vec<String> = pending_email_confirms::table.select(pending_email_confirms::email)
-        .get_results(conn)?;
+        .get_results(&**conn)?;
 
     Ok(emails)
 }
 
-pub fn check_pending_email_confirm(conn: &PgConnection,
+pub fn check_pending_email_confirm(conn: &Connection,
                                    secret: &str)
                                    -> Result<Option<(String, Vec<i32>)>> {
     let confirm: Option<PendingEmailConfirm> =
         pending_email_confirms::table.filter(pending_email_confirms::secret.eq(secret))
-            .first(conn)
+            .first(&**conn)
             .optional()?;
 
     Ok(confirm.map(|c| (c.email, c.groups)))
 }
 
-pub fn complete_pending_email_confirm(conn: &PgConnection,
+pub fn complete_pending_email_confirm(conn: &Connection,
                                       password: &str,
                                       secret: &str,
                                       pepper: &[u8])
                                       -> Result<User> {
 
-    let (email, group_ids) = try_or!(check_pending_email_confirm(&*conn, secret)?,
+    let (email, group_ids) = try_or!(check_pending_email_confirm(&conn, secret)?,
         else return Err(ErrorKind::NoSuchSess.into()));
     let user = user::add_user(&*conn, &email, password, pepper)?;
 
     for g in group_ids {
-        user::join_user_group_by_id(&*conn, user.id, g)?;
+        user::join_user_group_by_id(&conn, user.id, g)?;
     }
 
     diesel::delete(pending_email_confirms::table
         .filter(pending_email_confirms::secret.eq(secret)))
-        .execute(conn)
+        .execute(&**conn)
         .chain_err(|| "Couldn't delete the pending request.")?;
 
     Ok(user)
 }
 
-pub fn clean_old_pendings(conn: &PgConnection, duration: chrono::duration::Duration) -> Result<usize> {
+pub fn clean_old_pendings(conn: &Connection, duration: chrono::duration::Duration) -> Result<usize> {
     use schema::pending_email_confirms;
     let deadline = chrono::UTC::now() - duration;
     diesel::delete(pending_email_confirms::table
             .filter(pending_email_confirms::added.lt(deadline)))
-        .execute(conn)
+        .execute(&**conn)
         .chain_err(|| "Couldn't delete the old pending requests.")
 }
 
-pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &PgConnection,
+pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &Connection,
                                             how_old: chrono::Duration,
                                             nag_grace_period: chrono::Duration,
                                             mail_server: SOCK,
@@ -235,7 +235,7 @@ pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &PgConnection,
         use schema::user_stats;
 
         let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
-            .get_result(conn)?;
+            .get_result(&**conn)?;
 
         if !user::check_user_group(conn, user_id, "nag_emails")? {
             continue; // We don't send emails to users that don't belong to the "nag_emails" group.
@@ -266,7 +266,7 @@ pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &PgConnection,
             .chain_err(|| "Couldn't send!")?;
 
         stats.last_nag_email = Some(chrono::UTC::now());
-        let _: UserStats = stats.save_changes(conn)?;
+        let _: UserStats = stats.save_changes(&**conn)?;
 
         info!("Sent slacker heatening email to {}: {:?}!",
               email_addr,

@@ -6,7 +6,7 @@ use ganbare::event;
 use ganbare::user;
 use ganbare::email;
 
-fn dispatch_events(conn: &PgConnection,
+fn dispatch_events(conn: &Connection,
                    user: &User)
                    -> StdResult<Option<PencilResult>, PencilError> {
 
@@ -41,7 +41,7 @@ fn dispatch_events(conn: &PgConnection,
     Ok(Some(redirect))
 }
 
-fn main_quiz(req: &mut Request, conn: &PgConnection, user: &User) -> PencilResult {
+fn main_quiz(req: &mut Request, conn: &Connection, user: &User) -> PencilResult {
     let mut context = new_template_context();
 
     if !user::check_user_group(conn, user.id, "questions").err_500()? &&
@@ -199,7 +199,7 @@ pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
     };
     use ganbare::SaveChangesDsl;
     membership.anonymous = true;
-    let _: ganbare::models::GroupMembership = membership.save_changes(&conn).err_500()?;
+    let _: ganbare::models::GroupMembership = membership.save_changes(&*conn).err_500()?;
 
     event::set_done(&conn, "sorting_ceremony", &user).err_500()?;
 

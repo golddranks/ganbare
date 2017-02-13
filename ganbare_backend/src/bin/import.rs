@@ -104,7 +104,7 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
     }
 }
 
-fn full_sentence<'a>(conn: &PgConnection,
+fn full_sentence<'a>(conn: &Connection,
                      filename: &str,
                      narrator: &'a str,
                      files: Vec<(PathBuf, Option<String>, mime::Mime)>)
@@ -121,7 +121,7 @@ fn full_sentence<'a>(conn: &PgConnection,
     use schema::{words, skill_nuggets};
     let explanation: Option<String> = words::table.filter(words::word.eq(&word))
         .select(words::explanation)
-        .get_result(conn)
+        .get_result(&**conn)
         .optional()
         .expect("Database borkage toot toot");
 
@@ -143,7 +143,7 @@ fn full_sentence<'a>(conn: &PgConnection,
     
                 words::table.filter(words::word.eq(&variant))
                     .select(words::explanation)
-                    .get_result(conn)
+                    .get_result(&**conn)
                     .optional()
                     .expect("Database borkage toot toot")
             })();
@@ -155,7 +155,7 @@ fn full_sentence<'a>(conn: &PgConnection,
                     let variants: Vec<(SkillNugget, Word)> = skill_nuggets::table
                         .inner_join(words::table)
                         .filter(skill_nuggets::skill_summary.eq(&nugget))
-                        .get_results(conn)
+                        .get_results(&**conn)
                         .expect("Database borkage toot toot");
                         
                     let mut variant_explanation = None;

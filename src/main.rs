@@ -28,6 +28,9 @@ extern crate url;
 extern crate cookie;
 extern crate typemap;
 
+extern crate r2d2;
+extern crate r2d2_diesel;
+
 #[macro_use]
 mod helpers;
 mod app_pages;
@@ -40,12 +43,13 @@ pub use helpers::*;
 pub use std::result::Result as StdResult;
 pub use pencil::{Request, PencilResult, PencilError};
 
-pub use ganbare::PgConnection;
+pub use r2d2_diesel::ConnectionManager;
+
 pub use ganbare::models::{User, Session};
 pub use ganbare::errors::ErrorKind::Msg as ErrMsg;
 pub use ganbare::errors::Result;
 pub use ganbare::errors::{Error, ErrorKind};
-
+pub use ganbare::Connection;
 
 pub fn favicon(_: &mut Request) -> PencilResult {
     use pencil::helpers::send_file;
@@ -297,7 +301,7 @@ pub fn main() {
     env_logger::init().unwrap();
     info!("Starting.");
     check_env_vars();
-    let conn = ganbare::db::connect(&*DATABASE_URL).expect("Can't connect to database!");
+    let conn = db_connect().expect("Can't connect to database!");
     ganbare::db::check(&conn).expect("Something funny with the DB!");
     info!("Database OK.");
 

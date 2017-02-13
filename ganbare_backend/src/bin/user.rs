@@ -11,7 +11,7 @@ extern crate rustc_serialize;
 extern crate lazy_static;
 
 use ganbare_backend::models::User;
-use ganbare_backend::PgConnection;
+use ganbare_backend::Connection;
 use handlebars::Handlebars;
 use ganbare_backend::errors::*;
 use ganbare_backend::user::*;
@@ -112,7 +112,7 @@ lazy_static! {
 }
 
 
-pub fn list_users(conn: &PgConnection) -> Result<Vec<User>> {
+pub fn list_users(conn: &Connection) -> Result<Vec<User>> {
     use ganbare_backend::schema::users::dsl::*;
 
     users.load::<User>(conn).chain_err(|| "Can't load users")

@@ -36,17 +36,17 @@ fn token_to_bin(sessid: &str) -> Result<Vec<u8>> {
     }
 }
 
-pub fn clean_old_sessions(conn: &PgConnection, how_old: chrono::Duration) -> Result<usize> {
+pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Result<usize> {
     use schema::sessions;
 
     let deleted_count = diesel::delete(sessions::table
         .filter(sessions::last_seen.lt(chrono::UTC::now()-how_old)))
-        .execute(conn)?;
+        .execute(&**conn)?;
 
     Ok(deleted_count)
 }
 
-pub fn check(conn: &PgConnection, token_hex: &str, ip: IpAddr) -> Result<Option<(User, Session)>> {
+pub fn check(conn: &Connection, token_hex: &str, ip: IpAddr) -> Result<Option<(User, Session)>> {
     use schema::{users, sessions};
     use diesel::ExpressionMethods;
 
@@ -63,7 +63,7 @@ pub fn check(conn: &PgConnection, token_hex: &str, ip: IpAddr) -> Result<Option<
             .filter(sessions::current_token.eq(&token)
                 .or(sessions::proposed_token.eq(&token)
                     .or(sessions::retired_token.eq(&token))))
-            .get_result(conn)
+            .get_result(&**conn)
             .optional()?;
 
         if let Some((user, mut sess)) = user_sess {
@@ -92,7 +92,7 @@ pub fn check(conn: &PgConnection, token_hex: &str, ip: IpAddr) -> Result<Option<
 
             let rows_updated = diesel::update(sessions::table.filter(sessions::id.eq(sess.id))
                     .filter(sessions::access_version.eq(expect_version))).set(&sess)
-                .execute(conn)?;
+                .execute(&**conn)?;
 
             if rows_updated == 0 {
                 continue; // Failed to commit; some other connection commited new tokens
@@ -117,11 +117,11 @@ pub fn check(conn: &PgConnection, token_hex: &str, ip: IpAddr) -> Result<Option<
     result
 }
 
-pub fn end(conn: &PgConnection, sess: &Session) -> Result<Option<()>> {
+pub fn end(conn: &Connection, sess: &Session) -> Result<Option<()>> {
     use schema::sessions;
 
     let deleted_count =
-        diesel::delete(sessions::table.filter(sessions::id.eq(sess.id))).execute(conn)?;
+        diesel::delete(sessions::table.filter(sessions::id.eq(sess.id))).execute(&**conn)?;
     Ok(if deleted_count != 1 {
         warn!("Somebody tried to log out with wrong credentials! (Either a bug or a hacking \
                attempt.)");
@@ -136,7 +136,7 @@ pub fn end(conn: &PgConnection, sess: &Session) -> Result<Option<()>> {
     })
 }
 
-pub fn start(conn: &PgConnection, user: &User, ip: IpAddr) -> Result<Session> {
+pub fn start(conn: &Connection, user: &User, ip: IpAddr) -> Result<Session> {
     use schema::sessions;
 
     let new_proposed_token = fresh_token()?;
@@ -162,6 +162,6 @@ pub fn start(conn: &PgConnection, user: &User, ip: IpAddr) -> Result<Session> {
     // this is going to fail? (A few-in-a 2^128 change, though...)
     diesel::insert(&new_sess)
         .into(sessions::table)
-        .get_result(conn)
+        .get_result(&**conn)
         .chain_err(|| "Couldn't start a session!")
 }

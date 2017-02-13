@@ -8,6 +8,7 @@ error_chain! {
             DieselError(::diesel::result::Error);
             DieselMigrationError(::diesel::migrations::RunMigrationsError);
             FmtError(::std::fmt::Error);
+            R2D2Error(::r2d2::GetTimeout);
         }
         errors {
             InvalidInput {
