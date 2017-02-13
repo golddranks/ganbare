@@ -126,6 +126,12 @@ lazy_static! {
             .unwrap_or_else(|_| "/static/fonts/default.css".into())
     };
 
+    pub static ref FONT_FILE : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_FONT_FILE")
+            .unwrap_or_else(|_| "/static/fonts/SourceSansPro_Light.woff".into())
+    };
+
     pub static ref AUDIO_DIR : PathBuf = {
         dotenv::dotenv().ok();
         PathBuf::from(env::var("GANBARE_AUDIO_DIR")
@@ -229,6 +235,7 @@ pub fn new_template_context() -> BTreeMap<String, String> {
     ctx.insert("title".to_string(), "akusento.ganba.re".to_string());
     ctx.insert("jquery_url".to_string(), JQUERY_URL.to_string());
     ctx.insert("font_stylesheet".to_string(), FONT_URL.to_string());
+    ctx.insert("font_file".to_string(), FONT_FILE.to_string());
     ctx
 }
 
