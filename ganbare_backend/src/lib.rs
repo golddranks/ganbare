@@ -132,7 +132,7 @@ pub mod db {
 
     #[cfg(not(debug_assertions))]
     fn run_migrations(conn: &Connection) -> Result<()> {
-        embedded_migrations::run(conn)?;
+        embedded_migrations::run(&**conn)?;
         Ok(())
     }
 
