@@ -60,11 +60,15 @@ lazy_static! {
 
     pub static ref SITE_LINK : String = {
         dotenv::dotenv().ok();
-        env::var("GANBARE_SITE_LINK")
+        let link = env::var("GANBARE_SITE_LINK")
             .unwrap_or_else(|_|
-                format!("http://{}:8081", env::var("GANBARE_SITE_DOMAIN")
+                format!("http://{}:8081/", env::var("GANBARE_SITE_DOMAIN")
                     .unwrap_or_else(|_| "".into()))
-                )
+                );
+        if ! link.ends_with("/") {
+            panic!("The site link must end with a slash!");
+        }
+        link
     };
 
     pub static ref EMAIL_SERVER : SocketAddr = {
@@ -474,6 +478,7 @@ pub fn check_env_vars() {
     let _ = &*DATABASE_URL;
     let _ = &*EMAIL_SERVER;
     let _ = &*SITE_DOMAIN;
+    let _ = &*SITE_LINK;
     let _ = &*TIME_AT_SERVER_START;
 }
 
