@@ -6,7 +6,7 @@
 *.css.map
 .DS_Store
 target
-/dev_assets/
+/assets_dev/
 /audio/
 /images/
 /backups/
