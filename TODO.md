@@ -9,12 +9,10 @@ Before production
 
 - Async rate limiting?
 - Monitoring
-- HMAC tokens (password reset & user account creation)
-- Length limit for username/password
 - Config files to repo
 - DoS prevention to HAProxy
-- Set password encryption weight in milliseconds in env var
-- Send emails in the background
+
+- HMAC tokens (password reset & user account creation)
 
 
 After starting production

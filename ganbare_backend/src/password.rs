@@ -2,6 +2,7 @@ extern crate dotenv;
 
 use super::errors::*;
 use super::models::Password;
+use std::time::{Instant, Duration};
 
 #[derive(Clone, Copy)]
 pub struct HashedPassword {
@@ -68,7 +69,7 @@ fn pepper_salt_pw_hash(plaintext_pw: &str,
     })
 }
 
-pub fn set_password(plaintext_pw: &str, pepper: &[u8]) -> Result<HashedPassword> {
+pub fn set_password(plaintext_pw: &str, pepper: &[u8], stretch_time: Duration) -> Result<HashedPassword> {
     use rand::{OsRng, Rng};
 
     if plaintext_pw.len() < 8 {
@@ -81,7 +82,22 @@ pub fn set_password(plaintext_pw: &str, pepper: &[u8]) -> Result<HashedPassword>
     let mut salt = [0_u8; 16];
     OsRng::new()?.fill_bytes(&mut salt);
 
-    Ok(pepper_salt_pw_hash(plaintext_pw, salt, 10, pepper)?)
+    let mut rounds = 10;
+    let start_time = Instant::now();
+    let mut hashed_pw = pepper_salt_pw_hash(plaintext_pw, salt, rounds, pepper)?;
+    let mut elapsed = Instant::now().duration_since(start_time);
+
+    while elapsed < stretch_time {
+
+        debug!("Not enough time elapsed ({:?}). Stretching more.", elapsed);
+        rounds +=1;
+        let start_time = Instant::now();
+        hashed_pw = pepper_salt_pw_hash(plaintext_pw, salt, rounds, pepper)?;
+        elapsed = Instant::now().duration_since(start_time);
+    
+    }
+
+    Ok(hashed_pw)
 }
 
 pub fn stretch_password(strength_goal: i16, hashed_pw: HashedPassword) -> HashedPassword {

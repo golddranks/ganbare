@@ -13,6 +13,7 @@ extern crate log;
 extern crate env_logger;
 #[macro_use]
 extern crate lazy_static;
+extern crate r2d2;
 
 use unicode_normalization::UnicodeNormalization;
 use ganbare_backend::*;
@@ -36,7 +37,10 @@ lazy_static! {
 }
 
 fn import_batch(path: &str, narrator: &str, sentences: bool) {
-    let conn = db::connect(&*DATABASE_URL).unwrap();
+    let config = r2d2::Config::default();
+    let manager = ConnManager::new(DATABASE_URL.as_str());
+    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pooled_conn = pool.get().unwrap();
 
     let files = std::fs::read_dir(path).unwrap();
 
@@ -70,7 +74,7 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
                 word.chars().next_back().expect("The word surely is longer than 0 characters!");
         }
 
-        if audio::exists(&conn, &path).expect("Crapshoot") {
+        if audio::exists(&pooled_conn, &path).expect("Crapshoot") {
             println!("That audio file already exists in the system. Skipping.");
             continue;
         }
@@ -90,7 +94,7 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
         let files = vec![(temp_file_path, Some(file_name), mime)];
 
         let w = if sentences {
-            match full_sentence(&conn, &word, narrator, files) {
+            match full_sentence(&pooled_conn, &word, narrator, files) {
                 Some(s) => s,
                 None => continue,
             }
@@ -100,7 +104,7 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
 
         println!("{:?}", w);
 
-        manage::create_or_update_word(&conn, w, &AUDIO_DIR).unwrap();
+        manage::create_or_update_word(&pooled_conn, w, &AUDIO_DIR).unwrap();
     }
 }
 

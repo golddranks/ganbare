@@ -41,6 +41,7 @@ The following have defaults, and you may omit them:
     GANBARE_CACHE_MAX_AGE Sets the max-age of cache control of static files. Defaults to conservative 30 seconds. Change this to a larger number on production!
     GANBARE_SERVER_THREADS Sets the amount of threads. Defaults to 20. Note that the server is syncronous at the moment, so recommended setting for production are: HAProxy with option http-server-close and server maxconns set to the same value as GANBARE_SERVER_THREADS.
     GANBARE_PERF_TRACE prints timings of various operations into debug log. Defaults to false.
+    GANBARE_PASSWORD_STRETCHING_MS How long new passwords are stretched in milliseconds. Defaults to 700 ms.
     RUST_LOG Log level. Try ganbare=debug,ganbare_backend=debug if you want to debug stuff.
 
 During build, you need the following env var too: 

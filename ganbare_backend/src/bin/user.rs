@@ -9,21 +9,39 @@ extern crate dotenv;
 extern crate rustc_serialize;
 #[macro_use]
 extern crate lazy_static;
+extern crate r2d2;
+extern crate lettre;
 
 use ganbare_backend::models::User;
 use ganbare_backend::Connection;
 use handlebars::Handlebars;
 use ganbare_backend::errors::*;
 use ganbare_backend::user::*;
-use ganbare_backend::db;
 use ganbare_backend::email;
 use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
 use diesel::LoadDsl;
 use std::env;
+use std::time::Duration;
+use ganbare_backend::ConnManager;
+use std::sync::RwLock;
+use std::collections::VecDeque;
+use lettre::email::Email;
+use lettre::transport::smtp::SmtpTransportBuilder;
+use lettre::transport::EmailTransport;
 
 
 lazy_static! {
+
+    pub static ref MAIL_QUEUE: RwLock<VecDeque<Email>> =
+        RwLock::new(VecDeque::new());
+
+    pub static ref PASSWORD_STRETCHING_TIME: Duration = {
+        dotenv::dotenv().ok();
+        Duration::from_millis(env::var("GANBARE_PASSWORD_STRETCHING_MS")
+            .map(|s| s.parse().unwrap_or(700))
+            .unwrap_or(700))
+    };
 
     static ref DATABASE_URL : String = {
         dotenv::dotenv().ok();
@@ -115,7 +133,7 @@ lazy_static! {
 pub fn list_users(conn: &Connection) -> Result<Vec<User>> {
     use ganbare_backend::schema::users::dsl::*;
 
-    users.load::<User>(conn).chain_err(|| "Can't load users")
+    users.load::<User>(&**conn).chain_err(|| "Can't load users")
 }
 
 
@@ -146,7 +164,11 @@ fn main() {
             .about("Login")
             .arg(Arg::with_name("email").required(true)))
         .get_matches();
-    let conn = db::connect(&*DATABASE_URL).unwrap();
+    let config = r2d2::Config::default();
+    let manager = ConnManager::new(DATABASE_URL.as_str());
+    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pooled_conn = pool.get().unwrap();
+
     match matches.subcommand() {
         ("passwd", Some(args)) => {
             let email = args.value_of("email").unwrap();
@@ -159,7 +181,7 @@ fn main() {
                 }
                 Ok(pw) => pw,
             };
-            match set_password(&conn, email, &password, &*RUNTIME_PEPPER) {
+            match set_password(&pooled_conn, email, &password, &*RUNTIME_PEPPER, *PASSWORD_STRETCHING_TIME) {
                 Ok(user) => {
                     println!("Success! Password set for user {:?}", user);
                 }
@@ -170,7 +192,7 @@ fn main() {
             };
         }
         ("ls", Some(_)) => {
-            let users = list_users(&conn).unwrap();
+            let users = list_users(&pooled_conn).unwrap();
             println!("{} users found:", users.len());
             for user in users {
                 println!("{:?}", user);
@@ -179,7 +201,7 @@ fn main() {
         ("rm", Some(args)) => {
             let email = args.value_of("email").unwrap();
             println!("Removing user with e-mail {}", email);
-            match remove_user_by_email(&conn, email) {
+            match remove_user_by_email(&pooled_conn, email) {
                 Ok(user) => {
                     println!("Success! User removed. Removed user: {:?}", user);
                 }
@@ -192,7 +214,7 @@ fn main() {
         ("add", Some(args)) => {
             use ganbare_backend::errors::ErrorKind::NoSuchUser;
             let email = args.value_of("email").unwrap();
-            match get_user_by_email(&conn, email) {
+            match get_user_by_email(&pooled_conn, email) {
                 Err(Error(kind, _)) => {
                     match kind {
                         NoSuchUser(email) => println!("Adding a user with email {}", email),
@@ -207,23 +229,36 @@ fn main() {
                     return;
                 }
             }
-            let secret = match email::add_pending_email_confirm(&conn, email, &[]) {
+            let secret = match email::add_pending_email_confirm(&pooled_conn, email, &[]) {
                 Ok(secret) => secret,
                 Err(e) => {
                     println!("Error: {:?}", e);
                     return;
                 }
             };
-            match email::send_confirmation(email,
+            match email::send_confirmation(&*MAIL_QUEUE,
+                                           email,
                                            secret.as_ref(),
-                                           &*EMAIL_SERVER,
-                                           &*EMAIL_SMTP_USERNAME,
-                                           &*EMAIL_SMTP_PASSWORD,
                                            &*SITE_DOMAIN,
                                            &*SITE_LINK,
                                            &handlebars,
                                            (&*EMAIL_ADDRESS, &*EMAIL_NAME)) {
-                Ok(u) => println!("Sent an email confirmation! {:?}", u),
+                Ok(u) => {
+
+                    let mut mailer = SmtpTransportBuilder::new(&*EMAIL_SERVER)
+                        .expect("Couldn't setup the email transport!")
+                        .encrypt()
+                        .credentials(EMAIL_SMTP_USERNAME.as_str(), EMAIL_SMTP_PASSWORD.as_str())
+                        .build();
+
+                    if let Ok(mut mails) = MAIL_QUEUE.write() {
+                        for email in mails.drain(..) {
+                            mailer.send(email).expect("Couldn't send email!");
+                        }
+                    }
+
+                    println!("Sent an email confirmation! {:?}", u)
+                },
                 Err(err_chain) => {
                     for err in err_chain.iter() {
                         println!("Error: {}\nCause: {:?}", err, err.cause())
@@ -233,7 +268,7 @@ fn main() {
         }
         ("force_add", Some(args)) => {
             let email = args.value_of("email").unwrap();
-            match get_user_by_email(&conn, email) {
+            match get_user_by_email(&pooled_conn, email) {
                 Err(e) => return println!("Error: {:?}", e),
                 Ok(Some(u)) => {
                     println!("Error: User already exists! {:?}", u);
@@ -249,7 +284,7 @@ fn main() {
                 }
                 Ok(pw) => pw,
             };
-            match add_user(&conn, email, &password, &*RUNTIME_PEPPER) {
+            match add_user(&pooled_conn, email, &password, &*RUNTIME_PEPPER, *PASSWORD_STRETCHING_TIME) {
                 Ok(u) => println!("Added user successfully: {:?}", u),
                 Err(err_chain) => {
                     for err in err_chain.iter() {
@@ -268,7 +303,7 @@ fn main() {
                 }
                 Ok(pw) => pw,
             };
-            match auth_user(&conn, email, &password, &*RUNTIME_PEPPER) {
+            match auth_user(&pooled_conn, email, &password, &*RUNTIME_PEPPER) {
                 Ok(u) => println!("Logged in successfully: {:?}", u),
                 Err(err_chain) => {
                     for err in err_chain.iter() {

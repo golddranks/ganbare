@@ -359,6 +359,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				loading_msg.hide();
 				return; // Nothing left to render;
 			}
+			console.log("Drawing nugget", tuple, nugget_index);
 			drawNugget(tuple, nugget_index);
 
 			nugget_index += 1;

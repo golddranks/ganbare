@@ -8,10 +8,10 @@ extern crate lettre;
 extern crate dotenv;
 extern crate handlebars;
 extern crate rustc_serialize;
+extern crate r2d2;
 
-use ganbare_backend::Connection;
+use ganbare_backend::{Connection, ConnManager};
 use ganbare_backend::errors::*;
-use ganbare_backend::db;
 use ganbare_backend::models::*;
 use diesel::LoadDsl;
 #[macro_use]
@@ -34,14 +34,14 @@ lazy_static! {
 pub fn list_skillnuggets(conn: &Connection) -> Result<Vec<SkillNugget>> {
     use ganbare_backend::schema::skill_nuggets::dsl::*;
 
-    skill_nuggets.load::<SkillNugget>(conn).chain_err(|| "Can't load")
+    skill_nuggets.load::<SkillNugget>(&**conn).chain_err(|| "Can't load")
 
 }
 
 pub fn list_questions(conn: &Connection) -> Result<Vec<QuizQuestion>> {
     use ganbare_backend::schema::quiz_questions::dsl::*;
 
-    quiz_questions.load::<QuizQuestion>(conn).chain_err(|| "Can't load")
+    quiz_questions.load::<QuizQuestion>(&**conn).chain_err(|| "Can't load")
 }
 
 
@@ -55,7 +55,12 @@ fn main() {
         .subcommand(SubCommand::with_name("lsq").about("List all questions"))
         .subcommand(SubCommand::with_name("addq").about("Add a question"))
         .get_matches();
-    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let config = r2d2::Config::default();
+    let manager = ConnManager::new(DATABASE_URL.as_str());
+    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let conn = pool.get().unwrap();
+
     match matches.subcommand() {
         ("lss", Some(_)) => {
             let items = list_skillnuggets(&conn).unwrap();

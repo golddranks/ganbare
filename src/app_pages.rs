@@ -257,6 +257,10 @@ pub fn login_post(req: &mut Request) -> PencilResult {
         let email = req.form_mut().take("email").unwrap_or_default();
         let plaintext_pw = req.form_mut().take("password").unwrap_or_default();
 
+        if email.len() > 254 || plaintext_pw.len() > 1024 {
+            return Ok(bad_request("Too long email/password."));
+        }
+
         let conn = db_connect().err_500()?;
 
         if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
@@ -324,7 +328,8 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
         let user = match email::complete_pending_email_confirm(&conn,
                                                                password,
                                                                &secret,
-                                                               &*RUNTIME_PEPPER) {
+                                                               &*RUNTIME_PEPPER,
+                                                               *PASSWORD_STRETCHING_TIME) {
             Ok(u) => u,
             Err(e) => {
                 match *e.kind() {
@@ -440,7 +445,7 @@ pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
 
         user::invalidate_password_reset(&conn, &secret).err_500()?;
 
-        if let Err(e) = user::change_password(&conn, user.id, &password, &*RUNTIME_PEPPER) {
+        if let Err(e) = user::change_password(&conn, user.id, &password, &*RUNTIME_PEPPER, *PASSWORD_STRETCHING_TIME) {
             match *e.kind() {
                 errors::ErrorKind::PasswordTooShort => return Ok(bad_request("Password too short")),
                 errors::ErrorKind::PasswordTooLong => return Ok(bad_request("Password too long")),
@@ -494,10 +499,8 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
 
     match user::send_pw_change_email(&conn, &user_email) {
         Ok(secret) => {
-            email::send_pw_reset_email(&secret,
-                                       &*EMAIL_SERVER,
-                                       &*EMAIL_SMTP_USERNAME,
-                                       &*EMAIL_SMTP_PASSWORD,
+            email::send_pw_reset_email(&*MAIL_QUEUE,
+                                       &secret,
                                        &*SITE_DOMAIN,
                                        &*SITE_LINK,
                                        &**req.app
@@ -537,7 +540,7 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
 pub fn change_password(req: &mut Request) -> PencilResult {
 
     let (conn, user, sess) = auth_user(req, "")?;
-    
+
     fn parse_form(req: &mut Request) -> Result<(String, String)> {
 
         req.load_form_data();
@@ -578,7 +581,7 @@ pub fn change_password(req: &mut Request) -> PencilResult {
             }
         }
         Ok(_) => {
-            if let Err(e) = user::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER) {
+            if let Err(e) = user::change_password(&conn, user.id, &new_password, &*RUNTIME_PEPPER, *PASSWORD_STRETCHING_TIME) {
                 match *e.kind() {
                     errors::ErrorKind::PasswordTooShort => {
                         return Ok(bad_request("Password too short"))

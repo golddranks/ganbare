@@ -496,8 +496,8 @@ pub fn get_audio_file_by_id(conn: &Connection, file_id: i32) -> Result<AudioFile
     let file: AudioFile = audio_files.filter(id.eq(file_id))
         .get_result(&**conn)
         .map_err(|e| match e {
-            e @ NotFound => Error::from_err(e, ErrorKind::FileNotFound),
-            e => Error::from_err(e, "Couldn't get the file!".into()),
+            e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
+            e => Error::with_chain(e, "Couldn't get the file!"),
         })?;
 
     Ok(file)
@@ -510,8 +510,8 @@ pub fn get_file_path(conn: &Connection, file_id: i32) -> Result<(String, mime::M
     let file: AudioFile = audio_files.filter(id.eq(file_id))
         .get_result(&**conn)
         .map_err(|e| match e {
-            e @ NotFound => Error::from_err(e, ErrorKind::FileNotFound),
-            e => Error::from_err(e, "Couldn't get the file!".into()),
+            e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
+            e => Error::with_chain(e, "Couldn't get the file!"),
         })?;
 
     Ok((file.file_path,
@@ -544,8 +544,8 @@ pub fn for_quiz(conn: &Connection, user: &User, pending_id: i32) -> Result<(Stri
         .filter(pending_items::pending.eq(true))
         .get_result(&**conn)
         .map_err(|e| match e {
-            e @ NotFound => Error::from_err(e, ErrorKind::FileNotFound),
-            e => Error::from_err(e, "Couldn't get the file!".into()),
+            e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
+            e => Error::with_chain(e, "Couldn't get the file!"),
         })?;
     Ok((file.file_path,
         file.mime.parse().expect("The mimetype from the database should be always valid.")))

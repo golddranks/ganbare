@@ -30,7 +30,7 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
 
     let conn = db_connect().err_500()?;
 
-    let user = user::add_user(&conn, email, new_password, &*RUNTIME_PEPPER).err_500()?;
+    let user = user::add_user(&conn, email, new_password, &*RUNTIME_PEPPER, *PASSWORD_STRETCHING_TIME).err_500()?;
     user::join_user_group_by_name(&conn, &user, "admins").err_500()?;
     user::join_user_group_by_name(&conn, &user, "editors").err_500()?;
     user::join_user_group_by_name(&conn, &user, "questions").err_500()?;
@@ -272,11 +272,9 @@ pub fn add_users(req: &mut Request) -> PencilResult {
                 .id);
         }
         let secret = email::add_pending_email_confirm(&conn, email, groups.as_ref()).err_500()?;
-        email::send_confirmation(email,
+        email::send_confirmation(&*MAIL_QUEUE,
+                                email,
                                  &secret,
-                                 &*EMAIL_SERVER,
-                                 &*EMAIL_SMTP_USERNAME,
-                                 &*EMAIL_SMTP_PASSWORD,
                                  &*SITE_DOMAIN,
                                  &*SITE_LINK,
                                  &**req.app
@@ -363,9 +361,7 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
         }
     }
 
-    ganbare::email::send_freeform_email(&*EMAIL_SERVER,
-                                        &*EMAIL_SMTP_USERNAME,
-                                        &*EMAIL_SMTP_PASSWORD,
+    ganbare::email::send_freeform_email(&*MAIL_QUEUE,
                                         (&*EMAIL_ADDRESS, &*EMAIL_NAME),
                                         email_addrs.iter().map(|s| &**s),
                                         &subject,

@@ -72,7 +72,7 @@ pub fn auth_user(conn: &Connection,
 }
 
 
-pub fn add_user(conn: &Connection, email: &str, password: &str, pepper: &[u8]) -> Result<User> {
+pub fn add_user(conn: &Connection, email: &str, password: &str, pepper: &[u8], stretching_time: std::time::Duration) -> Result<User> {
     use schema::{users, passwords, user_metrics, user_stats};
 
     if email.len() > 254 {
@@ -82,7 +82,7 @@ pub fn add_user(conn: &Connection, email: &str, password: &str, pepper: &[u8]) -
         return Err(ErrorKind::EmailAddressNotValid.into());
     };
 
-    let pw = password::set_password(password, pepper)?;
+    let pw = password::set_password(password, pepper, stretching_time)?;
 
     let new_user = NewUser { email: email };
 
@@ -105,7 +105,8 @@ pub fn add_user(conn: &Connection, email: &str, password: &str, pepper: &[u8]) -
 pub fn set_password(conn: &Connection,
                     user_email: &str,
                     password: &str,
-                    pepper: &[u8])
+                    pepper: &[u8],
+                    stretching_time: std::time::Duration)
                     -> Result<User> {
     use schema::{users, passwords};
 
@@ -115,7 +116,7 @@ pub fn set_password(conn: &Connection,
         .chain_err(|| "Error when trying to retrieve user!")?;
     if p.is_none() {
 
-        let pw = password::set_password(password, pepper)
+        let pw = password::set_password(password, pepper, stretching_time)
             .chain_err(|| "Setting password didn't succeed!")?;
 
         diesel::insert(&pw.into_db(u.id)).into(passwords::table)
@@ -216,8 +217,8 @@ pub fn remove_user_by_email(conn: &Connection, rm_email: &str) -> Result<User> {
     diesel::delete(users.filter(sql::lower(email).eq(sql::lower(rm_email))))
         .get_result(&**conn)
         .map_err(|e| match e {
-            e @ NotFound => Error::from_err(e,  ErrorKind::NoSuchUser(rm_email.into())),
-            e => Error::from_err(e, "Couldn't remove the user!".into()),
+            e @ NotFound => Error::with_chain(e, ErrorKind::NoSuchUser(rm_email.into())),
+            e => Error::with_chain(e, "Couldn't remove the user!"),
         })
 }
 
@@ -276,10 +277,11 @@ pub fn remove_user_completely(conn: &Connection, id: i32) -> Result<Option<User>
 pub fn change_password(conn: &Connection,
                        user_id: i32,
                        new_password: &str,
-                       pepper: &[u8])
+                       pepper: &[u8],
+                        stretching_time: std::time::Duration)
                        -> Result<()> {
 
-    let pw = password::set_password(new_password, pepper)
+    let pw = password::set_password(new_password, pepper, stretching_time)
         .chain_err(|| "Setting password didn't succeed!")?;
 
     let _: models::Password = pw.into_db(user_id).save_changes(&**conn)?;

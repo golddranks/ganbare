@@ -28,6 +28,7 @@ extern crate url;
 extern crate cookie;
 extern crate typemap;
 extern crate crypto;
+extern crate lettre;
 
 extern crate r2d2;
 extern crate r2d2_diesel;
@@ -44,13 +45,12 @@ pub use helpers::*;
 pub use std::result::Result as StdResult;
 pub use pencil::{Request, PencilResult, PencilError};
 
-pub use r2d2_diesel::ConnectionManager;
-
 pub use ganbare::models::{User, Session};
 pub use ganbare::errors::ErrorKind::Msg as ErrMsg;
 pub use ganbare::errors::Result;
 pub use ganbare::errors::{Error, ErrorKind};
 pub use ganbare::Connection;
+use lettre::transport::EmailTransport;
 
 pub fn favicon(_: &mut Request) -> PencilResult {
     use pencil::helpers::send_file;
@@ -74,11 +74,15 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::RwLock;
 use chrono::DateTime;
 use chrono::UTC;
+use lettre::email::Email;
+use lettre::transport::smtp::SmtpTransportBuilder;
 
 lazy_static! {
     pub static ref TEMP_AUDIO: RwLock<HashMap<u64, Vec<u8>>> =
         RwLock::new(HashMap::new());
     pub static ref AUDIO_REMOVE_QUEUE: RwLock<VecDeque<(DateTime<UTC>, u64)>> =
+        RwLock::new(VecDeque::new());
+    pub static ref MAIL_QUEUE: RwLock<VecDeque<Email>> =
         RwLock::new(VecDeque::new());
 }
 
@@ -89,7 +93,6 @@ pub fn background_control_thread() {
 
     let conn;
     loop {
-        sleep(Duration::from_secs(5));
         match db_connect() {
             Ok(c) => {
                 conn = c;
@@ -97,21 +100,25 @@ pub fn background_control_thread() {
             }
             Err(e) => error!("background_control_thread::db_connect: Error: {}", e),
         };
+        sleep(Duration::from_secs(5));
     }
 
     let mut app = Pencil::new(".");
     include_templates!(app, "templates", "slacker_heatenings.html");
 
+    let mut mailer = SmtpTransportBuilder::new(&*EMAIL_SERVER)
+        .expect("Couldn't setup the email transport!")
+        .encrypt()
+        .credentials(EMAIL_SMTP_USERNAME.as_str(), EMAIL_SMTP_PASSWORD.as_str())
+        .build();
 
     loop {
         sleep(Duration::from_secs(5));
 
-        match ganbare::email::send_nag_emails(&conn,
+        match ganbare::email::send_nag_emails(&*MAIL_QUEUE,
+                                              &conn,
                                               chrono::Duration::hours(50),
                                               chrono::Duration::days(2),
-                                              &*EMAIL_SERVER,
-                                              &*EMAIL_SMTP_USERNAME,
-                                              &*EMAIL_SMTP_PASSWORD,
                                               &*SITE_DOMAIN,
                                               &*SITE_LINK,
                                               &*app.handlebars_registry
@@ -188,6 +195,24 @@ pub fn background_control_thread() {
             } else {
                 break;
             }
+        }
+        let mut outgoing_mails = vec![];
+        if let Ok(mut mails) = MAIL_QUEUE.try_write()
+            .or_else(|e| {
+                debug!("The queue is locked. Skipping.");
+                Err(e)
+            }) {
+            outgoing_mails.extend(mails.drain(..));
+        }
+        if outgoing_mails.len() > 0 {
+            info!("Sending {} mails!", outgoing_mails.len());
+            for email in outgoing_mails.drain(..) {
+                match mailer.send(email) {
+                    Ok(_) => (),
+                    Err(e) => error!("Couldn't send email! Error: {}", e),
+                }
+            }
+            debug!("Mails sent!");
         }
     }
 }

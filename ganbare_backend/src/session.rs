@@ -85,6 +85,8 @@ pub fn check(conn: &Connection, token: &[u8], ip: IpAddr) -> Result<Option<(User
     use diesel::ExpressionMethods;
 
     let result;
+
+    time_it!{"session::check",
     loop {
         // CAS loop. Try to update the DB until it succeeds.
 
@@ -141,7 +143,7 @@ pub fn check(conn: &Connection, token: &[u8], ip: IpAddr) -> Result<Option<(User
             result = Ok(None);
             break;
         }
-    }
+    }}
 
     result
 }

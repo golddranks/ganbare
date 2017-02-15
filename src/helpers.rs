@@ -28,6 +28,13 @@ pub use ganbare_backend::PERF_TRACE;
 
 lazy_static! {
 
+    pub static ref PASSWORD_STRETCHING_TIME: Duration = {
+        dotenv::dotenv().ok();
+        Duration::from_millis(env::var("GANBARE_PASSWORD_STRETCHING_MS")
+            .map(|s| s.parse().unwrap_or(700))
+            .unwrap_or(700))
+    };
+
     pub static ref COOKIE_HMAC_KEY: Vec<u8> ={
         dotenv::dotenv().ok();
         let hmac_key = env::var("GANBARE_COOKIE_HMAC_KEY")
@@ -403,13 +410,13 @@ pub fn bad_request<T: ToString + std::fmt::Debug>(err_msg: T) -> Response {
     resp
 }
 
-pub trait ResultExt<T> {
+pub trait ResultHttpExt<T> {
     fn err_500(self) -> StdResult<T, PencilError>;
     fn err_500_debug(self, user: &User, req: &Request) -> StdResult<T, PencilError>;
     fn err_401(self) -> StdResult<T, PencilError>;
 }
 
-impl<T, E: std::fmt::Debug> ResultExt<T> for StdResult<T, E> {
+impl<T, E: std::fmt::Debug> ResultHttpExt<T> for StdResult<T, E> {
     fn err_500(self) -> StdResult<T, PencilError> {
         self.map_err(internal_error)
     }
@@ -494,18 +501,16 @@ pub fn auth_user(req: &mut Request,
                  required_group: &str)
                  -> StdResult<(Connection, User, Session), PencilError> {
 
-    time_it!{"auth_user",
-        match try_auth_user(req)? {
-            Some((conn, user, sess)) => {
-                if user::check_user_group(&conn, user.id, required_group).err_500()? {
-                    Ok((conn, user, sess))
-                } else {
-                    Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
-                }
+    match try_auth_user(req)? {
+        Some((conn, user, sess)) => {
+            if user::check_user_group(&conn, user.id, required_group).err_500()? {
+                Ok((conn, user, sess))
+            } else {
+                Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
             }
-            None => {
-                Err(abort(401).unwrap_err()) // User isn't logged in
-            }
+        }
+        None => {
+            Err(abort(401).unwrap_err()) // User isn't logged in
         }
     }
 }
@@ -537,6 +542,7 @@ pub fn check_env_vars() {
     let _ = &*SITE_DOMAIN;
     let _ = &*SITE_LINK;
     let _ = &*TIME_AT_SERVER_START;
+    let _ = &*COOKIE_HMAC_KEY;
 }
 
 pub fn do_login<I: IntoIp>(conn: &Connection,

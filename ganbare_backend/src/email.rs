@@ -1,16 +1,13 @@
 extern crate lettre;
 extern crate pencil;
-extern crate email as rust_email;
 
+use std::time::Duration;
 use data_encoding;
 
-use self::lettre::transport::smtp::response::Response as EmailResponse;
-use self::lettre::transport::smtp::SmtpTransportBuilder;
-use self::lettre::transport::EmailTransport;
-use self::lettre::email::EmailBuilder;
+use self::lettre::email::{EmailBuilder, Email};
 use self::pencil::Handlebars;
-use std::net::ToSocketAddrs;
-use std::collections::BTreeMap;
+use std::sync::RwLock;
+use std::collections::{VecDeque, BTreeMap};
 use rustc_serialize::json::{Json, ToJson};
 
 use schema::pending_email_confirms;
@@ -33,16 +30,24 @@ impl<'a> ToJson for EmailData<'a> {
     }
 }
 
-pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr: &str,
+fn enqueue_mail(email: Email, queue: &RwLock<VecDeque<Email>>) -> Result<()> {
+
+    info!("Enqueuing mail to {:?}", email.to_addresses());
+
+    match queue.write() {
+        Ok(mut q) => { q.push_back(email); Ok(()) },
+        _ => Err(Error::from_kind("Couldn't open the email queue for writing.".into())),
+    }
+}
+
+pub fn send_confirmation(queue: &RwLock<VecDeque<Email>>,
+                                              email_addr: &str,
                                               secret: &str,
-                                              mail_server: SOCK,
-                                              username: &str,
-                                              password: &str,
                                               site_name: &str,
                                               site_link: &str,
                                               hb_registry: &Handlebars,
                                               from: (&str, &str))
-                                              -> Result<EmailResponse> {
+                                              -> Result<()> {
 
     let data = EmailData {
         secret: secret,
@@ -58,24 +63,17 @@ pub fn send_confirmation<SOCK: ToSocketAddrs>(email_addr: &str,
             .as_ref())
         .build()
         .expect("Building email shouldn't fail.");
-    let mut mailer = SmtpTransportBuilder::new(mail_server)
-        .chain_err(|| "Couldn't setup the email transport!")?
-        .encrypt()
-        .credentials(username, password)
-        .build();
-    mailer.send(email)
-        .chain_err(|| "Couldn't send email!")
+    enqueue_mail(email, queue)?;
+    Ok(())
 }
 
-pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets,
-                                                mail_server: SOCK,
-                                                username: &str,
-                                                password: &str,
+pub fn send_pw_reset_email(queue: &RwLock<VecDeque<Email>>,
+                                                secret: &ResetEmailSecrets,
                                                 site_name: &str,
                                                 site_link: &str,
                                                 hb_registry: &Handlebars,
                                                 from: (&str, &str))
-                                                -> Result<EmailResponse> {
+                                                -> Result<()> {
 
     let data = EmailData {
         secret: &secret.secret,
@@ -91,32 +89,17 @@ pub fn send_pw_reset_email<SOCK: ToSocketAddrs>(secret: &ResetEmailSecrets,
             .as_ref())
         .build()
         .expect("Building email shouldn't fail.");
-    let mut mailer = SmtpTransportBuilder::new(mail_server)
-        .chain_err(|| "Couldn't setup the email transport!")?
-        .encrypt()
-        .credentials(username, password)
-        .build();
-    mailer.send(email)
-        .chain_err(|| "Couldn't send email!")
+    enqueue_mail(email, queue)?;
+    Ok(())
 }
 
-pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item = &'a str>>
-    (mail_server: SOCK,
-     username: &str,
-     password: &str,
+pub fn send_freeform_email<'a, ITER: Iterator<Item = &'a str>>
+    (queue: &RwLock<VecDeque<Email>>,
      from: (&str, &str),
      to: ITER,
      subject: &str,
      body: &str)
      -> Result<()> {
-
-    info!("Going to send email to: {:?}", from);
-
-    let mut mailer = SmtpTransportBuilder::new(mail_server)
-        .chain_err(|| "Couldn't setup the email transport!")?
-        .encrypt()
-        .credentials(username, password)
-        .build();
 
     for to in to {
 
@@ -128,9 +111,7 @@ pub fn send_freeform_email<'a, SOCK: ToSocketAddrs, ITER: Iterator<Item = &'a st
             .build()
             .expect("Building email shouldn't fail.");
 
-        let result = mailer.send(email)
-            .chain_err(|| "Couldn't send!")?;
-        info!("Sent freeform emails: {:?}!", result);
+        enqueue_mail(email, queue)?;
     }
 
     Ok(())
@@ -178,12 +159,13 @@ pub fn check_pending_email_confirm(conn: &Connection,
 pub fn complete_pending_email_confirm(conn: &Connection,
                                       password: &str,
                                       secret: &str,
-                                      pepper: &[u8])
+                                      pepper: &[u8],
+                                      stretching_time: Duration)
                                       -> Result<User> {
 
     let (email, group_ids) = try_or!(check_pending_email_confirm(&conn, secret)?,
         else return Err(ErrorKind::NoSuchSess.into()));
-    let user = user::add_user(&*conn, &email, password, pepper)?;
+    let user = user::add_user(&*conn, &email, password, pepper, stretching_time)?;
 
     for g in group_ids {
         user::join_user_group_by_id(&conn, user.id, g)?;
@@ -206,12 +188,10 @@ pub fn clean_old_pendings(conn: &Connection, duration: chrono::duration::Duratio
         .chain_err(|| "Couldn't delete the old pending requests.")
 }
 
-pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &Connection,
+pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
+                                            conn: &Connection,
                                             how_old: chrono::Duration,
                                             nag_grace_period: chrono::Duration,
-                                            mail_server: SOCK,
-                                            username: &str,
-                                            password: &str,
                                             site_name: &str,
                                             site_link: &str,
                                             hb_registry: &Handlebars,
@@ -223,12 +203,6 @@ pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &Connection,
     if slackers.is_empty() {
         return Ok(());
     }
-
-    let mut mailer = SmtpTransportBuilder::new(mail_server)
-        .chain_err(|| "Couldn't setup the email transport!")?
-        .encrypt()
-        .credentials(username, password)
-        .build();
 
     for (user_id, email_addr) in slackers {
 
@@ -262,15 +236,13 @@ pub fn send_nag_emails<SOCK: ToSocketAddrs>(conn: &Connection,
             .build()
             .expect("Building email shouldn't fail.");
 
-        let result = mailer.send(email)
-            .chain_err(|| "Couldn't send!")?;
+        enqueue_mail(email, queue)?;
 
         stats.last_nag_email = Some(chrono::UTC::now());
         let _: UserStats = stats.save_changes(&**conn)?;
 
-        info!("Sent slacker heatening email to {}: {:?}!",
-              email_addr,
-              result);
+        info!("Sent slacker heatening email to {}!",
+              email_addr);
     }
 
     Ok(())

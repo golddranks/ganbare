@@ -14,6 +14,7 @@ extern crate rand;
 extern crate regex;
 extern crate time;
 extern crate crypto;
+extern crate r2d2;
 
 use ganbare_backend::*;
 use std::path::PathBuf;
@@ -131,48 +132,58 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
 }
 
 fn normalize_unicode() {
-    let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let bundles = audio::get_all_bundles(&conn).unwrap();
+    let config = r2d2::Config::default();
+    let manager = ConnManager::new(DATABASE_URL.as_str());
+    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pooled_conn = pool.get().unwrap();
+
+    let bundles = audio::get_all_bundles(&pooled_conn).unwrap();
+
+
+    let conn = &*pooled_conn;
 
     for (mut b, _) in bundles {
         let cleaned_name = b.listname.nfc().collect::<String>();
         if cleaned_name != b.listname {
             println!("Non-normalized unicode found: {:?}", b);
             b.listname = cleaned_name;
-            let _: AudioBundle = b.save_changes(&conn).unwrap();
+            let _: AudioBundle = b.save_changes(conn).unwrap();
         }
     }
 
-    let words: Vec<Word> = schema::words::table.get_results(&conn).unwrap();
+    let words: Vec<Word> = schema::words::table.get_results(&*conn).unwrap();
 
     for mut w in words {
         let cleaned_word = w.word.nfc().collect::<String>();
         if cleaned_word != w.word {
             println!("Non-normalized unicode found: {:?}", w);
             w.word = cleaned_word;
-            let _: Word = w.save_changes(&conn).unwrap();
+            let _: Word = w.save_changes(conn).unwrap();
         }
     }
-    let skills: Vec<SkillNugget> = schema::skill_nuggets::table.get_results(&conn).unwrap();
+    let skills: Vec<SkillNugget> = schema::skill_nuggets::table.get_results(&*conn).unwrap();
 
     for mut s in skills {
         let cleaned_skill = s.skill_summary.nfc().collect::<String>();
         if cleaned_skill != s.skill_summary {
             println!("Non-normalized unicode found: {:?}", s);
             s.skill_summary = cleaned_skill;
-            let _: SkillNugget = s.save_changes(&conn).unwrap();
+            let _: SkillNugget = s.save_changes(conn).unwrap();
         }
     }
 }
 
 fn clean_unused_audio() {
-    let conn = db::connect(&*DATABASE_URL).unwrap();
+    let config = r2d2::Config::default();
+    let manager = ConnManager::new(DATABASE_URL.as_str());
+    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pooled_conn = pool.get().unwrap();
 
     let fs_files = std::fs::read_dir(&*AUDIO_DIR).unwrap();
 
     let db_files: HashSet<String> =
-        audio::get_all_files(&conn).unwrap().into_iter().map(|f| f.0).collect();
+        audio::get_all_files(&pooled_conn).unwrap().into_iter().map(|f| f.0).collect();
 
     let mut trash_dir = AUDIO_DIR.clone();
     trash_dir.push("trash");
