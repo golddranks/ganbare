@@ -62,7 +62,6 @@ pub fn hello(req: &mut Request) -> PencilResult {
                 event_redirect
             } else {
                 main_quiz(req, &conn, &user)
-
             }
             .refresh_cookie(&sess)
 
@@ -233,12 +232,13 @@ pub fn retelling(req: &mut Request) -> PencilResult {
 }
 
 pub fn login_form(req: &mut Request) -> PencilResult {
-    let conn = db_connect().err_500()?;
-    if let Some((_, sess)) = get_user(&conn, req).err_500()? {
-        return redirect("/", 303).refresh_cookie(&sess);
-    }
-    if !ganbare::db::is_installed(&conn).err_500()? {
+
+    if !ganbare::db::is_installed() {
         return redirect("/fresh_install", 303);
+    }
+
+    if let Some((_, _, sess)) = try_auth_user(req).err_500()? {
+        return redirect("/", 303).refresh_cookie(&sess);
     }
 
     let email = req.args().get("email").map(|s| &**s).unwrap_or_else(|| "").to_string();
@@ -282,8 +282,8 @@ pub fn login_post(req: &mut Request) -> PencilResult {
 }
 
 pub fn logout(req: &mut Request) -> PencilResult {
-    let conn = db_connect().err_500()?;
-    if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+
+    if let Some((conn, _, old_sess)) = try_auth_user(req).err_500()? {
         do_logout(&conn, &old_sess).err_500()?;
     }
     redirect("/", 303).expire_cookie()
@@ -346,8 +346,6 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
             }
         };
 
-        let conn = db_connect().err_500()?;
-
         if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
             do_logout(&conn, &old_sess).err_500()?;
         }
@@ -386,7 +384,9 @@ pub fn change_password_form(req: &mut Request) -> PencilResult {
 }
 
 pub fn password_reset_success(req: &mut Request) -> PencilResult {
+
     let (_, _, sess) = auth_user(req, "")?;
+
     let mut context = new_template_context();
     context.insert("changed".into(), "changed".into());
     req.app
@@ -486,6 +486,8 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
         Ok(parse!(form.get("email")))
     }
 
+    rate_limit(Duration::from_millis(2000), 20, || {
+
     let conn = db_connect().err_500()?;
 
     let user_email = err_400!(parse_form(req), "invalid form data");
@@ -527,11 +529,15 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
         }
         Err(e) => Err(internal_error(e)),
     }
+
+    })
 }
 
 
 pub fn change_password(req: &mut Request) -> PencilResult {
 
+    let (conn, user, sess) = auth_user(req, "")?;
+    
     fn parse_form(req: &mut Request) -> Result<(String, String)> {
 
         req.load_form_data();
@@ -546,7 +552,6 @@ pub fn change_password(req: &mut Request) -> PencilResult {
         Ok((old_password, new_password))
     }
 
-    let (conn, user, sess) = auth_user(req, "")?;
 
     let (old_password, new_password) = err_400!(parse_form(req), "invalid form data");
 
@@ -590,6 +595,8 @@ pub fn change_password(req: &mut Request) -> PencilResult {
     redirect("/change_password?password_changed=true", 303).refresh_cookie(&sess)
 }
 
+/*
+// Not in use currently
 pub fn join_form(req: &mut Request) -> PencilResult {
 
     let context = new_template_context();
@@ -598,6 +605,7 @@ pub fn join_form(req: &mut Request) -> PencilResult {
         .render_template("join.html", &context)
 }
 
+// Not in use currently
 pub fn join_post(req: &mut Request) -> PencilResult {
 
     let context = new_template_context();
@@ -605,3 +613,4 @@ pub fn join_post(req: &mut Request) -> PencilResult {
     req.app
         .render_template("join.html", &context)
 }
+*/

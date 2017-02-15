@@ -303,8 +303,8 @@ pub fn main() {
     info!("Starting.");
     check_env_vars();
     let conn = db_connect().expect("Can't connect to database!");
-    ganbare::db::check(&conn).expect("Something funny with the DB!");
-    info!("Database OK.");
+    let installed = ganbare::db::check(&conn).expect("Something funny with the DB!");
+    info!("Database OK. Installed: {}", installed);
 
     let mut app = Pencil::new(".");
 
@@ -313,7 +313,6 @@ pub fn main() {
                        "base.html",
                        "fresh_install.html",
                        "welcome.html",
-                       "join.html",
                        "reset_password.html",
                        "send_mail.html",
                        "retelling.html",
@@ -380,8 +379,6 @@ pub fn main() {
     app.get("/login", "login_form", app_pages::login_form);
     app.post("/login", "login_post", app_pages::login_post);
     app.post("/logout", "logout", app_pages::logout);
-    app.get("/join", "join", app_pages::join_form);
-    app.post("/join", "join", app_pages::join_post);
     app.get("/confirm", "confirm_form", app_pages::confirm_form);
     app.post("/confirm", "confirm_post", app_pages::confirm_post);
     app.get("/change_password",

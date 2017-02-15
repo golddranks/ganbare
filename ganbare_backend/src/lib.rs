@@ -33,11 +33,10 @@ extern crate reqwest;
 extern crate dotenv;
 
 pub use try_map::{FallibleMapExt, FlipResultExt};
+use std::sync::atomic::{Ordering, AtomicBool};
 
 pub use diesel::prelude::*;
-
 pub use diesel::pg::PgConnection as DieselPgConnection;
-
 pub type ConnManager = r2d2_diesel::ConnectionManager<DieselPgConnection>;
 pub type Connection = r2d2::PooledConnection<ConnManager>;
 pub use diesel::Connection as ConnectionTrait;
@@ -49,6 +48,10 @@ macro_rules! try_or {
 
 
 lazy_static! {
+
+    pub static ref DB_INSTALLED: AtomicBool = {
+        AtomicBool::new(false)
+    };
 
     pub static ref PERF_TRACE: bool = {
         dotenv::dotenv().ok();
@@ -120,11 +123,8 @@ pub mod db {
 
     pub fn check(conn: &Connection) -> Result<bool> {
         run_migrations(conn).chain_err(|| "Couldn't run the migrations.")?;
-        let first_user: Option<User> = schema::users::table.first(&**conn)
-            .optional()
-            .chain_err(|| "Couldn't query for the admin user.")?;
-
-        Ok(first_user.is_some())
+        init_check_is_installed(conn)?;
+        Ok(is_installed())
     }
 
     #[cfg(not(debug_assertions))]
@@ -143,12 +143,21 @@ pub mod db {
         Ok(())
     }
 
-    pub fn is_installed(conn: &Connection) -> Result<bool> {
+    pub fn is_installed() -> bool {
+        DB_INSTALLED.load(Ordering::Acquire)
+    }
+
+    pub fn set_installed() {
+        DB_INSTALLED.store(true, Ordering::Release);
+    }
+
+    fn init_check_is_installed(conn: &Connection) -> Result<()> {
 
         let count: i64 = schema::users::table.count()
             .get_result(&**conn)?;
 
-        Ok(count > 0)
+        DB_INSTALLED.store(count > 0, Ordering::Release);
+        Ok(())
     }
 
     pub fn connect(database_url: &str) -> Result<DieselPgConnection> {

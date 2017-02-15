@@ -7,8 +7,7 @@ use ganbare::manage;
 use std::collections::HashSet;
 
 pub fn fresh_install_form(req: &mut Request) -> PencilResult {
-    let conn = db_connect().err_500()?;
-    if ganbare::db::is_installed(&conn).err_500()? {
+    if ganbare::db::is_installed() {
         return abort(401);
     };
     let context = new_template_context();
@@ -25,10 +24,11 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
         return Ok(bad_request("passwords don't match"));
     };
 
-    let conn = db_connect().err_500()?;
-    if ganbare::db::is_installed(&conn).err_500()? {
+    if ganbare::db::is_installed() {
         return abort(401);
     };
+
+    let conn = db_connect().err_500()?;
 
     let user = user::add_user(&conn, email, new_password, &*RUNTIME_PEPPER).err_500()?;
     user::join_user_group_by_name(&conn, &user, "admins").err_500()?;
@@ -39,6 +39,8 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
     if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
         do_logout(&conn, &old_sess).err_500()?;
     }
+
+    ganbare::db::set_installed();
 
     match do_login(&conn,
                    &user.email.expect("The email is known to exist."),
@@ -60,14 +62,8 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
 }
 
 pub fn manage(req: &mut Request) -> PencilResult {
-    let conn = db_connect().err_500()?;
 
-    let (user, sess) = get_user(&conn, req).err_500()?
-        .ok_or_else(|| abort(401).unwrap_err())?; // Unauthorized
-
-    if !user::check_user_group(&conn, user.id, "editors").err_500()? {
-        return abort(401);
-    }
+    let (_, _, sess) = auth_user(req, "editors")?; // Unauthorized
 
     let context = new_template_context();
 

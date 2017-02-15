@@ -494,7 +494,7 @@ pub fn auth_user(req: &mut Request,
                  required_group: &str)
                  -> StdResult<(Connection, User, Session), PencilError> {
 
-    time_it!{"authentication",
+    time_it!{"auth_user",
         match try_auth_user(req)? {
             Some((conn, user, sess)) => {
                 if user::check_user_group(&conn, user.id, required_group).err_500()? {
@@ -513,17 +513,19 @@ pub fn auth_user(req: &mut Request,
 pub fn try_auth_user(req: &mut Request)
                      -> StdResult<Option<(Connection, User, Session)>, PencilError> {
 
-    if let Some(sess_token) = get_sess_token(req) {
-        let conn = db_connect().err_500()?;
-        if let Some((user, sess)) = session::check(&conn, sess_token.as_slice(), req.remote_addr().ip()).err_500()? {
-            // User is logged in
-            Ok(Some((conn, user, sess)))
+    time_it!{"try_auth_user",
+        if let Some(sess_token) = get_sess_token(req) {
+            let conn = db_connect().err_500()?;
+            if let Some((user, sess)) = session::check(&conn, sess_token.as_slice(), req.remote_addr().ip()).err_500()? {
+                // User is logged in
+                Ok(Some((conn, user, sess)))
+            } else {
+                // Not logged in
+                Ok(None)
+            }
         } else {
-            // Not logged in
             Ok(None)
         }
-    } else {
-        Ok(None)
     }
 }
 

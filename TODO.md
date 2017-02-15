@@ -7,9 +7,9 @@ Before production
 - Change the welcome screen
 - Change the nag message
 
-- Signed cookies
+- Async rate limiting?
 - Monitoring
-- No access to DB without auth (modify the installed check, check the cookie signature)
+- HMAC tokens (password reset & user account creation)
 - Length limit for username/password
 - Config files to repo
 - DoS prevention to HAProxy
