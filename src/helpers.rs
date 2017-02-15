@@ -185,6 +185,12 @@ lazy_static! {
             .unwrap_or(true)
     };
 
+    pub static ref ENABLE_SOURCE_MAPS : bool = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_ENABLE_SOURCE_MAPS").map(|s| s.parse::<bool>().unwrap_or(false))
+            .unwrap_or(false)
+    };
+
     pub static ref RUNTIME_PEPPER : Vec<u8> = {
         dotenv::dotenv().ok();
         let pepper = env::var("GANBARE_RUNTIME_PEPPER")

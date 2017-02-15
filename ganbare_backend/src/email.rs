@@ -9,6 +9,7 @@ use self::pencil::Handlebars;
 use std::sync::RwLock;
 use std::collections::{VecDeque, BTreeMap};
 use rustc_serialize::json::{Json, ToJson};
+use email::lettre::email::SendableEmail;
 
 use schema::pending_email_confirms;
 use super::*;

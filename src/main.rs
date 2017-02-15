@@ -61,8 +61,10 @@ pub fn favicon(_: &mut Request) -> PencilResult {
         .set_static_cache()
 }
 
-#[cfg(debug_assertions)]
 pub fn source_maps(req: &mut Request) -> PencilResult {
+    if ! *ENABLE_SOURCE_MAPS {
+        return pencil::helpers::abort(404);
+    }
     use pencil::send_from_directory;
     let file_path = req.view_args
         .get("file_path")
@@ -374,7 +376,6 @@ pub fn main() {
     app.after_request(resp_time_stop);
 
     // DEBUGGING
-    #[cfg(debug_assertions)]
     app.get("/src/<file_path:path>", "source_maps", source_maps);
 
     app.set_debug(true);

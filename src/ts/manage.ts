@@ -145,6 +145,7 @@ let pubstuff_value = pubstuff_toggle.is(":checked");
 let unpubstuff_value = unpubstuff_toggle.is(":checked");
 
 let shown_nuggets = new Array();
+let globalJobNumber = 0;
 
 var nugget_resp = null;
 var bundle_resp = null;
@@ -346,12 +347,17 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			&& ( ! pubstuff_value || thereIsPublishedStuff )
 			&& ( ! unpubstuff_value || ! thereIsPublishedStuff ) ) {
 			shown_nuggets.push(tuple);
+			console.log(tuple[0].skill_summary);
 		}
 	}
 	$("#filteredAmount").show().text("Showing "+shown_nuggets.length+" of "+nugget_resp.length+" skills");
 
+	globalJobNumber += 1;
+	let thisJobNumber = globalJobNumber;
 	let nugget_index = 0;
 	function drawNuggetAsync() {
+		if (thisJobNumber != globalJobNumber) { return; };
+		console.log("Start drawNuggetAsync", thisJobNumber);
 		for (let i = 0; i < 5; i++) {
 			let tuple = shown_nuggets[nugget_index];
 
@@ -359,13 +365,15 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				loading_msg.hide();
 				return; // Nothing left to render;
 			}
-			console.log("Drawing nugget", tuple, nugget_index);
+			console.log("Drawing nugget", tuple[0], tuple[0].skill_summary, nugget_index);
 			drawNugget(tuple, nugget_index);
 
 			nugget_index += 1;
 		}
+		console.log("Setting another drawNuggetAsync");
 		setTimeout(drawNuggetAsync, 0);
 	}
+	console.log("Starting async drawing", globalJobNumber);
 	drawNuggetAsync();
 
 	function drawNugget(tuple, nugget_index) {

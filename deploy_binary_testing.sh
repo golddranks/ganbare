@@ -19,6 +19,7 @@ DEPLOY_CACHE_MAX_AGE=600
 DEPLOY_SERVER_THREADS=20
 DEPLOY_PERF_TRACE=true
 DEPLOY_COOKIE_HMAC_KEY=$(cat .env.ganbare_testing_cookie_hmac_key)
+DEPLOY_ENABLE_SOURCE_MAPS=true
 
 ssh $DEPLOY_SERVER /bin/sh <<EOF
 docker pull golddranks/ganbare_run
@@ -42,6 +43,7 @@ docker run -d --restart=unless-stopped \
 -e "GANBARE_SERVER_THREADS=$DEPLOY_SERVER_THREADS" \
 -e "GANBARE_PERF_TRACE=$DEPLOY_PERF_TRACE" \
 -e "GANBARE_COOKIE_HMAC_KEY=$DEPLOY_COOKIE_HMAC_KEY" \
+-e "GANBARE_ENABLE_SOURCE_MAPS=$DEPLOY_ENABLE_SOURCE_MAPS" \
 -e "RUST_LOG=$DEPLOY_LOGLEVEL" \
 -v $DEPLOY_ROOT_DIR/audio:/ganbare/audio \
 -v $DEPLOY_ROOT_DIR/images:/ganbare/images \
