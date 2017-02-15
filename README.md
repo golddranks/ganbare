@@ -19,6 +19,7 @@ The server is configured using environmental variables, or an `.env` file in the
     GANBARE_RUNTIME_PEPPER=some 32-byte random value encoded with Base64 (usually 44 ASCII characters) for peppering the password hashes.
     GANBARE_EMAIL_SERVER=mail.yourisp.net:25
     GANBARE_SITE_DOMAIN Set this right for production for cookies etc. to work.
+    GANBARE_COOKIE_HMAC_KEY This is used for signing cookies. 32-bite random value encoded with Base64. Get some `head -c32 /dev/urandom | base64`
 
 The following have defaults, and you may omit them:
 

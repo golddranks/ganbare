@@ -4,7 +4,7 @@ audio
 images
 user_audio
 backups
-dev_assets
+assets_dev
 target/debug
 target/release
 target/rls

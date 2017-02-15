@@ -1,7 +1,23 @@
 # To Do list
 
-After starting the beta
+
+Before production
 - Choose the posttest questions
+- Edit more sentences
+- Change the welcome screen
+- Change the nag message
+
+- Signed cookies
+- Monitoring
+- No access to DB without auth (modify the installed check, check the cookie signature)
+- Length limit for username/password
+- Config files to repo
+- DoS prevention to HAProxy
+- Set password encryption weight in milliseconds in env var
+- Send emails in the background
+
+
+After starting production
 - Edit more sentences
 
 Stretch goals:

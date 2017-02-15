@@ -28,6 +28,22 @@ pub use ganbare_backend::PERF_TRACE;
 
 lazy_static! {
 
+    pub static ref COOKIE_HMAC_KEY: Vec<u8> ={
+        dotenv::dotenv().ok();
+        let hmac_key = env::var("GANBARE_COOKIE_HMAC_KEY")
+            .expect(
+                "Environmental variable GANBARE_COOKIE_HMAC_KEY must be set!\
+                (format: 256-bit random value encoded as base64)"
+            )
+            .from_base64().expect(
+                "Environmental variable GANBARE_COOKIE_HMAC_KEY isn't valid Base64!
+            ");
+        if hmac_key.len() != 32 {
+            panic!("The value must be 256-bit, that is, 32 bytes long!")
+        }
+        hmac_key
+    };
+
     pub static ref SERVER_THREADS: usize = {
         dotenv::dotenv().ok();
         env::var("GANBARE_SERVER_THREADS")
@@ -229,18 +245,26 @@ pub fn db_connect() -> Result<Connection> {
 }
 
 
-pub fn get_cookie(cookies: &Cookie) -> Option<&str> {
+pub fn get_cookie(cookies: &Cookie) -> Option<(&str, &str)> {
+    let mut session_id = None;
+    let mut hmac = None;
     for c in cookies.0.iter().map(String::as_str) {
         match CookiePair::parse(c) {
-            Ok(c) => {
-                if c.name() == "session_id" {
-                    return Some(c.value().long_or_panic());
-                }
-            }
+            Ok(ref c) if c.name() == "session_id" => {
+                session_id = Some(c.value().long_or_panic());
+            },
+            Ok(ref c) if c.name() == "hmac" => {
+                hmac = Some(c.value().long_or_panic());
+            },
+            Ok(_) => (),
             Err(_) => return None,
         }
     }
-    None
+    if let (Some(session_id), Some(hmac)) = (session_id, hmac) {
+        Some((session_id, hmac))
+    } else {
+        None
+    }
 }
 
 pub fn new_template_context() -> BTreeMap<String, String> {
@@ -252,9 +276,17 @@ pub fn new_template_context() -> BTreeMap<String, String> {
     ctx
 }
 
+pub fn get_sess_token(req: &Request) -> Option<Vec<u8>> {
+    if let Some((sess_token_hex, hmac_hex)) = req.cookies().and_then(get_cookie) {
+        session::check_integrity(sess_token_hex, hmac_hex, &*COOKIE_HMAC_KEY)
+    } else {
+        None
+    }
+}
+
 pub fn get_user(conn: &Connection, req: &Request) -> Result<Option<(User, Session)>> {
-    if let Some(sess_token) = req.cookies().and_then(get_cookie) {
-        Ok(session::check(conn, sess_token, req.remote_addr().ip())?)
+    if let Some(sess_token) = get_sess_token(req) {
+        Ok(session::check(conn, sess_token.as_slice(), req.remote_addr().ip())?)
     } else {
         Ok(None)
     }
@@ -296,13 +328,23 @@ pub trait HeaderProcessor {
 
 impl HeaderProcessor for Response {
     fn refresh_cookie(mut self, sess: &Session) -> PencilResult {
-        let cookie = CookiePair::build("session_id", session::to_hex(sess))
+
+        let session_token = session::to_hex(sess);
+        let hmac_session_token = session::hmac_to_hex(sess, &*COOKIE_HMAC_KEY);
+
+        let cookie = CookiePair::build("session_id", session_token)
             .path("/")
             .http_only(true)
             .secure(*PARANOID)
             .domain(SITE_DOMAIN.as_str())
             .expires(time::now_utc() + time::Duration::weeks(2));
-        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish())]));
+        let hmac = CookiePair::build("hmac", hmac_session_token.to_owned())
+            .path("/")
+            .http_only(true)
+            .secure(*PARANOID)
+            .domain(SITE_DOMAIN.as_str())
+            .expires(time::now_utc() + time::Duration::weeks(2));
+        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish()), format!("{}", hmac.finish())]));
         Ok(self)
     }
 
@@ -311,7 +353,11 @@ impl HeaderProcessor for Response {
             .path("/")
             .domain(SITE_DOMAIN.as_str())
             .expires(time::at_utc(time::Timespec::new(0, 0)));
-        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish())]));
+        let hmac = CookiePair::build("hmac", "")
+            .path("/")
+            .domain(SITE_DOMAIN.as_str())
+            .expires(time::at_utc(time::Timespec::new(0, 0)));
+        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish()), format!("{}", hmac.finish())]));
         self
     }
 
@@ -467,18 +513,18 @@ pub fn auth_user(req: &mut Request,
 pub fn try_auth_user(req: &mut Request)
                      -> StdResult<Option<(Connection, User, Session)>, PencilError> {
 
-    let conn = db_connect().err_500()?;
-
-    if let Some((user, sess)) = get_user(&conn, req).err_500()? {
-        // User is logged in
-
-        Ok(Some((conn, user, sess)))
-
+    if let Some(sess_token) = get_sess_token(req) {
+        let conn = db_connect().err_500()?;
+        if let Some((user, sess)) = session::check(&conn, sess_token.as_slice(), req.remote_addr().ip()).err_500()? {
+            // User is logged in
+            Ok(Some((conn, user, sess)))
+        } else {
+            // Not logged in
+            Ok(None)
+        }
     } else {
-        // Not logged in
         Ok(None)
     }
-
 }
 
 /// Try and dereference required env vars for the `lazy_static!`

@@ -27,6 +27,7 @@ extern crate unicode_normalization;
 extern crate url;
 extern crate cookie;
 extern crate typemap;
+extern crate crypto;
 
 extern crate r2d2;
 extern crate r2d2_diesel;

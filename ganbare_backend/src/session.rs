@@ -4,6 +4,9 @@ use std::net::IpAddr;
 use std::thread;
 use std::time::Duration;
 use rand::{Rng, OsRng};
+use crypto::hmac::Hmac;
+use crypto::mac::{Mac, MacResult};
+use crypto::sha2::Sha512;
 
 pub const SESSID_BITS: usize = 128;
 
@@ -21,11 +24,18 @@ pub fn to_hex(sess: &Session) -> String {
     base16::encode(&sess.proposed_token)
 }
 
+pub fn hmac_to_hex(sess: &Session, secret_key: &[u8]) -> String {
+    use data_encoding::base16;
+    let mut hmac = Hmac::new(Sha512::new(), secret_key.as_ref());
+    hmac.input(sess.proposed_token.as_slice());
+    base16::encode(hmac.result().code())
+}
+/*
 pub fn bin_to_hex(bin: &[u8]) -> String {
     // FIXME remove this debug-only function
     use data_encoding::base16;
     base16::encode(bin)
-}
+}*/
 
 fn token_to_bin(sessid: &str) -> Result<Vec<u8>> {
     use data_encoding::base16;
@@ -34,6 +44,11 @@ fn token_to_bin(sessid: &str) -> Result<Vec<u8>> {
     } else {
         bail!(ErrorKind::BadSessId)
     }
+}
+
+fn hmac_to_bin(hmac: &str) -> Result<Vec<u8>> {
+    use data_encoding::base16;
+    base16::decode(hmac.as_bytes()).chain_err(|| ErrorKind::BadSessId)
 }
 
 pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Result<usize> {
@@ -46,14 +61,28 @@ pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Resul
     Ok(deleted_count)
 }
 
-pub fn check(conn: &Connection, token_hex: &str, ip: IpAddr) -> Result<Option<(User, Session)>> {
+pub fn check_integrity(token_hex: &str, hmac_hex: &str, secret_key: &[u8]) -> Option<Vec<u8>> {
+
+    let (token, hmac_to_check) = match (token_to_bin(token_hex), hmac_to_bin(hmac_hex)) {
+        (Ok(t), Ok(h)) => {
+            let hmac_to_check = MacResult::new(h.as_slice());
+            (t, hmac_to_check)
+        },
+        _ => return None,
+    };
+    let mut correct_hmac = Hmac::new(Sha512::new(), secret_key);
+    correct_hmac.input(token.as_slice());
+    if correct_hmac.result() == hmac_to_check {
+        Some(token)
+    } else {
+        warn!("The HMAC doesn't agree with the cookie!");
+        None
+    }
+}
+
+pub fn check(conn: &Connection, token: &[u8], ip: IpAddr) -> Result<Option<(User, Session)>> {
     use schema::{users, sessions};
     use diesel::ExpressionMethods;
-
-    let token = match token_to_bin(token_hex) {
-        Ok(t) => t,
-        Err(_) => return Ok(None), // If the token isn't in a valid format, just return "None".
-    };
 
     let result;
     loop {
