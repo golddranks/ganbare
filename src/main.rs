@@ -120,8 +120,8 @@ pub fn background_control_thread() {
 
         match ganbare::email::send_nag_emails(&*MAIL_QUEUE,
                                               &conn,
-                                              chrono::Duration::hours(50),
-                                              chrono::Duration::days(2),
+                                              *NAG_EMAIL_ABSENCE_PERIOD,
+                                              *NAG_EMAIL_GRACE_PERIOD,
                                               &*SITE_DOMAIN,
                                               &*SITE_LINK,
                                               &*app.handlebars_registry
@@ -137,7 +137,7 @@ pub fn background_control_thread() {
             }
         };
 
-        match ganbare::session::clean_old_sessions(&conn, chrono::Duration::days(14)) {
+        match ganbare::session::clean_old_sessions(&conn, *CLEAN_SESSIONS_AND_EMAILS) {
             Ok(count) => {
                 if count != 0 {
                     info!("Deleted {} expired sessions.", count)
@@ -149,7 +149,7 @@ pub fn background_control_thread() {
             }
         };
 
-        match ganbare::email::clean_old_pendings(&conn, chrono::Duration::days(14)) {
+        match ganbare::email::clean_old_pendings(&conn, *CLEAN_SESSIONS_AND_EMAILS) {
             Ok(count) => {
                 if count != 0 {
                     info!("Deleted {} unanswered email confirmations.", count);

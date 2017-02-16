@@ -18,6 +18,7 @@ use ganbare::errors;
 use std::path::PathBuf;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 pub use std::time::{Instant, Duration};
+use time::Duration as TimeDuration;
 use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
 
 use r2d2;
@@ -28,11 +29,32 @@ pub use ganbare_backend::PERF_TRACE;
 
 lazy_static! {
 
+    pub static ref NAG_EMAIL_GRACE_PERIOD: TimeDuration = {
+        dotenv::dotenv().ok();
+        TimeDuration::hours(env::var("GANBARE_NAG_EMAIL_GRACE_PERIOD_HOURS")
+            .map(|s| s.parse().unwrap_or(48))
+            .unwrap_or(48))
+    };
+
+    pub static ref NAG_EMAIL_ABSENCE_PERIOD: TimeDuration = {
+        dotenv::dotenv().ok();
+        TimeDuration::hours(env::var("NAG_EMAIL_ABSENCE_PERIOD_HOURS")
+            .map(|s| s.parse().unwrap_or(52))
+            .unwrap_or(52))
+    };
+
+    pub static ref CLEAN_SESSIONS_AND_EMAILS: TimeDuration = {
+        dotenv::dotenv().ok();
+        TimeDuration::days(env::var("GANBARE_CLEAN_SESSIONS_AND_EMAILS_DAYS")
+            .map(|s| s.parse().unwrap_or(14))
+            .unwrap_or(14))
+    };
+
     pub static ref PASSWORD_STRETCHING_TIME: Duration = {
         dotenv::dotenv().ok();
         Duration::from_millis(env::var("GANBARE_PASSWORD_STRETCHING_MS")
-            .map(|s| s.parse().unwrap_or(700))
-            .unwrap_or(700))
+            .map(|s| s.parse().unwrap_or(500))
+            .unwrap_or(500))
     };
 
     pub static ref COOKIE_HMAC_KEY: Vec<u8> ={

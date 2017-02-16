@@ -22,5 +22,4 @@ Stretch goals:
 - Support multiple audio file formats
 - FIX: the annoying UI bug on SafarI where scale-animated buttons ignore clicks sometimes, if that's even possible
 - FIX: prevent multiple sessions having the quiz open at the same time (possible ear-mark answers with session-id, think a bit about concurrency!)
-- FIX: contenteditable adds <br> at the end
 - IMPROVEMENT: check if group names and event names are possible to enumify
