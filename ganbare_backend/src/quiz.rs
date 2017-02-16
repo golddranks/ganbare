@@ -88,10 +88,10 @@ fn new_pending_item(conn: &Connection,
     };
 
     Ok(diesel::insert(&NewPendingItem {
-            user_id,
-            audio_file_id,
-            item_type,
-            test_item,
+            user_id: user_id,
+            audio_file_id: audio_file_id,
+            item_type: item_type,
+            test_item: test_item,
         }).into(pending_items::table)
         .get_result(&**conn)?)
 }
@@ -153,7 +153,8 @@ fn log_answer_due_item(conn: &Connection,
                             chrono::Duration::seconds(due_item.due_delay as i64);
         if due_item.correct_streak_overall >= metrics.streak_skill_bump_criteria {
 
-            debug!("Skill bump because of correct_streak_overall > the criteria! Skill: {} Of user: {} Bumped by: {}",
+            debug!("Skill bump because of correct_streak_overall > the criteria! Skill: {} Of \
+                    user: {} Bumped by: {}",
                    skill_id,
                    due_item.user_id,
                    1);
@@ -793,7 +794,8 @@ fn choose_new_random_word(conn: &Connection, user_id: i32) -> Result<Option<Word
         .first(&**conn)
         .optional()?;
 */
-    let new_word: Option<Word> = sql::<(
+    let new_word: Option<Word> =
+        sql::<(
         diesel::types::Integer,
         diesel::types::Text,
         diesel::types::Text,
@@ -871,7 +873,8 @@ fn choose_new_paired_word(conn: &Connection, user_id: i32) -> Result<Option<Word
         .first(&**conn)
         .optional()?;
 */
-    let new_word: Option<Word> = sql::<(
+    let new_word: Option<Word> =
+        sql::<(
         diesel::types::Integer,
         diesel::types::Text,
         diesel::types::Text,
@@ -991,10 +994,7 @@ pub fn things_left_to_do(conn: &Connection,
 }
 
 
-fn check_break(conn: &Connection,
-               user: &User,
-               metrics: &mut UserMetrics)
-               -> Result<Option<Quiz>> {
+fn check_break(conn: &Connection, user: &User, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
     use std::cmp::max;
     use chrono::Duration;
 
@@ -1213,7 +1213,8 @@ pub fn return_q_or_e(conn: &Connection, user: &User, quiztype: QuizType) -> Resu
 
             let (question, right_a_id, answers, q_audio_id) = ask_new_question(conn, id)?;
 
-            let pending_item = new_pending_item(conn, user.id, QuizType::Question(q_audio_id), false)?;
+            let pending_item =
+                new_pending_item(conn, user.id, QuizType::Question(q_audio_id), false)?;
 
             let asked_data = QAskedData {
                 id: pending_item.id,
@@ -1243,7 +1244,8 @@ pub fn return_q_or_e(conn: &Connection, user: &User, quiztype: QuizType) -> Resu
 
             let (exercise, word, audio_id) = ask_new_exercise(conn, id)?;
 
-            let pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id), false)?;
+            let pending_item =
+                new_pending_item(conn, user.id, QuizType::Exercise(audio_id), false)?;
 
             let asked_data = EAskedData {
                 id: pending_item.id,
@@ -1310,12 +1312,10 @@ pub fn get_word_by_id(conn: &Connection, id: i32) -> Result<Word> {
 pub fn get_exercise(conn: &Connection, word: &str) -> Result<(Exercise, ExerciseVariant)> {
     use schema::{words, exercises, exercise_variants};
 
-    let word: Word = words::table
-        .filter(words::word.eq(word))
+    let word: Word = words::table.filter(words::word.eq(word))
         .get_result(&**conn)?;
 
-    Ok(exercises::table
-        .inner_join(exercise_variants::table)
+    Ok(exercises::table.inner_join(exercise_variants::table)
         .filter(exercise_variants::id.eq(word.id))
         .get_result(&**conn)?)
 }
@@ -1323,8 +1323,7 @@ pub fn get_exercise(conn: &Connection, word: &str) -> Result<(Exercise, Exercise
 pub fn get_question(conn: &Connection, answer_text: &str) -> Result<(QuizQuestion, Answer)> {
     use schema::{quiz_questions, question_answers, audio_bundles};
 
-    let bundle: AudioBundle = audio_bundles::table
-        .filter(audio_bundles::listname.eq(answer_text))
+    let bundle: AudioBundle = audio_bundles::table.filter(audio_bundles::listname.eq(answer_text))
         .get_result(&**conn)?;
 
     Ok(quiz_questions::table.inner_join(question_answers::table)
@@ -1338,10 +1337,7 @@ pub enum QuizSerialized {
     Exercise(&'static str, i32),
 }
 
-pub fn test_item(conn: &Connection,
-                 user: &User,
-                 quiz_str: &QuizSerialized)
-                 -> Result<(Quiz, i32)> {
+pub fn test_item(conn: &Connection, user: &User, quiz_str: &QuizSerialized) -> Result<(Quiz, i32)> {
     let pending_item;
     let test_item = match *quiz_str {
         QuizSerialized::Word(s, audio_id) => {
@@ -1349,7 +1345,7 @@ pub fn test_item(conn: &Connection,
             let a = audio::get_audio_file_by_id(conn, audio_id)?;
 
             assert_eq!(w.audio_bundle, a.bundle_id);
-            
+
             pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id), true)?;
 
             let asked_data = WAskedData {
@@ -1376,8 +1372,8 @@ pub fn test_item(conn: &Connection,
         }
         QuizSerialized::Question(s, audio_id) => {
 
-            let (q, ans) = quiz::get_question(conn, s)
-                        .chain_err(|| format!("Question {} not found", s))?;
+            let (q, ans) =
+                quiz::get_question(conn, s).chain_err(|| format!("Question {} not found", s))?;
 
             let a = audio::get_audio_file_by_id(conn, audio_id)?;
 

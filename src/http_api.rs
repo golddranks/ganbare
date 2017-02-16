@@ -6,7 +6,7 @@ use pencil::helpers::{send_file, send_from_directory};
 use rustc_serialize;
 use regex;
 use std::io::{self, Read};
-use hyper::header::{ContentLength};
+use hyper::header::ContentLength;
 
 use ganbare::audio;
 use ganbare::quiz;

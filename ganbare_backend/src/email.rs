@@ -2,7 +2,6 @@ extern crate lettre;
 extern crate pencil;
 
 use std::time::Duration;
-use data_encoding;
 
 use self::lettre::email::{EmailBuilder, Email};
 use self::pencil::Handlebars;
@@ -17,6 +16,7 @@ use super::*;
 #[derive(RustcEncodable)]
 struct EmailData<'a> {
     secret: &'a str,
+    hmac: &'a str,
     site_link: &'a str,
     site_name: &'a str,
 }
@@ -25,6 +25,7 @@ impl<'a> ToJson for EmailData<'a> {
     fn to_json(&self) -> Json {
         let mut m: BTreeMap<String, Json> = BTreeMap::new();
         m.insert("secret".to_string(), self.secret.to_json());
+        m.insert("hmac".to_string(), self.hmac.to_json());
         m.insert("site_link".to_string(), self.site_link.to_json());
         m.insert("site_name".to_string(), self.site_name.to_json());
         m.to_json()
@@ -36,22 +37,27 @@ fn enqueue_mail(email: Email, queue: &RwLock<VecDeque<Email>>) -> Result<()> {
     info!("Enqueuing mail to {:?}", email.to_addresses());
 
     match queue.write() {
-        Ok(mut q) => { q.push_back(email); Ok(()) },
+        Ok(mut q) => {
+            q.push_back(email);
+            Ok(())
+        }
         _ => Err(Error::from_kind("Couldn't open the email queue for writing.".into())),
     }
 }
 
 pub fn send_confirmation(queue: &RwLock<VecDeque<Email>>,
-                                              email_addr: &str,
-                                              secret: &str,
-                                              site_name: &str,
-                                              site_link: &str,
-                                              hb_registry: &Handlebars,
-                                              from: (&str, &str))
-                                              -> Result<()> {
+                         email_addr: &str,
+                         secret: &str,
+                         hmac: &str,
+                         site_name: &str,
+                         site_link: &str,
+                         hb_registry: &Handlebars,
+                         from: (&str, &str))
+                         -> Result<()> {
 
     let data = EmailData {
         secret: secret,
+        hmac: hmac,
         site_link: site_link,
         site_name: site_name,
     };
@@ -69,15 +75,17 @@ pub fn send_confirmation(queue: &RwLock<VecDeque<Email>>,
 }
 
 pub fn send_pw_reset_email(queue: &RwLock<VecDeque<Email>>,
-                                                secret: &ResetEmailSecrets,
-                                                site_name: &str,
-                                                site_link: &str,
-                                                hb_registry: &Handlebars,
-                                                from: (&str, &str))
-                                                -> Result<()> {
+                           secret: &ResetEmailSecrets,
+                           hmac: &str,
+                           site_name: &str,
+                           site_link: &str,
+                           hb_registry: &Handlebars,
+                           from: (&str, &str))
+                           -> Result<()> {
 
     let data = EmailData {
         secret: &secret.secret,
+        hmac: hmac,
         site_link: site_link,
         site_name: site_name,
     };
@@ -94,13 +102,12 @@ pub fn send_pw_reset_email(queue: &RwLock<VecDeque<Email>>,
     Ok(())
 }
 
-pub fn send_freeform_email<'a, ITER: Iterator<Item = &'a str>>
-    (queue: &RwLock<VecDeque<Email>>,
-     from: (&str, &str),
-     to: ITER,
-     subject: &str,
-     body: &str)
-     -> Result<()> {
+pub fn send_freeform_email<'a, ITER: Iterator<Item = &'a str>>(queue: &RwLock<VecDeque<Email>>,
+                                                               from: (&str, &str),
+                                                               to: ITER,
+                                                               subject: &str,
+                                                               body: &str)
+                                                               -> Result<()> {
 
     for to in to {
 
@@ -121,10 +128,12 @@ pub fn send_freeform_email<'a, ITER: Iterator<Item = &'a str>>
 
 
 pub fn add_pending_email_confirm(conn: &Connection,
+                                 hmac_key: &[u8],
                                  email: &str,
                                  groups: &[i32])
-                                 -> Result<String> {
-    let secret = data_encoding::base64url::encode(&session::fresh_token()?[..]);
+                                 -> Result<(String, String)> {
+    let (secret, hmac) = session::get_token_hmac(hmac_key)?;
+
     {
         let confirm = NewPendingEmailConfirm {
             email: email,
@@ -135,7 +144,7 @@ pub fn add_pending_email_confirm(conn: &Connection,
             .execute(&**conn)
             .chain_err(|| "Error :(")?;
     }
-    Ok(secret)
+    Ok((secret, hmac))
 }
 
 pub fn get_all_pending_email_confirms(conn: &Connection) -> Result<Vec<String>> {
@@ -180,24 +189,25 @@ pub fn complete_pending_email_confirm(conn: &Connection,
     Ok(user)
 }
 
-pub fn clean_old_pendings(conn: &Connection, duration: chrono::duration::Duration) -> Result<usize> {
+pub fn clean_old_pendings(conn: &Connection,
+                          duration: chrono::duration::Duration)
+                          -> Result<usize> {
     use schema::pending_email_confirms;
     let deadline = chrono::UTC::now() - duration;
-    diesel::delete(pending_email_confirms::table
-            .filter(pending_email_confirms::added.lt(deadline)))
+    diesel::delete(pending_email_confirms::table.filter(pending_email_confirms::added.lt(deadline)))
         .execute(&**conn)
         .chain_err(|| "Couldn't delete the old pending requests.")
 }
 
 pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
-                                            conn: &Connection,
-                                            how_old: chrono::Duration,
-                                            nag_grace_period: chrono::Duration,
-                                            site_name: &str,
-                                            site_link: &str,
-                                            hb_registry: &Handlebars,
-                                            from: (&str, &str))
-                                            -> Result<()> {
+                       conn: &Connection,
+                       how_old: chrono::Duration,
+                       nag_grace_period: chrono::Duration,
+                       site_name: &str,
+                       site_link: &str,
+                       hb_registry: &Handlebars,
+                       from: (&str, &str))
+                       -> Result<()> {
 
     let slackers = user::get_slackers(conn, how_old)?;
 
@@ -224,6 +234,7 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
 
         let data = EmailData {
             secret: "",
+            hmac: "",
             site_link: site_link,
             site_name: site_name,
         };
@@ -242,8 +253,7 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
         stats.last_nag_email = Some(chrono::UTC::now());
         let _: UserStats = stats.save_changes(&**conn)?;
 
-        info!("Sent slacker heatening email to {}!",
-              email_addr);
+        info!("Sent slacker heatening email to {}!", email_addr);
     }
 
     Ok(())

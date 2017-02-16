@@ -1,6 +1,5 @@
 use super::*;
 use std::time::Instant;
-use data_encoding;
 use chrono::Duration;
 
 /* TODO FIXME this can be a full-blown typed group system some day
@@ -72,7 +71,12 @@ pub fn auth_user(conn: &Connection,
 }
 
 
-pub fn add_user(conn: &Connection, email: &str, password: &str, pepper: &[u8], stretching_time: std::time::Duration) -> Result<User> {
+pub fn add_user(conn: &Connection,
+                email: &str,
+                password: &str,
+                pepper: &[u8],
+                stretching_time: std::time::Duration)
+                -> Result<User> {
     use schema::{users, passwords, user_metrics, user_stats};
 
     if email.len() > 254 {
@@ -166,7 +170,10 @@ pub fn invalidate_password_reset(conn: &Connection, secret: &ResetEmailSecrets) 
     Ok(())
 }
 
-pub fn send_pw_change_email(conn: &Connection, email: &str) -> Result<ResetEmailSecrets> {
+pub fn send_pw_change_email(conn: &Connection,
+                            email: &str,
+                            hmac_key: &[u8])
+                            -> Result<(ResetEmailSecrets, String)> {
     use schema::{users, reset_email_secrets};
 
     let earlier_email: Option<(ResetEmailSecrets, User)> =
@@ -197,17 +204,17 @@ pub fn send_pw_change_email(conn: &Connection, email: &str) -> Result<ResetEmail
         None => return Err(ErrorKind::NoSuchUser(email.to_string()).into()),
     };
 
-    let secret = data_encoding::base64url::encode(&session::fresh_token()?[..]);
+    let (new_secret, hmac) = session::get_token_hmac(hmac_key)?;
 
     let result = diesel::insert(&ResetEmailSecrets {
-            secret: secret,
+            secret: new_secret,
             user_id: user.id,
             email: user.email.expect("We just found this user by the email address!"),
             added: chrono::UTC::now(),
         }).into(reset_email_secrets::table)
         .get_result(&**conn)?;
 
-    Ok(result)
+    Ok((result, hmac))
 }
 
 pub fn remove_user_by_email(conn: &Connection, rm_email: &str) -> Result<User> {
@@ -278,7 +285,7 @@ pub fn change_password(conn: &Connection,
                        user_id: i32,
                        new_password: &str,
                        pepper: &[u8],
-                        stretching_time: std::time::Duration)
+                       stretching_time: std::time::Duration)
                        -> Result<()> {
 
     let pw = password::set_password(new_password, pepper, stretching_time)
@@ -367,7 +374,7 @@ pub fn join_user_group_by_name(conn: &Connection,
     let group: UserGroup = user_groups::table.filter(user_groups::group_name.eq(group_name))
         .first(&**conn)?;
 
-        // FIXME when diesel gets UPSERT, streamline this
+    // FIXME when diesel gets UPSERT, streamline this
     let membership: Option<GroupMembership> = diesel::insert(&GroupMembership {
             user_id: user.id,
             group_id: group.id,
@@ -383,8 +390,7 @@ pub fn join_user_group_by_name(conn: &Connection,
     if let Some(membership) = membership {
         Ok(membership)
     } else {
-        Ok(group_memberships::table
-            .filter(group_memberships::user_id.eq(user.id)
+        Ok(group_memberships::table.filter(group_memberships::user_id.eq(user.id)
                 .and(group_memberships::group_id.eq(group.id)))
             .get_result(&**conn)?)
     }
@@ -520,9 +526,7 @@ pub fn get_all(conn: &Connection)
     Ok((user_data, groups, confirms))
 }
 
-pub fn set_metrics(conn: &Connection,
-                   metrics: &UpdateUserMetrics)
-                   -> Result<Option<UserMetrics>> {
+pub fn set_metrics(conn: &Connection, metrics: &UpdateUserMetrics) -> Result<Option<UserMetrics>> {
     use schema::user_metrics;
 
     let item =

@@ -69,7 +69,10 @@ fn pepper_salt_pw_hash(plaintext_pw: &str,
     })
 }
 
-pub fn set_password(plaintext_pw: &str, pepper: &[u8], stretch_time: Duration) -> Result<HashedPassword> {
+pub fn set_password(plaintext_pw: &str,
+                    pepper: &[u8],
+                    stretch_time: Duration)
+                    -> Result<HashedPassword> {
     use rand::{OsRng, Rng};
 
     if plaintext_pw.len() < 8 {
@@ -90,11 +93,11 @@ pub fn set_password(plaintext_pw: &str, pepper: &[u8], stretch_time: Duration) -
     while elapsed < stretch_time {
 
         debug!("Not enough time elapsed ({:?}). Stretching more.", elapsed);
-        rounds +=1;
+        rounds += 1;
         let start_time = Instant::now();
         hashed_pw = pepper_salt_pw_hash(plaintext_pw, salt, rounds, pepper)?;
         elapsed = Instant::now().duration_since(start_time);
-    
+
     }
 
     Ok(hashed_pw)

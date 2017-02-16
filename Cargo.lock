@@ -4,6 +4,7 @@ version = "0.6.0"
 dependencies = [
  "chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "cookie 0.6.0 (git+https://github.com/golddranks/cookie-rs?branch=experiments)",
+ "data-encoding 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel_codegen 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",

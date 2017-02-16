@@ -5,7 +5,9 @@
 		<p>Tieteellinen koe japanin ääntämyksestä</p>
 	</header>
 	<hr />
-	<form method="post" id="createuser" action="/confirm?secret={{ secret }}">
+	<form method="post" id="createuser" action="/confirm">
+		<input type="hidden" name="secret" id="secret" value="{{ secret }}"/>
+		<input type="hidden" name="hmac" id="hmac" value="{{ hmac }}"/>
 		<p>Käyttäjätunnuksesi on<br />
 		<b style="font-size: 1.2em">{{ email }}</b></p>
 		<p>Valitse itsellesi salasana:</p>

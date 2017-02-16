@@ -7,7 +7,7 @@
 		<h1>Hei,</h1>
 		<p>Joku, toivottavasti sinä, pyysi salasanasi vaihtoa <strong>{{ site_name }}</strong>-sivustolla.<p>
 		<p>Voit vaihtaa salasanasi alla olevassa osoitteessa:<p>
-		<p><a href="{{ site_link }}reset_password?secret={{ secret }}">{{ site_link }}reset_password?secret={{ secret }}</a></p>
+		<p><a href="{{ site_link }}reset_password?secret={{ secret }}&hmac={{ hmac }}">{{ site_link }}reset_password?secret={{ secret }}&hmac={{ hmac }}</a></p>
 		<p>Jos epäilet tämän viestin olevan virhe tai et ole aikeissa vaihtaa salasanaasi, voit jättää tämän viestin huomiotta.<p>
 	</body>
 </html>

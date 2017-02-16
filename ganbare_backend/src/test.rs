@@ -181,10 +181,7 @@ pub fn get_next_retelling_pretest(conn: &Connection,
     get_new_retelling_pretest(conn, user, event)
 }
 
-pub fn get_new_quiz_pretest(conn: &Connection,
-                            user: &User,
-                            event: &Event)
-                            -> Result<Option<Quiz>> {
+pub fn get_new_quiz_pretest(conn: &Connection, user: &User, event: &Event) -> Result<Option<Quiz>> {
 
     let quizes = vec![QuizSerialized::Word("いし・", 5355),
                       QuizSerialized::Word("い・し", 5367),
@@ -203,8 +200,7 @@ pub fn get_new_quiz_pretest(conn: &Connection,
                       QuizSerialized::Question("あ／き・がきた", 5045),
                       QuizSerialized::Word("／あ・しが生えてる", 7290),
                       QuizSerialized::Word("あ／し・が生えてる", 7289),
-                      QuizSerialized::Exercise("あ／し・が生えてる", 7289),
-                    ];
+                      QuizSerialized::Exercise("あ／し・が生えてる", 7289)];
 
     let mut quiz = get_new_quiz_test(conn, user, event, &quizes)?;
 
@@ -241,13 +237,18 @@ pub fn get_new_retelling_pretest(conn: &Connection,
                                  event: &Event)
                                  -> Result<Option<RetellingJson>> {
 
-    let retellings =
-        vec![("static/content_images/retelling/yamada.png", "static/content_audio/retelling/yamada.mp3"),
-             ("static/content_images/retelling/nishida.png", "static/content_audio/retelling/nishida.mp3"),
-             ("static/content_images/retelling/mari_a.png", "static/content_audio/retelling/mari_a.mp3"),
-             ("static/content_images/retelling/mari_b.png", "static/content_audio/retelling/mari_b.mp3"),
-             ("static/content_images/retelling/mari_c.png", "static/content_audio/retelling/mari_c.mp3"),
-             ("static/content_images/retelling/mari_d.png", "static/content_audio/retelling/mari_d.mp3")];
+    let retellings = vec![("static/content_images/retelling/yamada.png",
+                           "static/content_audio/retelling/yamada.mp3"),
+                          ("static/content_images/retelling/nishida.png",
+                           "static/content_audio/retelling/nishida.mp3"),
+                          ("static/content_images/retelling/mari_a.png",
+                           "static/content_audio/retelling/mari_a.mp3"),
+                          ("static/content_images/retelling/mari_b.png",
+                           "static/content_audio/retelling/mari_b.mp3"),
+                          ("static/content_images/retelling/mari_c.png",
+                           "static/content_audio/retelling/mari_c.mp3"),
+                          ("static/content_images/retelling/mari_d.png",
+                           "static/content_audio/retelling/mari_d.mp3")];
     get_new_retelling(conn, user, event, &retellings)
 }
 
@@ -256,12 +257,17 @@ pub fn get_new_retelling_posttest(conn: &Connection,
                                   event: &Event)
                                   -> Result<Option<RetellingJson>> {
 
-    let retellings =
-        vec![("static/content_images/retelling/yamada.jpg", "static/content_audio/retelling/yamada.mp3"),
-             ("static/content_images/retelling/nishida.jpg", "static/content_audio/retelling/nishida.mp3"),
-             ("static/content_images/retelling/mari_a.jpg", "static/content_audio/retelling/mari_a.mp3"),
-             ("static/content_images/retelling/mari_b.jpg", "static/content_audio/retelling/mari_b.mp3"),
-             ("static/content_images/retelling/mari_c.jpg", "static/content_audio/retelling/mari_c.mp3"),
-             ("static/content_images/retelling/mari_d.jpg", "static/content_audio/retelling/mari_d.mp3")];
+    let retellings = vec![("static/content_images/retelling/yamada.jpg",
+                           "static/content_audio/retelling/yamada.mp3"),
+                          ("static/content_images/retelling/nishida.jpg",
+                           "static/content_audio/retelling/nishida.mp3"),
+                          ("static/content_images/retelling/mari_a.jpg",
+                           "static/content_audio/retelling/mari_a.mp3"),
+                          ("static/content_images/retelling/mari_b.jpg",
+                           "static/content_audio/retelling/mari_b.mp3"),
+                          ("static/content_images/retelling/mari_c.jpg",
+                           "static/content_audio/retelling/mari_c.mp3"),
+                          ("static/content_images/retelling/mari_d.jpg",
+                           "static/content_audio/retelling/mari_d.mp3")];
     get_new_retelling(conn, user, event, &retellings)
 }

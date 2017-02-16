@@ -277,9 +277,9 @@ pub fn update_answer(conn: &Connection,
 }
 
 pub fn update_variant(conn: &Connection,
-                     id: i32,
-                    item: UpdateExerciseVariant)
-                     -> Result<Option<ExerciseVariant>> {
+                      id: i32,
+                      item: UpdateExerciseVariant)
+                      -> Result<Option<ExerciseVariant>> {
 
     use schema::exercise_variants;
 
@@ -293,8 +293,9 @@ pub fn update_variant(conn: &Connection,
 pub fn remove_word(conn: &Connection, id: i32) -> Result<Option<Word>> {
     use schema::words;
 
-    let word: Option<Word> = diesel::delete(words::table.filter(words::id.eq(id))).get_result(&**conn)
-        .optional()?;
+    let word: Option<Word> =
+        diesel::delete(words::table.filter(words::id.eq(id))).get_result(&**conn)
+            .optional()?;
 
     Ok(word)
 }
@@ -346,25 +347,27 @@ pub fn post_exercise(conn: &Connection,
                      mut answers: Vec<ExerciseVariant>)
                      -> Result<i32> {
     use schema::{exercises, exercise_variants};
-    
-    conn.transaction(|| -> Result<i32> {
-    
-        let q: Exercise = diesel::insert(&exercise).into(exercises::table)
-            .get_result(&**conn)?;
-    
-        for aa in &mut answers {
-            aa.exercise_id = q.id;
-            diesel::insert(aa).into(exercise_variants::table)
-                .execute(&**conn)?;
-        }
-        Ok(q.id)
 
-    }).chain_err(|| ErrorKind::from("Transaction failed"))
+    conn.transaction(|| -> Result<i32> {
+
+            let q: Exercise = diesel::insert(&exercise).into(exercises::table)
+                .get_result(&**conn)?;
+
+            for aa in &mut answers {
+                aa.exercise_id = q.id;
+                diesel::insert(aa).into(exercise_variants::table)
+                    .execute(&**conn)?;
+            }
+            Ok(q.id)
+
+        })
+        .chain_err(|| ErrorKind::from("Transaction failed"))
 
 }
 
-pub fn del_due_and_pending_items(conn: &Connection, user_id: i32)  -> Result<()> {
-    use schema::{due_items, pending_items, question_data, exercise_data, e_asked_data, q_asked_data, e_answered_data, q_answered_data};
+pub fn del_due_and_pending_items(conn: &Connection, user_id: i32) -> Result<()> {
+    use schema::{due_items, pending_items, question_data, exercise_data, e_asked_data, q_asked_data,
+                 e_answered_data, q_answered_data};
     use diesel::expression::dsl::any;
 
     let p = diesel::update(
@@ -374,9 +377,8 @@ pub fn del_due_and_pending_items(conn: &Connection, user_id: i32)  -> Result<()>
         .set(pending_items::pending.eq(false))
         .execute(&**conn)?;
 
-    let pending: Vec<PendingItem> = pending_items::table
-                .filter(pending_items::user_id.eq(user_id))
-                .get_results(&**conn)?;
+    let pending: Vec<PendingItem> = pending_items::table.filter(pending_items::user_id.eq(user_id))
+        .get_results(&**conn)?;
 
     let due_items = due_items::table.filter(due_items::user_id.eq(user_id)).select(due_items::id);
 
@@ -386,8 +388,8 @@ pub fn del_due_and_pending_items(conn: &Connection, user_id: i32)  -> Result<()>
     let e = diesel::delete(exercise_data::table.filter(exercise_data::due.eq(any(due_items))))
         .execute(&**conn)?;
 
-    let d = diesel::delete(due_items::table.filter(due_items::user_id.eq(user_id)))
-        .execute(&**conn)?;
+    let d =
+        diesel::delete(due_items::table.filter(due_items::user_id.eq(user_id))).execute(&**conn)?;
 
     let mut asks = 0;
     let mut answers = 0;
@@ -396,19 +398,26 @@ pub fn del_due_and_pending_items(conn: &Connection, user_id: i32)  -> Result<()>
 
         answers += diesel::delete(e_answered_data::table.filter(e_answered_data::id.eq(p.id)))
             .execute(&**conn)?;
-    
+
         answers += diesel::delete(q_answered_data::table.filter(q_answered_data::id.eq(p.id)))
             .execute(&**conn)?;
-    
-        asks += diesel::delete(e_asked_data::table.filter(e_asked_data::id.eq(p.id)))
-            .execute(&**conn)?;
-    
-        asks += diesel::delete(q_asked_data::table.filter(q_asked_data::id.eq(p.id)))
-            .execute(&**conn)?;
+
+        asks +=
+            diesel::delete(e_asked_data::table.filter(e_asked_data::id.eq(p.id))).execute(&**conn)?;
+
+        asks +=
+            diesel::delete(q_asked_data::table.filter(q_asked_data::id.eq(p.id))).execute(&**conn)?;
 
     }
 
-    debug!("Deactivated {} pending items and deleted {} due items. ({} questions, {} exercises, {} asks, {} answers)", p, d, q, e, asks, answers);
+    debug!("Deactivated {} pending items and deleted {} due items. ({} questions, {} exercises, \
+            {} asks, {} answers)",
+           p,
+           d,
+           q,
+           e,
+           asks,
+           answers);
 
     Ok(())
 }
@@ -517,10 +526,9 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
             info!("Downloading the link target.");
             let desanitized_url = url.replace("&amp;", "&");
             let req = HTTP_CLIENT.get(&desanitized_url);
-            let mut resp = req
-                .send()
+            let mut resp = req.send()
                 .map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
-            
+
             assert!(resp.status().is_success());
 
             let extension = {
@@ -540,7 +548,9 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
                     Some(&ContentType(Mime(Image, Png, _))) => ".png",
                     Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
                     Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
-                    Some(_) | None => file_extension.or_else(|| fuzzy_guess_url).unwrap_or(".noextension"),
+                    Some(_) | None => {
+                        file_extension.or_else(|| fuzzy_guess_url).unwrap_or(".noextension")
+                    }
                 }
             };
 

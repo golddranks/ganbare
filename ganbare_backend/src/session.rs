@@ -9,6 +9,69 @@ use crypto::mac::{Mac, MacResult};
 use crypto::sha2::Sha512;
 
 pub const SESSID_BITS: usize = 128;
+pub const HMAC_BITS: usize = 512;
+
+
+pub fn get_token_hmac(hmac_key: &[u8]) -> Result<(String, String)> {
+    use crypto::hmac::Hmac;
+    use crypto::mac::Mac;
+    use crypto::sha2::Sha512;
+    use data_encoding;
+
+    let token = session::fresh_token()?;
+    let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
+    hmac_checker.input(&token[..]);
+    let hmac = hmac_checker.result();
+    let mut token_base64url = data_encoding::base64url::encode(&token[..]);
+    let mut hmac_base64url = data_encoding::base64url::encode(hmac.code());
+
+    while token_base64url.ends_with('=') {
+        token_base64url.pop();
+    }
+    while hmac_base64url.ends_with('=') {
+        hmac_base64url.pop();
+    }
+
+    Ok((token_base64url, hmac_base64url))
+}
+
+pub fn verify_token(token_base64url: &str, hmac_base64url: &str, hmac_key: &[u8]) -> Result<bool> {
+    use crypto::hmac::Hmac;
+    use crypto::mac::{Mac, MacResult};
+    use crypto::sha2::Sha512;
+    use data_encoding;
+
+    let token_target_len = data_encoding::base64url::encode_len(SESSID_BITS / 8);
+    let hmac_target_len = data_encoding::base64url::encode_len(HMAC_BITS / 8);
+
+    if token_base64url.len() < token_target_len - 2 {
+        bail!(ErrorKind::InvalidInput);
+    }
+    if hmac_base64url.len() < hmac_target_len - 2 {
+        bail!(ErrorKind::InvalidInput);
+    }
+
+    let mut token_base64url = token_base64url.to_owned();
+    let mut hmac_base64url = hmac_base64url.to_owned();
+
+    while token_base64url.len() < token_target_len {
+        token_base64url.push('=');
+    }
+    while hmac_base64url.len() < hmac_target_len {
+        hmac_base64url.push('=');
+    }
+
+    let token = data_encoding::base64url::decode(token_base64url.as_bytes())?;
+    let hmac = data_encoding::base64url::decode(hmac_base64url.as_bytes())?;
+
+    let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
+    hmac_checker.input(token.as_slice());
+    if hmac_checker.result() == MacResult::new(hmac.as_slice()) {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
 
 pub fn fresh_token() -> Result<[u8; SESSID_BITS / 8]> {
     use rand::{Rng, OsRng};
@@ -67,7 +130,7 @@ pub fn check_integrity(token_hex: &str, hmac_hex: &str, secret_key: &[u8]) -> Op
         (Ok(t), Ok(h)) => {
             let hmac_to_check = MacResult::new(h.as_slice());
             (t, hmac_to_check)
-        },
+        }
         _ => return None,
     };
     let mut correct_hmac = Hmac::new(Sha512::new(), secret_key);

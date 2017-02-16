@@ -30,7 +30,11 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
 
     let conn = db_connect().err_500()?;
 
-    let user = user::add_user(&conn, email, new_password, &*RUNTIME_PEPPER, *PASSWORD_STRETCHING_TIME).err_500()?;
+    let user = user::add_user(&conn,
+                              email,
+                              new_password,
+                              &*RUNTIME_PEPPER,
+                              *PASSWORD_STRETCHING_TIME).err_500()?;
     user::join_user_group_by_name(&conn, &user, "admins").err_500()?;
     user::join_user_group_by_name(&conn, &user, "editors").err_500()?;
     user::join_user_group_by_name(&conn, &user, "questions").err_500()?;
@@ -119,14 +123,10 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                     let mut file = file.clone();
                     file.do_not_delete_on_drop();
                     q_variants.push((file.path.clone(),
-                                     file.filename()
-                                         .map_err(|_| {
-                                             Error::from_kind(ErrorKind::FormParseError)
-                                         })?,
-                                     file.content_type()
-                                         .ok_or_else(|| {
-                                             Error::from_kind(ErrorKind::FormParseError)
-                                         })?));
+                               file.filename()
+                                   .map_err(|_| Error::from_kind(ErrorKind::FormParseError))?,
+                               file.content_type()
+                                   .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?));
                 }
             }
             if q_variants.is_empty() {
@@ -271,10 +271,14 @@ pub fn add_users(req: &mut Request) -> PencilResult {
                                  "No such group?")
                 .id);
         }
-        let secret = email::add_pending_email_confirm(&conn, email, groups.as_ref()).err_500()?;
+        let (secret, hmac) = email::add_pending_email_confirm(&conn,
+                                                              COOKIE_HMAC_KEY.as_slice(),
+                                                              email,
+                                                              groups.as_ref()).err_500()?;
         email::send_confirmation(&*MAIL_QUEUE,
-                                email,
+                                 email,
                                  &secret,
+                                 &hmac,
                                  &*SITE_DOMAIN,
                                  &*SITE_LINK,
                                  &**req.app

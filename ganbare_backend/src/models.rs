@@ -613,7 +613,9 @@ impl Encodable for UserMetrics {
             s.emit_struct_field("initial_delay", 13, |s| s.emit_i32(self.initial_delay))?;
             s.emit_struct_field("streak_limit", 14, |s| s.emit_i32(self.streak_limit))?;
             s.emit_struct_field("cooldown_delay", 15, |s| s.emit_i32(self.cooldown_delay))?;
-            s.emit_struct_field("streak_skill_bump_criteria", 16, |s| s.emit_i32(self.streak_skill_bump_criteria))?;
+            s.emit_struct_field("streak_skill_bump_criteria",
+                                   16,
+                                   |s| s.emit_i32(self.streak_skill_bump_criteria))?;
             Ok(())
         })
     }

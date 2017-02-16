@@ -29,6 +29,7 @@ extern crate cookie;
 extern crate typemap;
 extern crate crypto;
 extern crate lettre;
+extern crate data_encoding;
 
 extern crate r2d2;
 extern crate r2d2_diesel;
@@ -62,7 +63,7 @@ pub fn favicon(_: &mut Request) -> PencilResult {
 }
 
 pub fn source_maps(req: &mut Request) -> PencilResult {
-    if ! *ENABLE_SOURCE_MAPS {
+    if !*ENABLE_SOURCE_MAPS {
         return pencil::helpers::abort(404);
     }
     use pencil::send_from_directory;

@@ -65,7 +65,9 @@ lazy_static! {
             .unwrap_or(30)
     };
 
-    pub static ref TIME_AT_SERVER_START : time::Tm = { let mut tm = time::now_utc(); tm.tm_nsec = 0; tm };
+    pub static ref TIME_AT_SERVER_START: time::Tm = {
+        let mut tm = time::now_utc(); tm.tm_nsec = 0; tm
+    };
 
     pub static ref DATABASE_URL : String = {
         dotenv::dotenv().ok();
@@ -233,7 +235,7 @@ lazy_static! {
     pub static ref POOL: r2d2::Pool<ConnManager> = {
        let config = r2d2::Config::default();
        let manager = ConnManager::new(DATABASE_URL.as_str());
-       
+
        r2d2::Pool::new(config, manager).expect("Failed to create pool.")
     };
 }
@@ -251,9 +253,7 @@ pub fn get_version_info() -> (&'static str, &'static str, bool) {
 pub fn db_connect() -> Result<Connection> {
     use ganbare_backend::ResultExt;
 
-    let conn = time_it!("connect to db",
-        POOL.get().chain_err(|| "DB timeout")
-    )?;
+    let conn = time_it!("connect to db", POOL.get().chain_err(|| "DB timeout"))?;
     Ok(conn)
 }
 
@@ -265,10 +265,10 @@ pub fn get_cookie(cookies: &Cookie) -> Option<(&str, &str)> {
         match CookiePair::parse(c) {
             Ok(ref c) if c.name() == "session_id" => {
                 session_id = Some(c.value().long_or_panic());
-            },
+            }
             Ok(ref c) if c.name() == "hmac" => {
                 hmac = Some(c.value().long_or_panic());
-            },
+            }
             Ok(_) => (),
             Err(_) => return None,
         }
@@ -357,7 +357,8 @@ impl HeaderProcessor for Response {
             .secure(*PARANOID)
             .domain(SITE_DOMAIN.as_str())
             .expires(time::now_utc() + time::Duration::weeks(2));
-        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish()), format!("{}", hmac.finish())]));
+        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish()),
+                                       format!("{}", hmac.finish())]));
         Ok(self)
     }
 
@@ -370,7 +371,8 @@ impl HeaderProcessor for Response {
             .path("/")
             .domain(SITE_DOMAIN.as_str())
             .expires(time::at_utc(time::Timespec::new(0, 0)));
-        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish()), format!("{}", hmac.finish())]));
+        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish()),
+                                       format!("{}", hmac.finish())]));
         self
     }
 
@@ -527,7 +529,10 @@ pub fn try_auth_user(req: &mut Request)
     time_it!{"try_auth_user",
         if let Some(sess_token) = get_sess_token(req) {
             let conn = db_connect().err_500()?;
-            if let Some((user, sess)) = session::check(&conn, sess_token.as_slice(), req.remote_addr().ip()).err_500()? {
+            let check_result =
+                session::check(&conn, sess_token.as_slice(), req.remote_addr().ip())
+                    .err_500()?;
+            if let Some((user, sess)) = check_result {
                 // User is logged in
                 Ok(Some((conn, user, sess)))
             } else {
@@ -629,11 +634,13 @@ pub fn check_if_cached(req: &mut Request) -> Option<PencilResult> {
             let mut cached_resp = Response::new_empty();
             cached_resp.status_code = 304;
             return Some(Ok(cached_resp));
-        },
-        None => { // No caching requested
+        }
+        None => {
+            // No caching requested
             return None;
-        },
-        Some(_) => { // Stale cache
+        }
+        Some(_) => {
+            // Stale cache
             return None;
         }
     }

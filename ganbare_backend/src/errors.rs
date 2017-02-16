@@ -9,6 +9,7 @@ error_chain! {
             DieselMigrationError(::diesel::migrations::RunMigrationsError);
             FmtError(::std::fmt::Error);
             R2D2Error(::r2d2::GetTimeout);
+            DataEncodingError(::data_encoding::decode::Error);
         }
         errors {
             InvalidInput {
