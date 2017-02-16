@@ -249,8 +249,6 @@ pub fn login_form(req: &mut Request) -> PencilResult {
 
 pub fn login_post(req: &mut Request) -> PencilResult {
 
-    rate_limit(Duration::from_millis(1000), 20, || {
-
         let app = req.app;
         let ip = req.request.remote_addr.ip();
         let email = req.form_mut().take("email").unwrap_or_default();
@@ -280,8 +278,6 @@ pub fn login_post(req: &mut Request) -> PencilResult {
                 })
             }
         }
-
-    })
 }
 
 pub fn logout(req: &mut Request) -> PencilResult {
@@ -504,8 +500,6 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
         Ok(parse!(form.get("email")))
     }
 
-    rate_limit(Duration::from_millis(2000), 20, || {
-
         let user_email = err_400!(parse_form(req), "invalid form data");
 
         let conn = db_connect().err_500()?;
@@ -547,8 +541,6 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
             }
             Err(e) => Err(internal_error(e)),
         }
-
-    })
 }
 
 
