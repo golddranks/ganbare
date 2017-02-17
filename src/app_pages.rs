@@ -7,7 +7,9 @@ use ganbare::user;
 use ganbare::email;
 use ganbare::session;
 
-fn dispatch_events(conn: &Connection, user_id: i32) -> StdResult<Option<PencilResult>, PencilError> {
+fn dispatch_events(conn: &Connection,
+                   user_id: i32)
+                   -> StdResult<Option<PencilResult>, PencilError> {
 
     let event = match event::dispatch_event(conn, user_id).err_500()? {
         Some(e) => e,
@@ -249,34 +251,34 @@ pub fn login_form(req: &mut Request) -> PencilResult {
 
 pub fn login_post(req: &mut Request) -> PencilResult {
 
-        let app = req.app;
-        let email = req.form_mut().take("email").unwrap_or_default();
-        let plaintext_pw = req.form_mut().take("password").unwrap_or_default();
+    let app = req.app;
+    let email = req.form_mut().take("email").unwrap_or_default();
+    let plaintext_pw = req.form_mut().take("password").unwrap_or_default();
 
-        if email.len() > 254 || plaintext_pw.len() > 1024 {
-            return Ok(bad_request("Too long email/password."));
+    if email.len() > 254 || plaintext_pw.len() > 1024 {
+        return Ok(bad_request("Too long email/password."));
+    }
+
+    let conn = db_connect().err_500()?;
+
+    if let Some(old_sess) = get_sess(&conn, &*req).err_500()? {
+        do_logout(&conn, &old_sess).err_500()?;
+    }
+
+    match do_login(&conn, &email, &plaintext_pw).err_500()? {
+        Some((_, sess)) => redirect("/", 303).refresh_cookie(&sess),
+        None => {
+            warn!("Failed login: {}", &email);
+            let mut context = new_template_context();
+            context.insert("email".to_string(), email);
+            context.insert("authError".to_string(), "true".to_string());
+            let result = app.render_template("hello.html", &context);
+            result.map(|mut resp| {
+                resp.status_code = 401;
+                resp
+            })
         }
-
-        let conn = db_connect().err_500()?;
-
-        if let Some(old_sess) = get_sess(&conn, &*req).err_500()? {
-            do_logout(&conn, &old_sess).err_500()?;
-        }
-
-        match do_login(&conn, &email, &plaintext_pw).err_500()? {
-            Some((_, sess)) => redirect("/", 303).refresh_cookie(&sess),
-            None => {
-                warn!("Failed login: {}", &email);
-                let mut context = new_template_context();
-                context.insert("email".to_string(), email);
-                context.insert("authError".to_string(), "true".to_string());
-                let result = app.render_template("hello.html", &context);
-                result.map(|mut resp| {
-                    resp.status_code = 401;
-                    resp
-                })
-            }
-        }
+    }
 }
 
 pub fn logout(req: &mut Request) -> PencilResult {
@@ -498,47 +500,47 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
         Ok(parse!(form.get("email")))
     }
 
-        let user_email = err_400!(parse_form(req), "invalid form data");
+    let user_email = err_400!(parse_form(req), "invalid form data");
 
-        let conn = db_connect().err_500()?;
+    let conn = db_connect().err_500()?;
 
-        match user::send_pw_change_email(&conn, &user_email, COOKIE_HMAC_KEY.as_slice()) {
-            Ok((secret, hmac)) => {
-                email::send_pw_reset_email(&*MAIL_QUEUE,
-                                           &secret,
-                                           &hmac,
-                                           &*SITE_DOMAIN,
-                                           &*SITE_LINK,
-                                           &**req.app
-                                               .handlebars_registry
-                                               .read()
-                                               .expect("The registry is basically read-only \
-                                                        after startup."),
-                                           (&*EMAIL_ADDRESS, &*EMAIL_NAME)).err_500()?;
-                redirect("/send_password_reset_email?sent=true", 303)
-            }
-            Err(Error(ErrorKind::NoSuchUser(user), _)) => {
-                warn!("Trying to reset the password of non-existent address: {}",
-                      user);
-                let mut context = new_template_context();
-                context.insert("error".to_string(), "No such e-mail address :(".into());
-                context.insert("show_form".to_string(), "show_form".into());
-                req.app.render_template("send_pw_reset_email.html", &context).map(|mut r| {
-                    r.status_code = 400;
-                    r
-                })
-            }
-            Err(Error(ErrorKind::RateLimitExceeded, _)) => {
-                warn!("Someone is sending multiple password request requests per day!");
-                let mut context = new_template_context();
-                context.insert("error".to_string(), "Rate limit exceeded :(".into());
-                req.app.render_template("send_pw_reset_email.html", &context).map(|mut r| {
-                    r.status_code = 429;
-                    r
-                })
-            }
-            Err(e) => Err(internal_error(e)),
+    match user::send_pw_change_email(&conn, &user_email, COOKIE_HMAC_KEY.as_slice()) {
+        Ok((secret, hmac)) => {
+            email::send_pw_reset_email(&*MAIL_QUEUE,
+                                       &secret,
+                                       &hmac,
+                                       &*SITE_DOMAIN,
+                                       &*SITE_LINK,
+                                       &**req.app
+                                           .handlebars_registry
+                                           .read()
+                                           .expect("The registry is basically read-only after \
+                                                    startup."),
+                                       (&*EMAIL_ADDRESS, &*EMAIL_NAME)).err_500()?;
+            redirect("/send_password_reset_email?sent=true", 303)
         }
+        Err(Error(ErrorKind::NoSuchUser(user), _)) => {
+            warn!("Trying to reset the password of non-existent address: {}",
+                  user);
+            let mut context = new_template_context();
+            context.insert("error".to_string(), "No such e-mail address :(".into());
+            context.insert("show_form".to_string(), "show_form".into());
+            req.app.render_template("send_pw_reset_email.html", &context).map(|mut r| {
+                r.status_code = 400;
+                r
+            })
+        }
+        Err(Error(ErrorKind::RateLimitExceeded, _)) => {
+            warn!("Someone is sending multiple password request requests per day!");
+            let mut context = new_template_context();
+            context.insert("error".to_string(), "Rate limit exceeded :(".into());
+            req.app.render_template("send_pw_reset_email.html", &context).map(|mut r| {
+                r.status_code = 429;
+                r
+            })
+        }
+        Err(e) => Err(internal_error(e)),
+    }
 }
 
 

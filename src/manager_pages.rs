@@ -122,10 +122,14 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                     let mut file = file.clone();
                     file.do_not_delete_on_drop();
                     q_variants.push((file.path.clone(),
-                               file.filename()
-                                   .map_err(|_| Error::from_kind(ErrorKind::FormParseError))?,
-                               file.content_type()
-                                   .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?));
+                                     file.filename()
+                                         .map_err(|_| {
+                                             Error::from_kind(ErrorKind::FormParseError)
+                                         })?,
+                                     file.content_type()
+                                         .ok_or_else(|| {
+                                             Error::from_kind(ErrorKind::FormParseError)
+                                         })?));
                 }
             }
             if q_variants.is_empty() {

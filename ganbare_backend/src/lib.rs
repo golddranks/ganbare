@@ -111,7 +111,7 @@ pub use errors::*;
 
 
 pub mod sql {
-    use ::diesel::types;
+    use diesel::types;
 
     no_arg_sql_function!(random, types::Numeric);
     sql_function!(lower, lower_sql_function, (string: types::Nullable<types::Text>) -> types::Nullable<types::Text>);
@@ -201,68 +201,65 @@ pub mod skill {
         })
     }
 
-    pub fn get_skill_data(conn: &Connection, user_id: i32) -> Result<Vec<(SkillNugget, SkillData)>> {
+    pub fn get_skill_data(conn: &Connection,
+                          user_id: i32)
+                          -> Result<Vec<(SkillNugget, SkillData)>> {
         use schema::{skill_nuggets, skill_data};
 
-        let data: Vec<(SkillNugget, SkillData)> = skill_nuggets::table
-            .inner_join(skill_data::table)
+        let data: Vec<(SkillNugget, SkillData)> = skill_nuggets::table.inner_join(skill_data::table)
             .filter(skill_data::user_id.eq(user_id))
             .get_results(&**conn)?;
 
         Ok(data)
     }
 
-    pub fn get_asked_items(conn: &Connection, user_id: i32)
-        -> Result<(
-            Vec<(DueItem, QuestionData, QuizQuestion)>,
-            Vec<(DueItem, ExerciseData, Exercise)>,
-            Vec<(PendingItem, WAskedData, Word)>
-        )> {
-        use schema::{due_items, question_data, exercise_data, quiz_questions,
-            exercises, words, pending_items, w_asked_data};
+    pub fn get_asked_items(conn: &Connection,
+                           user_id: i32)
+                           -> Result<(Vec<(DueItem, QuestionData, QuizQuestion)>,
+                                      Vec<(DueItem, ExerciseData, Exercise)>,
+                                      Vec<(PendingItem, WAskedData, Word)>)> {
+        use schema::{due_items, question_data, exercise_data, quiz_questions, exercises, words,
+                     pending_items, w_asked_data};
 
-        let data_q: Vec<(DueItem, QuestionData)> = due_items::table
-            .inner_join(question_data::table)
+        let data_q: Vec<(DueItem, QuestionData)> = due_items::table.inner_join(question_data::table)
             .filter(due_items::user_id.eq(user_id))
             .get_results(&**conn)?;
 
         let mut questions: Vec<QuizQuestion> = vec![];
 
         for &(_, ref data) in &data_q {
-            let q = quiz_questions::table
-                .filter(quiz_questions::id.eq(data.question_id))
+            let q = quiz_questions::table.filter(quiz_questions::id.eq(data.question_id))
                 .get_result(&**conn)?;
             questions.push(q);
         }
 
-        let data_e: Vec<(DueItem, ExerciseData)> = due_items::table
-            .inner_join(exercise_data::table)
+        let data_e: Vec<(DueItem, ExerciseData)> = due_items::table.inner_join(exercise_data::table)
             .filter(due_items::user_id.eq(user_id))
             .get_results(&**conn)?;
 
         let mut exercises: Vec<Exercise> = vec![];
 
         for &(_, ref data) in &data_e {
-            exercises.push(exercises::table
-                .filter(exercises::id.eq(data.exercise_id))
+            exercises.push(exercises::table.filter(exercises::id.eq(data.exercise_id))
                 .get_result(&**conn)?);
         }
 
-        let data_w: Vec<(PendingItem, WAskedData)> = pending_items::table
-            .inner_join(w_asked_data::table)
-            .filter(pending_items::user_id.eq(user_id).and(pending_items::test_item.eq(false)))
-            .get_results(&**conn)?;
+        let data_w: Vec<(PendingItem, WAskedData)> =
+            pending_items::table.inner_join(w_asked_data::table)
+                .filter(pending_items::user_id.eq(user_id).and(pending_items::test_item.eq(false)))
+                .get_results(&**conn)?;
 
         let mut words: Vec<Word> = vec![];
 
         for &(_, ref data) in &data_w {
-            words.push(words::table
-                .filter(words::id.eq(data.word_id))
+            words.push(words::table.filter(words::id.eq(data.word_id))
                 .get_result(&**conn)?);
         }
 
-        let q = data_q.into_iter().zip(questions.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
-        let e = data_e.into_iter().zip(exercises.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
+        let q =
+            data_q.into_iter().zip(questions.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
+        let e =
+            data_e.into_iter().zip(exercises.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
         let w = data_w.into_iter().zip(words.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
 
         Ok((q, e, w))

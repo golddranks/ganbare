@@ -1337,7 +1337,10 @@ pub enum QuizSerialized {
     Exercise(&'static str, i32),
 }
 
-pub fn test_item(conn: &Connection, user_id: i32, quiz_str: &QuizSerialized) -> Result<(Quiz, i32)> {
+pub fn test_item(conn: &Connection,
+                 user_id: i32,
+                 quiz_str: &QuizSerialized)
+                 -> Result<(Quiz, i32)> {
     let pending_item;
     let test_item = match *quiz_str {
         QuizSerialized::Word(s, audio_id) => {

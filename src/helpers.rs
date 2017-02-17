@@ -309,8 +309,14 @@ fn get_session_cookie(cookies: &Cookie) -> Result<Option<session::UserSession>> 
             Err(e) => bail!(e),
         }
     }
-    if let (Some(session_id), Some(hmac), Some(user_id), Some(refreshed), Some(nonce)) = (session_id, hmac, user_id, refreshed, nonce) {
-        let sess = session::check_integrity(session_id, user_id, refreshed, hmac, nonce, COOKIE_HMAC_KEY.as_slice())?;
+    if let (Some(session_id), Some(hmac), Some(user_id), Some(refreshed), Some(nonce)) =
+        (session_id, hmac, user_id, refreshed, nonce) {
+        let sess = session::check_integrity(session_id,
+                                            user_id,
+                                            refreshed,
+                                            hmac,
+                                            nonce,
+                                            COOKIE_HMAC_KEY.as_slice())?;
         Ok(Some(sess))
     } else {
         Ok(None)
@@ -415,16 +421,20 @@ pub trait HeaderProcessor {
 
 impl HeaderProcessor for Response {
     fn refresh_cookie(mut self, sess: &UserSession) -> PencilResult {
-        use data_encoding::base64url::{encode_nopad};
+        use data_encoding::base64url::encode_nopad;
 
         if sess.refresh_now {
             let session_id = sess.sess_id.to_string();
             let user_id = sess.user_id.to_string();
             let refreshed = sess.refreshed.to_rfc3339();
             let nonce_bin = session::fresh_token().err_500()?;
-            let hmac = session::get_hmac_for_sess(&session_id, &user_id, &refreshed, &nonce_bin[..], &*COOKIE_HMAC_KEY);
+            let hmac = session::get_hmac_for_sess(&session_id,
+                                                  &user_id,
+                                                  &refreshed,
+                                                  &nonce_bin[..],
+                                                  &*COOKIE_HMAC_KEY);
             let nonce_base64 = encode_nopad(&nonce_bin[..]);
-    
+
             let session_id = CookiePair::build("session_id", session_id)
                 .path("/")
                 .http_only(true)
@@ -459,8 +469,7 @@ impl HeaderProcessor for Response {
                                            format!("{}", user_id.finish()),
                                            format!("{}", refreshed.finish()),
                                            format!("{}", hmac_cookie.finish()),
-                                           format!("{}", nonce.finish()),
-                                           ]));
+                                           format!("{}", nonce.finish())]));
         }
         Ok(self)
     }
@@ -485,8 +494,7 @@ impl HeaderProcessor for Response {
         self.set_cookie(SetCookie(vec![format!("{}", session_id.finish()),
                                        format!("{}", user_id.finish()),
                                        format!("{}", refreshed.finish()),
-                                       format!("{}", hmac.finish()),
-                                       ]));
+                                       format!("{}", hmac.finish())]));
         self
     }
 
@@ -631,9 +639,9 @@ pub fn check_env_vars() {
 }
 
 pub fn do_login(conn: &Connection,
-                           email: &str,
-                           plaintext_pw: &str)
-                           -> StdResult<Option<(User, UserSession)>, PencilError> {
+                email: &str,
+                plaintext_pw: &str)
+                -> StdResult<Option<(User, UserSession)>, PencilError> {
     debug!("Logging in user: {:?}", email);
     let user = try_or!(user::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
             else return Ok(None));

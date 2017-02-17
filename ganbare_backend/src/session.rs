@@ -61,7 +61,12 @@ pub fn fresh_token() -> Result<[u8; SESSID_BITS / 8]> {
     Ok(session_id)
 }
 
-pub fn get_hmac_for_sess(session_id: &str, user_id: &str, refreshed: &str, nonce: &[u8], secret_key: &[u8]) -> String {
+pub fn get_hmac_for_sess(session_id: &str,
+                         user_id: &str,
+                         refreshed: &str,
+                         nonce: &[u8],
+                         secret_key: &[u8])
+                         -> String {
     let mut hmac_maker = Hmac::new(Sha512::new(), secret_key);
     hmac_maker.input(session_id.as_bytes());
     hmac_maker.input(user_id.as_bytes());
@@ -80,7 +85,13 @@ pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Resul
     Ok(deleted_count)
 }
 
-pub fn check_integrity(sess_id_str: &str, user_id_str: &str, refreshed_str: &str, hmac: &str, nonce: &str, secret_key: &[u8]) -> Result<UserSession> {
+pub fn check_integrity(sess_id_str: &str,
+                       user_id_str: &str,
+                       refreshed_str: &str,
+                       hmac: &str,
+                       nonce: &str,
+                       secret_key: &[u8])
+                       -> Result<UserSession> {
     let sess_id = sess_id_str.parse()?;
     let user_id = user_id_str.parse()?;
     let refreshed = DateTime::parse_from_rfc3339(refreshed_str)?.with_timezone(&UTC);
@@ -96,9 +107,9 @@ pub fn check_integrity(sess_id_str: &str, user_id_str: &str, refreshed_str: &str
 
     if hmac_checker.result() == MacResult::new_from_owned(hmac) {
         Ok(UserSession {
-            sess_id,
-            user_id,
-            refreshed,
+            sess_id: sess_id,
+            user_id: user_id,
+            refreshed: refreshed,
             refresh_now: false,
         })
     } else {
@@ -234,8 +245,7 @@ pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
         last_seen: chrono::UTC::now(),
     };
 
-    let db_sess: Session = diesel::insert(&new_sess)
-        .into(sessions::table)
+    let db_sess: Session = diesel::insert(&new_sess).into(sessions::table)
         .get_result(&**conn)
         .chain_err(|| "Couldn't start a session!")?;
 

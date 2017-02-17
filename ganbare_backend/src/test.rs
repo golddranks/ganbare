@@ -43,7 +43,11 @@ fn save_answer_test_item(conn: &Connection,
                          Some(answer_key.as_str()),
                          answer_json.as_str())?;
     number += 1;
-    event::save_userdata(conn, event, user_id, Some("quiz_number"), &number.to_string())?;
+    event::save_userdata(conn,
+                         event,
+                         user_id,
+                         Some("quiz_number"),
+                         &number.to_string())?;
 
     debug!("Pending test item unpended & answer saved.");
 
@@ -148,7 +152,7 @@ fn get_new_retelling(conn: &Connection,
 }
 
 pub fn get_next_retelling_posttest(conn: &Connection,
-                     user_id: i32,
+                                   user_id: i32,
                                    event: &Event)
                                    -> Result<Option<RetellingJson>> {
 
@@ -165,7 +169,7 @@ pub fn get_next_retelling_posttest(conn: &Connection,
 }
 
 pub fn get_next_retelling_pretest(conn: &Connection,
-                     user_id: i32,
+                                  user_id: i32,
                                   event: &Event)
                                   -> Result<Option<RetellingJson>> {
 
@@ -181,7 +185,10 @@ pub fn get_next_retelling_pretest(conn: &Connection,
     get_new_retelling_pretest(conn, user_id, event)
 }
 
-pub fn get_new_quiz_pretest(conn: &Connection, user_id: i32, event: &Event) -> Result<Option<Quiz>> {
+pub fn get_new_quiz_pretest(conn: &Connection,
+                            user_id: i32,
+                            event: &Event)
+                            -> Result<Option<Quiz>> {
 
     let quizes = vec![QuizSerialized::Word("いし・", 5355),
                       QuizSerialized::Word("い・し", 5367),

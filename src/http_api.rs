@@ -145,22 +145,24 @@ pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
 pub fn new_quiz(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
 
-    let new_quiz =
-        if let Some((ev, _)) = time_it!("is_ongoing pretest",
-                                        ganbare::event::is_ongoing(&conn, "pretest", sess.user_id)
-                                            .err_500())? {
-            debug!("Pretest questions!");
-            test::get_new_quiz_pretest(&conn, sess.user_id, &ev).err_500()?
-        } else if let Some((ev, _)) = time_it!("is_ongoing posttest",
+    let new_quiz = if let Some((ev, _)) = time_it!("is_ongoing pretest",
+                                                   ganbare::event::is_ongoing(&conn,
+                                                                              "pretest",
+                                                                              sess.user_id)
+                                                       .err_500())? {
+        debug!("Pretest questions!");
+        test::get_new_quiz_pretest(&conn, sess.user_id, &ev).err_500()?
+    } else if let Some((ev, _)) = time_it!("is_ongoing posttest",
                                                ganbare::event::is_ongoing(&conn,
                                                                           "posttest",
                                                                            sess.user_id)
                                                    .err_500())? {
-            debug!("Posttest questions!");
-            test::get_new_quiz_posttest(&conn, sess.user_id, &ev).err_500()?
-        } else {
-            time_it!("new_quiz", quiz::get_new_quiz(&conn, sess.user_id).err_500())?
-        };
+        debug!("Posttest questions!");
+        test::get_new_quiz_posttest(&conn, sess.user_id, &ev).err_500()?
+    } else {
+        time_it!("new_quiz",
+                 quiz::get_new_quiz(&conn, sess.user_id).err_500())?
+    };
 
     match new_quiz {
 
@@ -236,16 +238,18 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
 
     let answer = err_400!(parse_answer(req), "Can't parse form data? {:?}", req.form());
 
-    let new_quiz =
-        if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "pretest", sess.user_id).err_500()? {
-            test::get_next_quiz_pretest(&conn, sess.user_id, answer, &ev).err_500()?
-        } else if let Some((ev, _)) =
-            ganbare::event::is_ongoing(&conn, "posttest", sess.user_id).err_500()? {
-            test::get_next_quiz_posttest(&conn, sess.user_id, answer, &ev).err_500()?
-        } else {
-            time_it!("next_quiz",
-                     quiz::get_next_quiz(&conn, sess.user_id, answer).err_500_debug(sess.user_id, &*req))?
-        };
+    let new_quiz = if let Some((ev, _)) = ganbare::event::is_ongoing(&conn,
+                                                                     "pretest",
+                                                                     sess.user_id).err_500()? {
+        test::get_next_quiz_pretest(&conn, sess.user_id, answer, &ev).err_500()?
+    } else if let Some((ev, _)) =
+        ganbare::event::is_ongoing(&conn, "posttest", sess.user_id).err_500()? {
+        test::get_next_quiz_posttest(&conn, sess.user_id, answer, &ev).err_500()?
+    } else {
+        time_it!("next_quiz",
+                 quiz::get_next_quiz(&conn, sess.user_id, answer)
+                     .err_500_debug(sess.user_id, &*req))?
+    };
 
     match new_quiz {
             Some(quiz) => quiz_to_json(quiz),
@@ -742,7 +746,11 @@ pub fn save_eventdata(req: &mut Request) -> PencilResult {
     let mut text = String::new();
     req.read_to_string(&mut text).err_500()?;
 
-    event::save_userdata(&conn, &event, sess.user_id, key.as_ref().map(|s| &**s), &text).err_500()?;
+    event::save_userdata(&conn,
+                         &event,
+                         sess.user_id,
+                         key.as_ref().map(|s| &**s),
+                         &text).err_500()?;
 
     Response::from("OK.").refresh_cookie(&sess)
 }
@@ -998,8 +1006,12 @@ pub fn new_retelling(req: &mut Request) -> PencilResult {
     let (event, _) = event::require_ongoing(&conn, &event_name, sess.user_id).err_401()?;
 
     let retelling = match event_name.as_ref() {
-        "pretest_retelling" => test::get_new_retelling_pretest(&conn, sess.user_id, &event).err_500()?,
-        "posttest_retelling" => test::get_new_retelling_posttest(&conn, sess.user_id, &event).err_500()?,
+        "pretest_retelling" => {
+            test::get_new_retelling_pretest(&conn, sess.user_id, &event).err_500()?
+        }
+        "posttest_retelling" => {
+            test::get_new_retelling_posttest(&conn, sess.user_id, &event).err_500()?
+        }
         _ => unreachable!(),
     };
 
@@ -1014,8 +1026,12 @@ pub fn next_retelling(req: &mut Request) -> PencilResult {
     let (event, _) = event::require_ongoing(&conn, &event_name, sess.user_id).err_401()?;
 
     let retelling = match event_name.as_ref() {
-        "pretest_retelling" => test::get_next_retelling_pretest(&conn, sess.user_id, &event).err_500()?,
-        "posttest_retelling" => test::get_next_retelling_posttest(&conn, sess.user_id, &event).err_500()?,
+        "pretest_retelling" => {
+            test::get_next_retelling_pretest(&conn, sess.user_id, &event).err_500()?
+        }
+        "posttest_retelling" => {
+            test::get_next_retelling_posttest(&conn, sess.user_id, &event).err_500()?
+        }
         _ => unreachable!(),
     };
 
