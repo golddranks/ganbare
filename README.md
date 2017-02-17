@@ -45,7 +45,8 @@ The following have defaults, and you may omit them:
     GANBARE_ENABLE_SOURCE_MAPS Defaults to false. Whether it allows to see files in /src using HTTP.
     NAG_EMAIL_ABSENCE_PERIOD_HOURS How much to wait for the user to be absent before sending a nag email. Defaults to 52 hours.
     GANBARE_NAG_EMAIL_GRACE_PERIOD_HOURS How much to wait for the user to ignore the nag email to send another. Defaults to 48 hours.
-    GANBARE_CLEAN_SESSIONS_AND_EMAILS_DAYS How old sessions and account invitation emails are cleaned. Defaults to 14 days.
+    GANBARE_EMAIL_EXPIRE_DAYS How old sessions are cleaned. Defaults to 14 days.
+    GANBARE_SESSION_EXPIRE_DAYS How account invitation emails are cleaned. Defaults to 14 days.
     RUST_LOG Log level. Try ganbare=debug,ganbare_backend=debug if you want to debug stuff.
 
 During build, you need the following env var too: 

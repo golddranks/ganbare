@@ -132,10 +132,15 @@ pub fn check(sess: &UserSession, logout_cache: &Cache<i32, UserSession>) -> Resu
     }
 }
 
-pub fn db_check(conn: &Connection, sess: &UserSession) -> Result<Option<UserSession>> {
+pub fn db_check(conn: &Connection, sess: &UserSession, sess_expire: chrono::Duration) -> Result<Option<UserSession>> {
     use schema::sessions;
 
     time_it!{"session::db_check", {
+
+        let oldest_viable = chrono::UTC::now() - sess_expire;
+        if sess.refreshed < oldest_viable {
+            return Ok(None); // The session is expired
+        }
 
         let db_sess: Option<Session> = sessions::table
             .filter(sessions::id.eq(sess.sess_id))

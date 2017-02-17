@@ -1,5 +1,5 @@
 #![feature(inclusive_range_syntax)]
-
+#![recursion_limit = "512"]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -136,7 +136,7 @@ pub fn background_control_thread() {
             }
         };
 
-        match ganbare::session::clean_old_sessions(&conn, *CLEAN_SESSIONS_AND_EMAILS) {
+        match ganbare::session::clean_old_sessions(&conn, *SESSION_EXPIRE) {
             Ok(count) => {
                 if count != 0 {
                     info!("Deleted {} expired sessions.", count)
@@ -148,7 +148,7 @@ pub fn background_control_thread() {
             }
         };
 
-        match ganbare::email::clean_old_pendings(&conn, *CLEAN_SESSIONS_AND_EMAILS) {
+        match ganbare::email::clean_old_pendings(&conn, *EMAIL_EXPIRE) {
             Ok(count) => {
                 if count != 0 {
                     info!("Deleted {} unanswered email confirmations.", count);

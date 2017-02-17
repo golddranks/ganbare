@@ -1,4 +1,3 @@
-
 use std;
 use std::env;
 use dotenv;
@@ -44,9 +43,16 @@ lazy_static! {
             .unwrap_or(52))
     };
 
-    pub static ref CLEAN_SESSIONS_AND_EMAILS: TimeDuration = {
+    pub static ref SESSION_EXPIRE: TimeDuration = {
         dotenv::dotenv().ok();
-        TimeDuration::days(env::var("GANBARE_CLEAN_SESSIONS_AND_EMAILS_DAYS")
+        TimeDuration::days(env::var("GANBARE_SESSION_EXPIRE_DAYS")
+            .map(|s| s.parse().unwrap_or(14))
+            .unwrap_or(14))
+    };
+
+    pub static ref EMAIL_EXPIRE: TimeDuration = {
+        dotenv::dotenv().ok();
+        TimeDuration::days(env::var("GANBARE_EMAIL_EXPIRE_DAYS")
             .map(|s| s.parse().unwrap_or(14))
             .unwrap_or(14))
     };
@@ -337,7 +343,7 @@ pub fn get_sess(conn: &Connection, req: &Request) -> Result<Option<UserSession>>
         if session::check(&sess, &*LOGGED_OUT_CACHE)? {
             Ok(Some(sess))
         } else {
-            match session::db_check(conn, &sess)? {
+            match session::db_check(conn, &sess, *SESSION_EXPIRE)? {
                 Some(refreshed_sess) => Ok(Some(refreshed_sess)),
                 None => Ok(None),
             }
@@ -374,7 +380,7 @@ pub fn try_auth_user(req: &mut Request)
             if session::check(&sess, &*LOGGED_OUT_CACHE).err_500()? {
                 Ok(Some((conn, sess)))
             } else {
-                match session::db_check(&conn, &sess).err_500()? {
+                match session::db_check(&conn, &sess, *SESSION_EXPIRE).err_500()? {
                     Some(refreshed_sess) => Ok(Some((conn, refreshed_sess))),
                     None => Ok(None),
                 }

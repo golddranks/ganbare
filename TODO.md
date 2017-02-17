@@ -3,7 +3,6 @@
 
 Before production
 
-- Implement expired (>14 days) session checking
 - Implement session secret
 
 - Migrate to Diesel 0.11 and chrono 0.3
