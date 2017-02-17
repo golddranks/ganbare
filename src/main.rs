@@ -52,6 +52,7 @@ pub use ganbare::errors::Result;
 pub use ganbare::errors::{Error, ErrorKind};
 pub use ganbare::Connection;
 use lettre::transport::EmailTransport;
+pub use ganbare::helpers::Cache;
 
 pub fn favicon(_: &mut Request) -> PencilResult {
     use pencil::helpers::send_file;
@@ -73,18 +74,16 @@ pub fn source_maps(req: &mut Request) -> PencilResult {
     send_from_directory("src", file_path, false, None)
 }
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{VecDeque};
 use std::sync::RwLock;
-use chrono::DateTime;
-use chrono::UTC;
 use lettre::email::Email;
 use lettre::transport::smtp::SmtpTransportBuilder;
 
 lazy_static! {
-    pub static ref TEMP_AUDIO: RwLock<HashMap<u64, Vec<u8>>> =
-        RwLock::new(HashMap::new());
-    pub static ref AUDIO_REMOVE_QUEUE: RwLock<VecDeque<(DateTime<UTC>, u64)>> =
-        RwLock::new(VecDeque::new());
+    pub static ref AUDIO_CACHE: Cache<u64, Vec<u8>> =
+        Cache::new(Duration::from_secs(60*2));
+    pub static ref LOGGED_OUT_CACHE: Cache<i32, ganbare::session::UserSession> =
+        Cache::new(Duration::from_secs(60*10));
     pub static ref MAIL_QUEUE: RwLock<VecDeque<Email>> =
         RwLock::new(VecDeque::new());
 }
@@ -161,44 +160,28 @@ pub fn background_control_thread() {
             }
         }
 
-        while let Ok(Some(oldest)) = AUDIO_REMOVE_QUEUE.try_read()
-            .or_else(|e| {
-                debug!("The queue is locked. Skipping.");
-                Err(e)
-            })
-            .and_then(|q| Ok(q.back().cloned())) {
-            if oldest.0 + chrono::Duration::minutes(1) < UTC::now() {
-                let que_len = {
-                    let mut queue = match AUDIO_REMOVE_QUEUE.try_write() {
-                        Ok(guard) => guard,
-                        Err(_) => {
-                            debug!("The queue is locked. Skipping.");
-                            break;
-                        }
-                    };
-                    let _ = queue.pop_back();
-                    queue.len()
-                };
-                let map_len = {
-                    let mut map = match TEMP_AUDIO.try_write() {
-                        Ok(guard) => guard,
-                        Err(_) => {
-                            debug!("The map is locked. Skipping.");
-                            break;
-                        }
-                    };
-                    map.remove(&oldest.1);
-                    map.len()
-                };
-                debug!("Removed an old temp audio recording: {:?}. queue length: {}, map length: \
-                        {}",
-                       oldest,
-                       que_len,
-                       map_len);
-            } else {
-                break;
+        match AUDIO_CACHE.clean_expired() {
+            Ok((remaining, removed)) if removed > 0 => {
+                debug!("Removed an old temp audio recordings. Remaining: {}, Removed: {}", remaining, removed);
             }
+            Err(e) => {
+                error!("background_control_thread::AUDIO_CACHE.clean_expired: Error: {}",
+                       e)
+            }
+            _ => (),
         }
+
+        match LOGGED_OUT_CACHE.clean_expired() {
+            Ok((remaining, removed)) if removed > 0 => {
+                debug!("Removed logged out sessions from memory cache. Remaining: {}, Removed: {}", remaining, removed);
+            }
+            Err(e) => {
+                error!("background_control_thread::LOGGED_OUT_CACHE.clean_expired: Error: {}",
+                       e)
+            }
+            _ => (),
+        }
+
         let mut outgoing_mails = vec![];
         if let Ok(mut mails) = MAIL_QUEUE.try_write()
             .or_else(|e| {

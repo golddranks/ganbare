@@ -12,7 +12,7 @@ use data_encoding::base64url::{encode_nopad, decode_nopad};
 pub const SESSID_BITS: usize = 128;
 pub const HMAC_BITS: usize = 512;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UserSession {
     pub sess_id: i32,
     pub user_id: i32,
@@ -118,12 +118,17 @@ pub fn check_integrity(sess_id_str: &str,
     }
 }
 
-pub fn check(sess: &UserSession) -> Result<bool> {
+use helpers::Cache;
+
+pub fn check(sess: &UserSession, logout_cache: &Cache<i32, UserSession>) -> Result<bool> {
     if sess.refreshed > chrono::UTC::now() - chrono::duration::Duration::minutes(5) {
-        // FIXME insert check for logout
-        Ok(true)
+        if logout_cache.get(&sess.sess_id)?.is_some() {
+            Ok(false) // User was recently logged out so don't trust their cookie!
+        } else {
+            Ok(true)
+        }
     } else {
-        Ok(false)
+        Ok(false) // The cookie is over 5 minutes old so don't trust it.
     }
 }
 

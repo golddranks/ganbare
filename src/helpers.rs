@@ -8,7 +8,6 @@ use cookie::Cookie as CookiePair;
 use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, Cookie};
 use ganbare::models::User;
 use std::net::IpAddr;
-use time;
 use std::result::Result as StdResult;
 use ganbare::errors::Result;
 use rustc_serialize::base64::FromBase64;
@@ -20,11 +19,12 @@ pub use try_map::{FallibleMapExt, FlipResultExt};
 pub use std::time::{Instant, Duration};
 use time::Duration as TimeDuration;
 use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
-
+use time;
 use r2d2;
 use ganbare_backend::ConnManager;
 use ganbare_backend::Connection;
 use ganbare_backend::session::UserSession;
+use LOGGED_OUT_CACHE;
 
 pub use ganbare_backend::PERF_TRACE;
 
@@ -334,7 +334,7 @@ pub fn new_template_context() -> BTreeMap<String, String> {
 
 pub fn get_sess(conn: &Connection, req: &Request) -> Result<Option<UserSession>> {
     if let Some(Some(Some(sess))) = req.cookies().try_map(get_session_cookie).ok() {
-        if session::check(&sess)? {
+        if session::check(&sess, &*LOGGED_OUT_CACHE)? {
             Ok(Some(sess))
         } else {
             match session::db_check(conn, &sess)? {
@@ -371,7 +371,7 @@ pub fn try_auth_user(req: &mut Request)
     time_it!{"try_auth_user",
         if let Some(Some(Some(sess))) = req.cookies().try_map(get_session_cookie).ok() {
             let conn = db_connect().err_500()?;
-            if session::check(&sess).err_500()? {
+            if session::check(&sess, &*LOGGED_OUT_CACHE).err_500()? {
                 Ok(Some((conn, sess)))
             } else {
                 match session::db_check(&conn, &sess).err_500()? {
@@ -654,6 +654,7 @@ pub fn do_login(conn: &Connection,
 pub fn do_logout(conn: &Connection, sess: &UserSession) -> StdResult<(), PencilError> {
     debug!("Logging out session: {:?}", sess);
     session::end(conn, sess.sess_id).err_500()?;
+    LOGGED_OUT_CACHE.insert(sess.sess_id, sess.clone()).err_500()?;
     Ok(())
 }
 

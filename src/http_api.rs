@@ -818,7 +818,6 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
     use std::io;
     use rand::thread_rng;
     use rand::Rng;
-    use time;
 
     let event_name = req.view_args
         .remove("event_name")
@@ -971,15 +970,11 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
             }
             let mut audio = Vec::with_capacity(cl as usize);
             io::copy(&mut req.take(cl), &mut audio).err_500()?;
+
             debug!("mic_check_rec audio read into vec. Next: saving it into a temp storage");
-            {
-                let mut map = TEMP_AUDIO.write().err_500()?;
-                map.insert(random_token, audio);
-            }
-            {
-                let mut queue = AUDIO_REMOVE_QUEUE.write().err_500()?;
-                queue.push_front((UTC::now(), random_token));
-            }
+
+            AUDIO_CACHE.insert(random_token, audio).err_500()?;
+
             debug!("mic_check_rec done with random token: {} ", random_token);
             jsonify(&()).refresh_cookie(&sess)
         }
@@ -987,8 +982,8 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
             debug!("mic_check_play with random token: {}", random_token);
             use std::str::FromStr;
 
-            let map = TEMP_AUDIO.read().err_500()?;
-            let audio = err_400!(map.get(&random_token), "No such audio clip!");
+            let audio = err_400!(AUDIO_CACHE.get(&random_token).err_500()?, "No such audio clip!");
+            
             let mut resp = Response::from(&audio[..]);
             let mime = mime::Mime::from_str("audio/ogg").unwrap();
             resp.headers.set::<hyper::header::ContentType>(hyper::header::ContentType(mime));

@@ -15,7 +15,6 @@ hyper = { version = "0.10" , default-features = false }
 env_logger = "0.4"
 log = "0.3"
 lazy_static = "0.2"
-time = "0.1"
 handlebars ="0.25"
 unicode-normalization = "0.1"
 regex = "0.2"
@@ -32,6 +31,7 @@ r2d2-diesel = "0.10"
 rust-crypto = "0.2"
 lettre = { git = "https://github.com/lettre/lettre/" }
 data-encoding = "1.1"
+time = "0.1"
 
 [replace]
 "email:0.0.14" = { git = "https://github.com/golddranks/rust-email/" }

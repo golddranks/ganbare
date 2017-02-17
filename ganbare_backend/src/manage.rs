@@ -495,7 +495,6 @@ lazy_static! {
 }
 
 pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
-    use time;
     use rand::{thread_rng, Rng};
     use mime::Mime;
     use mime::TopLevel::Image;
@@ -558,7 +557,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
             let mut filename = "%FT%H-%M-%SZ".to_string();
             filename.extend(thread_rng().gen_ascii_chars().take(10));
             filename.push_str(extension);
-            filename = time::strftime(&filename, &time::now()).unwrap();
+            filename = chrono::UTC::now().to_rfc3339();
             new_path.push(&filename);
 
             let mut file = fs::File::create(new_path)?;

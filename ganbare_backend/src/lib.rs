@@ -1,6 +1,5 @@
 #![recursion_limit = "512"]
 #![feature(inclusive_range_syntax)]
-#![feature(field_init_shorthand)]
 #![feature(plugin)]
 #![plugin(binary_macros, dotenv_macros)]
 
@@ -21,7 +20,6 @@ extern crate lazy_static;
 
 extern crate try_map;
 extern crate tempdir;
-extern crate time;
 extern crate crypto;
 pub extern crate chrono;
 extern crate rand;
@@ -102,6 +100,7 @@ pub mod audio;
 pub mod quiz;
 pub mod manage;
 pub mod test;
+pub mod helpers;
 
 
 pub use models::*;
