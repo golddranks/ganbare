@@ -46,14 +46,10 @@ pub struct Password {
 
 #[derive(Debug, Insertable)]
 #[table_name="sessions"]
-pub struct NewSession<'a> {
-    pub proposed_token: &'a [u8],
-    pub current_token: &'a [u8],
-    pub retired_token: &'a [u8],
+pub struct NewSession {
     pub user_id: i32,
     pub started: DateTime<UTC>,
     pub last_seen: DateTime<UTC>,
-    pub last_ip: &'a [u8],
 }
 
 
@@ -64,14 +60,9 @@ pub struct NewSession<'a> {
 #[changeset_options(treat_none_as_null = "true")]
 pub struct Session {
     pub id: i32,
-    pub proposed_token: Vec<u8>,
-    pub current_token: Vec<u8>,
-    pub retired_token: Vec<u8>,
-    pub access_version: i32,
     pub user_id: i32,
     pub started: DateTime<UTC>,
     pub last_seen: DateTime<UTC>,
-    pub last_ip: Vec<u8>,
 }
 
 

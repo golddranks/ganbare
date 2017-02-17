@@ -31,6 +31,7 @@ extern crate unicode_normalization;
 extern crate regex;
 extern crate reqwest;
 extern crate dotenv;
+extern crate cookie;
 
 pub use try_map::{FallibleMapExt, FlipResultExt};
 use std::sync::atomic::{Ordering, AtomicBool};

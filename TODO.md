@@ -7,12 +7,6 @@ Before production
 - Change the welcome screen
 - Change the nag message
 
-- Async rate limiting?
-- Monitoring
-- DoS prevention to HAProxy
-
-- Config files to repo
-
 After starting production
 - Edit more sentences
 

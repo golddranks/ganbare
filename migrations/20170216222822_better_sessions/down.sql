@@ -1,0 +1,5 @@
+ALTER TABLE sessions ADD COLUMN proposed_token BYTEA UNIQUE;
+ALTER TABLE sessions ADD COLUMN current_token BYTEA UNIQUE;
+ALTER TABLE sessions ADD COLUMN retired_token BYTEA UNIQUE;
+ALTER TABLE sessions ADD COLUMN access_version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sessions ADD COLUMN last_ip BYTEA;

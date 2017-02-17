@@ -132,7 +132,7 @@ pub fn add_pending_email_confirm(conn: &Connection,
                                  email: &str,
                                  groups: &[i32])
                                  -> Result<(String, String)> {
-    let (secret, hmac) = session::get_token_hmac(hmac_key)?;
+    let (secret, hmac) = session::new_token_and_hmac(hmac_key)?;
 
     {
         let confirm = NewPendingEmailConfirm {

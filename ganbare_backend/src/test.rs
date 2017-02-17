@@ -4,7 +4,7 @@ use rustc_serialize::json;
 
 
 fn save_answer_test_item(conn: &Connection,
-                         user: &User,
+                         user_id: i32,
                          event: &Event,
                          answer_enum: &Answered)
                          -> Result<()> {
@@ -29,9 +29,9 @@ fn save_answer_test_item(conn: &Connection,
     pending_item.pending = false;
     let _: PendingItem = pending_item.save_changes(&**conn)?;
 
-    event::save_userdata(conn, event, user, Some("pending_test_item"), "0")?;
+    event::save_userdata(conn, event, user_id, Some("pending_test_item"), "0")?;
 
-    let mut number = event::get_userdata(conn, event, user, "quiz_number")
+    let mut number = event::get_userdata(conn, event, user_id, "quiz_number")
         ?
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0);
@@ -39,11 +39,11 @@ fn save_answer_test_item(conn: &Connection,
     let answer_json = json::encode(&answer_enum).unwrap();
     event::save_userdata(conn,
                          event,
-                         user,
+                         user_id,
                          Some(answer_key.as_str()),
                          answer_json.as_str())?;
     number += 1;
-    event::save_userdata(conn, event, user, Some("quiz_number"), &number.to_string())?;
+    event::save_userdata(conn, event, user_id, Some("quiz_number"), &number.to_string())?;
 
     debug!("Pending test item unpended & answer saved.");
 
@@ -51,16 +51,16 @@ fn save_answer_test_item(conn: &Connection,
 }
 
 fn get_new_quiz_test(conn: &Connection,
-                     user: &User,
+                     user_id: i32,
                      event: &Event,
                      quizes: &[QuizSerialized])
                      -> Result<Option<Quiz>> {
 
-    let number = event::get_userdata(conn, event, user, "quiz_number")
+    let number = event::get_userdata(conn, event, user_id, "quiz_number")
         ?
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0);
-    let pending_test_item = event::get_userdata(conn, event, user, "pending_test_item")
+    let pending_test_item = event::get_userdata(conn, event, user_id, "pending_test_item")
         ?
         .and_then(|d| d.data.parse::<i32>().ok())
         .unwrap_or(0);
@@ -69,14 +69,14 @@ fn get_new_quiz_test(conn: &Connection,
         // We can show a new item, since to old one was answered to
 
         if number == quizes.len() {
-            event::set_done(conn, &event.name, user)?;
+            event::set_done(conn, &event.name, user_id)?;
             return Ok(None);
         }
 
-        let (quiz, pi_id) = quiz::test_item(conn, user, &quizes[number])?;
+        let (quiz, pi_id) = quiz::test_item(conn, user_id, &quizes[number])?;
         event::save_userdata(conn,
                              event,
-                             user,
+                             user_id,
                              Some("pending_test_item"),
                              &format!("{}", pi_id))?;
         println!("New question number {}", number);
@@ -99,22 +99,22 @@ fn get_new_quiz_test(conn: &Connection,
 }
 
 pub fn get_next_quiz_pretest(conn: &Connection,
-                             user: &User,
+                             user_id: i32,
                              answer_enum: Answered,
                              event: &Event)
                              -> Result<Option<Quiz>> {
-    save_answer_test_item(conn, user, event, &answer_enum)?;
-    get_new_quiz_pretest(conn, user, event)
+    save_answer_test_item(conn, user_id, event, &answer_enum)?;
+    get_new_quiz_pretest(conn, user_id, event)
 }
 
 
 pub fn get_next_quiz_posttest(conn: &Connection,
-                              user: &User,
+                              user_id: i32,
                               answer_enum: Answered,
                               event: &Event)
                               -> Result<Option<Quiz>> {
-    save_answer_test_item(conn, user, event, &answer_enum)?;
-    get_new_quiz_posttest(conn, user, event)
+    save_answer_test_item(conn, user_id, event, &answer_enum)?;
+    get_new_quiz_posttest(conn, user_id, event)
 }
 
 #[derive(RustcEncodable)]
@@ -124,18 +124,18 @@ pub struct RetellingJson {
 }
 
 fn get_new_retelling(conn: &Connection,
-                     user: &User,
+                     user_id: i32,
                      event: &Event,
                      retellings: &[(&'static str, &'static str)])
                      -> Result<Option<RetellingJson>> {
 
-    let number = event::get_userdata(conn, event, user, "retelling_number")
+    let number = event::get_userdata(conn, event, user_id, "retelling_number")
         ?
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0);
 
     if number == retellings.len() {
-        event::set_done(conn, &event.name, user)?;
+        event::set_done(conn, &event.name, user_id)?;
         return Ok(None);
     }
 
@@ -148,40 +148,40 @@ fn get_new_retelling(conn: &Connection,
 }
 
 pub fn get_next_retelling_posttest(conn: &Connection,
-                                   user: &User,
+                     user_id: i32,
                                    event: &Event)
                                    -> Result<Option<RetellingJson>> {
 
-    let number = event::get_userdata(conn, event, user, "retelling_number")
+    let number = event::get_userdata(conn, event, user_id, "retelling_number")
         ?
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0) + 1;
     event::save_userdata(conn,
                          event,
-                         user,
+                         user_id,
                          Some("retelling_number"),
                          &number.to_string())?;
-    get_new_retelling_posttest(conn, user, event)
+    get_new_retelling_posttest(conn, user_id, event)
 }
 
 pub fn get_next_retelling_pretest(conn: &Connection,
-                                  user: &User,
+                     user_id: i32,
                                   event: &Event)
                                   -> Result<Option<RetellingJson>> {
 
-    let number = event::get_userdata(conn, event, user, "retelling_number")
+    let number = event::get_userdata(conn, event, user_id, "retelling_number")
         ?
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0) + 1;
     event::save_userdata(conn,
                          event,
-                         user,
+                         user_id,
                          Some("retelling_number"),
                          &number.to_string())?;
-    get_new_retelling_pretest(conn, user, event)
+    get_new_retelling_pretest(conn, user_id, event)
 }
 
-pub fn get_new_quiz_pretest(conn: &Connection, user: &User, event: &Event) -> Result<Option<Quiz>> {
+pub fn get_new_quiz_pretest(conn: &Connection, user_id: i32, event: &Event) -> Result<Option<Quiz>> {
 
     let quizes = vec![QuizSerialized::Word("いし・", 5355),
                       QuizSerialized::Word("い・し", 5367),
@@ -202,7 +202,7 @@ pub fn get_new_quiz_pretest(conn: &Connection, user: &User, event: &Event) -> Re
                       QuizSerialized::Word("あ／し・が生えてる", 7289),
                       QuizSerialized::Exercise("あ／し・が生えてる", 7289)];
 
-    let mut quiz = get_new_quiz_test(conn, user, event, &quizes)?;
+    let mut quiz = get_new_quiz_test(conn, user_id, event, &quizes)?;
 
     if let Some(Quiz::E(ref mut e)) = quiz {
         e.must_record = true;
@@ -213,7 +213,7 @@ pub fn get_new_quiz_pretest(conn: &Connection, user: &User, event: &Event) -> Re
 }
 
 pub fn get_new_quiz_posttest(conn: &Connection,
-                             user: &User,
+                             user_id: i32,
                              event: &Event)
                              -> Result<Option<Quiz>> {
 
@@ -222,7 +222,7 @@ pub fn get_new_quiz_posttest(conn: &Connection,
                       QuizSerialized::Question("あか", 1),
                       QuizSerialized::Exercise("あか", 1)];
 
-    let mut quiz = get_new_quiz_test(conn, user, event, &quizes)?;
+    let mut quiz = get_new_quiz_test(conn, user_id, event, &quizes)?;
 
     if let Some(Quiz::E(ref mut e)) = quiz {
         e.must_record = true;
@@ -233,7 +233,7 @@ pub fn get_new_quiz_posttest(conn: &Connection,
 }
 
 pub fn get_new_retelling_pretest(conn: &Connection,
-                                 user: &User,
+                                 user_id: i32,
                                  event: &Event)
                                  -> Result<Option<RetellingJson>> {
 
@@ -249,11 +249,11 @@ pub fn get_new_retelling_pretest(conn: &Connection,
                            "static/content_audio/retelling/mari_c.mp3"),
                           ("static/content_images/retelling/mari_d.png",
                            "static/content_audio/retelling/mari_d.mp3")];
-    get_new_retelling(conn, user, event, &retellings)
+    get_new_retelling(conn, user_id, event, &retellings)
 }
 
 pub fn get_new_retelling_posttest(conn: &Connection,
-                                  user: &User,
+                                  user_id: i32,
                                   event: &Event)
                                   -> Result<Option<RetellingJson>> {
 
@@ -269,5 +269,5 @@ pub fn get_new_retelling_posttest(conn: &Connection,
                            "static/content_audio/retelling/mari_c.mp3"),
                           ("static/content_images/retelling/mari_d.jpg",
                            "static/content_audio/retelling/mari_d.mp3")];
-    get_new_retelling(conn, user, event, &retellings)
+    get_new_retelling(conn, user_id, event, &retellings)
 }

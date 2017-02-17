@@ -1,36 +1,36 @@
 
 use super::*;
-use std::net::IpAddr;
 use std::thread;
 use std::time::Duration;
 use rand::{Rng, OsRng};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha2::Sha512;
+use chrono::{self, DateTime, UTC};
+use data_encoding::base64url::{encode_nopad, decode_nopad};
 
 pub const SESSID_BITS: usize = 128;
 pub const HMAC_BITS: usize = 512;
 
+#[derive(Debug)]
+pub struct UserSession {
+    pub sess_id: i32,
+    pub user_id: i32,
+    pub refreshed: DateTime<UTC>,
+    pub refresh_now: bool,
+}
 
-pub fn get_token_hmac(hmac_key: &[u8]) -> Result<(String, String)> {
+pub fn new_token_and_hmac(hmac_key: &[u8]) -> Result<(String, String)> {
     use crypto::hmac::Hmac;
     use crypto::mac::Mac;
     use crypto::sha2::Sha512;
-    use data_encoding;
 
     let token = session::fresh_token()?;
     let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
     hmac_checker.input(&token[..]);
     let hmac = hmac_checker.result();
-    let mut token_base64url = data_encoding::base64url::encode(&token[..]);
-    let mut hmac_base64url = data_encoding::base64url::encode(hmac.code());
-
-    while token_base64url.ends_with('=') {
-        token_base64url.pop();
-    }
-    while hmac_base64url.ends_with('=') {
-        hmac_base64url.pop();
-    }
+    let token_base64url = encode_nopad(&token[..]);
+    let hmac_base64url = encode_nopad(hmac.code());
 
     Ok((token_base64url, hmac_base64url))
 }
@@ -39,30 +39,9 @@ pub fn verify_token(token_base64url: &str, hmac_base64url: &str, hmac_key: &[u8]
     use crypto::hmac::Hmac;
     use crypto::mac::{Mac, MacResult};
     use crypto::sha2::Sha512;
-    use data_encoding;
 
-    let token_target_len = data_encoding::base64url::encode_len(SESSID_BITS / 8);
-    let hmac_target_len = data_encoding::base64url::encode_len(HMAC_BITS / 8);
-
-    if token_base64url.len() < token_target_len - 2 {
-        bail!(ErrorKind::InvalidInput);
-    }
-    if hmac_base64url.len() < hmac_target_len - 2 {
-        bail!(ErrorKind::InvalidInput);
-    }
-
-    let mut token_base64url = token_base64url.to_owned();
-    let mut hmac_base64url = hmac_base64url.to_owned();
-
-    while token_base64url.len() < token_target_len {
-        token_base64url.push('=');
-    }
-    while hmac_base64url.len() < hmac_target_len {
-        hmac_base64url.push('=');
-    }
-
-    let token = data_encoding::base64url::decode(token_base64url.as_bytes())?;
-    let hmac = data_encoding::base64url::decode(hmac_base64url.as_bytes())?;
+    let token = decode_nopad(token_base64url.as_bytes())?;
+    let hmac = decode_nopad(hmac_base64url.as_bytes())?;
 
     let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
     hmac_checker.input(token.as_slice());
@@ -82,36 +61,13 @@ pub fn fresh_token() -> Result<[u8; SESSID_BITS / 8]> {
     Ok(session_id)
 }
 
-pub fn to_hex(sess: &Session) -> String {
-    use data_encoding::base16;
-    base16::encode(&sess.proposed_token)
-}
-
-pub fn hmac_to_hex(sess: &Session, secret_key: &[u8]) -> String {
-    use data_encoding::base16;
-    let mut hmac = Hmac::new(Sha512::new(), secret_key.as_ref());
-    hmac.input(sess.proposed_token.as_slice());
-    base16::encode(hmac.result().code())
-}
-/*
-pub fn bin_to_hex(bin: &[u8]) -> String {
-    // FIXME remove this debug-only function
-    use data_encoding::base16;
-    base16::encode(bin)
-}*/
-
-fn token_to_bin(sessid: &str) -> Result<Vec<u8>> {
-    use data_encoding::base16;
-    if sessid.len() == SESSID_BITS / 4 {
-        base16::decode(sessid.as_bytes()).chain_err(|| ErrorKind::BadSessId)
-    } else {
-        bail!(ErrorKind::BadSessId)
-    }
-}
-
-fn hmac_to_bin(hmac: &str) -> Result<Vec<u8>> {
-    use data_encoding::base16;
-    base16::decode(hmac.as_bytes()).chain_err(|| ErrorKind::BadSessId)
+pub fn get_hmac_for_sess(session_id: &str, user_id: &str, refreshed: &str, nonce: &[u8], secret_key: &[u8]) -> String {
+    let mut hmac_maker = Hmac::new(Sha512::new(), secret_key);
+    hmac_maker.input(session_id.as_bytes());
+    hmac_maker.input(user_id.as_bytes());
+    hmac_maker.input(refreshed.as_bytes());
+    hmac_maker.input(nonce);
+    encode_nopad(hmac_maker.result().code())
 }
 
 pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Result<usize> {
@@ -124,32 +80,71 @@ pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Resul
     Ok(deleted_count)
 }
 
-pub fn check_integrity(token_hex: &str, hmac_hex: &str, secret_key: &[u8]) -> Option<Vec<u8>> {
+pub fn check_integrity(sess_id_str: &str, user_id_str: &str, refreshed_str: &str, hmac: &str, nonce: &str, secret_key: &[u8]) -> Result<UserSession> {
+    let sess_id = sess_id_str.parse()?;
+    let user_id = user_id_str.parse()?;
+    let refreshed = DateTime::parse_from_rfc3339(refreshed_str)?.with_timezone(&UTC);
 
-    let (token, hmac_to_check) = match (token_to_bin(token_hex), hmac_to_bin(hmac_hex)) {
-        (Ok(t), Ok(h)) => {
-            let hmac_to_check = MacResult::new(h.as_slice());
-            (t, hmac_to_check)
-        }
-        _ => return None,
-    };
-    let mut correct_hmac = Hmac::new(Sha512::new(), secret_key);
-    correct_hmac.input(token.as_slice());
-    if correct_hmac.result() == hmac_to_check {
-        Some(token)
+    let hmac = decode_nopad(hmac.as_bytes())?;
+    let nonce = decode_nopad(nonce.as_bytes())?;
+
+    let mut hmac_checker = Hmac::new(Sha512::new(), secret_key);
+    hmac_checker.input(sess_id_str.as_bytes());
+    hmac_checker.input(user_id_str.as_bytes());
+    hmac_checker.input(refreshed_str.as_bytes());
+    hmac_checker.input(nonce.as_slice());
+
+    if hmac_checker.result() == MacResult::new_from_owned(hmac) {
+        Ok(UserSession {
+            sess_id,
+            user_id,
+            refreshed,
+            refresh_now: false,
+        })
     } else {
         warn!("The HMAC doesn't agree with the cookie!");
-        None
+        bail!(ErrorKind::AuthError)
     }
 }
 
-pub fn check(conn: &Connection, token: &[u8], ip: IpAddr) -> Result<Option<(User, Session)>> {
-    use schema::{users, sessions};
-    use diesel::ExpressionMethods;
+pub fn check(sess: &UserSession) -> Result<bool> {
+    if sess.refreshed > chrono::UTC::now() - chrono::duration::Duration::minutes(5) {
+        // FIXME insert check for logout
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
 
-    let result;
+pub fn db_check(conn: &Connection, sess: &UserSession) -> Result<Option<UserSession>> {
+    use schema::sessions;
 
-    time_it!{"session::check",
+    time_it!{"session::db_check", {
+
+        let db_sess: Option<Session> = sessions::table
+            .filter(sessions::id.eq(sess.sess_id))
+            .get_result(&**conn)
+            .optional()?;
+    
+        if let Some(mut db_sess) = db_sess {
+            if db_sess.user_id == sess.user_id && sess.refreshed == db_sess.last_seen {
+                let session_refreshed = chrono::UTC::now();
+                db_sess.last_seen = session_refreshed;
+                let _: Session = db_sess.save_changes(&**conn)?;
+                Ok(Some(UserSession {
+                    refreshed: session_refreshed,
+                    user_id: db_sess.user_id,
+                    sess_id: db_sess.id,
+                    refresh_now: true,
+                }))
+            } else {
+                bail!(ErrorKind::AuthError);
+            }
+        } else {
+            Ok(None) // User not logged in anymore
+        }
+    }
+    /*
     loop {
         // CAS loop. Try to update the DB until it succeeds.
 
@@ -206,16 +201,16 @@ pub fn check(conn: &Connection, token: &[u8], ip: IpAddr) -> Result<Option<(User
             result = Ok(None);
             break;
         }
-    }}
-
-    result
+    }
+*/
+    } // time_it ends
 }
 
-pub fn end(conn: &Connection, sess: &Session) -> Result<Option<()>> {
+pub fn end(conn: &Connection, sess_id: i32) -> Result<Option<()>> {
     use schema::sessions;
 
     let deleted_count =
-        diesel::delete(sessions::table.filter(sessions::id.eq(sess.id))).execute(&**conn)?;
+        diesel::delete(sessions::table.filter(sessions::id.eq(sess_id))).execute(&**conn)?;
     Ok(if deleted_count != 1 {
         warn!("Somebody tried to log out with wrong credentials! (Either a bug or a hacking \
                attempt.)");
@@ -230,32 +225,24 @@ pub fn end(conn: &Connection, sess: &Session) -> Result<Option<()>> {
     })
 }
 
-pub fn start(conn: &Connection, user: &User, ip: IpAddr) -> Result<Session> {
+pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
     use schema::sessions;
 
-    let new_proposed_token = fresh_token()?;
-    let pseudo_current_token = fresh_token()?;
-    let pseudo_retired_token = fresh_token()?;
-
-    let ip_as_bytes = match ip {
-        IpAddr::V4(ip) => ip.octets()[..].to_vec(),
-        IpAddr::V6(ip) => ip.octets()[..].to_vec(),
-    };
-
     let new_sess = NewSession {
-        proposed_token: &new_proposed_token,
-        current_token: &pseudo_retired_token,
-        retired_token: &pseudo_current_token,
         user_id: user.id,
         started: chrono::UTC::now(),
         last_seen: chrono::UTC::now(),
-        last_ip: &ip_as_bytes,
     };
 
-    // if the session id already exists,
-    // this is going to fail? (A few-in-a 2^128 change, though...)
-    diesel::insert(&new_sess)
+    let db_sess: Session = diesel::insert(&new_sess)
         .into(sessions::table)
         .get_result(&**conn)
-        .chain_err(|| "Couldn't start a session!")
+        .chain_err(|| "Couldn't start a session!")?;
+
+    Ok(UserSession {
+        user_id: user.id,
+        sess_id: db_sess.id,
+        refreshed: db_sess.last_seen,
+        refresh_now: true,
+    })
 }

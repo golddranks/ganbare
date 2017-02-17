@@ -6,7 +6,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::collections::BTreeMap;
 use cookie::Cookie as CookiePair;
 use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, Cookie};
-use ganbare::models::{User, Session};
+use ganbare::models::User;
 use std::net::IpAddr;
 use time;
 use std::result::Result as StdResult;
@@ -24,6 +24,7 @@ use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, Cache
 use r2d2;
 use ganbare_backend::ConnManager;
 use ganbare_backend::Connection;
+use ganbare_backend::session::UserSession;
 
 pub use ganbare_backend::PERF_TRACE;
 
@@ -280,25 +281,39 @@ pub fn db_connect() -> Result<Connection> {
 }
 
 
-pub fn get_cookie(cookies: &Cookie) -> Option<(&str, &str)> {
+fn get_session_cookie(cookies: &Cookie) -> Result<Option<session::UserSession>> {
+
     let mut session_id = None;
+    let mut user_id = None;
+    let mut refreshed = None;
     let mut hmac = None;
+    let mut nonce = None;
     for c in cookies.0.iter().map(String::as_str) {
         match CookiePair::parse(c) {
             Ok(ref c) if c.name() == "session_id" => {
                 session_id = Some(c.value().long_or_panic());
             }
+            Ok(ref c) if c.name() == "refreshed" => {
+                refreshed = Some(c.value().long_or_panic());
+            }
+            Ok(ref c) if c.name() == "user_id" => {
+                user_id = Some(c.value().long_or_panic());
+            }
             Ok(ref c) if c.name() == "hmac" => {
                 hmac = Some(c.value().long_or_panic());
             }
+            Ok(ref c) if c.name() == "nonce" => {
+                nonce = Some(c.value().long_or_panic());
+            }
             Ok(_) => (),
-            Err(_) => return None,
+            Err(e) => bail!(e),
         }
     }
-    if let (Some(session_id), Some(hmac)) = (session_id, hmac) {
-        Some((session_id, hmac))
+    if let (Some(session_id), Some(hmac), Some(user_id), Some(refreshed), Some(nonce)) = (session_id, hmac, user_id, refreshed, nonce) {
+        let sess = session::check_integrity(session_id, user_id, refreshed, hmac, nonce, COOKIE_HMAC_KEY.as_slice())?;
+        Ok(Some(sess))
     } else {
-        None
+        Ok(None)
     }
 }
 
@@ -311,19 +326,56 @@ pub fn new_template_context() -> BTreeMap<String, String> {
     ctx
 }
 
-pub fn get_sess_token(req: &Request) -> Option<Vec<u8>> {
-    if let Some((sess_token_hex, hmac_hex)) = req.cookies().and_then(get_cookie) {
-        session::check_integrity(sess_token_hex, hmac_hex, &*COOKIE_HMAC_KEY)
+pub fn get_sess(conn: &Connection, req: &Request) -> Result<Option<UserSession>> {
+    if let Some(Some(Some(sess))) = req.cookies().try_map(get_session_cookie).ok() {
+        if session::check(&sess)? {
+            Ok(Some(sess))
+        } else {
+            match session::db_check(conn, &sess)? {
+                Some(refreshed_sess) => Ok(Some(refreshed_sess)),
+                None => Ok(None),
+            }
+        }
     } else {
-        None
+        Ok(None)
     }
 }
 
-pub fn get_user(conn: &Connection, req: &Request) -> Result<Option<(User, Session)>> {
-    if let Some(sess_token) = get_sess_token(req) {
-        Ok(session::check(conn, sess_token.as_slice(), req.remote_addr().ip())?)
-    } else {
-        Ok(None)
+pub fn auth_user(req: &mut Request,
+                 required_group: &str)
+                 -> StdResult<(Connection, UserSession), PencilError> {
+
+    match try_auth_user(req)? {
+        Some((conn, sess)) => {
+            if user::check_user_group(&conn, sess.user_id, required_group).err_500()? {
+                Ok((conn, sess))
+            } else {
+                Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
+            }
+        }
+        None => {
+            Err(abort(401).unwrap_err()) // User isn't logged in
+        }
+    }
+}
+
+pub fn try_auth_user(req: &mut Request)
+                     -> StdResult<Option<(Connection, UserSession)>, PencilError> {
+
+    time_it!{"try_auth_user",
+        if let Some(Some(Some(sess))) = req.cookies().try_map(get_session_cookie).ok() {
+            let conn = db_connect().err_500()?;
+            if session::check(&sess).err_500()? {
+                Ok(Some((conn, sess)))
+            } else {
+                match session::db_check(&conn, &sess).err_500()? {
+                    Some(refreshed_sess) => Ok(Some((conn, refreshed_sess))),
+                    None => Ok(None),
+                }
+            }
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -356,36 +408,73 @@ impl<'r, 'a, 'b, 'c> IntoIp for &'r Request<'a, 'b, 'c> {
 }
 
 pub trait HeaderProcessor {
-    fn refresh_cookie(self, &Session) -> PencilResult;
+    fn refresh_cookie(self, &UserSession) -> PencilResult;
     fn expire_cookie(self) -> Self;
     fn set_static_cache(self) -> Self;
 }
 
 impl HeaderProcessor for Response {
-    fn refresh_cookie(mut self, sess: &Session) -> PencilResult {
+    fn refresh_cookie(mut self, sess: &UserSession) -> PencilResult {
+        use data_encoding::base64url::{encode_nopad};
 
-        let session_token = session::to_hex(sess);
-        let hmac_session_token = session::hmac_to_hex(sess, &*COOKIE_HMAC_KEY);
-
-        let cookie = CookiePair::build("session_id", session_token)
-            .path("/")
-            .http_only(true)
-            .secure(*PARANOID)
-            .domain(SITE_DOMAIN.as_str())
-            .expires(time::now_utc() + time::Duration::weeks(2));
-        let hmac = CookiePair::build("hmac", hmac_session_token.to_owned())
-            .path("/")
-            .http_only(true)
-            .secure(*PARANOID)
-            .domain(SITE_DOMAIN.as_str())
-            .expires(time::now_utc() + time::Duration::weeks(2));
-        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish()),
-                                       format!("{}", hmac.finish())]));
+        if sess.refresh_now {
+            let session_id = sess.sess_id.to_string();
+            let user_id = sess.user_id.to_string();
+            let refreshed = sess.refreshed.to_rfc3339();
+            let nonce_bin = session::fresh_token().err_500()?;
+            let hmac = session::get_hmac_for_sess(&session_id, &user_id, &refreshed, &nonce_bin[..], &*COOKIE_HMAC_KEY);
+            let nonce_base64 = encode_nopad(&nonce_bin[..]);
+    
+            let session_id = CookiePair::build("session_id", session_id)
+                .path("/")
+                .http_only(true)
+                .secure(*PARANOID)
+                .domain(SITE_DOMAIN.as_str())
+                .expires(time::now_utc() + time::Duration::weeks(2));
+            let user_id = CookiePair::build("user_id", user_id)
+                .path("/")
+                .http_only(true)
+                .secure(*PARANOID)
+                .domain(SITE_DOMAIN.as_str())
+                .expires(time::now_utc() + time::Duration::weeks(2));
+            let refreshed = CookiePair::build("refreshed", refreshed)
+                .path("/")
+                .http_only(true)
+                .secure(*PARANOID)
+                .domain(SITE_DOMAIN.as_str())
+                .expires(time::now_utc() + time::Duration::weeks(2));
+            let hmac_cookie = CookiePair::build("hmac", hmac.to_owned())
+                .path("/")
+                .http_only(true)
+                .secure(*PARANOID)
+                .domain(SITE_DOMAIN.as_str())
+                .expires(time::now_utc() + time::Duration::weeks(2));
+            let nonce = CookiePair::build("nonce", nonce_base64)
+                .path("/")
+                .http_only(true)
+                .secure(*PARANOID)
+                .domain(SITE_DOMAIN.as_str())
+                .expires(time::now_utc() + time::Duration::weeks(2));
+            self.set_cookie(SetCookie(vec![format!("{}", session_id.finish()),
+                                           format!("{}", user_id.finish()),
+                                           format!("{}", refreshed.finish()),
+                                           format!("{}", hmac_cookie.finish()),
+                                           format!("{}", nonce.finish()),
+                                           ]));
+        }
         Ok(self)
     }
 
     fn expire_cookie(mut self) -> Self {
-        let cookie = CookiePair::build("session_id", "")
+        let session_id = CookiePair::build("session_id", "")
+            .path("/")
+            .domain(SITE_DOMAIN.as_str())
+            .expires(time::at_utc(time::Timespec::new(0, 0)));
+        let user_id = CookiePair::build("session_id", "")
+            .path("/")
+            .domain(SITE_DOMAIN.as_str())
+            .expires(time::at_utc(time::Timespec::new(0, 0)));
+        let refreshed = CookiePair::build("session_id", "")
             .path("/")
             .domain(SITE_DOMAIN.as_str())
             .expires(time::at_utc(time::Timespec::new(0, 0)));
@@ -393,8 +482,11 @@ impl HeaderProcessor for Response {
             .path("/")
             .domain(SITE_DOMAIN.as_str())
             .expires(time::at_utc(time::Timespec::new(0, 0)));
-        self.set_cookie(SetCookie(vec![format!("{}", cookie.finish()),
-                                       format!("{}", hmac.finish())]));
+        self.set_cookie(SetCookie(vec![format!("{}", session_id.finish()),
+                                       format!("{}", user_id.finish()),
+                                       format!("{}", refreshed.finish()),
+                                       format!("{}", hmac.finish()),
+                                       ]));
         self
     }
 
@@ -406,7 +498,7 @@ impl HeaderProcessor for Response {
 }
 
 impl HeaderProcessor for PencilResult {
-    fn refresh_cookie(self, sess: &Session) -> PencilResult {
+    fn refresh_cookie(self, sess: &UserSession) -> PencilResult {
         self.and_then(|resp| resp.refresh_cookie(sess))
     }
 
@@ -442,7 +534,7 @@ pub fn bad_request<T: ToString + std::fmt::Debug>(err_msg: T) -> Response {
 
 pub trait ResultHttpExt<T> {
     fn err_500(self) -> StdResult<T, PencilError>;
-    fn err_500_debug(self, user: &User, req: &Request) -> StdResult<T, PencilError>;
+    fn err_500_debug(self, user_id: i32, req: &Request) -> StdResult<T, PencilError>;
     fn err_401(self) -> StdResult<T, PencilError>;
 }
 
@@ -450,8 +542,8 @@ impl<T, E: std::fmt::Debug> ResultHttpExt<T> for StdResult<T, E> {
     fn err_500(self) -> StdResult<T, PencilError> {
         self.map_err(internal_error)
     }
-    fn err_500_debug(self, user: &User, req: &Request) -> StdResult<T, PencilError> {
-        self.map_err(|e| internal_error((e, user, req)))
+    fn err_500_debug(self, user_id: i32, req: &Request) -> StdResult<T, PencilError> {
+        self.map_err(|e| internal_error((e, user_id, req)))
     }
     fn err_401(self) -> StdResult<T, PencilError> {
         self.map_err(|_| PencilError::PenHTTPError(pencil::http_errors::HTTPError::Unauthorized))
@@ -527,46 +619,6 @@ macro_rules! include_templates(
     } }
 );
 
-pub fn auth_user(req: &mut Request,
-                 required_group: &str)
-                 -> StdResult<(Connection, User, Session), PencilError> {
-
-    match try_auth_user(req)? {
-        Some((conn, user, sess)) => {
-            if user::check_user_group(&conn, user.id, required_group).err_500()? {
-                Ok((conn, user, sess))
-            } else {
-                Err(abort(401).unwrap_err()) // User doesn't belong in the required groups
-            }
-        }
-        None => {
-            Err(abort(401).unwrap_err()) // User isn't logged in
-        }
-    }
-}
-
-pub fn try_auth_user(req: &mut Request)
-                     -> StdResult<Option<(Connection, User, Session)>, PencilError> {
-
-    time_it!{"try_auth_user",
-        if let Some(sess_token) = get_sess_token(req) {
-            let conn = db_connect().err_500()?;
-            let check_result =
-                session::check(&conn, sess_token.as_slice(), req.remote_addr().ip())
-                    .err_500()?;
-            if let Some((user, sess)) = check_result {
-                // User is logged in
-                Ok(Some((conn, user, sess)))
-            } else {
-                // Not logged in
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
-    }
-}
-
 /// Try and dereference required env vars for the `lazy_static!`
 /// to run and check if the values are present.
 pub fn check_env_vars() {
@@ -578,23 +630,22 @@ pub fn check_env_vars() {
     let _ = &*COOKIE_HMAC_KEY;
 }
 
-pub fn do_login<I: IntoIp>(conn: &Connection,
+pub fn do_login(conn: &Connection,
                            email: &str,
-                           plaintext_pw: &str,
-                           ip: I)
-                           -> StdResult<Option<(User, Session)>, PencilError> {
+                           plaintext_pw: &str)
+                           -> StdResult<Option<(User, UserSession)>, PencilError> {
     debug!("Logging in user: {:?}", email);
     let user = try_or!(user::auth_user(&conn, email, plaintext_pw, &*RUNTIME_PEPPER).err_500()?,
             else return Ok(None));
 
-    let sess = session::start(conn, &user, ip.into_ip()).err_500()?;
+    let sess = session::start(conn, &user).err_500()?;
 
     Ok(Some((user, sess)))
 }
 
-pub fn do_logout(conn: &Connection, sess: &Session) -> StdResult<(), PencilError> {
+pub fn do_logout(conn: &Connection, sess: &UserSession) -> StdResult<(), PencilError> {
     debug!("Logging out session: {:?}", sess);
-    session::end(conn, sess).err_500()?;
+    session::end(conn, sess.sess_id).err_500()?;
     Ok(())
 }
 

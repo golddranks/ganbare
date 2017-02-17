@@ -19,7 +19,7 @@ use ganbare::test;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let mut audio_name = req.view_args
         .get("audio_name")
@@ -68,7 +68,7 @@ pub fn get_build_number(_: &mut Request) -> PencilResult {
 
 pub fn quiz_audio(req: &mut Request) -> PencilResult {
 
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
 
     let asked_id = req.view_args
         .get("audio_name")
@@ -78,7 +78,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
         .expect("Pencil guarantees that Line ID should be an integer.");
 
     let (file_name, mime_type) =
-        audio::for_quiz(&conn, &user, asked_id).map_err(|e| match e.kind() {
+        audio::for_quiz(&conn, sess.user_id, asked_id).map_err(|e| match e.kind() {
                 &ErrorKind::FileNotFound => abort(404).unwrap_err(),
                 e => internal_error(e),
             })?;
@@ -107,7 +107,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
 
 pub fn get_image(req: &mut Request) -> PencilResult {
 
-    let (_, _, sess) = auth_user(req, "")?;
+    let (_, sess) = auth_user(req, "")?;
 
     let file_name = req.view_args
         .get("filename")
@@ -143,23 +143,23 @@ pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
 }
 
 pub fn new_quiz(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
 
     let new_quiz =
         if let Some((ev, _)) = time_it!("is_ongoing pretest",
-                                        ganbare::event::is_ongoing(&conn, "pretest", &user)
+                                        ganbare::event::is_ongoing(&conn, "pretest", sess.user_id)
                                             .err_500())? {
             debug!("Pretest questions!");
-            test::get_new_quiz_pretest(&conn, &user, &ev).err_500()?
+            test::get_new_quiz_pretest(&conn, sess.user_id, &ev).err_500()?
         } else if let Some((ev, _)) = time_it!("is_ongoing posttest",
                                                ganbare::event::is_ongoing(&conn,
                                                                           "posttest",
-                                                                          &user)
+                                                                           sess.user_id)
                                                    .err_500())? {
             debug!("Posttest questions!");
-            test::get_new_quiz_posttest(&conn, &user, &ev).err_500()?
+            test::get_new_quiz_posttest(&conn, sess.user_id, &ev).err_500()?
         } else {
-            time_it!("new_quiz", quiz::get_new_quiz(&conn, &user).err_500())?
+            time_it!("new_quiz", quiz::get_new_quiz(&conn, sess.user_id).err_500())?
         };
 
     match new_quiz {
@@ -173,7 +173,7 @@ pub fn new_quiz(req: &mut Request) -> PencilResult {
 }
 
 pub fn next_quiz(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
 
     fn parse_answer(req: &mut Request) -> Result<quiz::Answered> {
         req.load_form_data();
@@ -237,14 +237,14 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
     let answer = err_400!(parse_answer(req), "Can't parse form data? {:?}", req.form());
 
     let new_quiz =
-        if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "pretest", &user).err_500()? {
-            test::get_next_quiz_pretest(&conn, &user, answer, &ev).err_500()?
+        if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "pretest", sess.user_id).err_500()? {
+            test::get_next_quiz_pretest(&conn, sess.user_id, answer, &ev).err_500()?
         } else if let Some((ev, _)) =
-            ganbare::event::is_ongoing(&conn, "posttest", &user).err_500()? {
-            test::get_next_quiz_posttest(&conn, &user, answer, &ev).err_500()?
+            ganbare::event::is_ongoing(&conn, "posttest", sess.user_id).err_500()? {
+            test::get_next_quiz_posttest(&conn, sess.user_id, answer, &ev).err_500()?
         } else {
             time_it!("next_quiz",
-                     quiz::get_next_quiz(&conn, &user, answer).err_500_debug(&user, &*req))?
+                     quiz::get_next_quiz(&conn, sess.user_id, answer).err_500_debug(sess.user_id, &*req))?
         };
 
     match new_quiz {
@@ -256,7 +256,7 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
 
 
 pub fn get_item(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let id =
         req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
@@ -285,7 +285,7 @@ pub fn get_item(req: &mut Request) -> PencilResult {
 }
 
 pub fn del_item(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     info!("del_item");
 
@@ -359,7 +359,7 @@ pub fn del_item(req: &mut Request) -> PencilResult {
 }
 
 pub fn merge_item(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     info!("merge_item");
 
@@ -389,7 +389,7 @@ pub fn merge_item(req: &mut Request) -> PencilResult {
 }
 
 pub fn get_all(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let endpoint = req.endpoint().expect("Pencil guarantees this");
     let json = match endpoint.as_ref() {
@@ -424,7 +424,7 @@ pub fn get_all(req: &mut Request) -> PencilResult {
 }
 
 pub fn get_user_details(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let id =
         req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
@@ -446,7 +446,7 @@ pub fn get_user_details(req: &mut Request) -> PencilResult {
 }
 
 pub fn set_published(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let id =
         req.view_args.get("id").expect("Pencil guarantees that Line ID should exist as an arg.");
@@ -481,7 +481,7 @@ pub fn set_published(req: &mut Request) -> PencilResult {
 
 pub fn update_item(req: &mut Request) -> PencilResult {
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let id = req.view_args
         .get("id")
@@ -627,7 +627,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
 
 pub fn post_question(req: &mut Request) -> PencilResult {
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let mut text = String::new();
     req.read_to_string(&mut text).err_500()?;
@@ -688,7 +688,7 @@ pub fn post_question(req: &mut Request) -> PencilResult {
 
 pub fn post_exercise(req: &mut Request) -> PencilResult {
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let mut text = String::new();
     req.read_to_string(&mut text).err_500()?;
@@ -731,24 +731,24 @@ pub fn post_exercise(req: &mut Request) -> PencilResult {
 }
 
 pub fn save_eventdata(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
 
     let eventname = req.view_args
         .remove("eventname")
         .expect("Pencil guarantees that Line ID should exist as an arg.");
     let key = req.view_args.remove("key");
-    let (event, _) = event::require_ongoing(&conn, &eventname, &user).err_401()?;
+    let (event, _) = event::require_ongoing(&conn, &eventname, sess.user_id).err_401()?;
 
     let mut text = String::new();
     req.read_to_string(&mut text).err_500()?;
 
-    event::save_userdata(&conn, &event, &user, key.as_ref().map(|s| &**s), &text).err_500()?;
+    event::save_userdata(&conn, &event, sess.user_id, key.as_ref().map(|s| &**s), &text).err_500()?;
 
     Response::from("OK.").refresh_cookie(&sess)
 }
 
 pub fn user(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "admins")?;
+    let (conn, sess) = auth_user(req, "admins")?;
 
     let user_id = req.view_args
         .remove("user_id")
@@ -805,7 +805,7 @@ pub fn user(req: &mut Request) -> PencilResult {
 }
 
 pub fn post_useraudio(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
     use std::fs;
     use std::io;
     use rand::thread_rng;
@@ -827,7 +827,7 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
         return Ok(bad_request("Too big audio file! It must be under 180kB"));
     }
 
-    let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+    let (event, _) = event::require_ongoing(&conn, &event_name, sess.user_id).err_401()?;
 
     let mut new_path = USER_AUDIO_DIR.to_owned();
     let mut filename = "%FT%H-%M-%SZ".to_string();
@@ -839,25 +839,25 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
     let mut file = fs::File::create(&new_path).err_500()?;
     io::copy(&mut req.take(cl), &mut file).err_500()?;
 
-    let mut rec_number = event::get_userdata(&conn, &event, &user, "rec_number")
+    let mut rec_number = event::get_userdata(&conn, &event, sess.user_id, "rec_number")
         .err_500()?
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0);
 
     rec_number += 1;
 
-    let quiz_number = event::get_userdata(&conn, &event, &user, "quiz_number")
+    let quiz_number = event::get_userdata(&conn, &event, sess.user_id, "quiz_number")
         .err_500()?
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0);
     event::save_userdata(&conn,
                          &event,
-                         &user,
+                         sess.user_id,
                          Some("rec_number"),
                          &format!("{}", rec_number)).err_500()?;
     event::save_userdata(&conn,
                          &event,
-                         &user,
+                         sess.user_id,
                          Some(&format!("quiz_{}_rec_{}", quiz_number, rec_number)),
                          &filename).err_500()?;
 
@@ -871,14 +871,14 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
 
 pub fn get_useraudio(req: &mut Request) -> PencilResult {
 
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
     let endpoint = req.endpoint().expect("Pencil guarantees this");
 
     let event_name = req.view_args
         .remove("event_name")
         .expect("Pencil guarantees that event name should exist as an arg.");
 
-    let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+    let (event, _) = event::require_ongoing(&conn, &event_name, sess.user_id).err_401()?;
 
     let (quiz_number, rec_number) = match endpoint.as_ref() {
         "get_useraudio" => {
@@ -899,7 +899,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     let filename = try_or!(
         event::get_userdata(&conn,
                             &event,
-                            &user,
+                            sess.user_id,
                             &format!("quiz_{}_rec_{}", quiz_number, rec_number)
                         ).err_500()?,
         else {
@@ -939,7 +939,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
 
 
 pub fn mic_check(req: &mut Request) -> PencilResult {
-    let (_, _, sess) = auth_user(req, "")?;
+    let (_, sess) = auth_user(req, "")?;
 
     let endpoint = req.endpoint().expect("Pencil guarantees this");
 
@@ -991,15 +991,15 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
 }
 
 pub fn new_retelling(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
     let event_name = req.view_args
         .remove("event_name")
         .expect("Pencil guarantees that event name should exist as an arg.");
-    let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+    let (event, _) = event::require_ongoing(&conn, &event_name, sess.user_id).err_401()?;
 
     let retelling = match event_name.as_ref() {
-        "pretest_retelling" => test::get_new_retelling_pretest(&conn, &user, &event).err_500()?,
-        "posttest_retelling" => test::get_new_retelling_posttest(&conn, &user, &event).err_500()?,
+        "pretest_retelling" => test::get_new_retelling_pretest(&conn, sess.user_id, &event).err_500()?,
+        "posttest_retelling" => test::get_new_retelling_posttest(&conn, sess.user_id, &event).err_500()?,
         _ => unreachable!(),
     };
 
@@ -1007,15 +1007,15 @@ pub fn new_retelling(req: &mut Request) -> PencilResult {
 }
 
 pub fn next_retelling(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
     let event_name = req.view_args
         .remove("event_name")
         .expect("Pencil guarantees that event name should exist as an arg.");
-    let (event, _) = event::require_ongoing(&conn, &event_name, &user).err_401()?;
+    let (event, _) = event::require_ongoing(&conn, &event_name, sess.user_id).err_401()?;
 
     let retelling = match event_name.as_ref() {
-        "pretest_retelling" => test::get_next_retelling_pretest(&conn, &user, &event).err_500()?,
-        "posttest_retelling" => test::get_next_retelling_posttest(&conn, &user, &event).err_500()?,
+        "pretest_retelling" => test::get_next_retelling_pretest(&conn, sess.user_id, &event).err_500()?,
+        "posttest_retelling" => test::get_next_retelling_posttest(&conn, sess.user_id, &event).err_500()?,
         _ => unreachable!(),
     };
 

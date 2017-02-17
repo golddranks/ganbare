@@ -533,14 +533,14 @@ pub fn get_all_files(conn: &Connection) -> Result<Vec<(String, mime::Mime)>> {
     Ok(files)
 }
 
-pub fn for_quiz(conn: &Connection, user: &User, pending_id: i32) -> Result<(String, mime::Mime)> {
+pub fn for_quiz(conn: &Connection, user_id: i32, pending_id: i32) -> Result<(String, mime::Mime)> {
     use schema::audio_files;
     use schema::pending_items;
     use diesel::result::Error::NotFound;
 
     let (file, _): (AudioFile, PendingItem) = audio_files::table.inner_join(pending_items::table)
         .filter(pending_items::id.eq(pending_id))
-        .filter(pending_items::user_id.eq(user.id))
+        .filter(pending_items::user_id.eq(user_id))
         .filter(pending_items::pending.eq(true))
         .get_result(&**conn)
         .map_err(|e| match e {

@@ -14,6 +14,13 @@ enum Group {
     Other(String),
 }*/
 
+pub fn get_user(conn: &Connection, user_id: i32) -> Result<User> {
+    use schema::users::dsl::*;
+
+    Ok(users.filter(id.eq(user_id))
+        .first(&**conn)?)
+}
+
 pub fn get_user_by_email(conn: &Connection, user_email: &str) -> Result<Option<User>> {
     use schema::users::dsl::*;
 
@@ -204,7 +211,7 @@ pub fn send_pw_change_email(conn: &Connection,
         None => return Err(ErrorKind::NoSuchUser(email.to_string()).into()),
     };
 
-    let (new_secret, hmac) = session::get_token_hmac(hmac_key)?;
+    let (new_secret, hmac) = session::new_token_and_hmac(hmac_key)?;
 
     let result = diesel::insert(&ResetEmailSecrets {
             secret: new_secret,
@@ -364,7 +371,7 @@ pub fn group_intersection_size(conn: &Connection,
 }
 
 pub fn join_user_group_by_name(conn: &Connection,
-                               user: &User,
+                               user_id: i32,
                                group_name: &str)
                                -> Result<GroupMembership> {
     use schema::{user_groups, group_memberships};
@@ -376,7 +383,7 @@ pub fn join_user_group_by_name(conn: &Connection,
 
     // FIXME when diesel gets UPSERT, streamline this
     let membership: Option<GroupMembership> = diesel::insert(&GroupMembership {
-            user_id: user.id,
+            user_id: user_id,
             group_id: group.id,
             anonymous: false,
         }).into(group_memberships::table)
@@ -390,7 +397,7 @@ pub fn join_user_group_by_name(conn: &Connection,
     if let Some(membership) = membership {
         Ok(membership)
     } else {
-        Ok(group_memberships::table.filter(group_memberships::user_id.eq(user.id)
+        Ok(group_memberships::table.filter(group_memberships::user_id.eq(user_id)
                 .and(group_memberships::group_id.eq(group.id)))
             .get_result(&**conn)?)
     }

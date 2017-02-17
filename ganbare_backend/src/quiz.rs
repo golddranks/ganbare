@@ -200,7 +200,7 @@ fn log_answer_new_due_item(conn: &Connection,
     Ok(log_answer_due_item(conn, due_item, skill_id, correct, metrics)?)
 }
 
-fn log_answer_word(conn: &Connection, user: &User, answered: &WAnsweredData) -> Result<()> {
+fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData) -> Result<()> {
     use schema::{user_stats, pending_items, w_asked_data, w_answered_data, words};
 
     let (mut pending_item, asked): (PendingItem, WAskedData) =
@@ -223,7 +223,7 @@ fn log_answer_word(conn: &Connection, user: &User, answered: &WAnsweredData) -> 
     let word: Word = words::table.filter(words::id.eq(asked.word_id))
         .get_result(&**conn)?;
 
-    let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user.id))
+    let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
 
     stats.all_active_time_ms += answered.active_answer_time_ms as i64;
@@ -233,16 +233,16 @@ fn log_answer_word(conn: &Connection, user: &User, answered: &WAnsweredData) -> 
 
     debug!("Skill bump because of newly learned word! Skill: {} Of user: {} Bumped by: {}",
            word.skill_nugget,
-           user.id,
+           user_id,
            1);
 
-    skill::log_by_id(conn, user.id, word.skill_nugget, 1)?;
+    skill::log_by_id(conn, user_id, word.skill_nugget, 1)?;
 
     Ok(())
 }
 
 fn log_answer_question(conn: &Connection,
-                       user: &User,
+                       user_id: i32,
                        answered: &QAnsweredData,
                        metrics: &UserMetrics)
                        -> Result<()> {
@@ -268,7 +268,7 @@ fn log_answer_question(conn: &Connection,
     diesel::insert(answered).into(q_answered_data::table)
         .execute(&**conn)?;
 
-    let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user.id))
+    let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
 
     stats.all_active_time_ms += answered.full_answer_time_ms as i64;
@@ -285,7 +285,7 @@ fn log_answer_question(conn: &Connection,
     if !correct {
 
         let pending_item = new_pending_item(conn,
-                                            user.id,
+                                            user_id,
                                             QuizType::Question(pending_item.audio_file_id),
                                             false)?;
         let asked_data = QAskedData {
@@ -306,7 +306,7 @@ fn log_answer_question(conn: &Connection,
 
     let questiondata: Option<(QuestionData, DueItem)> =
         question_data::table.inner_join(due_items::table)
-            .filter(due_items::user_id.eq(user.id))
+            .filter(due_items::user_id.eq(user_id))
             .filter(question_data::question_id.eq(asked.question_id))
             .get_result(&**conn)
             .optional()?;
@@ -320,7 +320,7 @@ fn log_answer_question(conn: &Connection,
         // New!
 
         let due_item = log_answer_new_due_item(conn,
-                                               user.id,
+                                               user_id,
                                                "question",
                                                question.skill_id,
                                                correct,
@@ -336,7 +336,7 @@ fn log_answer_question(conn: &Connection,
 }
 
 fn log_answer_exercise(conn: &Connection,
-                       user: &User,
+                       user_id: i32,
                        answered: &EAnsweredData,
                        metrics: &UserMetrics)
                        -> Result<()> {
@@ -362,7 +362,7 @@ fn log_answer_exercise(conn: &Connection,
     diesel::insert(answered).into(e_answered_data::table)
         .execute(&**conn)?;
 
-    let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user.id))
+    let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
 
     stats.all_active_time_ms += answered.active_answer_time_ms as i64;
@@ -379,7 +379,7 @@ fn log_answer_exercise(conn: &Connection,
     if answered.answer_level == 0 {
 
         let pending_item = new_pending_item(conn,
-                                            user.id,
+                                            user_id,
                                             QuizType::Exercise(pending_item.audio_file_id),
                                             false)?;
         let asked_data = EAskedData {
@@ -396,7 +396,7 @@ fn log_answer_exercise(conn: &Connection,
 
     let exercisedata: Option<(ExerciseData, DueItem)> =
         exercise_data::table.inner_join(due_items::table)
-            .filter(due_items::user_id.eq(user.id))
+            .filter(due_items::user_id.eq(user_id))
             .filter(exercise_data::exercise_id.eq(asked.exercise_id))
             .get_result(&**conn)
             .optional()?;
@@ -410,7 +410,7 @@ fn log_answer_exercise(conn: &Connection,
         // New!
 
         let due_item = log_answer_new_due_item(conn,
-                                               user.id,
+                                               user_id,
                                                "exercise",
                                                exercise.skill_id,
                                                correct,
@@ -712,7 +712,7 @@ ORDER BY RANDOM();
 }
 
 fn choose_cooldown_q_or_e(conn: &Connection,
-                          user: &User,
+                          user_id: i32,
                           metrics: &UserMetrics)
                           -> Result<Option<QuizType>> {
 
@@ -722,7 +722,7 @@ fn choose_cooldown_q_or_e(conn: &Connection,
         return Ok(None);
     }
 
-    if let Some(quiztype) = choose_random_overdue_item_include_cooldown(conn, user.id)? {
+    if let Some(quiztype) = choose_random_overdue_item_include_cooldown(conn, user_id)? {
         return Ok(Some(quiztype));
     }
 
@@ -746,7 +746,7 @@ fn choose_new_q_or_e(conn: &Connection, user_id: i32) -> Result<Option<QuizType>
 }
 
 fn choose_q_or_e(conn: &Connection,
-                 user: &User,
+                 user_id: i32,
                  metrics: &UserMetrics)
                  -> Result<Option<QuizType>> {
 
@@ -758,12 +758,12 @@ fn choose_q_or_e(conn: &Connection,
     }
 
 
-    if let Some(quiztype) = choose_random_overdue_item(conn, user.id)? {
+    if let Some(quiztype) = choose_random_overdue_item(conn, user_id)? {
         debug!("There is an overdue quiz item; presenting that.");
         return Ok(Some(quiztype));
     }
 
-    if let Some(quiztype) = choose_new_q_or_e(conn, user.id)? {
+    if let Some(quiztype) = choose_new_q_or_e(conn, user_id)? {
         debug!("No overdue quiz items; presenting a new quiz.");
         return Ok(Some(quiztype));
     }
@@ -994,11 +994,11 @@ pub fn things_left_to_do(conn: &Connection,
 }
 
 
-fn check_break(conn: &Connection, user: &User, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
+fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
     use std::cmp::max;
     use chrono::Duration;
 
-    let user_id = user.id;
+    let user_id = user_id;
 
     let (next_existing_due, no_new_words, no_new_quizes) = things_left_to_do(conn, user_id)?;
 
@@ -1206,7 +1206,7 @@ pub fn return_pending_item(conn: &Connection, user_id: i32) -> Result<Option<Qui
     Ok(Some(quiz_type))
 }
 
-pub fn return_q_or_e(conn: &Connection, user: &User, quiztype: QuizType) -> Result<Option<Quiz>> {
+pub fn return_q_or_e(conn: &Connection, user_id: i32, quiztype: QuizType) -> Result<Option<Quiz>> {
 
     match quiztype {
         QuizType::Question(id) => {
@@ -1214,7 +1214,7 @@ pub fn return_q_or_e(conn: &Connection, user: &User, quiztype: QuizType) -> Resu
             let (question, right_a_id, answers, q_audio_id) = ask_new_question(conn, id)?;
 
             let pending_item =
-                new_pending_item(conn, user.id, QuizType::Question(q_audio_id), false)?;
+                new_pending_item(conn, user_id, QuizType::Question(q_audio_id), false)?;
 
             let asked_data = QAskedData {
                 id: pending_item.id,
@@ -1245,7 +1245,7 @@ pub fn return_q_or_e(conn: &Connection, user: &User, quiztype: QuizType) -> Resu
             let (exercise, word, audio_id) = ask_new_exercise(conn, id)?;
 
             let pending_item =
-                new_pending_item(conn, user.id, QuizType::Exercise(audio_id), false)?;
+                new_pending_item(conn, user_id, QuizType::Exercise(audio_id), false)?;
 
             let asked_data = EAskedData {
                 id: pending_item.id,
@@ -1270,12 +1270,12 @@ pub fn return_q_or_e(conn: &Connection, user: &User, quiztype: QuizType) -> Resu
     }
 }
 
-pub fn return_word(conn: &Connection, user: &User, the_word: Word) -> Result<Option<Quiz>> {
+pub fn return_word(conn: &Connection, user_id: i32, the_word: Word) -> Result<Option<Quiz>> {
 
     let audio_file = audio::load_random_from_bundle(&*conn, the_word.audio_bundle)?;
-    let show_accents = user::check_user_group(conn, user.id, "show_accents")?;
+    let show_accents = user::check_user_group(conn, user_id, "show_accents")?;
 
-    let pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_file.id), false)?;
+    let pending_item = new_pending_item(conn, user_id, QuizType::Word(audio_file.id), false)?;
 
     let asked_data = WAskedData {
         id: pending_item.id,
@@ -1337,7 +1337,7 @@ pub enum QuizSerialized {
     Exercise(&'static str, i32),
 }
 
-pub fn test_item(conn: &Connection, user: &User, quiz_str: &QuizSerialized) -> Result<(Quiz, i32)> {
+pub fn test_item(conn: &Connection, user_id: i32, quiz_str: &QuizSerialized) -> Result<(Quiz, i32)> {
     let pending_item;
     let test_item = match *quiz_str {
         QuizSerialized::Word(s, audio_id) => {
@@ -1346,7 +1346,7 @@ pub fn test_item(conn: &Connection, user: &User, quiz_str: &QuizSerialized) -> R
 
             assert_eq!(w.audio_bundle, a.bundle_id);
 
-            pending_item = new_pending_item(conn, user.id, QuizType::Word(audio_id), true)?;
+            pending_item = new_pending_item(conn, user_id, QuizType::Word(audio_id), true)?;
 
             let asked_data = WAskedData {
                 id: pending_item.id,
@@ -1379,7 +1379,7 @@ pub fn test_item(conn: &Connection, user: &User, quiz_str: &QuizSerialized) -> R
 
             assert_eq!(ans.q_audio_bundle, a.bundle_id);
 
-            pending_item = new_pending_item(conn, user.id, QuizType::Question(audio_id), true)?;
+            pending_item = new_pending_item(conn, user_id, QuizType::Question(audio_id), true)?;
 
             let asked_data = QAskedData {
                 id: pending_item.id,
@@ -1420,7 +1420,7 @@ pub fn test_item(conn: &Connection, user: &User, quiz_str: &QuizSerialized) -> R
 
             assert_eq!(w.audio_bundle, a.bundle_id);
 
-            pending_item = new_pending_item(conn, user.id, QuizType::Exercise(audio_id), true)?;
+            pending_item = new_pending_item(conn, user_id, QuizType::Exercise(audio_id), true)?;
 
             let asked_data = EAskedData {
                 id: pending_item.id,
@@ -1457,7 +1457,7 @@ pub fn test_item(conn: &Connection, user: &User, quiz_str: &QuizSerialized) -> R
 /* MAIN LOGIC */
 
 fn get_new_quiz_inner(conn: &Connection,
-                      user: &User,
+                      user_id: i32,
                       metrics: &mut UserMetrics)
                       -> Result<Option<Quiz>> {
 
@@ -1465,7 +1465,7 @@ fn get_new_quiz_inner(conn: &Connection,
     // Pending item first (items that were asked,
     // but not answered because of loss of connection, user closing the session etc.)
 
-    if let Some(pending_quiz) = return_pending_item(conn, user.id)? {
+    if let Some(pending_quiz) = return_pending_item(conn, user_id)? {
         return Ok(Some(pending_quiz));
     }
 
@@ -1477,10 +1477,10 @@ fn get_new_quiz_inner(conn: &Connection,
     // After that, question & exercise reviews that are overdue
     // (except if they are on a cooldown period), and after that, new ones
 
-    if let Some(quiztype) = choose_q_or_e(conn, user, metrics)? {
+    if let Some(quiztype) = choose_q_or_e(conn, user_id, metrics)? {
         metrics.quizes_today += 1;
         metrics.quizes_since_break += 1;
-        return return_q_or_e(conn, user, quiztype);
+        return return_q_or_e(conn, user_id, quiztype);
     }
 
 
@@ -1489,22 +1489,22 @@ fn get_new_quiz_inner(conn: &Connection,
     if let Some(the_word) = choose_new_word(conn, metrics)? {
         metrics.new_words_today += 1;
         metrics.new_words_since_break += 1;
-        return return_word(conn, user, the_word);
+        return return_word(conn, user_id, the_word);
     }
 
 
     // If there's nothing else, time to show the cooled-down stuff!
 
-    if let Some(quiztype) = choose_cooldown_q_or_e(conn, user, metrics)? {
+    if let Some(quiztype) = choose_cooldown_q_or_e(conn, user_id, metrics)? {
         metrics.quizes_today += 1;
         metrics.quizes_since_break += 1;
-        return return_q_or_e(conn, user, quiztype);
+        return return_q_or_e(conn, user_id, quiztype);
     }
 
     // There seems to be nothig to do?!
     // Either there is no more words to study or the limits are full.
 
-    if let Some(future) = check_break(conn, user, metrics)? {
+    if let Some(future) = check_break(conn, user_id, metrics)? {
         return Ok(Some(future));
     }
 
@@ -1519,13 +1519,13 @@ fn get_new_quiz_inner(conn: &Connection,
 
 /* PUBLIC APIS */
 
-pub fn get_new_quiz(conn: &Connection, user: &User) -> Result<Option<Quiz>> {
+pub fn get_new_quiz(conn: &Connection, user_id: i32) -> Result<Option<Quiz>> {
     use schema::user_metrics;
 
-    let mut metrics: UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user.id))
+    let mut metrics: UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user_id))
         .get_result(&**conn)?;
 
-    let result = get_new_quiz_inner(conn, user, &mut metrics)?;
+    let result = get_new_quiz_inner(conn, user_id, &mut metrics)?;
 
     let _: UserMetrics = metrics.save_changes(&**conn)?;
 
@@ -1534,27 +1534,27 @@ pub fn get_new_quiz(conn: &Connection, user: &User) -> Result<Option<Quiz>> {
 
 
 pub fn get_next_quiz(conn: &Connection,
-                     user: &User,
+                     user_id: i32,
                      answer_enum: Answered)
                      -> Result<Option<Quiz>> {
     use schema::user_metrics;
 
-    let mut metrics: UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user.id))
+    let mut metrics: UserMetrics = user_metrics::table.filter(user_metrics::id.eq(user_id))
         .get_result(&**conn)?;
 
     match answer_enum {
         Answered::W(answer_word) => {
-            log_answer_word(conn, user, &answer_word)?;
+            log_answer_word(conn, user_id, &answer_word)?;
         }
         Answered::E(exercise) => {
-            log_answer_exercise(conn, user, &exercise, &metrics)?;
+            log_answer_exercise(conn, user_id, &exercise, &metrics)?;
         }
         Answered::Q(answer) => {
-            log_answer_question(conn, user, &answer, &metrics)?;
+            log_answer_question(conn, user_id, &answer, &metrics)?;
         }
     }
 
-    let result = get_new_quiz_inner(conn, user, &mut metrics)?;
+    let result = get_new_quiz_inner(conn, user_id, &mut metrics)?;
 
     let _: UserMetrics = metrics.save_changes(&**conn)?;
 

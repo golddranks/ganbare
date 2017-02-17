@@ -7,15 +7,15 @@ use ganbare::user;
 use ganbare::email;
 use ganbare::session;
 
-fn dispatch_events(conn: &Connection, user: &User) -> StdResult<Option<PencilResult>, PencilError> {
+fn dispatch_events(conn: &Connection, user_id: i32) -> StdResult<Option<PencilResult>, PencilError> {
 
-    let event = match event::dispatch_event(conn, user.id).err_500()? {
+    let event = match event::dispatch_event(conn, user_id).err_500()? {
         Some(e) => e,
         None => return Ok(None), // FIXME this actually never happens any more, since
         // the event "training" is the default mode
     };
 
-    event::initiate(conn, &*event.name, user).err_500()?;
+    event::initiate(conn, &*event.name, user_id).err_500()?;
 
     let redirect = match &*event.name {
         "welcome" => redirect("/welcome", 303),
@@ -40,11 +40,11 @@ fn dispatch_events(conn: &Connection, user: &User) -> StdResult<Option<PencilRes
     Ok(Some(redirect))
 }
 
-fn main_quiz(req: &mut Request, conn: &Connection, user: &User) -> PencilResult {
+fn main_quiz(req: &mut Request, conn: &Connection, user_id: i32) -> PencilResult {
     let mut context = new_template_context();
 
-    if !user::check_user_group(conn, user.id, "questions").err_500()? &&
-       !user::check_user_group(conn, user.id, "exercises").err_500()? {
+    if !user::check_user_group(conn, user_id, "questions").err_500()? &&
+       !user::check_user_group(conn, user_id, "exercises").err_500()? {
         context.insert("alert_msg".into(),
                        "Et kuulu mihinkään harjoitusryhmään!".into());
     }
@@ -55,12 +55,12 @@ fn main_quiz(req: &mut Request, conn: &Connection, user: &User) -> PencilResult 
 
 pub fn hello(req: &mut Request) -> PencilResult {
 
-    if let Some((conn, user, sess)) = try_auth_user(req).err_500()? {
+    if let Some((conn, sess)) = try_auth_user(req).err_500()? {
 
-        if let Some(event_redirect) = dispatch_events(&conn, &user)? {
+        if let Some(event_redirect) = dispatch_events(&conn, sess.user_id)? {
                 event_redirect
             } else {
-                main_quiz(req, &conn, &user)
+                main_quiz(req, &conn, sess.user_id)
             }
             .refresh_cookie(&sess)
 
@@ -71,11 +71,11 @@ pub fn hello(req: &mut Request) -> PencilResult {
 
 pub fn ok(req: &mut Request) -> PencilResult {
 
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
 
     let event_name = err_400!(req.form_mut().take("event_ok"),
                               "Field event_ok is missing!");
-    let _ = err_400!(event::set_done(&conn, &event_name, &user).err_500()?,
+    let _ = err_400!(event::set_done(&conn, &event_name, sess.user_id).err_500()?,
                      "Event \"{}\" doesn't exist!",
                      &event_name);
 
@@ -84,14 +84,14 @@ pub fn ok(req: &mut Request) -> PencilResult {
 }
 
 pub fn survey(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
-    let (event, _) = event::require_ongoing(&conn, "survey", &user).err_401()?;
+    let (conn, sess) = auth_user(req, "")?;
+    let (event, _) = event::require_ongoing(&conn, "survey", sess.user_id).err_401()?;
 
-    user::join_user_group_by_name(&conn, &user, "nag_emails").err_500()?;
+    user::join_user_group_by_name(&conn, sess.user_id, "nag_emails").err_500()?;
 
     let mut context = new_template_context();
     context.insert("event_name".into(), "survey".into());
-    let answered_questions = event::get_userdata(&conn, &event, &user, "answered_questions")
+    let answered_questions = event::get_userdata(&conn, &event, sess.user_id, "answered_questions")
         .err_500()?
         .map(|d| d.data)
         .unwrap_or_else(|| "".to_string());
@@ -103,12 +103,12 @@ pub fn survey(req: &mut Request) -> PencilResult {
 }
 
 pub fn text_pages(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
 
     let endpoint_string = req.endpoint().expect("Pencil guarantees that this is always set.");
     let endpoint = endpoint_string.as_ref();
 
-    event::require_started(&conn, endpoint, &user).err_401()?;
+    event::require_started(&conn, endpoint, sess.user_id).err_401()?;
     let mut context = new_template_context();
     context.insert("event_name".into(), endpoint.into());
 
@@ -120,20 +120,20 @@ pub fn text_pages(req: &mut Request) -> PencilResult {
 }
 
 pub fn pre_post_test(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "subjects")?;
+    let (conn, sess) = auth_user(req, "subjects")?;
 
     let mut context = new_template_context();
 
     match req.endpoint().as_ref().map(|s| &**s) {
         Some("pretest") => {
-            if event::is_ongoing(&conn, "pretest", &user).err_500()?.is_some() {
+            if event::is_ongoing(&conn, "pretest", sess.user_id).err_500()?.is_some() {
                 context.insert("testing".into(), "true".into());
             } else {
                 return redirect("/", 303).refresh_cookie(&sess);
             }
         }
         Some("posttest") => {
-            if event::is_ongoing(&conn, "posttest", &user).err_500()?.is_some() {
+            if event::is_ongoing(&conn, "posttest", sess.user_id).err_500()?.is_some() {
                 context.insert("testing".into(), "true".into());
             } else {
                 return redirect("/", 303).refresh_cookie(&sess);
@@ -150,26 +150,26 @@ pub fn pre_post_test(req: &mut Request) -> PencilResult {
 pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
     use rand::{Rng, thread_rng};
 
-    let (conn, user, sess) = auth_user(req, "sort")?;
+    let (conn, sess) = auth_user(req, "sort")?;
 
-    let (_, _) = event::require_ongoing(&conn, "sorting_ceremony", &user).err_401()?;
+    let (_, _) = event::require_ongoing(&conn, "sorting_ceremony", sess.user_id).err_401()?;
 
-    let group_name = if user::check_user_group(&conn, user.id, "japani1").err_500()? {
+    let group_name = if user::check_user_group(&conn, sess.user_id, "japani1").err_500()? {
         "japani1"
-    } else if user::check_user_group(&conn, user.id, "japani2").err_500()? {
+    } else if user::check_user_group(&conn, sess.user_id, "japani2").err_500()? {
         "japani2"
-    } else if user::check_user_group(&conn, user.id, "japani3").err_500()? {
+    } else if user::check_user_group(&conn, sess.user_id, "japani3").err_500()? {
         "japani3"
-    } else if user::check_user_group(&conn, user.id, "japani4").err_500()? {
+    } else if user::check_user_group(&conn, sess.user_id, "japani4").err_500()? {
         "japani4"
     } else {
         "sort"
     };
 
-    if user::remove_user_group_by_name(&conn, user.id, "questions").err_500()? {
+    if user::remove_user_group_by_name(&conn, sess.user_id, "questions").err_500()? {
         debug!("Removed old questions group");
     };
-    if user::remove_user_group_by_name(&conn, user.id, "exercises").err_500()? {
+    if user::remove_user_group_by_name(&conn, sess.user_id, "exercises").err_500()? {
         debug!("Removed old exercises group");
     };
 
@@ -190,22 +190,22 @@ pub fn sorting_ceremony(req: &mut Request) -> PencilResult {
         };
 
         if sort_to_input {
-            user::join_user_group_by_name(&conn, &user, "questions").err_500()?
+            user::join_user_group_by_name(&conn, sess.user_id, "questions").err_500()?
         } else {
-            user::join_user_group_by_name(&conn, &user, "exercises").err_500()?
+            user::join_user_group_by_name(&conn, sess.user_id, "exercises").err_500()?
         }
     };
     use ganbare::SaveChangesDsl;
     membership.anonymous = true;
     let _: ganbare::models::GroupMembership = membership.save_changes(&*conn).err_500()?;
 
-    event::set_done(&conn, "sorting_ceremony", &user).err_500()?;
+    event::set_done(&conn, "sorting_ceremony", sess.user_id).err_500()?;
 
     redirect("/", 303).refresh_cookie(&sess)
 }
 
 pub fn retelling(req: &mut Request) -> PencilResult {
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
 
     let event_name;
 
@@ -219,7 +219,7 @@ pub fn retelling(req: &mut Request) -> PencilResult {
         _ => unreachable!(),
     }
 
-    let (_, _) = event::require_ongoing(&conn, event_name, &user).err_401()?;
+    let (_, _) = event::require_ongoing(&conn, event_name, sess.user_id).err_401()?;
 
     let mut context = new_template_context();
     context.insert("testing".into(), "true".into());
@@ -236,7 +236,7 @@ pub fn login_form(req: &mut Request) -> PencilResult {
         return redirect("/fresh_install", 303);
     }
 
-    if let Some((_, _, sess)) = try_auth_user(req).err_500()? {
+    if let Some((_, sess)) = try_auth_user(req).err_500()? {
         return redirect("/", 303).refresh_cookie(&sess);
     }
 
@@ -250,7 +250,6 @@ pub fn login_form(req: &mut Request) -> PencilResult {
 pub fn login_post(req: &mut Request) -> PencilResult {
 
         let app = req.app;
-        let ip = req.request.remote_addr.ip();
         let email = req.form_mut().take("email").unwrap_or_default();
         let plaintext_pw = req.form_mut().take("password").unwrap_or_default();
 
@@ -260,11 +259,11 @@ pub fn login_post(req: &mut Request) -> PencilResult {
 
         let conn = db_connect().err_500()?;
 
-        if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+        if let Some(old_sess) = get_sess(&conn, &*req).err_500()? {
             do_logout(&conn, &old_sess).err_500()?;
         }
 
-        match do_login(&conn, &email, &plaintext_pw, ip).err_500()? {
+        match do_login(&conn, &email, &plaintext_pw).err_500()? {
             Some((_, sess)) => redirect("/", 303).refresh_cookie(&sess),
             None => {
                 warn!("Failed login: {}", &email);
@@ -282,7 +281,7 @@ pub fn login_post(req: &mut Request) -> PencilResult {
 
 pub fn logout(req: &mut Request) -> PencilResult {
 
-    if let Some((conn, _, old_sess)) = try_auth_user(req).err_500()? {
+    if let Some((conn, old_sess)) = try_auth_user(req).err_500()? {
         do_logout(&conn, &old_sess).err_500()?;
     }
     redirect("/", 303).expire_cookie()
@@ -348,14 +347,13 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
         }
     };
 
-    if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+    if let Some(old_sess) = get_sess(&conn, &*req).err_500()? {
         do_logout(&conn, &old_sess).err_500()?;
     }
 
     match do_login(&conn,
                    &user.email.expect("The email address was just proven to exits."),
-                   &password,
-                   &*req).err_500()? {
+                   &password).err_500()? {
         Some((_, sess)) => redirect("/", 303).refresh_cookie(&sess),
         None => {
             Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login \
@@ -368,7 +366,7 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
 
 pub fn change_password_form(req: &mut Request) -> PencilResult {
 
-    let (_, _, sess) = auth_user(req, "")?;
+    let (_, sess) = auth_user(req, "")?;
 
     let mut context = new_template_context();
 
@@ -386,7 +384,7 @@ pub fn change_password_form(req: &mut Request) -> PencilResult {
 
 pub fn password_reset_success(req: &mut Request) -> PencilResult {
 
-    let (_, _, sess) = auth_user(req, "")?;
+    let (_, sess) = auth_user(req, "")?;
 
     let mut context = new_template_context();
     context.insert("changed".into(), "changed".into());
@@ -464,11 +462,11 @@ pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
         }
     };
 
-    if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+    if let Some(old_sess) = get_sess(&conn, &*req).err_500()? {
         do_logout(&conn, &old_sess).err_500()?;
     }
 
-    match do_login(&conn, &secret.email, &password, &*req).err_500()? {
+    match do_login(&conn, &secret.email, &password).err_500()? {
         Some((_, sess)) => redirect("/reset_password?changed=true", 303).refresh_cookie(&sess),
         None => {
             Err(internal_error(Error::from(ErrMsg("We just successfully changed password, yet \
@@ -546,7 +544,7 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
 
 pub fn change_password(req: &mut Request) -> PencilResult {
 
-    let (conn, user, sess) = auth_user(req, "")?;
+    let (conn, sess) = auth_user(req, "")?;
 
     fn parse_form(req: &mut Request) -> Result<(String, String)> {
 
@@ -564,6 +562,8 @@ pub fn change_password(req: &mut Request) -> PencilResult {
 
 
     let (old_password, new_password) = err_400!(parse_form(req), "invalid form data");
+
+    let user = user::get_user(&conn, sess.user_id).err_500()?;
 
     let user_email = match user.email {
         Some(email) => email,
@@ -589,7 +589,7 @@ pub fn change_password(req: &mut Request) -> PencilResult {
         }
         Ok(_) => {
             if let Err(e) = user::change_password(&conn,
-                                                  user.id,
+                                                  sess.user_id,
                                                   &new_password,
                                                   &*RUNTIME_PEPPER,
                                                   *PASSWORD_STRETCHING_TIME) {

@@ -35,12 +35,12 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
                               new_password,
                               &*RUNTIME_PEPPER,
                               *PASSWORD_STRETCHING_TIME).err_500()?;
-    user::join_user_group_by_name(&conn, &user, "admins").err_500()?;
-    user::join_user_group_by_name(&conn, &user, "editors").err_500()?;
-    user::join_user_group_by_name(&conn, &user, "questions").err_500()?;
-    user::join_user_group_by_name(&conn, &user, "exercises").err_500()?;
+    user::join_user_group_by_name(&conn, user.id, "admins").err_500()?;
+    user::join_user_group_by_name(&conn, user.id, "editors").err_500()?;
+    user::join_user_group_by_name(&conn, user.id, "questions").err_500()?;
+    user::join_user_group_by_name(&conn, user.id, "exercises").err_500()?;
 
-    if let Some((_, old_sess)) = get_user(&conn, &*req).err_500()? {
+    if let Some(old_sess) = get_sess(&conn, &*req).err_500()? {
         do_logout(&conn, &old_sess).err_500()?;
     }
 
@@ -48,8 +48,7 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
 
     match do_login(&conn,
                    &user.email.expect("The email is known to exist."),
-                   new_password,
-                   &*req).err_500()? {
+                   new_password).err_500()? {
         Some((_, sess)) => {
             let mut context = new_template_context();
             context.insert("install_success".into(), "success".into());
@@ -67,7 +66,7 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
 
 pub fn manage(req: &mut Request) -> PencilResult {
 
-    let (_, _, sess) = auth_user(req, "editors")?; // Unauthorized
+    let (_, sess) = auth_user(req, "editors")?; // Unauthorized
 
     let context = new_template_context();
 
@@ -78,7 +77,7 @@ pub fn manage(req: &mut Request) -> PencilResult {
 
 pub fn add_quiz_form(req: &mut Request) -> PencilResult {
 
-    let (_, _, sess) = auth_user(req, "editors")?;
+    let (_, sess) = auth_user(req, "editors")?;
 
     let context = new_template_context();
 
@@ -169,7 +168,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
             fieldsets))
     }
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let form = err_400!(parse_form(&mut *req), "Error with parsing form!");
     let result = manage::create_quiz(&conn, form.0, form.1, &*AUDIO_DIR);
@@ -182,7 +181,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
 }
 
 pub fn add_word_form(req: &mut Request) -> PencilResult {
-    let (_, _, sess) = auth_user(req, "editors")?;
+    let (_, sess) = auth_user(req, "editors")?;
 
     let context = new_template_context();
 
@@ -235,7 +234,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
         })
     }
 
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let word = parse_form(req).map_err(|_| abort(400).unwrap_err())?;
 
@@ -246,7 +245,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
 
 pub fn add_users_form(req: &mut Request) -> PencilResult {
 
-    let (_, _, sess) = auth_user(req, "admins")?;
+    let (_, sess) = auth_user(req, "admins")?;
 
     let context = new_template_context();
     req.app
@@ -257,7 +256,7 @@ pub fn add_users_form(req: &mut Request) -> PencilResult {
 pub fn add_users(req: &mut Request) -> PencilResult {
     use ganbare::email;
 
-    let (conn, _, sess) = auth_user(req, "admins")?;
+    let (conn, sess) = auth_user(req, "admins")?;
 
     req.load_form_data();
     let form = req.form().expect("The form data is loaded.");
@@ -295,7 +294,7 @@ pub fn add_users(req: &mut Request) -> PencilResult {
 }
 
 pub fn users(req: &mut Request) -> PencilResult {
-    let (_, _, sess) = auth_user(req, "admins")?;
+    let (_, sess) = auth_user(req, "admins")?;
 
     let context = new_template_context();
 
@@ -305,7 +304,7 @@ pub fn users(req: &mut Request) -> PencilResult {
 }
 
 pub fn audio(req: &mut Request) -> PencilResult {
-    let (_, _, sess) = auth_user(req, "editors")?;
+    let (_, sess) = auth_user(req, "editors")?;
 
     let context = new_template_context();
 
@@ -317,7 +316,7 @@ pub fn audio(req: &mut Request) -> PencilResult {
 pub fn send_mail_form(req: &mut Request) -> PencilResult {
     use hyper::header::Referer;
 
-    let (_, _, sess) = auth_user(req, "editors")?;
+    let (_, sess) = auth_user(req, "editors")?;
 
     let sent = req.headers().get::<Referer>();
 
@@ -336,7 +335,7 @@ pub fn send_mail_form(req: &mut Request) -> PencilResult {
 }
 
 pub fn send_mail_post(req: &mut Request) -> PencilResult {
-    let (conn, _, sess) = auth_user(req, "editors")?;
+    let (conn, sess) = auth_user(req, "editors")?;
 
     let group_pending = req.form_mut().take("group_pending");
     let group = req.form_mut().take_all("group[]").unwrap_or_else(|| vec![]);
@@ -375,7 +374,7 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
 }
 
 pub fn events(req: &mut Request) -> PencilResult {
-    let (_, _, sess) = auth_user(req, "editors")?;
+    let (_, sess) = auth_user(req, "editors")?;
 
     let context = new_template_context();
 
