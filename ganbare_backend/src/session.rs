@@ -138,7 +138,7 @@ pub fn db_check(conn: &Connection, sess: &UserSession) -> Result<Option<UserSess
             .optional()?;
     
         if let Some(mut db_sess) = db_sess {
-            if db_sess.user_id == sess.user_id && sess.refreshed == db_sess.last_seen {
+            if db_sess.user_id == sess.user_id {
                 let session_refreshed = chrono::UTC::now();
                 db_sess.last_seen = session_refreshed;
                 let _: Session = db_sess.save_changes(&**conn)?;
@@ -149,6 +149,7 @@ pub fn db_check(conn: &Connection, sess: &UserSession) -> Result<Option<UserSess
                     refresh_now: true,
                 }))
             } else {
+                warn!("The db_session info doesn't match! {:?} != {:?}", db_sess, sess);
                 bail!(ErrorKind::AuthError);
             }
         } else {
