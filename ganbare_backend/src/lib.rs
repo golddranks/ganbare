@@ -3,6 +3,10 @@
 #![feature(plugin)]
 #![plugin(binary_macros, dotenv_macros)]
 
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+extern crate serde;
 
 #[macro_use]
 pub extern crate diesel;

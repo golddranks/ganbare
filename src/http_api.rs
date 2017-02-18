@@ -3,10 +3,10 @@ use super::*;
 use chrono::UTC;
 use pencil::{abort, jsonify, Response, redirect};
 use pencil::helpers::{send_file, send_from_directory};
-use rustc_serialize;
 use regex;
 use std::io::{self, Read};
 use hyper::header::ContentLength;
+use serde_json;
 
 use ganbare::audio;
 use ganbare::quiz;
@@ -238,9 +238,8 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
 
     let answer = err_400!(parse_answer(req), "Can't parse form data? {:?}", req.form());
 
-    let new_quiz = if let Some((ev, _)) = ganbare::event::is_ongoing(&conn,
-                                                                     "pretest",
-                                                                     sess.user_id).err_500()? {
+    let new_quiz = if let Some((ev, _)) =
+        ganbare::event::is_ongoing(&conn, "pretest", sess.user_id).err_500()? {
         test::get_next_quiz_pretest(&conn, sess.user_id, answer, &ev).err_500()?
     } else if let Some((ev, _)) =
         ganbare::event::is_ongoing(&conn, "posttest", sess.user_id).err_500()? {
@@ -508,7 +507,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
     match endpoint.as_str() {
         "update_word" => {
 
-            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
+            let item = err_400!(serde_json::from_str(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_word(&conn, id, item, &*IMAGES_DIR).err_500()?,
@@ -520,7 +519,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_exercise" => {
 
-            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
+            let item = err_400!(serde_json::from_str(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_exercise(&conn, id, item).err_500()?,
@@ -531,7 +530,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_question" => {
 
-            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
+            let item = err_400!(serde_json::from_str(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_question(&conn, id, item).err_500()?,
@@ -542,7 +541,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_answer" => {
 
-            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
+            let item = err_400!(serde_json::from_str(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_answer(&conn, id, item, &*IMAGES_DIR).err_500()?,
@@ -553,7 +552,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_variant" => {
 
-            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
+            let item = err_400!(serde_json::from_str(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 manage::update_variant(&conn, id, item).err_500()?,
@@ -564,7 +563,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_bundle" => {
 
-            let item: ganbare::models::AudioBundle = err_400!(rustc_serialize::json::decode(&text),
+            let item: ganbare::models::AudioBundle = err_400!(serde_json::from_str(&text),
                                                               "Error decoding JSON");
             if item.id != id {
                 return abort(400);
@@ -578,7 +577,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_audio_file" => {
 
-            let item = err_400!(rustc_serialize::json::decode(&text), "Error decoding JSON");
+            let item = err_400!(serde_json::from_str(&text), "Error decoding JSON");
 
             let updated_item = try_or!(
                 audio::update_file(&conn, id, &item).err_500()?,
@@ -589,7 +588,7 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_narrator" => {
 
-            let item: ganbare::models::Narrator = err_400!(rustc_serialize::json::decode(&text),
+            let item: ganbare::models::Narrator = err_400!(serde_json::from_str(&text),
                                                            "Error decoding JSON");
             if item.id != id {
                 return abort(400);
@@ -602,17 +601,10 @@ pub fn update_item(req: &mut Request) -> PencilResult {
             json = jsonify(&updated_item);
         }
         "update_event" => {
-            use rustc_serialize::json::Json;
-
-            let item_json = Json::from_str(&text).map_err(|_| abort(400).unwrap_err())?;
-            let obj = try_or!(item_json.as_object(), else return abort(400));
-            let item = ganbare::models::UpdateEvent {
-                id: try_or!(obj.get("id").and_then(|d| d.as_i64()), else return abort(400)) as i32,
-                name: obj.get("name").and_then(|d| d.as_string()),
-                published: obj.get("published").and_then(|d| d.as_boolean()),
-                required_group: obj.get("required_group").map(|d| d.as_i64().map(|d| d as i32)),
-                priority: obj.get("priority").and_then(|d| d.as_i64()).map(|d| d as i32),
-            };
+            debug!("update_event before: {:?}", &text);
+            
+            let item: ganbare::models::UpdateEvent = err_400!(serde_json::from_str(&text), "Couldn't parse the data!");
+            debug!("update_event after: {:?}", item);
 
             if item.id != id {
                 return abort(400);
@@ -639,7 +631,7 @@ pub fn post_question(req: &mut Request) -> PencilResult {
     use ganbare::models::{UpdateQuestion, UpdateAnswer, NewQuizQuestion, NewAnswer};
 
     let (qq, aas): (UpdateQuestion, Vec<UpdateAnswer>) =
-        rustc_serialize::json::decode(&text).map_err(|_| abort(400).unwrap_err())?;
+        serde_json::from_str(&text).map_err(|_| abort(400).unwrap_err())?;
 
     fn parse_qq(qq: &UpdateQuestion) -> Result<NewQuizQuestion> {
         let qq = NewQuizQuestion {
@@ -700,7 +692,7 @@ pub fn post_exercise(req: &mut Request) -> PencilResult {
     use ganbare::models::{UpdateExercise, UpdateExerciseVariant, NewExercise, ExerciseVariant};
 
     let (qq, aas): (UpdateExercise, Vec<UpdateExerciseVariant>) =
-        err_400!(rustc_serialize::json::decode(&text),
+        err_400!(serde_json::from_str(&text),
                  "Error when parsing the JSON.");
 
     fn parse_qq(qq: &UpdateExercise) -> Result<NewExercise> {
@@ -794,7 +786,7 @@ pub fn user(req: &mut Request) -> PencilResult {
 
             let mut text = String::new();
             req.read_to_string(&mut text).err_500()?;
-            let metrics: UpdateUserMetrics = err_400!(rustc_serialize::json::decode(&text),
+            let metrics: UpdateUserMetrics = err_400!(serde_json::from_str(&text),
                                                       "Can't decode JSON: {:?}",
                                                       &text);
 

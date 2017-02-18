@@ -13,7 +13,7 @@ use email::lettre::email::SendableEmail;
 use schema::pending_email_confirms;
 use super::*;
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct EmailData<'a> {
     secret: &'a str,
     hmac: &'a str,

@@ -9,7 +9,6 @@ use ganbare::models::User;
 use std::net::IpAddr;
 use std::result::Result as StdResult;
 use ganbare::errors::Result;
-use rustc_serialize::base64::FromBase64;
 use ganbare::user;
 use ganbare::session;
 use ganbare::errors;

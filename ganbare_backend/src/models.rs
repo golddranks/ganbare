@@ -1,9 +1,32 @@
 use super::schema::*;
 use chrono::{DateTime, UTC};
-use try_map::FallibleMapExt;
+use serde::{Deserializer, Deserialize};
+use serde::de::Visitor;
+use std::marker::PhantomData;
+use std::fmt::{self, Formatter};
+use serde::de::Error;
 
-use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+fn double_option<T: Deserialize, D>(de: D) -> Result<Option<Option<T>>, D::Error> where D: Deserializer {
+    #[derive(Debug)]
+    struct DoubleOptionVisitor<T> { _inner: PhantomData<T> };
 
+    impl<T: Deserialize> Visitor for DoubleOptionVisitor<T> {
+        type Value = Option<Option<T>>;
+        fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+            write!(formatter, "Either a missing field, a field with null/None, or a field with value T")
+        }
+        fn visit_none<E>(self) -> Result<Self::Value, E> where E: Error {
+            Ok(Some(None))
+        }
+        fn visit_some<D>(self, de: D) -> Result<Self::Value, D::Error> where D: Deserializer {
+            match T::deserialize(de) {
+                Ok(val) => Ok(Some(Some(val))),
+                Err(e) => Err(e),
+            }
+        }
+    }
+    de.deserialize_option(DoubleOptionVisitor::<T> { _inner: PhantomData } )
+}
 
 #[derive(Insertable)]
 #[table_name="users"]
@@ -25,7 +48,7 @@ pub struct NewUser<'a> {
 #[has_many(pending_items, foreign_key = "user_id")]
 #[has_many(due_items, foreign_key = "user_id")]
 #[has_many(reset_email_secrets, foreign_key = "user_id")]
-#[derive(Identifiable, Clone, Queryable, Debug, Associations, AsChangeset, RustcEncodable)]
+#[derive(Identifiable, Clone, Queryable, Debug, Associations, AsChangeset, Serialize)]
 pub struct User {
     pub id: i32,
     pub email: Option<String>,
@@ -68,7 +91,7 @@ pub struct Session {
 }
 
 
-#[derive(Queryable, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Queryable, Debug, Serialize, Deserialize)]
 pub struct PendingEmailConfirm {
     pub secret: String,
     pub email: String,
@@ -85,7 +108,7 @@ pub struct NewPendingEmailConfirm<'a> {
 }
 
 #[derive(Identifiable, Queryable, Debug, Insertable, Associations,
-    AsChangeset, RustcEncodable, RustcDecodable)]
+    AsChangeset, Serialize, Deserialize)]
 #[table_name="user_groups"]
 #[has_many(group_memberships, foreign_key = "group_id")]
 #[has_many(anon_aliases, foreign_key = "group_id")]
@@ -97,7 +120,7 @@ pub struct UserGroup {
 }
 
 #[derive(Identifiable, Queryable, Debug, Insertable, Associations,
-    AsChangeset, RustcEncodable, RustcDecodable)]
+    AsChangeset, Serialize, Deserialize)]
 #[table_name="group_memberships"]
 #[primary_key(user_id, group_id)]
 #[belongs_to(UserGroup, foreign_key = "group_id")]
@@ -125,7 +148,7 @@ pub struct NewSkillNugget<'a> {
     pub skill_summary: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, AsChangeset, Identifiable, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, AsChangeset, Identifiable, Debug, Serialize)]
 #[table_name="skill_nuggets"]
 #[has_many(quiz_questions, foreign_key = "skill_id")]
 #[has_many(exercises, foreign_key = "skill_id")]
@@ -143,7 +166,7 @@ pub struct NewNarrator<'a> {
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable,
-    AsChangeset,Debug, RustcEncodable, RustcDecodable)]
+    AsChangeset,Debug, Serialize, Deserialize)]
 #[table_name="narrators"]
 #[has_many(audio_files, foreign_key = "narrators_id")]
 pub struct Narrator {
@@ -163,7 +186,7 @@ pub struct NewAudioFile<'a> {
 }
 
 #[derive(Insertable, Queryable, Associations,
-Identifiable, Debug, RustcEncodable, AsChangeset)]
+Identifiable, Debug, Serialize, AsChangeset)]
 #[table_name="audio_files"]
 #[belongs_to(Narrator, foreign_key = "narrators_id")]
 #[belongs_to(AudioBundle, foreign_key = "bundle_id")]
@@ -177,18 +200,19 @@ pub struct AudioFile {
     pub file_sha2: Option<Vec<u8>>,
 }
 
-#[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize)]
 #[table_name="audio_files"]
 pub struct UpdateAudioFile {
     pub narrators_id: Option<i32>,
     pub bundle_id: Option<i32>,
     pub file_path: Option<String>,
     pub mime: Option<String>,
+    #[serde(deserialize_with = "double_option")]
     pub file_sha2: Option<Option<Vec<u8>>>,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable,
-    Debug, AsChangeset, RustcEncodable, RustcDecodable)]
+    Debug, AsChangeset, Serialize, Deserialize)]
 #[table_name="audio_bundles"]
 #[has_many(audio_files, foreign_key = "bundle_id")]
 #[has_many(question_answers, foreign_key = "q_audio_bundle")]
@@ -214,7 +238,7 @@ pub struct NewQuizQuestion<'a> {
     pub skill_level: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, AsChangeset, Debug, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, AsChangeset, Debug, Serialize)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(question_answers, foreign_key = "question_id")]
 #[has_many(question_data, foreign_key = "question_id")]
@@ -230,7 +254,7 @@ pub struct QuizQuestion {
     pub skill_level: i32,
 }
 
-#[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize)]
 #[table_name="quiz_questions"]
 pub struct UpdateQuestion {
     pub skill_id: Option<i32>,
@@ -250,7 +274,7 @@ pub struct NewAnswer<'a> {
     pub answer_text: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Serialize, AsChangeset)]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
 #[belongs_to(AudioBundle, foreign_key = "q_audio_bundle")]
 #[table_name="question_answers"]
@@ -263,17 +287,18 @@ pub struct Answer {
 }
 
 
-#[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize)]
 #[table_name="question_answers"]
 pub struct UpdateAnswer {
     pub question_id: Option<i32>,
+    #[serde(deserialize_with = "double_option")]
     pub a_audio_bundle: Option<Option<i32>>,
     pub q_audio_bundle: Option<i32>,
     pub answer_text: Option<String>,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable,
-    Debug, RustcEncodable, RustcDecodable, AsChangeset)]
+    Debug, Serialize, Deserialize, AsChangeset)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
 #[has_many(exercise_variants, foreign_key = "exercise_id")]
 #[has_many(exercise_data, foreign_key = "exercise_id")]
@@ -286,7 +311,7 @@ pub struct Exercise {
     pub skill_level: i32,
 }
 
-#[derive(Queryable, Debug, AsChangeset, RustcEncodable, RustcDecodable)]
+#[derive(Queryable, Debug, AsChangeset, Serialize, Deserialize)]
 #[table_name="exercises"]
 pub struct UpdateExercise {
     pub skill_id: Option<i32>,
@@ -301,7 +326,7 @@ pub struct NewExercise {
     pub skill_level: i32,
 }
 
-#[derive(Insertable, Identifiable, Queryable, Associations, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Identifiable, Queryable, Associations, Debug, Serialize, Deserialize)]
 #[belongs_to(Exercise, foreign_key = "exercise_id")]
 #[belongs_to(Word, foreign_key = "id")]
 #[table_name="exercise_variants"]
@@ -310,7 +335,7 @@ pub struct ExerciseVariant {
     pub exercise_id: i32,
 }
 
-#[derive(Queryable, Debug, AsChangeset, RustcEncodable, RustcDecodable)]
+#[derive(Queryable, Debug, AsChangeset, Serialize, Deserialize)]
 #[table_name="exercise_variants"]
 pub struct UpdateExerciseVariant {
     pub id: Option<i32>,
@@ -328,7 +353,7 @@ pub struct NewWord<'a> {
     pub priority: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, AsChangeset)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Serialize, AsChangeset)]
 #[table_name="words"]
 #[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
 #[belongs_to(AudioBundle, foreign_key = "audio_bundle")]
@@ -345,7 +370,7 @@ pub struct Word {
     pub priority: i32,
 }
 
-#[derive(Queryable, AsChangeset, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize)]
 #[table_name="words"]
 pub struct UpdateWord {
     pub word: Option<String>,
@@ -358,7 +383,7 @@ pub struct UpdateWord {
 }
 
 #[derive(Insertable, Identifiable, Queryable, Associations, Debug,
-AsChangeset)]
+AsChangeset, Serialize)]
 #[table_name="due_items"]
 #[belongs_to(User, foreign_key = "user_id")]
 #[has_many(question_data, foreign_key = "due")]
@@ -374,28 +399,6 @@ pub struct DueItem {
     pub item_type: String,
 }
 
-impl Encodable for DueItem {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("DueItem", 8, |s| {
-            s.emit_struct_field("id", 0, |s| s.emit_i32(self.id))?;
-            s.emit_struct_field("user_id", 1, |s| s.emit_i32(self.user_id))?;
-            s.emit_struct_field("due_date", 2, |s| s.emit_str(&self.due_date.to_rfc3339()))?;
-            s.emit_struct_field("due_delay", 3, |s| s.emit_i32(self.due_delay))?;
-            s.emit_struct_field("cooldown_delay",
-                                   4,
-                                   |s| s.emit_str(&self.cooldown_delay.to_rfc3339()))?;
-            s.emit_struct_field("correct_streak_overall",
-                                   5,
-                                   |s| s.emit_i32(self.correct_streak_overall))?;
-            s.emit_struct_field("correct_streak_this_time",
-                                   6,
-                                   |s| s.emit_i32(self.correct_streak_this_time))?;
-            s.emit_struct_field("item_type", 7, |s| s.emit_str(&self.item_type))?;
-            Ok(())
-        })
-    }
-}
-
 #[derive(Insertable)]
 #[table_name="due_items"]
 pub struct NewDueItem<'a> {
@@ -409,7 +412,7 @@ pub struct NewDueItem<'a> {
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug,
-AsChangeset, RustcEncodable, RustcDecodable)]
+AsChangeset, Serialize, Deserialize)]
 #[table_name="pending_items"]
 #[belongs_to(User, foreign_key = "user_id")]
 #[belongs_to(AudioFile, foreign_key = "audio_file_id")]
@@ -447,7 +450,7 @@ pub struct QAskedData {
     pub correct_qa_id: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Clone, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Clone, Serialize)]
 #[table_name="q_answered_data"]
 #[belongs_to(QAskedData, foreign_key = "id")]
 pub struct QAnsweredData {
@@ -472,7 +475,7 @@ pub struct EAskedData {
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable,
-    Debug, Clone, AsChangeset, RustcEncodable)]
+    Debug, Clone, AsChangeset, Serialize)]
 #[table_name="e_answered_data"]
 #[belongs_to(EAskedData, foreign_key = "id")]
 pub struct EAnsweredData {
@@ -487,7 +490,7 @@ pub struct EAnsweredData {
 }
 
 #[derive(Identifiable, Insertable, Queryable, Associations, Debug, Clone,
-AsChangeset, RustcEncodable, RustcDecodable)]
+AsChangeset, Serialize, Deserialize)]
 #[table_name="w_asked_data"]
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(Word, foreign_key = "word_id")]
@@ -499,7 +502,7 @@ pub struct WAskedData {
 }
 
 #[derive(Identifiable, Insertable, Queryable, Associations,
-    Debug, Clone, AsChangeset, RustcEncodable)]
+    Debug, Clone, AsChangeset, Serialize)]
 #[table_name="w_answered_data"]
 #[belongs_to(WAskedData, foreign_key = "id")]
 pub struct WAnsweredData {
@@ -511,7 +514,7 @@ pub struct WAnsweredData {
 }
 
 #[derive(Insertable, Queryable, Associations, Debug,
-AsChangeset, RustcEncodable, RustcDecodable)]
+AsChangeset, Serialize, Deserialize)]
 #[table_name="question_data"]
 #[belongs_to(DueItem, foreign_key = "due")]
 pub struct QuestionData {
@@ -520,7 +523,7 @@ pub struct QuestionData {
 }
 
 #[derive(Insertable, Queryable, Associations, Debug,
-AsChangeset, RustcEncodable, RustcDecodable)]
+AsChangeset, Serialize, Deserialize)]
 #[table_name="exercise_data"]
 #[belongs_to(DueItem, foreign_key = "due")]
 #[belongs_to(Exercise, foreign_key = "exercise_id")]
@@ -538,7 +541,7 @@ pub struct NewSkillData {
 }
 
 #[derive(Identifiable, Insertable, Queryable, Associations,
-Debug, AsChangeset, RustcEncodable, RustcDecodable)]
+Debug, AsChangeset, Serialize, Deserialize)]
 #[table_name="skill_data"]
 #[primary_key(user_id, skill_nugget)]
 #[belongs_to(User, foreign_key = "user_id")]
@@ -549,7 +552,7 @@ pub struct SkillData {
     pub skill_level: i32,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable)]
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Identifiable, Serialize)]
 #[belongs_to(User, foreign_key = "id")]
 #[table_name="user_metrics"]
 pub struct UserMetrics {
@@ -573,48 +576,7 @@ pub struct UserMetrics {
     pub streak_skill_bump_criteria: i32,
 }
 
-impl Encodable for UserMetrics {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("UserMetrics", 17, |s| {
-            s.emit_struct_field("id", 0, |s| s.emit_i32(self.id))?;
-            s.emit_struct_field("new_words_since_break",
-                                   1,
-                                   |s| s.emit_i32(self.new_words_since_break))?;
-            s.emit_struct_field("new_words_today", 2, |s| s.emit_i32(self.new_words_today))?;
-            s.emit_struct_field("quizes_since_break",
-                                   3,
-                                   |s| s.emit_i32(self.quizes_since_break))?;
-            s.emit_struct_field("quizes_today", 4, |s| s.emit_i32(self.quizes_today))?;
-            s.emit_struct_field("break_until",
-                                   5,
-                                   |s| s.emit_str(&self.break_until.to_rfc3339()))?;
-            s.emit_struct_field("today", 6, |s| s.emit_str(&self.today.to_rfc3339()))?;
-            s.emit_struct_field("max_words_since_break",
-                                   7,
-                                   |s| s.emit_i32(self.max_words_since_break))?;
-            s.emit_struct_field("max_words_today", 8, |s| s.emit_i32(self.max_words_today))?;
-            s.emit_struct_field("max_quizes_since_break",
-                                   9,
-                                   |s| s.emit_i32(self.max_quizes_since_break))?;
-            s.emit_struct_field("max_quizes_today",
-                                   10,
-                                   |s| s.emit_i32(self.max_quizes_today))?;
-            s.emit_struct_field("break_length", 11, |s| s.emit_i32(self.break_length))?;
-            s.emit_struct_field("delay_multiplier",
-                                   12,
-                                   |s| s.emit_i32(self.delay_multiplier))?;
-            s.emit_struct_field("initial_delay", 13, |s| s.emit_i32(self.initial_delay))?;
-            s.emit_struct_field("streak_limit", 14, |s| s.emit_i32(self.streak_limit))?;
-            s.emit_struct_field("cooldown_delay", 15, |s| s.emit_i32(self.cooldown_delay))?;
-            s.emit_struct_field("streak_skill_bump_criteria",
-                                   16,
-                                   |s| s.emit_i32(self.streak_skill_bump_criteria))?;
-            Ok(())
-        })
-    }
-}
-
-#[derive(Debug, AsChangeset, Identifiable)]
+#[derive(Debug, AsChangeset, Identifiable, Deserialize)]
 #[table_name="user_metrics"]
 pub struct UpdateUserMetrics {
     pub id: i32,
@@ -637,56 +599,6 @@ pub struct UpdateUserMetrics {
     pub streak_skill_bump_criteria: Option<i32>,
 }
 
-impl Decodable for UpdateUserMetrics {
-    fn decode<D: Decoder>(d: &mut D) -> Result<UpdateUserMetrics, D::Error> {
-        d.read_struct("UserMetrics", 17, |d| {
-            Ok(UpdateUserMetrics{
-                id:
-                    d.read_struct_field("id", 0, Decodable::decode)?,
-                new_words_since_break:
-                    d.read_struct_field("new_words_since_break", 1, Decodable::decode)?,
-                new_words_today:
-                    d.read_struct_field("new_words_today", 2, Decodable::decode)?,
-                quizes_since_break:
-                    d.read_struct_field("quizes_since_break", 3, Decodable::decode)?,
-                quizes_today:
-                    d.read_struct_field("quizes_today", 4, Decodable::decode)?,
-                break_until:
-                    d.read_struct_field("break_until", 5, <Option<String> as Decodable>::decode)?
-                        .try_map(|s|
-                            DateTime::parse_from_rfc3339(&s)
-                                .map_err(|_| d.error("Can't decode a date from rfc3339!")))?
-                        .map(|t| t.with_timezone(&UTC)),
-                today: d.read_struct_field("today", 6, <Option<String> as Decodable>::decode)?
-                    .try_map(|s|
-                        DateTime::parse_from_rfc3339(&s)
-                            .map_err(|_| d.error("Can't decode a date from rfc3339!")))?
-                    .map(|t| t.with_timezone(&UTC)),
-                max_words_since_break:
-                    d.read_struct_field("max_words_since_break", 7, Decodable::decode)?,
-                max_words_today:
-                    d.read_struct_field("max_words_today", 8, Decodable::decode)?,
-                max_quizes_since_break:
-                    d.read_struct_field("max_quizes_since_break", 9, Decodable::decode)?,
-                max_quizes_today:
-                    d.read_struct_field("max_quizes_today", 10, Decodable::decode)?,
-                break_length:
-                    d.read_struct_field("break_length", 11, Decodable::decode)?,
-                delay_multiplier:
-                    d.read_struct_field("delay_multiplier", 12, Decodable::decode)?,
-                initial_delay:
-                    d.read_struct_field("initial_delay", 13, Decodable::decode)?,
-                streak_limit:
-                    d.read_struct_field("streak_limit", 14, Decodable::decode)?,
-                cooldown_delay:
-                    d.read_struct_field("cooldown_delay", 15, Decodable::decode)?,
-                streak_skill_bump_criteria:
-                    d.read_struct_field("streak_skill_bump_criteria", 16, Decodable::decode)?,
-            })
-        })
-    }
-}
-
 #[derive(Insertable)]
 #[table_name="user_metrics"]
 pub struct NewUserMetrics {
@@ -700,7 +612,7 @@ pub struct NewUserStats {
 }
 
 #[derive(Insertable, Queryable, Associations, Debug, AsChangeset,
-    Identifiable, RustcEncodable, RustcDecodable)]
+    Identifiable, Serialize, Deserialize)]
 #[belongs_to(User, foreign_key = "id")]
 #[table_name="user_stats"]
 pub struct UserStats {
@@ -714,7 +626,7 @@ pub struct UserStats {
     pub last_nag_email: Option<DateTime<UTC>>,
 }
 
-#[derive(Insertable, Queryable, Associations, Identifiable, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Insertable, Queryable, Associations, Identifiable, Debug, Serialize, Deserialize)]
 #[has_many(event_experiences, foreign_key = "event_id")]
 #[belongs_to(UserGroup, foreign_key = "required_group")]
 #[table_name="events"]
@@ -726,12 +638,13 @@ pub struct Event {
     pub priority: i32,
 }
 
-#[derive(Queryable, Identifiable, RustcEncodable, Debug, AsChangeset)]
+#[derive(Queryable, Identifiable, Serialize, Debug, AsChangeset, Deserialize)]
 #[table_name="events"]
-pub struct UpdateEvent<'a> {
+pub struct UpdateEvent {
     pub id: i32,
-    pub name: Option<&'a str>,
+    pub name: Option<String>,
     pub published: Option<bool>,
+    #[serde(deserialize_with = "double_option")]
     pub required_group: Option<Option<i32>>,
     pub priority: Option<i32>,
 }
@@ -742,7 +655,7 @@ pub struct NewEvent<'a> {
     pub name: &'a str,
 }
 
-#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, RustcEncodable)]
+#[derive(Insertable, Queryable, Associations, Debug, AsChangeset, Serialize)]
 #[table_name="event_experiences"]
 #[changeset_options(treat_none_as_null = "true")]
 #[belongs_to(Event, foreign_key = "event_id")]
@@ -761,7 +674,7 @@ pub struct NewEventExperience {
     pub event_id: i32,
 }
 
-#[derive(Insertable, Queryable, Identifiable, Associations, Debug, AsChangeset, RustcEncodable)]
+#[derive(Insertable, Queryable, Identifiable, Associations, Debug, AsChangeset, Serialize)]
 #[belongs_to(User, foreign_key = "user_id")]
 #[belongs_to(Event, foreign_key = "event_id")]
 #[changeset_options(treat_none_as_null = "true")]

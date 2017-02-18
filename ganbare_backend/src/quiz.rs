@@ -2,7 +2,7 @@ use super::*;
 use rand::{Rng, thread_rng};
 use unicode_normalization::UnicodeNormalization;
 
-#[derive(Debug, Clone, RustcEncodable)]
+#[derive(Debug, Clone, Serialize)]
 pub enum Answered {
     W(WAnsweredData),
     Q(QAnsweredData),
@@ -24,13 +24,13 @@ pub enum Quiz {
     F(FutureJson),
 }
 
-#[derive(RustcEncodable, Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct FutureJson {
     pub quiz_type: &'static str,
     pub due_date: String,
 }
 
-#[derive(RustcEncodable, Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct QuestionJson {
     pub quiz_type: &'static str,
     pub asked_id: i32,
@@ -40,7 +40,7 @@ pub struct QuestionJson {
     pub answers: Vec<(i32, String)>,
 }
 
-#[derive(RustcEncodable, Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ExerciseJson {
     pub quiz_type: &'static str,
     pub event_name: &'static str,
@@ -50,7 +50,7 @@ pub struct ExerciseJson {
     pub must_record: bool,
 }
 
-#[derive(RustcEncodable, Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct WordJson {
     pub quiz_type: &'static str,
     pub asked_id: i32,

@@ -47,12 +47,15 @@ pub fn dispatch_event(conn: &Connection, user_id: i32) -> Result<Option<Event>> 
         .filter(event_experiences::event_finish.is_not_null())
         .select(event_experiences::event_id);
 
-    Ok(events::table.filter(events::published.eq(true))
+    let event = events::table.filter(events::published.eq(true))
         .filter(events::required_group.eq(any(groups)).or(events::required_group.is_null()))
         .filter(events::id.ne(all(finished_events)))
         .order(events::priority.asc())
         .first(&**conn)
-        .optional()?)
+        .optional()?;
+
+    debug!("Dispatched event: {:?}", event);
+    Ok(event)
 }
 
 pub fn is_workable_or_done_by_event_id(conn: &Connection,
@@ -92,47 +95,6 @@ pub fn is_workable_or_done_by_event_id(conn: &Connection,
 
     match group_membership {
         Some(_) => Ok(Some((event, exp))),
-        None => Ok(None),
-    }
-}
-
-pub fn is_workable(conn: &Connection, event_name: &str, user: &User) -> Result<Option<Event>> {
-    use schema::{events, event_experiences, group_memberships};
-
-    let event: Event = events::table.filter(events::name.eq(event_name))
-        .get_result(&**conn)
-        .chain_err(|| ErrorKind::Msg(format!("Error fetching event {:?}", event_name)))?;
-
-    if !event.published {
-        return Ok(None);
-    };
-
-    let exp: Option<EventExperience> =
-        event_experiences::table.filter(event_experiences::user_id.eq(user.id))
-            .filter(event_experiences::event_id.eq(event.id))
-            .get_result(&**conn)
-            .optional()?;
-
-    if let Some(exp) = exp {
-        if exp.event_finish.is_some() {
-            return Ok(None); // The event is already done
-        }
-    }
-
-    let group_id = if let Some(g) = event.required_group {
-        g
-    } else {
-        return Ok(Some(event));
-    };
-
-    let group_membership: Option<GroupMembership> =
-        group_memberships::table.filter(group_memberships::group_id.eq(group_id))
-            .filter(group_memberships::user_id.eq(user.id))
-            .get_result(&**conn)
-            .optional()?;
-
-    match group_membership {
-        Some(_) => Ok(Some(event)),
         None => Ok(None),
     }
 }
@@ -246,8 +208,27 @@ pub fn is_ongoing(conn: &Connection,
 
     let ev_state = state(conn, event_name, user_id)?;
 
-    if let Some(ev_exp @ (Event { published: true, .. }, EventExperience { event_finish: None, .. })) = ev_state {
-        Ok(Some(ev_exp))
+    if let Some(ev_exp @ ( Event { published: true, .. }, EventExperience { event_finish: None, .. })) = ev_state {
+
+        match ev_exp.0.required_group {
+            Some(group_id) => {
+                use schema::group_memberships;
+
+                let group_membership: Option<GroupMembership> =
+                    group_memberships::table.filter(group_memberships::group_id.eq(group_id))
+                        .filter(group_memberships::user_id.eq(user_id))
+                        .get_result(&**conn)
+                        .optional()?;
+            
+                match group_membership {
+                    Some(_) => Ok(Some(ev_exp)),
+                    None => Ok(None),
+                }
+            },
+            None => {
+                Ok(Some(ev_exp))
+            }
+        }
     } else {
         Ok(None)
     }

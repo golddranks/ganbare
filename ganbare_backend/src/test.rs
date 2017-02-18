@@ -1,7 +1,5 @@
 use super::*;
 use quiz::{Answered, Quiz, QuizSerialized};
-use rustc_serialize::json;
-
 
 fn save_answer_test_item(conn: &Connection,
                          user_id: i32,
@@ -36,7 +34,7 @@ fn save_answer_test_item(conn: &Connection,
         .and_then(|d| d.data.parse::<usize>().ok())
         .unwrap_or(0);
     let answer_key = "answer_".to_string() + &number.to_string();
-    let answer_json = json::encode(&answer_enum).unwrap();
+    let answer_json = serde_json::to_string(&answer_enum).unwrap();
     event::save_userdata(conn,
                          event,
                          user_id,
@@ -121,7 +119,7 @@ pub fn get_next_quiz_posttest(conn: &Connection,
     get_new_quiz_posttest(conn, user_id, event)
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 pub struct RetellingJson {
     img_src: String,
     audio_src: String,

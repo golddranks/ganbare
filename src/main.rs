@@ -19,7 +19,6 @@ extern crate pencil;
 extern crate dotenv;
 extern crate env_logger;
 extern crate time;
-extern crate rustc_serialize;
 extern crate rand;
 extern crate chrono;
 extern crate regex;
@@ -30,6 +29,7 @@ extern crate typemap;
 extern crate crypto;
 extern crate lettre;
 extern crate data_encoding;
+extern crate serde_json;
 
 extern crate r2d2;
 extern crate r2d2_diesel;
