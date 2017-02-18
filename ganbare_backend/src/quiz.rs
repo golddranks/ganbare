@@ -1050,7 +1050,7 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     if words && new_quizes && due_quizes {
         debug!("Starting a break because the break limits are full.");
 
-        let time_since_last_break = chrono::UTC::now() - metrics.break_until;
+        let time_since_last_break = chrono::UTC::now().signed_duration_since(metrics.break_until);
 
         let discounted_breaktime = max(Duration::seconds(0),
                                        Duration::seconds(metrics.break_length as i64) -

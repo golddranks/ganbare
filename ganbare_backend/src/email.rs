@@ -190,7 +190,7 @@ pub fn complete_pending_email_confirm(conn: &Connection,
 }
 
 pub fn clean_old_pendings(conn: &Connection,
-                          duration: chrono::duration::Duration)
+                          duration: chrono::Duration)
                           -> Result<usize> {
     use schema::pending_email_confirms;
     let deadline = chrono::UTC::now() - duration;

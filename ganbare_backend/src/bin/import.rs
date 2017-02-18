@@ -1,5 +1,3 @@
-#![feature(field_init_shorthand)]
-
 extern crate ganbare_backend;
 
 #[macro_use]

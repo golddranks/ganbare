@@ -33,6 +33,22 @@ use lettre::transport::EmailTransport;
 
 lazy_static! {
 
+    pub static ref COOKIE_HMAC_KEY: Vec<u8> ={
+        dotenv::dotenv().ok();
+        let hmac_key = env::var("GANBARE_COOKIE_HMAC_KEY")
+            .expect(
+                "Environmental variable GANBARE_COOKIE_HMAC_KEY must be set!\
+                (format: 256-bit random value encoded as base64)"
+            )
+            .from_base64().expect(
+                "Environmental variable GANBARE_COOKIE_HMAC_KEY isn't valid Base64!
+            ");
+        if hmac_key.len() != 32 {
+            panic!("The value must be 256-bit, that is, 32 bytes long!")
+        }
+        hmac_key
+    };
+
     pub static ref MAIL_QUEUE: RwLock<VecDeque<Email>> =
         RwLock::new(VecDeque::new());
 
@@ -229,7 +245,7 @@ fn main() {
                     return;
                 }
             }
-            let secret = match email::add_pending_email_confirm(&pooled_conn, email, &[]) {
+            let (secret, hmac) = match email::add_pending_email_confirm(&pooled_conn, &**COOKIE_HMAC_KEY, email, &[]) {
                 Ok(secret) => secret,
                 Err(e) => {
                     println!("Error: {:?}", e);
@@ -238,7 +254,8 @@ fn main() {
             };
             match email::send_confirmation(&*MAIL_QUEUE,
                                            email,
-                                           secret.as_ref(),
+                                           secret.as_str(),
+                                           hmac.as_str(),
                                            &*SITE_DOMAIN,
                                            &*SITE_LINK,
                                            &handlebars,

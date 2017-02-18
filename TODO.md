@@ -3,10 +3,6 @@
 
 Before production
 
-- Implement session secret
-
-- Migrate to Diesel 0.11 and chrono 0.3
-
 - Implement lower case password field
 - Implement backing in survey
 - Lower the volume of toot

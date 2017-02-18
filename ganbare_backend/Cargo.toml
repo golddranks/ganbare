@@ -4,14 +4,14 @@ version = "0.3.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [dependencies]
-diesel = { version = "0.10", features = ["chrono", "large-tables"]}
-diesel_codegen = {version = "0.10", default-features = false, features = ["postgres", "dotenv"] }
+diesel = { version = "0.11", features = ["chrono", "large-tables"]}
+diesel_codegen = {version = "0.11", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
 dotenv_macros = "0.10"
 rust-crypto = "0.2"
 error-chain = { git = "https://github.com/golddranks/error-chain", branch = "new_constructor", default-features = false}
 clap = "2.20"
-chrono = { version = "0.2", features = ["rustc-serialize"]}
+chrono = { version = "0.3", features = ["serde"]}
 rpassword = "0.3"
 rand = "0.3"
 rustc-serialize = "0.3"
@@ -30,9 +30,12 @@ try_map = "0.2"
 handlebars = "0.25"
 reqwest = "0.4"
 r2d2 = "0.7"
-r2d2-diesel = "0.10"
+r2d2-diesel = "0.11"
 cookie = { git = "https://github.com/golddranks/cookie-rs", branch = "experiments" }
 byteorder = "1.0"
+serde = "0.9"
+serde_derive = "0.9"
+serde_json = "0.9"
 
 [replace]
 "email:0.0.14" = { git = "https://github.com/golddranks/rust-email/" }

@@ -75,9 +75,8 @@ pub fn get_create_narrator(conn: &Connection, mut name: &str) -> Result<Narrator
 
 pub fn del_narrator(conn: &Connection, id: i32) -> Result<bool> {
     use schema::{narrators, audio_files};
-    use diesel::result::TransactionError::*;
 
-    match conn.transaction(|| {
+    conn.transaction(|| {
 
         info!("Deleting audio_files with narrators_id {:?}", id);
 
@@ -96,26 +95,17 @@ pub fn del_narrator(conn: &Connection, id: i32) -> Result<bool> {
 
         Ok(narrators_count == 1)
 
-    }) {
-        Ok(b) => Ok(b),
-        Err(e) => {
-            match e {
-                CouldntCreateTransaction(e) => Err(e.into()),
-                UserReturnedError(e) => Err(e),
-            }
-        }
-    }
+    })
 }
 
 pub fn merge_narrator(conn: &Connection, narrator_id: i32, new_narrator_id: i32) -> Result<()> {
     use schema::{audio_files, narrators};
-    use diesel::result::TransactionError::*;
 
     info!("Replacing old narrator references (id {}) with new ones (id {}).",
           narrator_id,
           new_narrator_id);
 
-    match conn.transaction(|| {
+    conn.transaction(|| {
 
         let count = diesel::update(
                 audio_files::table.filter(audio_files::narrators_id.eq(narrator_id))
@@ -129,26 +119,17 @@ pub fn merge_narrator(conn: &Connection, narrator_id: i32, new_narrator_id: i32)
 
         Ok(())
 
-    }) {
-        Ok(b) => Ok(b),
-        Err(e) => {
-            match e {
-                CouldntCreateTransaction(e) => Err(e.into()),
-                UserReturnedError(e) => Err(e),
-            }
-        }
-    }
+    })
 }
 
 pub fn merge_audio_bundle(conn: &Connection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
     use schema::{audio_files, audio_bundles};
-    use diesel::result::TransactionError::*;
 
     info!("Replacing old bundle references (id {}) with new ones (id {}).",
           bundle_id,
           new_bundle_id);
 
-    match conn.transaction(|| {
+    conn.transaction(|| {
 
         // updating audio_files
         let count = diesel::update(
@@ -165,22 +146,13 @@ pub fn merge_audio_bundle(conn: &Connection, bundle_id: i32, new_bundle_id: i32)
         diesel::delete(audio_bundles::table.filter(audio_bundles::id.eq(bundle_id))).execute(&**conn)?;
         Ok(())
 
-    }) {
-        Ok(b) => Ok(b),
-        Err(e) => {
-            match e {
-                CouldntCreateTransaction(e) => Err(e.into()),
-                UserReturnedError(e) => Err(e),
-            }
-        }
-    }
+    })
 }
 
 pub fn del_bundle(conn: &Connection, id: i32) -> Result<bool> {
     use schema::{audio_bundles, audio_files, question_answers, words};
-    use diesel::result::TransactionError::*;
 
-    match conn.transaction(|| {
+    conn.transaction(|| {
 
         // To avoid deleting words and questions,
         // let's find a replacement bundle for all the things that depend on this!
@@ -234,15 +206,7 @@ pub fn del_bundle(conn: &Connection, id: i32) -> Result<bool> {
 
         Ok(count == 1)
 
-    }) {
-        Ok(b) => Ok(b),
-        Err(e) => {
-            match e {
-                CouldntCreateTransaction(e) => Err(e.into()),
-                UserReturnedError(e) => Err(e),
-            }
-        }
-    }
+    })
 }
 
 fn default_narrator_id(conn: &Connection, opt_narrator: &mut Option<Narrator>) -> Result<i32> {

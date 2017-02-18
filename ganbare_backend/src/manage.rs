@@ -424,13 +424,12 @@ pub fn del_due_and_pending_items(conn: &Connection, user_id: i32) -> Result<()> 
 
 pub fn replace_audio_bundle(conn: &Connection, bundle_id: i32, new_bundle_id: i32) -> Result<()> {
     use schema::{words, question_answers};
-    use diesel::result::TransactionError::*;
 
     info!("Replacing old bundle references (id {}) with new ones (id {}).",
           bundle_id,
           new_bundle_id);
 
-    match conn.transaction(|| {
+    conn.transaction(|| {
 
         let count = diesel::update(
                 words::table.filter(words::audio_bundle.eq(bundle_id))
@@ -460,15 +459,7 @@ pub fn replace_audio_bundle(conn: &Connection, bundle_id: i32, new_bundle_id: i3
 
         Ok(())
 
-    }) {
-        Ok(b) => Ok(b),
-        Err(e) => {
-            match e {
-                CouldntCreateTransaction(e) => Err(e.into()),
-                UserReturnedError(e) => Err(e),
-            }
-        }
-    }
+    })
 }
 
 use regex::Regex;

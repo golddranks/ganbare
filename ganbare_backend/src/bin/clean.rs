@@ -12,7 +12,6 @@ extern crate env_logger;
 extern crate lazy_static;
 extern crate rand;
 extern crate regex;
-extern crate time;
 extern crate crypto;
 extern crate r2d2;
 

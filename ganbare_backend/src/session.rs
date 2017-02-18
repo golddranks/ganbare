@@ -162,7 +162,7 @@ pub fn check_integrity(sess_id_str: &str,
 use helpers::Cache;
 
 pub fn check(sess: &UserSession, logout_cache: &Cache<i32, UserSession>) -> Result<bool> {
-    if sess.refreshed > chrono::UTC::now() - chrono::duration::Duration::minutes(5) {
+    if sess.refreshed > chrono::UTC::now() - chrono::Duration::minutes(5) {
         if logout_cache.get(&sess.sess_id)?.is_some() {
             Ok(false) // User was recently logged out so don't trust their cookie!
         } else {
