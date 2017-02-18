@@ -18,6 +18,8 @@ pub struct UserSession {
     pub user_id: i32,
     pub refreshed: DateTime<UTC>,
     pub refresh_now: bool,
+    pub token: Vec<u8>,
+    pub refresh_count: i32,
 }
 
 pub fn new_token_and_hmac(hmac_key: &[u8]) -> Result<(String, String)> {
@@ -64,15 +66,49 @@ pub fn fresh_token() -> Result<[u8; SESSID_BITS / 8]> {
 pub fn get_hmac_for_sess(session_id: &str,
                          user_id: &str,
                          refreshed: &str,
-                         nonce: &[u8],
+                         refresh_count: &str,
+                         token: &[u8],
                          secret_key: &[u8])
                          -> String {
     let mut hmac_maker = Hmac::new(Sha512::new(), secret_key);
     hmac_maker.input(session_id.as_bytes());
     hmac_maker.input(user_id.as_bytes());
     hmac_maker.input(refreshed.as_bytes());
-    hmac_maker.input(nonce);
+    hmac_maker.input(refresh_count.as_bytes());
+    hmac_maker.input(token);
     encode_nopad(hmac_maker.result().code())
+}
+
+pub fn verify_hmac_for_sess_secret(
+                            secret: &[u8],
+                            refresh_count: i32,
+                            token: &[u8])
+                         -> bool {
+    use byteorder::WriteBytesExt;
+
+    let mut refresh_times_bytes = [0_u8; 4];
+    (&mut refresh_times_bytes[..]).write_i32::<byteorder::LittleEndian>(refresh_count)
+        .expect("We should be able to write to the memory we just allocated!");
+
+    let mut hmac_maker = Hmac::new(Sha512::new(), secret);
+    hmac_maker.input(&refresh_times_bytes[..]);
+
+    hmac_maker.result() == MacResult::new(token)
+}
+
+pub fn get_hmac_for_sess_secret(
+                            secret: &[u8],
+                            refresh_count: i32)
+                         -> Vec<u8> {
+    use byteorder::WriteBytesExt;
+
+    let mut refresh_times_bytes = [0_u8; 4];
+    (&mut refresh_times_bytes[..]).write_i32::<byteorder::LittleEndian>(refresh_count)
+        .expect("We should be able to write to the memory we just allocated!");
+
+    let mut hmac_maker = Hmac::new(Sha512::new(), secret);
+    hmac_maker.input(&refresh_times_bytes[..]);
+    hmac_maker.result().code().to_owned()
 }
 
 pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Result<usize> {
@@ -89,21 +125,24 @@ pub fn check_integrity(sess_id_str: &str,
                        user_id_str: &str,
                        refreshed_str: &str,
                        hmac: &str,
-                       nonce: &str,
+                       token_base64url: &str,
+                       refresh_count_str: &str,
                        secret_key: &[u8])
                        -> Result<UserSession> {
     let sess_id = sess_id_str.parse()?;
     let user_id = user_id_str.parse()?;
+    let refresh_count = refresh_count_str.parse()?;
     let refreshed = DateTime::parse_from_rfc3339(refreshed_str)?.with_timezone(&UTC);
 
     let hmac = decode_nopad(hmac.as_bytes())?;
-    let nonce = decode_nopad(nonce.as_bytes())?;
+    let token = decode_nopad(token_base64url.as_bytes())?;
 
     let mut hmac_checker = Hmac::new(Sha512::new(), secret_key);
     hmac_checker.input(sess_id_str.as_bytes());
     hmac_checker.input(user_id_str.as_bytes());
     hmac_checker.input(refreshed_str.as_bytes());
-    hmac_checker.input(nonce.as_slice());
+    hmac_checker.input(refresh_count_str.as_bytes());
+    hmac_checker.input(token.as_slice());
 
     if hmac_checker.result() == MacResult::new_from_owned(hmac) {
         Ok(UserSession {
@@ -111,6 +150,8 @@ pub fn check_integrity(sess_id_str: &str,
             user_id: user_id,
             refreshed: refreshed,
             refresh_now: false,
+            token,
+            refresh_count,
         })
     } else {
         warn!("The HMAC doesn't agree with the cookie!");
@@ -141,29 +182,63 @@ pub fn db_check(conn: &Connection, sess: &UserSession, sess_expire: chrono::Dura
         if sess.refreshed < oldest_viable {
             return Ok(None); // The session is expired
         }
+        
+        let session_refreshed = chrono::UTC::now();
 
-        let db_sess: Option<Session> = sessions::table
-            .filter(sessions::id.eq(sess.sess_id))
+        let db_sess: Option<Session> = diesel::update(sessions::table
+            .filter(
+                sessions::id.eq(sess.sess_id)
+                    .and(sessions::user_id.eq(sess.user_id))
+                    .and(sessions::refresh_count.eq(sess.refresh_count))
+                )
+            )
+            .set((sessions::last_seen.eq(session_refreshed),
+                sessions::refresh_count.eq(sessions::refresh_count+1)))
             .get_result(&**conn)
             .optional()?;
-    
-        if let Some(mut db_sess) = db_sess {
-            if db_sess.user_id == sess.user_id {
-                let session_refreshed = chrono::UTC::now();
-                db_sess.last_seen = session_refreshed;
-                let _: Session = db_sess.save_changes(&**conn)?;
-                Ok(Some(UserSession {
-                    refreshed: session_refreshed,
-                    user_id: db_sess.user_id,
-                    sess_id: db_sess.id,
-                    refresh_now: true,
-                }))
-            } else {
-                warn!("The db_session info doesn't match! {:?} != {:?}", db_sess, sess);
-                bail!(ErrorKind::AuthError);
+
+        match db_sess {
+            Some(db_sess) => {
+                if verify_hmac_for_sess_secret(db_sess.secret.as_slice(), db_sess.refresh_count-1, &sess.token) {
+                    Ok(Some(UserSession {
+                        refreshed: session_refreshed,
+                        user_id: db_sess.user_id,
+                        sess_id: db_sess.id,
+                        refresh_now: true,
+                        token: get_hmac_for_sess_secret(db_sess.secret.as_slice(), db_sess.refresh_count),
+                        refresh_count: db_sess.refresh_count,
+                    }))
+                } else {
+                    Ok(None) // The token didn't match
+                }
+
             }
-        } else {
-            Ok(None) // User not logged in anymore
+            None => {
+                let db_fresher_sess: Option<Session> = sessions::table
+                    .filter(
+                        sessions::id.eq(sess.sess_id)
+                            .and(sessions::user_id.eq(sess.user_id))
+                            .and(sessions::refresh_count.eq(sess.refresh_count+1))
+                        )
+                    .get_result(&**conn)
+                    .optional()?;
+                if let Some(db_sess) = db_fresher_sess { // The DB session was updated concurrently and this request had stale info
+                    if verify_hmac_for_sess_secret(db_sess.secret.as_slice(), db_sess.refresh_count-1, &sess.token) {
+                        Ok(Some(UserSession {
+                            refreshed: db_sess.last_seen,
+                            user_id: db_sess.user_id,
+                            sess_id: db_sess.id,
+                            refresh_now: true,
+                            token: get_hmac_for_sess_secret(db_sess.secret.as_slice(), db_sess.refresh_count),
+                            refresh_count: db_sess.refresh_count,
+                        }))
+                    } else {
+                        Ok(None) // The token didn't match
+                    }
+                } else {
+                    Ok(None) // User not logged in anymore
+                }
+            }
         }
     }
     /*
@@ -250,10 +325,13 @@ pub fn end(conn: &Connection, sess_id: i32) -> Result<Option<()>> {
 pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
     use schema::sessions;
 
+    let sess_secret = fresh_token()?;
+
     let new_sess = NewSession {
         user_id: user.id,
         started: chrono::UTC::now(),
         last_seen: chrono::UTC::now(),
+        secret: &sess_secret[..],
     };
 
     let db_sess: Session = diesel::insert(&new_sess).into(sessions::table)
@@ -265,5 +343,7 @@ pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
         sess_id: db_sess.id,
         refreshed: db_sess.last_seen,
         refresh_now: true,
+        token: get_hmac_for_sess_secret(&sess_secret[..], 0),
+        refresh_count: 0,
     })
 }

@@ -293,7 +293,8 @@ fn get_session_cookie(cookies: &Cookie) -> Result<Option<session::UserSession>> 
     let mut user_id = None;
     let mut refreshed = None;
     let mut hmac = None;
-    let mut nonce = None;
+    let mut token = None;
+    let mut refresh_count = None;
     for c in cookies.0.iter().map(String::as_str) {
         match CookiePair::parse(c) {
             Ok(ref c) if c.name() == "session_id" => {
@@ -308,20 +309,24 @@ fn get_session_cookie(cookies: &Cookie) -> Result<Option<session::UserSession>> 
             Ok(ref c) if c.name() == "hmac" => {
                 hmac = Some(c.value().long_or_panic());
             }
-            Ok(ref c) if c.name() == "nonce" => {
-                nonce = Some(c.value().long_or_panic());
+            Ok(ref c) if c.name() == "token" => {
+                token = Some(c.value().long_or_panic());
+            }
+            Ok(ref c) if c.name() == "refresh_count" => {
+                refresh_count = Some(c.value().long_or_panic());
             }
             Ok(_) => (),
             Err(e) => bail!(e),
         }
     }
-    if let (Some(session_id), Some(hmac), Some(user_id), Some(refreshed), Some(nonce)) =
-        (session_id, hmac, user_id, refreshed, nonce) {
+    if let (Some(session_id), Some(hmac), Some(user_id), Some(refreshed), Some(token), Some(refresh_count)) =
+        (session_id, hmac, user_id, refreshed, token, refresh_count) {
         let sess = session::check_integrity(session_id,
                                             user_id,
                                             refreshed,
                                             hmac,
-                                            nonce,
+                                            token,
+                                            refresh_count,
                                             COOKIE_HMAC_KEY.as_slice())?;
         Ok(Some(sess))
     } else {
@@ -432,14 +437,15 @@ impl HeaderProcessor for Response {
         if sess.refresh_now {
             let session_id = sess.sess_id.to_string();
             let user_id = sess.user_id.to_string();
+            let refresh_count = sess.refresh_count.to_string();
             let refreshed = sess.refreshed.to_rfc3339();
-            let nonce_bin = session::fresh_token().err_500()?;
             let hmac = session::get_hmac_for_sess(&session_id,
                                                   &user_id,
                                                   &refreshed,
-                                                  &nonce_bin[..],
+                                                  &refresh_count,
+                                                  sess.token.as_slice(),
                                                   &*COOKIE_HMAC_KEY);
-            let nonce_base64 = encode_nopad(&nonce_bin[..]);
+            let token_base64 = encode_nopad(sess.token.as_slice());
 
             let session_id = CookiePair::build("session_id", session_id)
                 .path("/")
@@ -465,7 +471,13 @@ impl HeaderProcessor for Response {
                 .secure(*PARANOID)
                 .domain(SITE_DOMAIN.as_str())
                 .expires(time::now_utc() + time::Duration::weeks(2));
-            let nonce = CookiePair::build("nonce", nonce_base64)
+            let token = CookiePair::build("token", token_base64)
+                .path("/")
+                .http_only(true)
+                .secure(*PARANOID)
+                .domain(SITE_DOMAIN.as_str())
+                .expires(time::now_utc() + time::Duration::weeks(2));
+            let refresh_count = CookiePair::build("refresh_count", refresh_count)
                 .path("/")
                 .http_only(true)
                 .secure(*PARANOID)
@@ -475,7 +487,9 @@ impl HeaderProcessor for Response {
                                            format!("{}", user_id.finish()),
                                            format!("{}", refreshed.finish()),
                                            format!("{}", hmac_cookie.finish()),
-                                           format!("{}", nonce.finish())]));
+                                           format!("{}", token.finish()),
+                                           format!("{}", refresh_count.finish()),
+                                           ]));
         }
         Ok(self)
     }
@@ -485,11 +499,11 @@ impl HeaderProcessor for Response {
             .path("/")
             .domain(SITE_DOMAIN.as_str())
             .expires(time::at_utc(time::Timespec::new(0, 0)));
-        let user_id = CookiePair::build("session_id", "")
+        let user_id = CookiePair::build("user_id", "")
             .path("/")
             .domain(SITE_DOMAIN.as_str())
             .expires(time::at_utc(time::Timespec::new(0, 0)));
-        let refreshed = CookiePair::build("session_id", "")
+        let refreshed = CookiePair::build("refreshed", "")
             .path("/")
             .domain(SITE_DOMAIN.as_str())
             .expires(time::at_utc(time::Timespec::new(0, 0)));
@@ -497,10 +511,16 @@ impl HeaderProcessor for Response {
             .path("/")
             .domain(SITE_DOMAIN.as_str())
             .expires(time::at_utc(time::Timespec::new(0, 0)));
+        let token = CookiePair::build("token", "")
+            .path("/")
+            .domain(SITE_DOMAIN.as_str())
+            .expires(time::at_utc(time::Timespec::new(0, 0)));
         self.set_cookie(SetCookie(vec![format!("{}", session_id.finish()),
                                        format!("{}", user_id.finish()),
                                        format!("{}", refreshed.finish()),
-                                       format!("{}", hmac.finish())]));
+                                       format!("{}", hmac.finish()),
+                                       format!("{}", token.finish()),
+                                       ]));
         self
     }
 

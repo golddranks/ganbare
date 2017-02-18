@@ -46,12 +46,12 @@ pub struct Password {
 
 #[derive(Debug, Insertable)]
 #[table_name="sessions"]
-pub struct NewSession {
+pub struct NewSession<'a> {
     pub user_id: i32,
     pub started: DateTime<UTC>,
     pub last_seen: DateTime<UTC>,
+    pub secret: &'a [u8],
 }
-
 
 
 #[derive(Identifiable, Queryable, Debug, Associations, AsChangeset)]
@@ -63,6 +63,8 @@ pub struct Session {
     pub user_id: i32,
     pub started: DateTime<UTC>,
     pub last_seen: DateTime<UTC>,
+    pub secret: Vec<u8>,
+    pub refresh_count: i32,
 }
 
 

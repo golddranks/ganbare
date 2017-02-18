@@ -30,6 +30,7 @@ extern crate regex;
 extern crate reqwest;
 extern crate dotenv;
 extern crate cookie;
+extern crate byteorder;
 
 pub use try_map::{FallibleMapExt, FlipResultExt};
 use std::sync::atomic::{Ordering, AtomicBool};
