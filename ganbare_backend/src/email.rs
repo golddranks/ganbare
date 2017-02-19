@@ -64,7 +64,7 @@ pub fn send_confirmation(queue: &RwLock<VecDeque<Email>>,
     let email = EmailBuilder::new()
         .to(email_addr)
         .from(from)
-        .subject(format!("【{}】Tervetuloa!", site_name))
+        .subject(&format!("【{}】Tervetuloa!", site_name))
         .html(hb_registry.render("email_confirm_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
             .as_ref())
@@ -92,7 +92,7 @@ pub fn send_pw_reset_email(queue: &RwLock<VecDeque<Email>>,
     let email = EmailBuilder::new()
         .to(secret.email.as_str())
         .from(from)
-        .subject(format!("【{}】Salasanan vaihtaminen", site_name))
+        .subject(&format!("【{}】Salasanan vaihtaminen", site_name))
         .html(hb_registry.render("pw_reset_email.html", &data)
             .chain_err(|| "Handlebars template render error!")?
             .as_ref())
@@ -241,7 +241,7 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
         let email = EmailBuilder::new()
             .to(email_addr.as_str())
             .from(from)
-            .subject(format!("【{}】Minne katosit? (´・ω・`)", site_name))
+            .subject(&format!("【{}】Minne katosit? (´・ω・`)", site_name))
             .html(hb_registry.render("slacker_heatenings.html", &data) // FIXME
                 .chain_err(|| "Handlebars template render error!")?
                 .as_ref())

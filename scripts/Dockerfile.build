@@ -28,29 +28,24 @@ ENV PREFIX=/musl
 # optional utilities for debugging and stuff: file, nano
 # needed utilities for installing and building everything: bzip2, curl, git, xutils-dev, g++, make, pkgconf
 # for openssl: ca-certificates
-# for diesel_cli: postgresql, postgresql-client, libpq-dev
 
 # WHAT THEN?
 # Symlink libsqlite to libsqlite3.so because it's not there by default, for some reason, and it's needed by diesel_cli.
 # Workdir for our code: /workdir. Prefix dir for musl-based libs and includes: /musl
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && \
+  apt-get install -y \
   bzip2 \
   make \
   curl \
   pkgconf \
   git \
   xutils-dev \
-  libpq-dev \
-  sqlite3 \
-  ca-certificates \
   g++ \
+  ca-certificates \
   file \
-  postgresql \ 
-  postgresql-client \
   nano \
   --no-install-recommends && \
   rm -rf /var/lib/apt/lists/* && \
-  ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr/lib/x86_64-linux-gnu/libsqlite3.so && \
   mkdir /workdir && mkdir $PREFIX
 
 WORKDIR /workdir
@@ -88,8 +83,7 @@ RUN TARGET="" &&\
       make && make install && rm -rf * ; } ; \
     install_make_project "https://www.musl-libc.org/releases/musl-1.1.15.tar.gz" "" && \
     TARGET="--host=x86_64-unknown-linux-musl" &&\
-    install_make_project "https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz" "--without-readline --without-zlib" && \
-    install_make_project "https://sqlite.org/2016/sqlite-autoconf-3150100.tar.gz" ""
+    install_make_project "https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz" "--without-readline --without-zlib"
 
 # OpenSSL have their own build system
 RUN curl -sL http://www.openssl.org/source/openssl-1.0.2j.tar.gz | tar xz --strip-components=1 && \
@@ -99,39 +93,16 @@ RUN curl -sL http://www.openssl.org/source/openssl-1.0.2j.tar.gz | tar xz --stri
 
 # Install Rustup, and a Rust toolchain
 # Why nightly? Because Diesel uses compiler plugins only available on nightly.
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-02-17 && \
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-02-13 && \
     rustup target add x86_64-unknown-linux-musl
-
-# Install diesel_cli
-# We need diesel_cli, because diesel infers the database schema when building our crate, and we have to bootstrap the database somehow for that!   
-# diesel_cli here uses normal glibc, not musl. We must revert some of the env vars that interfere with cargo install
-# because it doesn't support cross-compiling. These ENV vars will reset as the RUN command ends, as the Docker container
-# "reboots" between every Dockerfile commands.
-RUN unset PKG_CONFIG_PATH && \
-    unset LD_LIBRARY_PATH && \
-    unset PQ_LIB_STATIC && \
-    export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && \
-    cargo install diesel_cli
-
 
 # COMPILE THE RUST PROJECT ONCE TO FILL CARGO'S DEPENDENCY CACHE
 
 # Adding the project files from the host platform
 ADD . /workdir
 
-# DATABASE_URL is the database connection string for diesel_cli.
-# GANBARE_DATABASE_URL is the same for ganbare. The simple user auth works only if connected through a UNIX socket: %2Fvar%2Frun%2Fpostgresql
-ENV DATABASE_URL=postgres://root@%2Fvar%2Frun%2Fpostgresql/ganbare_build \
-    GANBARE_DATABASE_URL=postgres://root@%2Fvar%2Frun%2Fpostgresql/ganbare_build
-
-# Start postgres and create a DB user for root & grant the right to create DBs.
 # The compiled target will be deleted, but the dependencies remain in /root/.cargo/ directory.
-RUN /etc/init.d/postgresql start && \
-    su - postgres -c 'psql -c "\q" -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
-    do sleep 1; psql -c "\q" -h /var/run/postgresql -d postgres; done && \
-    createuser root && psql -c "alter user root with createdb"' && \
-    diesel database setup && \
-    cargo build --release --target=x86_64-unknown-linux-musl && \
+RUN cargo build --release --features specify_schema --target=x86_64-unknown-linux-musl && \
     rm -rf *
 
 # THE IMAGE IS READY
@@ -141,15 +112,9 @@ RUN /etc/init.d/postgresql start && \
 # Remember the mount your project directory as the volume, like this: 
 # docker run -it --rm --name <containername> -v $PWD:/workdir <username>/<imagename>
 
-# The crate pq-sys doesn't provide static linking at the moment in the upstream, so we have to replace it with an alternative that does.
-
 VOLUME /workdir
 
-CMD /etc/init.d/postgresql start && \
-    psql -c '\q' -h /var/run/postgresql -d postgres; while [ "$?" != "0" ]; \
-    do sleep 1; psql -c '\q' -h /var/run/postgresql -d postgres; done && \
-    diesel database reset && \
-    cargo build --release --target=x86_64-unknown-linux-musl --features "$BUILD_FEATURES"
+CMD cargo build --release --target=x86_64-unknown-linux-musl --features "specify_schema $BUILD_FEATURES"
 
 
 # AFTER RUNNING?

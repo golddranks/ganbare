@@ -1,4 +1,5 @@
 #![recursion_limit = "512"]
+#![feature(field_init_shorthand)]
 #![feature(inclusive_range_syntax)]
 #![feature(plugin)]
 #![plugin(binary_macros, dotenv_macros)]
@@ -91,7 +92,6 @@ macro_rules! time_it {
     };
     ($code:expr) => { time_it!("", $code) };
 }
-
 
 pub mod schema;
 pub mod models;

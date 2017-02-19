@@ -3,6 +3,9 @@ name = "ganbare_backend"
 version = "0.3.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
+[features]
+specify_schema = []
+
 [dependencies]
 diesel = { version = "0.11", features = ["chrono", "large-tables"]}
 diesel_codegen = {version = "0.11", default-features = false, features = ["postgres", "dotenv"] }
@@ -21,7 +24,7 @@ data-encoding = "1.1"
 lazy_static = "0.2"
 pencil = { git = "https://github.com/golddranks/pencil", branch = "modifications_for_ganbare", default-features = false }
 log = "0.3"
-lettre = { git = "https://github.com/lettre/lettre/" }
+lettre = "0.6"
 mime = "0.2"
 tempdir = "0.3"
 regex = "0.2"

@@ -3,6 +3,9 @@ name = "ganbare"
 version = "0.6.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
+[features]
+specify_schema = ["ganbare_backend/specify_schema"]
+
 [dependencies]
 diesel_codegen = {version = "0.11", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
@@ -28,7 +31,7 @@ error-chain = { git = "https://github.com/golddranks/error-chain", branch = "new
 r2d2 = "0.7"
 r2d2-diesel = "0.11"
 rust-crypto = "0.2"
-lettre = { git = "https://github.com/lettre/lettre/" }
+lettre = "0.6"
 data-encoding = "1.1"
 time = "0.1"
 serde_json = "0.9"
