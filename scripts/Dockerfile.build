@@ -68,6 +68,7 @@ ENV PATH=$PREFIX/bin:/root/.cargo/bin:$PATH \
     PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig \
     PQ_LIB_STATIC=true \
     OPENSSL_STATIC=true \
+    OPENSSL_DIR=$PREFIX \
     LD_LIBRARY_PATH=$PREFIX/lib \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
     SSL_CERT_DIR=/etc/ssl/certs \
