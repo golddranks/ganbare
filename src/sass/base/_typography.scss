@@ -31,23 +31,24 @@
 
 	input[type="password"] {
 		text-transform: none;
+
+		&::-webkit-input-placeholder {
+				text-transform: uppercase;
+		}
+		
+		&:-moz-placeholder {
+				text-transform: uppercase;
+		}
+		
+		&::-moz-placeholder {
+				text-transform: uppercase;
+		}
+		
+		&:-ms-input-placeholder {
+				text-transform: uppercase;
+		}
+
 	}
-
-::-webkit-input-placeholder {
-		text-transform: uppercase;
-}
-
-:-moz-placeholder {
-		text-transform: uppercase;
-}
-
-::-moz-placeholder {
-		text-transform: uppercase;
-}
-
-:-ms-input-placeholder {
-		text-transform: uppercase;
-}
 
 	a,
 	.linklike {
