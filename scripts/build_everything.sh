@@ -1,4 +1,4 @@
 #!/bin/sh
-./build_static.sh && \
+scripts/build_static.sh && \
 cargo build && \
 echo "Backend built."
