@@ -3,10 +3,7 @@
 
 Before production
 
-- Implement lower case password field
 - Implement backing in survey
-- Lower the volume of toot
-
 - Implement word comparison screen
 - Implement improved due date calculating
 
