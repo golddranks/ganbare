@@ -25,21 +25,22 @@ USER root
 ENV PREFIX=/musl
 
 # WHY THESE PACKAGES?
-# optional utilities for debugging and stuff: file, nano
-# needed utilities for installing and building everything: bzip2, curl, git, xutils-dev, g++, make, pkgconf
-# for openssl: ca-certificates
+# optional utilities for debugging and stuff: file, nano, git
+# needed utilities for installing and building everything: bzip2, curl, g++, make, pkgconf
+# ca-certificates for openssl & curl. xutils-dev because it contains makedepend with is used by openssl build system
 
 # WHAT THEN?
 # Symlink libsqlite to libsqlite3.so because it's not there by default, for some reason, and it's needed by diesel_cli.
 # Workdir for our code: /workdir. Prefix dir for musl-based libs and includes: /musl
 RUN apt-get update && \
   apt-get install -y \
-  bzip2 \
+  musl-dev \
+  musl-tools \
+  xutils-dev \
   make \
   curl \
   pkgconf \
   git \
-  xutils-dev \
   g++ \
   ca-certificates \
   file \
@@ -66,29 +67,28 @@ ENV PATH=$PREFIX/bin:/root/.cargo/bin:$PATH \
     PKG_CONFIG_ALL_STATIC=true \
     PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig \
     PQ_LIB_STATIC=true \
+    OPENSSL_STATIC=true \
     LD_LIBRARY_PATH=$PREFIX/lib \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
-    SSL_CERT_DIR=/etc/ssl/certs
+    SSL_CERT_DIR=/etc/ssl/certs \
+    CC=musl-gcc
 
 # MAKE AND INSTALL NATIVE DEPENDENCIES
 
 # All of these libs will be built with the musl prefix so that they won't interfere with the system glibc!
 # musl must be as an .a (for static linking to produce the binary) and as an .so (for dynamic linking for the compiler plugins)
 
-RUN TARGET="" &&\
-    install_make_project () { \
+RUN install_make_project () { \
       echo "Installing a library from $1" && \
       curl -sL $1 | tar xz --strip-components=1 && \
-      ./configure --prefix=$PREFIX $TARGET $2 && \
+      ./configure --prefix=$PREFIX --host=x86_64-unknown-linux-musl $2 && \
       make && make install && rm -rf * ; } ; \
-    install_make_project "https://www.musl-libc.org/releases/musl-1.1.15.tar.gz" "" && \
-    TARGET="--host=x86_64-unknown-linux-musl" &&\
     install_make_project "https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz" "--without-readline --without-zlib"
 
 # OpenSSL have their own build system
 RUN curl -sL http://www.openssl.org/source/openssl-1.0.2j.tar.gz | tar xz --strip-components=1 && \
     ./Configure no-shared --prefix=$PREFIX --openssldir=$PREFIX/ssl no-zlib linux-x86_64 && \
-    make depend 2> /dev/null && make -j$(nproc) && make install && rm -rf *
+    make depend && make -j$(nproc) && make install && rm -rf *
 
 
 # Install Rustup, and a Rust toolchain
@@ -100,6 +100,8 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-201
 
 # Adding the project files from the host platform
 ADD . /workdir
+
+ENV GANBARE_BUILDTIME_PEPPER AA==
 
 # The compiled target will be deleted, but the dependencies remain in /root/.cargo/ directory.
 RUN cargo build --release --features specify_schema --target=x86_64-unknown-linux-musl && \
