@@ -200,9 +200,10 @@ pub struct AudioFile {
     pub file_sha2: Option<Vec<u8>>,
 }
 
-#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize)]
+#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize, Default)]
 #[table_name="audio_files"]
 pub struct UpdateAudioFile {
+    #[serde(default)]
     pub narrators_id: Option<i32>,
     pub bundle_id: Option<i32>,
     pub file_path: Option<String>,
@@ -254,8 +255,9 @@ pub struct QuizQuestion {
     pub skill_level: i32,
 }
 
-#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize)]
+#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize, Default)]
 #[table_name="quiz_questions"]
+#[serde(default)]
 pub struct UpdateQuestion {
     pub skill_id: Option<i32>,
     pub q_name: Option<String>,
@@ -287,8 +289,9 @@ pub struct Answer {
 }
 
 
-#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize)]
+#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize, Default)]
 #[table_name="question_answers"]
+#[serde(default)]
 pub struct UpdateAnswer {
     pub question_id: Option<i32>,
     #[serde(deserialize_with = "double_option")]
@@ -311,8 +314,9 @@ pub struct Exercise {
     pub skill_level: i32,
 }
 
-#[derive(Queryable, Debug, AsChangeset, Serialize, Deserialize)]
+#[derive(Queryable, Debug, AsChangeset, Serialize, Deserialize, Default)]
 #[table_name="exercises"]
+#[serde(default)]
 pub struct UpdateExercise {
     pub skill_id: Option<i32>,
     pub published: Option<bool>,
@@ -335,8 +339,9 @@ pub struct ExerciseVariant {
     pub exercise_id: i32,
 }
 
-#[derive(Queryable, Debug, AsChangeset, Serialize, Deserialize)]
+#[derive(Queryable, Debug, AsChangeset, Serialize, Deserialize, Default)]
 #[table_name="exercise_variants"]
+#[serde(default)]
 pub struct UpdateExerciseVariant {
     pub id: Option<i32>,
     pub exercise_id: Option<i32>,
@@ -370,8 +375,9 @@ pub struct Word {
     pub priority: i32,
 }
 
-#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize)]
+#[derive(Queryable, AsChangeset, Debug, Serialize, Deserialize, Default)]
 #[table_name="words"]
+#[serde(default)]
 pub struct UpdateWord {
     pub word: Option<String>,
     pub explanation: Option<String>,
@@ -576,8 +582,9 @@ pub struct UserMetrics {
     pub streak_skill_bump_criteria: i32,
 }
 
-#[derive(Debug, AsChangeset, Identifiable, Deserialize)]
+#[derive(Debug, AsChangeset, Identifiable, Deserialize, Default)]
 #[table_name="user_metrics"]
+#[serde(default)]
 pub struct UpdateUserMetrics {
     pub id: i32,
     pub new_words_since_break: Option<i32>,
@@ -638,8 +645,9 @@ pub struct Event {
     pub priority: i32,
 }
 
-#[derive(Queryable, Identifiable, Serialize, Debug, AsChangeset, Deserialize)]
+#[derive(Queryable, Identifiable, Serialize, Debug, AsChangeset, Deserialize, Default)]
 #[table_name="events"]
+#[serde(default)]
 pub struct UpdateEvent {
     pub id: i32,
     pub name: Option<String>,

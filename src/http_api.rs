@@ -601,10 +601,8 @@ pub fn update_item(req: &mut Request) -> PencilResult {
             json = jsonify(&updated_item);
         }
         "update_event" => {
-            debug!("update_event before: {:?}", &text);
-            
+
             let item: ganbare::models::UpdateEvent = err_400!(serde_json::from_str(&text), "Couldn't parse the data!");
-            debug!("update_event after: {:?}", item);
 
             if item.id != id {
                 return abort(400);
