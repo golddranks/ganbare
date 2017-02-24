@@ -3,7 +3,6 @@
 
 Before production
 
-- Implement backing in survey
 - Implement word comparison screen
 - Implement improved due date calculating
 

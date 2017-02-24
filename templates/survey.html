@@ -3,6 +3,9 @@
 {{/partial}}
 
 {{#partial main_section}}
+	<section id="topmessage">
+		<button id="backButton" class="iconlike uiButton" style="display: None;"><img src="/static/images/back.png"></button>
+	</section>
 	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
 	<section id="settings" style="display: none;">
 		<ul id="settingsMenu">
@@ -10,6 +13,8 @@
 			<li><a href="/change_password">Vaihda salasanaa</a></li>
 		</ul>
 	</section>
+
+	<input type="hidden" value="{{ answered_questions }}" id="answered_questions">
 
 	<header>
 	<h1>Kysely <span id="progressMeter"></span></h1>

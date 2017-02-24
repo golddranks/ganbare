@@ -8,6 +8,7 @@ $(function() {
 var main = $("#main");
 var settingsArea = $("#settings");
 var menuButton = $("#menuButton");
+var backButton = $("#backButton");
 
 function toggleMenu(event: Event) : void {
 	settingsArea.toggle();
@@ -112,7 +113,7 @@ function incrementFactory() {
 	{q: "Mikä on äidinkielesi?", a: languages},
 	];
 
-	var i = parseInt("{{ answered_questions }}") || 0;
+	var i = parseInt($("#answered_questions").val()) + 1 || 0;
 	var main = $("#main");
 	var surveyBox = $("#surveyBox");
 	var answerButtons = $("#answerButtons");
@@ -165,10 +166,13 @@ function incrementFactory() {
 		postAnswer();
 	}
 
-	function increment() {
+	function renderQuestion() {
+
 		answerButtons.empty();
-		if (i === questions.length) {
-			return surveyReady();
+		if (i > 0) {
+			backButton.show();
+		} else {
+			backButton.hide();
 		}
 		progressMeter.text("("+(i+1)+"/"+questions.length+")");
 		var question = questions[i].q;
@@ -244,10 +248,23 @@ function incrementFactory() {
 					answerQuestion(answerData, i);
 				});
 		};
+	}
+
+	function goBack() {
+		i--;
+		renderQuestion();
+	}
+	backButton.click(goBack);
+	
+	function increment() {
+		if (i === questions.length) {
+			return surveyReady();
+		}
 		i++;
+		renderQuestion();
 	};
-	return increment;
+	return renderQuestion;
 }
-var increment = incrementFactory();
-increment();
+var renderQuestion = incrementFactory();
+renderQuestion();
 })
