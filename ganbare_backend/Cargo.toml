@@ -18,7 +18,7 @@ chrono = { version = "0.3", features = ["serde"]}
 rpassword = "0.3"
 rand = "0.3"
 rustc-serialize = "0.3"
-binary_macros = "0.5"
+binary_macros = "0.6"
 env_logger = "0.4"
 data-encoding = "1.1"
 lazy_static = "0.2"
