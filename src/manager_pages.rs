@@ -105,7 +105,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
         let skill_nugget = parse!(form.get("skill_nugget"));
 
         let mut fieldsets = Vec::with_capacity(lowest_fieldset as usize);
-        for i in 1...lowest_fieldset {
+        for i in 1..lowest_fieldset+1 { // FIXME convert to inclusive range syntax when available
 
             let q_variations =
                 str::parse::<i32>(&parse!(form.get(&format!("choice_{}_q_variations", i))))?;
@@ -114,7 +114,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
             }
 
             let mut q_variants = Vec::with_capacity(q_variations as usize);
-            for v in 1...q_variations {
+            for v in 1..q_variations+1 { // FIXME convert to inclusive range syntax when available
                 if let Some(file) = files.get(&format!("choice_{}_q_variant_{}", i, v)) {
                     if file.size.expect("Size should've been parsed at this phase.") == 0 {
                         continue; // Don't save files with size 0;
@@ -212,7 +212,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
         let nugget = parse!(form.get("skill_nugget"));
 
         let mut files = Vec::with_capacity(num_variants as usize);
-        for v in 1...num_variants {
+        for v in 1..num_variants+1 { // FIXME convert to inclusive range syntax when available
             if let Some(file) = uploaded_files.get(&format!("audio_variant_{}", v)) {
                 if file.size.expect("Size should've been parsed at this phase.") == 0 {
                     continue; // Don't save files with size 0;

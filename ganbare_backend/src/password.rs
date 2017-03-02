@@ -49,7 +49,7 @@ fn pepper_salt_pw_hash(plaintext_pw: &str,
     use crypto::sha2;
     use crypto::digest::Digest;
 
-    let build_pepper = base64!(dotenv!("GANBARE_BUILDTIME_PEPPER"));
+    let build_pepper = base64!("env:GANBARE_BUILDTIME_PEPPER");
 
     let mut hasher = sha2::Sha512::new();
     hasher.input_str(plaintext_pw);

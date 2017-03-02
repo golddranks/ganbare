@@ -1,4 +1,3 @@
-#![feature(inclusive_range_syntax)]
 #![recursion_limit = "512"]
 #[macro_use]
 extern crate lazy_static;

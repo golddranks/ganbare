@@ -1,8 +1,4 @@
 #![recursion_limit = "512"]
-#![feature(field_init_shorthand)]
-#![feature(inclusive_range_syntax)]
-#![feature(plugin)]
-#![plugin(binary_macros, dotenv_macros)]
 
 #[macro_use]
 extern crate serde_derive;
@@ -34,6 +30,8 @@ extern crate unicode_normalization;
 extern crate regex;
 extern crate reqwest;
 extern crate dotenv;
+#[macro_use]
+extern crate binary_macros;
 extern crate cookie;
 extern crate byteorder;
 
