@@ -94,7 +94,7 @@ RUN curl -sL http://www.openssl.org/source/openssl-1.0.2j.tar.gz | tar xz --stri
 
 # Install Rustup, and a Rust toolchain
 # Why nightly? Because Diesel uses compiler plugins only available on nightly.
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-03-02 && \
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable && \
     rustup target add x86_64-unknown-linux-musl
 
 # COMPILE THE RUST PROJECT ONCE TO FILL CARGO'S DEPENDENCY CACHE
