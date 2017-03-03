@@ -333,14 +333,42 @@ fn get_session_cookie(cookies: &Cookie) -> Result<Option<session::UserSession>> 
     }
 }
 
-pub fn new_template_context() -> BTreeMap<String, String> {
-    let mut ctx = BTreeMap::new();
-    ctx.insert("title".to_string(), "akusento.ganba.re".to_string());
-    ctx.insert("jquery_url".to_string(), JQUERY_URL.to_string());
-    ctx.insert("font_stylesheet".to_string(), FONT_URL.to_string());
-    ctx.insert("font_file".to_string(), FONT_FILE.to_string());
+
+
+use std::borrow::Cow;
+use serde::ser::{Serialize, Serializer};
+
+pub struct TemplateContext<'a> {
+    map: BTreeMap<Cow<'a, str>, Cow<'a, str>>,
+}
+
+impl<'a> TemplateContext<'a> {
+    pub fn insert<K, V>(&mut self, key: K, value: V) -> std::option::Option<std::borrow::Cow<'a, str>>
+    where K: Into<Cow<'a, str>>,
+          V: Into<Cow<'a, str>>
+    {
+        self.map.insert(key.into(), value.into())
+    }
+}
+
+impl<'a> Serialize for TemplateContext<'a> {
+    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
+        where S: Serializer
+    {
+        self.map.serialize(serializer)
+    }
+}
+
+pub fn new_template_context<'a>() -> TemplateContext<'a> {
+    let mut ctx = TemplateContext { map: BTreeMap::new() };
+    ctx.insert("title", "akusento.ganba.re");
+    ctx.insert("jquery_url", JQUERY_URL.as_ref());
+    ctx.insert("font_stylesheet", FONT_URL.as_ref());
+    ctx.insert("font_file", FONT_FILE.as_ref());
     ctx
 }
+
+
 
 pub fn get_sess(conn: &Connection, req: &Request) -> Result<Option<UserSession>> {
     if let Some(Some(Some(sess))) = req.cookies().try_map(get_session_cookie).ok() {
@@ -407,19 +435,19 @@ impl IntoIp for IpAddr {
 
 impl<'a, 'b, 'c> IntoIp for Request<'a, 'b, 'c> {
     fn into_ip(self) -> IpAddr {
-        self.request.remote_addr.ip()
+        self.remote_addr.ip()
     }
 }
 
 impl<'r, 'a, 'b, 'c> IntoIp for &'r mut Request<'a, 'b, 'c> {
     fn into_ip(self) -> IpAddr {
-        self.request.remote_addr.ip()
+        self.remote_addr.ip()
     }
 }
 
 impl<'r, 'a, 'b, 'c> IntoIp for &'r Request<'a, 'b, 'c> {
     fn into_ip(self) -> IpAddr {
-        self.request.remote_addr.ip()
+        self.remote_addr.ip()
     }
 }
 
@@ -686,7 +714,6 @@ pub fn do_logout(conn: &Connection, sess: &UserSession) -> StdResult<(), PencilE
 macro_rules! parse {
     ($expression:expr) => {
         $expression
-            .map(String::to_string)
             .ok_or(Error::from_kind(ErrorKind::FormParseError))?;
     }
 }

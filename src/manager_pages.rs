@@ -15,11 +15,10 @@ pub fn fresh_install_form(req: &mut Request) -> PencilResult {
 }
 
 pub fn fresh_install_post(req: &mut Request) -> PencilResult {
-    req.load_form_data();
-    let form = req.form().expect("Form data loaded");
+    let form = req.form();
     let email = err_400!(form.get("email"), "email missing");
     let new_password = err_400!(form.get("new_password"), "new_password missing");
-    let new_password_check = err_400!(form.get("new_password_check"), "new_password_check missing");
+    let new_password_check = err_400!(form.get::<str>("new_password_check"), "new_password_check missing");
     if new_password != new_password_check {
         return Ok(bad_request("passwords don't match"));
     };
@@ -51,7 +50,7 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
                    new_password).err_500()? {
         Some((_, sess)) => {
             let mut context = new_template_context();
-            context.insert("install_success".into(), "success".into());
+            context.insert("install_success", "success");
             req.app
                 .render_template("fresh_install.html", &context)
                 .refresh_cookie(&sess)
@@ -90,19 +89,18 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
 
     fn parse_form(req: &mut Request) -> Result<(manage::NewQuestion, Vec<manage::Fieldset>)> {
 
-        req.load_form_data();
-        let form = req.form().expect("Form data should be loaded!");
-        let files = req.files().expect("Form data should be loaded!");
+        let form = req.form();
+        let files = req.files();
 
         let lowest_fieldset = str::parse::<i32>(&parse!(form.get("lowest_fieldset")))?;
         if lowest_fieldset > 10 {
             bail!(ErrorKind::FormParseError);
         }
 
-        let q_name = parse!(form.get("name"));
-        let q_explanation = parse!(form.get("explanation"));
-        let question_text = parse!(form.get("question_text"));
-        let skill_nugget = parse!(form.get("skill_nugget"));
+        let q_name = parse!(form.get::<str>("name"));
+        let q_explanation = parse!(form.get::<str>("explanation"));
+        let question_text = parse!(form.get::<str>("question_text"));
+        let skill_nugget = parse!(form.get::<str>("skill_nugget"));
 
         let mut fieldsets = Vec::with_capacity(lowest_fieldset as usize);
         for i in 1..lowest_fieldset+1 { // FIXME convert to inclusive range syntax when available
@@ -154,20 +152,20 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                 answer_audio_path = None;
             };
 
-            let answer_text = parse!(form.get(&format!("choice_{}_answer_text", i)));
+            let answer_text = parse!(form.get::<str>(&format!("choice_{}_answer_text", i)));
             let fields = manage::Fieldset {
                 q_variants: q_variants,
                 answer_audio: answer_audio_path,
-                answer_text: answer_text,
+                answer_text: answer_text.to_string(),
             };
             fieldsets.push(fields);
         }
 
         Ok((manage::NewQuestion {
-                q_name: q_name,
-                q_explanation: q_explanation,
-                question_text: question_text,
-                skill_nugget: skill_nugget,
+                q_name: q_name.to_owned(),
+                q_explanation: q_explanation.to_owned(),
+                question_text: question_text.to_owned(),
+                skill_nugget: skill_nugget.to_owned(),
             },
             fieldsets))
     }
@@ -198,18 +196,17 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
 
     fn parse_form<'a>(req: &'a mut Request) -> Result<manage::NewWordFromStrings<'a>> {
 
-        req.load_form_data();
-        let form = req.form().expect("Form data should be loaded!");
-        let uploaded_files = req.files().expect("Form data should be loaded!");
+        let form = req.form();
+        let uploaded_files = req.files();
 
         let num_variants = str::parse::<i32>(&parse!(form.get("audio_variations")))?;
         if num_variants > 20 {
             bail!(ErrorKind::FormParseError);
         }
 
-        let word = parse!(form.get("word"));
-        let explanation = parse!(form.get("explanation"));
-        let nugget = parse!(form.get("skill_nugget"));
+        let word = parse!(form.get::<str>("word"));
+        let explanation = parse!(form.get::<str>("explanation"));
+        let nugget = parse!(form.get::<str>("skill_nugget"));
 
         let mut files = Vec::with_capacity(num_variants as usize);
         for v in 1..num_variants+1 { // FIXME convert to inclusive range syntax when available
@@ -228,10 +225,10 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
         }
 
         Ok(manage::NewWordFromStrings {
-            word: word,
-            explanation: explanation,
+            word: word.to_string(),
+            explanation: explanation.to_string(),
             narrator: "",
-            nugget: nugget,
+            nugget: nugget.to_owned(),
             files: files,
             skill_level: 0,
             priority: 0,
@@ -262,9 +259,8 @@ pub fn add_users(req: &mut Request) -> PencilResult {
 
     let (conn, sess) = auth_user(req, "admins")?;
 
-    req.load_form_data();
-    let form = req.form().expect("The form data is loaded.");
-    let emails = err_400!(form.get("emailList"), "emailList missing?");
+    let form = req.form();
+    let emails = err_400!(form.get::<str>("emailList"), "emailList missing?");
     for row in emails.split('\n') {
         let mut fields = row.split_whitespace();
         let email = err_400!(fields.next(), "email field missing?");
@@ -325,11 +321,11 @@ pub fn send_mail_form(req: &mut Request) -> PencilResult {
     let sent = req.headers().get::<Referer>();
 
     let mut context = new_template_context();
-    context.insert("sender_address".into(), EMAIL_ADDRESS.to_string());
+    context.insert("sender_address", EMAIL_ADDRESS.to_string());
 
     if let Some(&Referer(ref sent)) = sent {
         if sent.ends_with("send_mail") {
-            context.insert("sent".into(), sent.to_owned());
+            context.insert("sent", sent.to_owned());
         }
     }
 
@@ -341,16 +337,18 @@ pub fn send_mail_form(req: &mut Request) -> PencilResult {
 pub fn send_mail_post(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "editors")?;
 
-    let group_pending = req.form_mut().take("group_pending");
-    let group = req.form_mut().take_all("group[]").unwrap_or_else(|| vec![]);
+    let empty_vec = vec![];
+
+    let group_pending = req.form().get::<str>("group_pending");
+    let group = req.form().getlist("group[]").unwrap_or(&empty_vec);
     if group_pending.is_none() && group.is_empty() {
         return Ok(bad_request("group is missing!"));
     }
     let group =
         err_400!(group.into_iter().map(|id| str::parse::<i32>(&id)).collect::<Vec<_>>().flip(),
                  "group invalid");
-    let subject = err_400!(req.form_mut().take("subject"), "subject missing");
-    let body = err_400!(req.form_mut().take("body"), "body missing");
+    let subject = err_400!(req.form().get("subject"), "subject missing");
+    let body = err_400!(req.form().get("body"), "body missing");
 
     let mut email_addrs = HashSet::new();
 

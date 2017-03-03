@@ -14,7 +14,7 @@ extern crate error_chain;
 pub extern crate ganbare_backend;
 
 extern crate try_map;
-extern crate pencil;
+extern crate sharp_pencil as pencil;
 extern crate dotenv;
 extern crate env_logger;
 extern crate time;
@@ -28,6 +28,7 @@ extern crate typemap;
 extern crate crypto;
 extern crate lettre;
 extern crate data_encoding;
+extern crate serde;
 extern crate serde_json;
 
 extern crate r2d2;
@@ -57,8 +58,7 @@ pub fn favicon(_: &mut Request) -> PencilResult {
     use pencil::helpers::send_file;
     send_file("static/images/speaker_pink.png",
               "image/x-icon".parse().expect("We now statically this mime is good"),
-              false,
-              None)
+              false)
         .set_static_cache()
 }
 
@@ -70,7 +70,7 @@ pub fn source_maps(req: &mut Request) -> PencilResult {
     let file_path = req.view_args
         .get("file_path")
         .expect("Pencil guarantees that filename should exist as an arg.");
-    send_from_directory("src", file_path, false, None)
+    send_from_directory("src", file_path, false)
 }
 
 use std::collections::{VecDeque};
@@ -211,10 +211,10 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
     let method_mutating = !req.method().safe();
     let url = req.url.path();
 
-    if req.host_domain() != &**SITE_DOMAIN {
+    if req.host.hostname != &**SITE_DOMAIN {
         return Some(Ok(bad_request(format!("The host field is wrong. Expected: {}, Got: {}",
                                            &**SITE_DOMAIN,
-                                           req.host_domain()))));
+                                           req.host.hostname))));
     }
 
     if method_mutating || (*PARANOID && url.starts_with("/api")) {
@@ -349,7 +349,7 @@ pub fn main() {
                        "posttest_info.html",
                        "posttest_done.html");
 
-    app.enable_static_file_handling_with_cache(Duration::from_secs(*CACHE_MAX_AGE as u64));
+    app.enable_static_cached_file_handling(Duration::from_secs(*CACHE_MAX_AGE as u64));
 
     // Note: resp_time_start MUST be the first one
     app.before_request(resp_time_start);

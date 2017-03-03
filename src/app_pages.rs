@@ -47,8 +47,8 @@ fn main_quiz(req: &mut Request, conn: &Connection, user_id: i32) -> PencilResult
 
     if !user::check_user_group(conn, user_id, "questions").err_500()? &&
        !user::check_user_group(conn, user_id, "exercises").err_500()? {
-        context.insert("alert_msg".into(),
-                       "Et kuulu mihinkään harjoitusryhmään!".into());
+        context.insert("alert_msg",
+                       "Et kuulu mihinkään harjoitusryhmään!");
     }
 
     req.app
@@ -75,7 +75,7 @@ pub fn ok(req: &mut Request) -> PencilResult {
 
     let (conn, sess) = auth_user(req, "")?;
 
-    let event_name = err_400!(req.form_mut().take("event_ok"),
+    let event_name = err_400!(req.form().get("event_ok"),
                               "Field event_ok is missing!");
     let _ = err_400!(event::set_done(&conn, &event_name, sess.user_id).err_500()?,
                      "Event \"{}\" doesn't exist!",
@@ -92,13 +92,13 @@ pub fn survey(req: &mut Request) -> PencilResult {
     user::join_user_group_by_name(&conn, sess.user_id, "nag_emails").err_500()?;
 
     let mut context = new_template_context();
-    context.insert("event_name".into(), "survey".into());
+    context.insert("event_name", "survey");
     let answered_questions = event::get_userdata(&conn, &event, sess.user_id, "answered_questions")
         .err_500()?
         .map(|d| d.data)
         .unwrap_or_else(|| "".to_string());
 
-    context.insert("answered_questions".into(), answered_questions);
+    context.insert("answered_questions", answered_questions);
     req.app
         .render_template("survey.html", &context)
         .refresh_cookie(&sess)
@@ -112,7 +112,7 @@ pub fn text_pages(req: &mut Request) -> PencilResult {
 
     event::require_started(&conn, endpoint, sess.user_id).err_401()?;
     let mut context = new_template_context();
-    context.insert("event_name".into(), endpoint.into());
+    context.insert("event_name", endpoint);
 
     let mut template = endpoint.to_owned();
     template.push_str(".html");
@@ -129,14 +129,14 @@ pub fn pre_post_test(req: &mut Request) -> PencilResult {
     match req.endpoint().as_ref().map(|s| &**s) {
         Some("pretest") => {
             if event::is_ongoing(&conn, "pretest", sess.user_id).err_500()?.is_some() {
-                context.insert("testing".into(), "true".into());
+                context.insert("testing", "true");
             } else {
                 return redirect("/", 303).refresh_cookie(&sess);
             }
         }
         Some("posttest") => {
             if event::is_ongoing(&conn, "posttest", sess.user_id).err_500()?.is_some() {
-                context.insert("testing".into(), "true".into());
+                context.insert("testing", "true");
             } else {
                 return redirect("/", 303).refresh_cookie(&sess);
             }
@@ -224,8 +224,8 @@ pub fn retelling(req: &mut Request) -> PencilResult {
     let (_, _) = event::require_ongoing(&conn, event_name, sess.user_id).err_401()?;
 
     let mut context = new_template_context();
-    context.insert("testing".into(), "true".into());
-    context.insert("event_name".into(), event_name.into());
+    context.insert("testing", "true");
+    context.insert("event_name", event_name);
 
     req.app
         .render_template("retelling.html", &context)
@@ -242,9 +242,9 @@ pub fn login_form(req: &mut Request) -> PencilResult {
         return redirect("/", 303).refresh_cookie(&sess);
     }
 
-    let email = req.args().get("email").map(|s| &**s).unwrap_or_else(|| "").to_string();
+    let email = req.args().get("email").unwrap_or("");
     let mut context = new_template_context();
-    context.insert("email".into(), email);
+    context.insert("email", email);
 
     req.app.render_template("hello.html", &context)
 }
@@ -252,8 +252,8 @@ pub fn login_form(req: &mut Request) -> PencilResult {
 pub fn login_post(req: &mut Request) -> PencilResult {
 
     let app = req.app;
-    let email = req.form_mut().take("email").unwrap_or_default();
-    let plaintext_pw = req.form_mut().take("password").unwrap_or_default();
+    let email = req.form().get("email").unwrap_or("");
+    let plaintext_pw = req.form().get("password").unwrap_or("");
 
     if email.len() > 254 || plaintext_pw.len() > 1024 {
         return Ok(bad_request("Too long email/password."));
@@ -270,8 +270,8 @@ pub fn login_post(req: &mut Request) -> PencilResult {
         None => {
             warn!("Failed login: {}", &email);
             let mut context = new_template_context();
-            context.insert("email".to_string(), email);
-            context.insert("authError".to_string(), "true".to_string());
+            context.insert("email", email);
+            context.insert("authError", "true");
             let result = app.render_template("hello.html", &context);
             result.map(|mut resp| {
                 resp.status_code = 401;
@@ -292,8 +292,8 @@ pub fn logout(req: &mut Request) -> PencilResult {
 
 pub fn confirm_form(req: &mut Request) -> PencilResult {
 
-    let secret = err_400!(req.args_mut().take("secret"), "secret");
-    let hmac = err_400!(req.args_mut().take("hmac"), "hmac");
+    let secret = err_400!(req.args().get("secret"), "secret");
+    let hmac = err_400!(req.args().get("hmac"), "hmac");
 
     if !err_400!(session::verify_token(&secret, &hmac, COOKIE_HMAC_KEY.as_slice()),
                  "Bad request!") {
@@ -307,17 +307,17 @@ pub fn confirm_form(req: &mut Request) -> PencilResult {
     };
 
     let mut context = new_template_context();
-    context.insert("email".to_string(), email);
-    context.insert("secret".to_string(), secret);
-    context.insert("hmac".to_string(), hmac);
+    context.insert("email".to_owned(), email);
+    context.insert("secret".to_owned(), secret.to_owned());
+    context.insert("hmac".to_owned(), hmac.to_owned());
 
     req.app.render_template("confirm.html", &context)
 }
 
 pub fn confirm_post(req: &mut Request) -> PencilResult {
 
-    let secret = err_400!(req.form_mut().take("secret"), "secret");
-    let hmac = err_400!(req.form_mut().take("hmac"), "hmac");
+    let secret = err_400!(req.form().get("secret"), "secret");
+    let hmac = err_400!(req.form().get("hmac"), "hmac");
 
     if !err_400!(session::verify_token(&secret, &hmac, COOKIE_HMAC_KEY.as_slice()),
                  "Bad request!") {
@@ -325,8 +325,8 @@ pub fn confirm_post(req: &mut Request) -> PencilResult {
     }
 
     let conn = db_connect().err_500()?;
-    let email = err_400!(req.form_mut().take("email"), "email field missing");
-    let password = err_400!(req.form_mut().take("password"), "password missing");
+    let email = err_400!(req.form().get("email"), "email field missing");
+    let password = err_400!(req.form().get("password"), "password missing");
     let user = match email::complete_pending_email_confirm(&conn,
                                                            &password,
                                                            &secret,
@@ -372,10 +372,10 @@ pub fn change_password_form(req: &mut Request) -> PencilResult {
 
     let mut context = new_template_context();
 
-    let password_changed = req.args_mut()
-        .take("password_changed")
+    let password_changed = req.args()
+        .get("password_changed")
         .and_then(|a| if a == "true" { Some(a) } else { None })
-        .unwrap_or_else(|| "false".to_string());
+        .unwrap_or("false");
 
     context.insert("password_changed".to_string(), password_changed);
 
@@ -389,7 +389,7 @@ pub fn password_reset_success(req: &mut Request) -> PencilResult {
     let (_, sess) = auth_user(req, "")?;
 
     let mut context = new_template_context();
-    context.insert("changed".into(), "changed".into());
+    context.insert("changed", "changed");
     req.app
         .render_template("reset_password.html", &context)
         .refresh_cookie(&sess)
@@ -397,15 +397,15 @@ pub fn password_reset_success(req: &mut Request) -> PencilResult {
 
 pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
 
-    let secret = err_400!(req.args_mut().take("secret"), "secret token missing");
-    let hmac = err_400!(req.args_mut().take("hmac"), "hmac missing");
+    let secret = err_400!(req.args().get("secret"), "secret token missing");
+    let hmac = err_400!(req.args().get("hmac"), "hmac missing");
 
     if !err_400!(session::verify_token(&secret, &hmac, COOKIE_HMAC_KEY.as_slice()),
                  "Bad request!") {
         return pencil::abort(401);
     }
 
-    let changed = req.args_mut().take("changed");
+    let changed = req.args().get("changed");
     let conn = db_connect().err_500()?;
 
     let email = match user::check_password_reset(&conn, &secret).err_500()? {
@@ -414,11 +414,11 @@ pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
     };
 
     let mut context = new_template_context();
-    context.insert("email".into(), email);
-    context.insert("secret".into(), secret);
-    context.insert("hmac".into(), hmac);
+    context.insert("email", email);
+    context.insert("secret", secret);
+    context.insert("hmac", hmac);
     if let Some(changed) = changed {
-        context.insert("changed".into(), changed);
+        context.insert("changed", changed);
     }
 
     req.app
@@ -428,16 +428,16 @@ pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
 
 pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
 
-    let secret = err_400!(req.form_mut().take("secret"), "secret");
-    let hmac = err_400!(req.form_mut().take("hmac"), "hmac");
+    let secret = err_400!(req.form().get("secret"), "secret");
+    let hmac = err_400!(req.form().get("hmac"), "hmac");
 
     if !err_400!(session::verify_token(&secret, &hmac, COOKIE_HMAC_KEY.as_slice()),
                  "Bad request!") {
         return pencil::abort(401);
     }
 
-    let password = err_400!(req.form_mut().take("new_password"), "password's missing");
-    let new_password_check = err_400!(req.form_mut().take("new_password_check"),
+    let password = err_400!(req.form().get("new_password"), "password's missing");
+    let new_password_check = err_400!(req.form().get::<str>("new_password_check"),
                                       "password's missing");
     if password != new_password_check {
         return Ok(bad_request("Password and password check don't match!"));
@@ -479,14 +479,14 @@ pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
 }
 
 pub fn pw_reset_email_form(req: &mut Request) -> PencilResult {
-    let email = req.args_mut().take("email").unwrap_or_else(|| "".into());
-    let sent = req.args_mut().take("sent");
+    let email = req.args().get("email").unwrap_or_else(|| "");
+    let sent = req.args().get("sent");
     let mut context = new_template_context();
     if sent.is_none() {
-        context.insert("show_form".to_string(), "show_form".into());
+        context.insert("show_form".to_string(), "show_form");
     }
     context.insert("email".to_string(), email);
-    context.insert("sent".to_string(), sent.unwrap_or_else(|| "".into()));
+    context.insert("sent".to_string(), sent.unwrap_or_else(|| ""));
 
     req.app.render_template("send_pw_reset_email.html", &context)
 }
@@ -494,10 +494,8 @@ pub fn pw_reset_email_form(req: &mut Request) -> PencilResult {
 
 pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
 
-    fn parse_form(req: &mut Request) -> Result<String> {
-        req.load_form_data();
-        let form = req.form().expect("Form data should be loaded!");
-        Ok(parse!(form.get("email")))
+    fn parse_form<'a>(req: &'a Request) -> Result<&'a str> {
+        Ok(parse!(req.form().get("email")))
     }
 
     let user_email = err_400!(parse_form(req), "invalid form data");
@@ -523,8 +521,8 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
             warn!("Trying to reset the password of non-existent address: {}",
                   user);
             let mut context = new_template_context();
-            context.insert("error".to_string(), "No such e-mail address :(".into());
-            context.insert("show_form".to_string(), "show_form".into());
+            context.insert("error".to_string(), "No such e-mail address :(");
+            context.insert("show_form".to_string(), "show_form");
             req.app.render_template("send_pw_reset_email.html", &context).map(|mut r| {
                 r.status_code = 400;
                 r
@@ -533,7 +531,7 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
         Err(Error(ErrorKind::RateLimitExceeded, _)) => {
             warn!("Someone is sending multiple password request requests per day!");
             let mut context = new_template_context();
-            context.insert("error".to_string(), "Rate limit exceeded :(".into());
+            context.insert("error".to_string(), "Rate limit exceeded :(");
             req.app.render_template("send_pw_reset_email.html", &context).map(|mut r| {
                 r.status_code = 429;
                 r
@@ -548,14 +546,11 @@ pub fn change_password(req: &mut Request) -> PencilResult {
 
     let (conn, sess) = auth_user(req, "")?;
 
-    fn parse_form(req: &mut Request) -> Result<(String, String)> {
+    fn parse_form<'a>(req: &'a mut Request) -> Result<(&'a str, &'a str)> {
 
-        req.load_form_data();
-        let form = req.form().expect("Form data should be loaded!");
-
-        let old_password = parse!(form.get("old_password"));
-        let new_password = parse!(form.get("new_password"));
-        if new_password != parse!(form.get("new_password_check")) {
+        let old_password = parse!(req.form().get("old_password"));
+        let new_password = parse!(req.form().get("new_password"));
+        if new_password != parse!(req.form().get::<str>("new_password_check")) {
             return Err("New passwords don't match!".into());
         }
 

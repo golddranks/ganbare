@@ -1,5 +1,5 @@
 extern crate lettre;
-extern crate pencil;
+extern crate sharp_pencil as pencil;
 
 use std::time::Duration;
 

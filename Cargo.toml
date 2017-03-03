@@ -7,17 +7,17 @@ authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 specify_schema = ["ganbare_backend/specify_schema"]
 
 [dependencies]
-diesel_codegen = {version = "0.11", default-features = false, features = ["postgres", "dotenv"] }
+diesel_codegen = { version = "0.11", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
 ganbare_backend = { path = "ganbare_backend" }
 chrono = { version = "0.3", features = ["serde"]}
 rand = "0.3"
-pencil = { git = "https://github.com/golddranks/pencil", branch = "modifications_for_ganbare", default-features = false }
+sharp_pencil = "0.4"
 hyper = { version = "0.10" , default-features = false }
 env_logger = "0.4"
 log = "0.3"
 lazy_static = "0.2"
-handlebars ="0.25"
+handlebars = { version = "0.25", features = ["partial_legacy"] }
 unicode-normalization = "0.1"
 regex = "0.2"
 tempdir = "0.3"
@@ -35,3 +35,4 @@ lettre = "0.6"
 data-encoding = "1.1"
 time = "0.1"
 serde_json = "0.9"
+serde = "0.9"

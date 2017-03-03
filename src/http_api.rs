@@ -2,7 +2,7 @@
 use super::*;
 use chrono::UTC;
 use pencil::{abort, jsonify, Response, redirect};
-use pencil::helpers::{send_file, send_from_directory};
+use pencil::helpers::{send_file_range, send_from_directory_range};
 use regex;
 use std::io::{self, Read};
 use hyper::header::ContentLength;
@@ -46,7 +46,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     file_path.push(&file_name);
 
     time_it!("get_audio",
-             send_file(file_path.to_str().expect("The path SHOULD be valid unicode!"),
+             send_file_range(file_path.to_str().expect("The path SHOULD be valid unicode!"),
                        mime_type,
                        false,
                        req.headers().get()))
@@ -89,7 +89,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
     file_path.push(&file_name);
 
     time_it!("quiz_audio",
-             send_file(file_path.to_str().expect("The saved file path SHOULD be valid unicode!"),
+             send_file_range(file_path.to_str().expect("The saved file path SHOULD be valid unicode!"),
                        mime_type,
                        false,
                        req.headers().get()))
@@ -116,7 +116,7 @@ pub fn get_image(req: &mut Request) -> PencilResult {
     use pencil::{PencilError, HTTPError};
 
     time_it!("get_image",
-             send_from_directory(IMAGES_DIR.to_str()
+             send_from_directory_range(IMAGES_DIR.to_str()
                                      .expect("The image dir path should be valid unicode!"),
                                  file_name,
                                  false,
@@ -178,9 +178,8 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
 
     fn parse_answer(req: &mut Request) -> Result<quiz::Answered> {
-        req.load_form_data();
-        let form = req.form().expect("Form data should be loaded!");
-        let answer_type = &parse!(form.get("type"));
+        let form = req.form();
+        let answer_type = parse!(form.get::<str>("type"));
 
         if answer_type == "word" {
             let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
@@ -913,7 +912,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     use pencil::{PencilError, HTTPError};
     use hyper::header::{CacheControl, CacheDirective};
     use std::str::FromStr;
-    send_file(file_path.to_str().expect("The path should be fully ASCII"),
+    send_file_range(file_path.to_str().expect("The path should be fully ASCII"),
               mime::Mime::from_str("audio/ogg").unwrap(),
               false,
               req.headers().get())
