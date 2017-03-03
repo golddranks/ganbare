@@ -11,7 +11,6 @@ error_chain! {
             R2D2Error(::r2d2::GetTimeout);
             DataEncodingError(::data_encoding::decode::Error);
             ChronoParseError(::chrono::ParseError);
-            CookieParseError(::cookie::ParseError);
         }
         errors {
             InvalidInput {

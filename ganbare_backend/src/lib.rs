@@ -32,7 +32,6 @@ extern crate reqwest;
 extern crate dotenv;
 #[macro_use]
 extern crate binary_macros;
-extern crate cookie;
 extern crate byteorder;
 
 pub use try_map::{FallibleMapExt, FlipResultExt};

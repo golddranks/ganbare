@@ -297,25 +297,25 @@ fn get_session_cookie(cookies: &Cookie) -> Result<Option<session::UserSession>> 
     for c in cookies.0.iter().map(String::as_str) {
         match CookiePair::parse(c) {
             Ok(ref c) if c.name() == "session_id" => {
-                session_id = Some(c.value().long_or_panic());
+                session_id = Some(c.value_raw().expect("The cookie was parsed from a string."));
             }
             Ok(ref c) if c.name() == "refreshed" => {
-                refreshed = Some(c.value().long_or_panic());
+                refreshed = Some(c.value_raw().expect("The cookie was parsed from a string."));
             }
             Ok(ref c) if c.name() == "user_id" => {
-                user_id = Some(c.value().long_or_panic());
+                user_id = Some(c.value_raw().expect("The cookie was parsed from a string."));
             }
             Ok(ref c) if c.name() == "hmac" => {
-                hmac = Some(c.value().long_or_panic());
+                hmac = Some(c.value_raw().expect("The cookie was parsed from a string."));
             }
             Ok(ref c) if c.name() == "token" => {
-                token = Some(c.value().long_or_panic());
+                token = Some(c.value_raw().expect("The cookie was parsed from a string."));
             }
             Ok(ref c) if c.name() == "refresh_count" => {
-                refresh_count = Some(c.value().long_or_panic());
+                refresh_count = Some(c.value_raw().expect("The cookie was parsed from a string."));
             }
             Ok(_) => (),
-            Err(e) => bail!(e),
+            Err(_) => bail!("Couldn't parse the cookie!"),
         }
     }
     if let (Some(session_id), Some(hmac), Some(user_id), Some(refreshed), Some(token), Some(refresh_count)) =
