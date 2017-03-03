@@ -24,7 +24,7 @@ dependencies = [
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.9.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "sharp_pencil 0.4.1",
+ "sharp_pencil 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "try_map 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -212,22 +212,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv_codegen"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "dotenv_macros"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "dotenv_codegen 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "dtoa"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -349,7 +333,6 @@ dependencies = [
  "diesel 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel_codegen 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "dotenv_macros 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 0.25.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -939,25 +922,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sharp_pencil"
-version = "0.4.1"
-dependencies = [
- "formdata 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "handlebars 0.25.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper 0.10.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazycell 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "mime 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mime_guess 1.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 0.9.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "time 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "typemap 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "url 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "siphasher"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1221,8 +1185,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum diesel_codegen 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bf8115b73ca2640b8c6abdb0e34fd80f05cd8a7fee92067ba17d24448db8db5b"
 "checksum diesel_infer_schema 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5573f6506105cfbca35d69fccc9ab8d6dc41d54a58fe18c9f9011abe3284b4a4"
 "checksum dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "eea1395d2df3b5344dc577809296d9578303296e8d105c408aa80ed67d598ef1"
-"checksum dotenv_codegen 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "db383639c143d2346388b345e15853a3bccf0501e1a27e9c27667645541fe0c5"
-"checksum dotenv_macros 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5150bcfa87a2f96095966d7bb9109247382afced681c68e67038a5a7da1b3e5b"
 "checksum dtoa 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "80c8b71fd71146990a9742fc06dcbbde19161a267e0ad4e572c35162f4578c90"
 "checksum email 0.0.16 (registry+https://github.com/rust-lang/crates.io-index)" = "af34e9e6f2a6d80abc3922088df210fc327b2d03fd18ba3c1b432bb644ba1e90"
 "checksum encoding 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)" = "6b0d943856b990d12d3b55b359144ff341533e516d94098b1d3fc1ac666d36ec"

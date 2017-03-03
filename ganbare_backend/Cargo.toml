@@ -10,7 +10,6 @@ specify_schema = []
 diesel = { version = "0.11", features = ["chrono", "large-tables"]}
 diesel_codegen = {version = "0.11", default-features = false, features = ["postgres", "dotenv"] }
 dotenv = "0.8"
-dotenv_macros = "0.10"
 rust-crypto = "0.2"
 error-chain = { version = "0.10", default-features = false}
 clap = "2.20"

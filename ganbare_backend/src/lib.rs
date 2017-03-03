@@ -195,7 +195,7 @@ pub mod skill {
         Ok(match skill_nugget {
             Some(nugget) => nugget,
             None => {
-            diesel::insert(&NewSkillNugget{ skill_summary })
+            diesel::insert(&NewSkillNugget{ skill_summary: skill_summary })
                 .into(skill_nuggets::table)
                 .get_result(&**conn)
                 .chain_err(|| "Database error!")?

@@ -149,8 +149,8 @@ pub fn check_integrity(sess_id_str: &str,
             user_id: user_id,
             refreshed: refreshed,
             refresh_now: false,
-            token,
-            refresh_count,
+            token: token,
+            refresh_count: refresh_count,
         })
     } else {
         warn!("The HMAC doesn't agree with the cookie!");

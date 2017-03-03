@@ -17,7 +17,7 @@ impl<K: Hash + Eq + Clone + Debug, V: Clone> Cache<K, V> {
 
     pub fn new(expires: Duration) -> Self {
         Cache {
-            expires,
+            expires: expires,
             cache: RwLock::new(HashMap::new()),
             expiry_queue: RwLock::new(VecDeque::new()),
         }
