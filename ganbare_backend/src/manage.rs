@@ -131,22 +131,34 @@ pub fn add_audio(conn: &Connection, w: NewAudio, audio_dir: &Path) -> Result<Aud
 }
 
 pub fn create_or_update_word(conn: &Connection,
-                             w: NewWordFromStrings,
+                             mut w: NewWordFromStrings,
                              audio_dir: &Path)
                              -> Result<Word> {
-    use schema::words;
+    use schema::{words, audio_files};
 
     info!("Create word {:?}", w);
 
     let nugget = skill::get_create_by_name(&*conn, &w.nugget)?;
 
-    let mut narrator = Some(audio::get_create_narrator(conn, w.narrator)?);
-    let mut bundle = Some(audio::get_create_bundle(conn, &w.word)?);
+    let mut audio_file = None;
 
-    for mut file in w.files {
-        audio::save(&*conn, &mut narrator, &mut file, &mut bundle, audio_dir)?;
-    }
-    let bundle = bundle.expect("The audio bundle is initialized by now.");
+    match conn.transaction(|| {
+        let mut narrator = Some(audio::get_create_narrator(conn, w.narrator)?);
+        let mut bundle = Some(audio::get_create_bundle(conn, &w.word)?);
+    
+        for mut file in &mut w.files {
+            audio_file = Some(audio::save(&*conn, &mut narrator, &mut file, &mut bundle, audio_dir)?);
+        }
+        Ok(())
+    }) {
+        Err(Error(ErrorKind::FileAlreadyExists(hash), ..)) => {
+            audio_file = audio_files::table.filter(audio_files::file_sha2.eq(hash)).get_result(&**conn).optional()?;
+        },
+        Err(e) => return Err(e),
+        Ok(()) => (),
+    };
+
+    let audio_file = audio_file.expect("If we are here, everything was successful.");
 
     let word = words::table.filter(words::word.eq(&w.word))
         .get_result(&**conn)
@@ -159,7 +171,7 @@ pub fn create_or_update_word(conn: &Connection,
         let new_word = NewWord {
             word: &w.word,
             explanation: &w.explanation,
-            audio_bundle: bundle.id,
+            audio_bundle: audio_file.bundle_id,
             skill_nugget: nugget.id,
             skill_level: w.skill_level,
             priority: w.priority,

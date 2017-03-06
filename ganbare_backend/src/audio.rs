@@ -326,7 +326,10 @@ pub fn audio_file_hash(filename: &str, audio_dir: &Path) -> Result<[u8; 64]> {
     use std::io::Read;
 
     let mut path = audio_dir.to_owned();
-    path.push(filename);
+
+    if !filename.is_empty() {
+        path.push(filename);
+    }
 
     let mut hasher = sha2::Sha512::new();
 
@@ -348,6 +351,17 @@ pub fn save(conn: &Connection,
             -> Result<AudioFile> {
     use schema::audio_files;
 
+    let hash = &audio_file_hash("", &file.0)?[..];
+
+    if let Some::<AudioFile>(_) = audio_files::table
+        .filter(audio_files::file_sha2.eq(hash))
+        .get_result(&**conn)
+        .optional()?
+    {
+        debug!("The audio file already exists! Returning the existing one.");
+        return Err(ErrorKind::FileAlreadyExists(hash.to_owned()).into())
+    };
+
     save_file(&mut file.0,
               file.1.as_ref().map(|s| s.as_str()).unwrap_or(""),
               audio_dir)?;
@@ -368,12 +382,13 @@ pub fn save(conn: &Connection,
         .expect("this is an ascii path");
     let mime = &format!("{}", file.2);
     let narrators_id = default_narrator_id(&*conn, &mut narrator)?;
+
     let new_q_audio = NewAudioFile {
         narrators_id: narrators_id,
         bundle_id: bundle_id,
         file_path: file_path,
         mime: mime,
-        file_sha2: &audio_file_hash(file_path, audio_dir)?[..],
+        file_sha2: hash,
     };
 
     let audio_file: AudioFile = diesel::insert(&new_q_audio).into(audio_files::table)

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo "Local DB: $LOCAL_DB_NAME Remote DB: $DEPLOY_DB_NAME"
+
 DEPLOY_SERVER=ganba.re
 LOCAL_DB_NAME=ganbare_dev
 LOCAL_AUDIO_DIR=audio

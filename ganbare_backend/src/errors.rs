@@ -81,5 +81,9 @@ error_chain! {
                 description("RateLimit exceeded")
                 display("RateLimit exceeded")
             }
+            FileAlreadyExists(hash: Vec<u8>) {
+                description("File already exists!")
+                display("File already exists!")
+            }
         }
     }

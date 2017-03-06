@@ -23,6 +23,7 @@ use ganbare_backend::ConnManager;
 use ganbare_backend::Connection;
 use ganbare_backend::session::UserSession;
 use LOGGED_OUT_CACHE;
+use lazy_static;
 
 pub use ganbare_backend::PERF_TRACE;
 
@@ -683,12 +684,12 @@ macro_rules! include_templates(
 /// Try and dereference required env vars for the `lazy_static!`
 /// to run and check if the values are present.
 pub fn check_env_vars() {
-    let _ = &*DATABASE_URL;
-    let _ = &*EMAIL_SERVER;
-    let _ = &*SITE_DOMAIN;
-    let _ = &*SITE_LINK;
-    let _ = &*TIME_AT_SERVER_START;
-    let _ = &*COOKIE_HMAC_KEY;
+    lazy_static::initialize(&DATABASE_URL);
+    lazy_static::initialize(&EMAIL_SERVER);
+    lazy_static::initialize(&SITE_DOMAIN);
+    lazy_static::initialize(&SITE_LINK);
+    lazy_static::initialize(&TIME_AT_SERVER_START);
+    lazy_static::initialize(&COOKIE_HMAC_KEY);
 }
 
 pub fn do_login(conn: &Connection,
