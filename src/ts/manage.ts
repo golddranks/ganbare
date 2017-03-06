@@ -833,7 +833,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 			});
 
 			var c_body = $('<section class="bordered" style="margin-bottom: 3em;"></section>').appendTo(c_info).hide();
-			var q_explanation = $('<p class="questionExplanation" contenteditable="true"></p>').appendTo(c_body).text(question.q_explanation);
+			var q_explanation = $('<p class="questionExplanation" contenteditable="true"></p>').appendTo(c_body).html(question.q_explanation);
 			var question_latestResp = question;
 			var q_explanation_okayToUpdate = false;
 			q_explanation.on('blur', function() {
@@ -862,7 +862,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				};
 				$.ajax(request);
 			});
-			var question_text = $('<p class="questionText" contenteditable="true"></p>').appendTo(c_body).text(question.question_text);
+			var question_text = $('<p class="questionText" contenteditable="true"></p>').appendTo(c_body).html(question.question_text);
 			var question_text_okayToUpdate = false;
 			question_text.on('blur', function() {
 				question.question_text = question_latestResp.question_text;
