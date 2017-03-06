@@ -11,12 +11,20 @@ fi
 
 if [ -z $1 ]
 then
-echo "Usage: backup_db.sh <name of the database> <name of the backup>" && exit 1
+	echo "Usage: backup_db.sh <name of the database> <name of the backup>" && exit 1
 fi
 
 if [ -z $2 ]
 then
-echo "Usage: backup_db.sh <name of the database> <name of the backup>" && exit 1
+	echo "Usage: backup_db.sh <name of the database> <name of the backup>" && exit 1
+fi
+
+if [ ! -d "$GANBARE_AUDIO_DIR" ]; then
+	echo "The audio dir $GANBARE_AUDIO_DIR doesn't exist!" && exit 1
+fi
+
+if [ ! -d "$GANBARE_IMAGES_DIR" ]; then
+	echo "The image dir $GANBARE_IMAGES_DIR doesn't exist!" && exit 1
 fi
 
 echo "Starting backup!"
