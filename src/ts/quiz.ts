@@ -441,7 +441,7 @@ function cleanState() : void {
 	buttonSection.hide();
 	questionSectionFlexContainer.hide();
 	wordSectionSlideContainer.hide();
-	wordExplanation.html("");
+	wordExplanation.text("");
 	wordExplanation.removeClass("imageLoaded");
 	timesAudioPlayed = 0;
 	wordSection.hide();
@@ -739,7 +739,7 @@ function showQuestion(question: QuestionJson) {
 	console.log(question);
 	questionSectionFlexContainer.show();
 	questionSection.show();
-	questionExplanation.text(question.explanation);
+	questionExplanation.html(question.explanation);
 	avatar.show();
 	avatar.css('opacity', '0');
 	questionExplanation.slideDown(normalSpeed, function() { avatar.fadeTo(normalSpeed, 1); });
@@ -763,7 +763,7 @@ function showQuestion(question: QuestionJson) {
 			quiz_data.playbackEndedInstant = Date.now();
 			topmessage.text("Vastausaikaa 8 s");
 			topmessage.fadeIn();
-			questionText.text(question.question);
+			questionText.html(question.question);
 		
 			answerList.slideDown(normalSpeed);
 			window.setTimeout(function() { if (quiz_data.answered) {return}; topmessage.text("Vastausaikaa 3 s"); }, 5000);
