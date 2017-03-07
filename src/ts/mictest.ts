@@ -156,7 +156,14 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 			console.log("Init stream");
 
 			rec.addEventListener( "streamError", (err: ErrorEvent) => {
-				errorMessage("Virhe alustaessa nauhoitusta: "+err.error.message);
+				let msg = err.error.message;
+				if (msg === "") {
+					msg = err.error.name;
+				}
+				if (msg === "") {
+					msg = "En osaa näyttää, mikä virhe :(";
+				}
+				errorMessage("Virhe alustaessa nauhoitusta: "+msg);
 			});
 
 			errorMessage("Tarvitsemme selaimesi nauhoitusominaisuutta!<br>Ole hyvä ja myönnä lupa nauhoitukselle.");
