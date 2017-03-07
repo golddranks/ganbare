@@ -186,12 +186,6 @@ lazy_static! {
             .unwrap_or_else(|_| "/static/fonts/default.css".into())
     };
 
-    pub static ref FONT_FILE : String = {
-        dotenv::dotenv().ok();
-        env::var("GANBARE_FONT_FILE")
-            .unwrap_or_else(|_| "/static/fonts/SourceSansPro_Light.woff".into())
-    };
-
     pub static ref AUDIO_DIR : PathBuf = {
         dotenv::dotenv().ok();
         PathBuf::from(env::var("GANBARE_AUDIO_DIR")
@@ -365,7 +359,6 @@ pub fn new_template_context<'a>() -> TemplateContext<'a> {
     ctx.insert("title", "akusento.ganba.re");
     ctx.insert("jquery_url", JQUERY_URL.as_ref());
     ctx.insert("font_stylesheet", FONT_URL.as_ref());
-    ctx.insert("font_file", FONT_FILE.as_ref());
     ctx
 }
 

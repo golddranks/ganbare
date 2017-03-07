@@ -33,7 +33,6 @@ The following have defaults, and you may omit them:
     GANBARE_SERVER_BINDING defaults to localhost:8080. When running inside a container, change this to 0.0.0.0:8080 for the site to be accessible from host.
     GANBARE_JQUERY defaults to /static/js/jquery.min.js. For production, try https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js
     GANBARE_FONT_URL defaults to /static/fonts/default.css. For production, try https://fonts.googleapis.com/css?family=Source+Sans+Pro:300
-    GANBARE_FONT_FILE the actual woff for prefetching. defaults to /static/fonts/SourceSansPro_Light.woff. For production, try https://fonts.gstatic.com/s/sourcesanspro/v9/toadOcfmlt9b38dHJxOBGCP2LEk6lMzYsRqr3dHFImA.woff2
     GANBARE_USER_AUDIO_DIR defaults to "user_audio" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
     GANBARE_AUDIO_DIR defaults to "audio" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
     GANBARE_IMAGES_DIR defaults to "images" (dir relative to app working directory) You shouldn't need to change this, but it's possible.
