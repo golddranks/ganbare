@@ -15,7 +15,7 @@ use ganbare::skill;
 use ganbare::manage;
 use ganbare::event;
 use ganbare::user;
-use ganbare::test;
+use test;
 
 pub fn get_audio(req: &mut Request) -> PencilResult {
 

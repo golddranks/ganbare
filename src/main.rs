@@ -39,6 +39,7 @@ mod helpers;
 mod app_pages;
 mod manager_pages;
 mod http_api;
+mod test;
 
 pub use ganbare_backend as ganbare;
 pub use helpers::*;
