@@ -77,9 +77,16 @@ function incrementFactory() {
 	var answers_5 = [
 		"asialla ei ole minulle suurta väliä",
 		"olisi ihan kiva, mutta se ei ole prioriteettini",
-		"jaksaisin nähdä hieman vaivaa kehittyäkseni",
+		"haluan ääntää ainakin kohtalaisen hyvin",
 		"hyvä ääntämys on minulle tärkeä asia",
 		"haluaisin kuulostaa japanilaiselta",
+	];
+
+	var answers_6 = [
+		"en ole koskaan välittänyt opiskella",
+		"olen kiinnittänyt johonkin yksittäiseen asiaan huomiota jos minulle on huomautettu siitä",
+		"olen oma-aloitteisesti opiskellut ääntämistä",
+		"käytän paljon aikaa ääntämisen opiskeluun",
 	];
 
 	var textfield = "textfield";
@@ -104,8 +111,9 @@ function incrementFactory() {
 	{q: "Katson japanilaisia ajankohtaisohjelmia, komediaa ym. TV-ohjelmia tekstitysten kanssa.", a: answers_1},
 	{q: "Luen mangaa japaniksi.", a: answers_1},
 	{q: "Luen japanilaisia romaaneja, nuortenkirjoja ym. proosaa japaniksi.", a: answers_1},
-	{q: "Matkustan Japaniin.", a: answers_2},
+	{q: "Olen matkustanut Japaniin.", a: answers_2},
 	{q: "Haluaisin osata ääntää japania todella hyvin.", a: answers_5},
+	{q: "Olen opiskellut ääntämistä.", a: answers_6},
 	{q: "Opiskelen japania käymällä kursseilla.", a: answers_3},
 	{q: "Opiskelen japania jollain muulla tavalla, millä?", a: textfield},
 	{q: "Mihin kohtaa nelikenttää sijoittaisit vahvuutesi japanin kielitaidossasi?", a: fourfold},
@@ -174,6 +182,15 @@ function incrementFactory() {
 		} else {
 			backButton.hide();
 		}
+
+		if (i < 0) {
+			i = 0;
+		}
+
+		if (i === questions.length) {
+			return surveyReady();
+		}
+
 		progressMeter.text("("+(i+1)+"/"+questions.length+")");
 		var question = questions[i].q;
 		var answers = questions[i].a;
@@ -257,9 +274,6 @@ function incrementFactory() {
 	backButton.click(goBack);
 	
 	function increment() {
-		if (i === questions.length) {
-			return surveyReady();
-		}
 		i++;
 		renderQuestion();
 	};
