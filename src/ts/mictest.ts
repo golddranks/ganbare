@@ -157,6 +157,12 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 
 			rec.addEventListener( "streamError", (err: ErrorEvent) => {
 				let msg = err.error.message;
+				if (msg === "" && err.error.name == "DevicesNotFoundError") {
+					msg = "Ei ole mikrofonia millä nauhoittaa!";
+				}
+				if (msg === "" && err.error.name == "PermissionDeniedError") {
+					msg = "Selaimesi ei anna käyttää mikrofonia! Tarkista asetuksista että valittuna on \"Salli\" tai \"Kysy\".";
+				}
 				if (msg === "") {
 					msg = err.error.name;
 				}
