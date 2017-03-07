@@ -388,6 +388,7 @@ pub fn main() {
     app.get("/login", "login_form", app_pages::login_form);
     app.post("/login", "login_post", app_pages::login_post);
     app.post("/logout", "logout", app_pages::logout);
+    app.get("/logout?doit", "logout_get", app_pages::logout);
     app.get("/confirm", "confirm_form", app_pages::confirm_form);
     app.post("/confirm", "confirm_post", app_pages::confirm_post);
     app.get("/change_password",
