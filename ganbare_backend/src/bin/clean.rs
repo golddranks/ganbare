@@ -699,6 +699,62 @@ fn replace_images() {
 
 }
 
+fn missing_images() {
+
+    use schema::{words, question_answers};
+
+    let fs_files = std::fs::read_dir(&*IMAGE_DIR).expect(&format!("Not found: {:?}", &*IMAGE_DIR));
+
+    let mut files = HashSet::<String>::new();
+
+    let mut file_counter = 0;
+    let mut ref_counter = 0;
+
+    for f in fs_files {
+        let f = f.unwrap();
+        let f_name = f.file_name().to_str().unwrap().to_owned();
+        files.insert(f_name);
+        file_counter += 1;
+    }
+
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
+        .get_results(&conn)
+        .unwrap();
+
+    for w in words {
+
+        for img_match in IMG_REGEX.captures_iter(&w.explanation) {
+            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+
+            if !files.contains(img) {
+                println!("Warning: {:?} references file {:?} that doesn't exist", w.explanation, img);
+            }
+            ref_counter += 1;
+        }
+    }
+
+    let answers: Vec<Answer> =
+        question_answers::table.filter(question_answers::answer_text.like("%<img%"))
+            .get_results(&conn)
+            .unwrap();
+
+    for a in answers {
+        for img_match in IMG_REGEX.captures_iter(&a.answer_text) {
+            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+
+            if !files.contains(img) {
+                println!("Warning: {:?} references file {:?} that doesn't exist", a.answer_text, img);
+            }
+            ref_counter += 1;
+        }
+    }
+    println!("Checked {:?} files and {:?} references.", file_counter, ref_counter);
+    
+}
+
 fn main() {
     use clap::*;
 
@@ -738,4 +794,6 @@ fn main() {
     fix_image_filenames();
     println!("Replace oversized images");
     replace_images();
+    println!("Checking missing images!");
+    missing_images();
 }
