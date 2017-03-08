@@ -576,10 +576,11 @@ fn fix_image_filenames() {
     
 }
 
+// This needs to write to database because it often needs to change the file format of the images (png -> jpg etc.)
 fn replace_images() {
     use schema::{words, question_answers};
 
-    let new_images = std::fs::read_dir("src/bin/image_cleanup").expect("Can't find the dir src/bin/img_cleanup!");
+    let new_images = std::fs::read_dir("src/bin/image_cleanup").expect("Can't find the dir src/bin/image_cleanup!");
     let mut image_names = vec![];
 
     for f in new_images {
@@ -643,12 +644,19 @@ fn replace_images() {
 
     for f in new_images {
         let fname = f.unwrap().file_name();
-        let mut old_path = PathBuf::from("src/bin/image_cleanup");
-        let mut new_path = IMAGE_DIR.to_owned();
+        let mut new_path = PathBuf::from("src/bin/image_cleanup");
+        let mut old_path = IMAGE_DIR.to_owned();
+        let mut old_path_backup = IMAGE_DIR.to_owned();
         old_path.push(&fname);
         new_path.push(&fname);
-        println!("{:?} → {:?}", old_path, new_path);
-        std::fs::rename(old_path, new_path).unwrap();
+        old_path_backup.push(&fname);
+        old_path_backup.set_extension(".bak");
+        match std::fs::rename(&old_path, &old_path_backup) {
+            Err(e) => { println!("Error: {:?}. {:?}", &old_path, e); continue },
+            _ => (),
+        }
+        println!("{:?} → {:?}", &new_path, &old_path);
+        std::fs::copy(&new_path, &old_path).unwrap();
     }
 
 }
