@@ -45,39 +45,7 @@ pub fn get_new_quiz_pretest(conn: &Connection,
                             event: &Event)
                             -> Result<Option<Quiz>> {
 
-// Words with only one sentence (and therefore suitable for testing)
-// かき
-// かく
-// いし
-// あし
-
-// Pre-test structure
-// 4 words: 2 q + 2 e
-// 2 sentences 1q + 1e
-
-// Post-test structure
-// 4 words: 2 q + 2 e, which of half are new, half are surely-known
-// 2 sentences 1q + 1e, which of half are new, half are surely-known
-
-
-    let quizes = vec![QuizSerialized::Word("いし・", 5355),
-                      QuizSerialized::Word("い・し", 5367),
-                      QuizSerialized::Question("い・し", 6827),
-                      QuizSerialized::Word("かき", 5112),
-                      QuizSerialized::Word("か・き", 5129),
-                      QuizSerialized::Exercise("か・き", 3675),
-                      QuizSerialized::Word("か・く", 3966),
-                      QuizSerialized::Word("はる", 1345),
-                      QuizSerialized::Word("かく", 3659),
-                      QuizSerialized::Word("は・る", 1356),
-                      QuizSerialized::Question("か・く", 5420),
-                      QuizSerialized::Exercise("は・る", 5287),
-                      QuizSerialized::Word("／あ・きがきた", 5061),
-                      QuizSerialized::Word("あ／き・がきた", 4759),
-                      QuizSerialized::Question("あ／き・がきた", 5045),
-                      QuizSerialized::Word("／あ・しが生えてる", 7290),
-                      QuizSerialized::Word("あ／し・が生えてる", 7289),
-                      QuizSerialized::Exercise("あ／し・が生えてる", 7289)];
+    let quizes = include!("../.env.pretest.rs");
 
     let mut quiz = test::get_new_quiz_test(conn, user_id, event, &quizes)?;
 
@@ -94,10 +62,7 @@ pub fn get_new_quiz_posttest(conn: &Connection,
                              event: &Event)
                              -> Result<Option<Quiz>> {
 
-    let quizes = vec![QuizSerialized::Word("あか・", 1),
-                      QuizSerialized::Word("あ・か", 1),
-                      QuizSerialized::Question("あか", 1),
-                      QuizSerialized::Exercise("あか", 1)];
+    let quizes = include!("../.env.posttest.rs");
 
     let mut quiz = test::get_new_quiz_test(conn, user_id, event, &quizes)?;
 
