@@ -25,7 +25,7 @@ try_map = "0.2"
 mime = "0.2"
 url = "1.2"
 multi_mut = "0.1"
-cookie = { git = "https://github.com/golddranks/cookie-rs", branch = "backing_storage_api" }
+cookie = "0.7"
 typemap = "0.3"
 error-chain = { version = "0.10", default-features = false }
 r2d2 = "0.7"
