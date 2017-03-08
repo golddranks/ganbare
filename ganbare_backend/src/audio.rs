@@ -482,6 +482,12 @@ pub fn get_audio_file_by_id(conn: &Connection, file_id: i32) -> Result<AudioFile
     Ok(file)
 }
 
+pub fn get_bundle_by_id(conn: &Connection, bundle_id: i32) -> Result<AudioBundle> {
+    use schema::audio_bundles;
+
+    Ok(audio_bundles::table.filter(audio_bundles::id.eq(bundle_id)).get_result(&**conn)?)
+}
+
 pub fn get_file_path(conn: &Connection, file_id: i32) -> Result<(String, mime::Mime)> {
     use schema::audio_files::dsl::*;
     use diesel::result::Error::NotFound;

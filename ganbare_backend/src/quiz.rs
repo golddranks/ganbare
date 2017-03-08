@@ -1347,7 +1347,10 @@ pub fn test_item(conn: &Connection,
             let w = quiz::get_word_by_str(conn, s).chain_err(|| format!("Word {} not found", s))?;
             let a = audio::get_audio_file_by_id(conn, audio_id)?;
 
-            assert_eq!(w.audio_bundle, a.bundle_id);
+            if w.audio_bundle != a.bundle_id {
+                let bundle = audio::get_bundle_by_id(conn, a.bundle_id);
+                panic!("Word: {:?}.\nAudio bundle: {:?}", w, bundle);
+            }
 
             pending_item = new_pending_item(conn, user_id, QuizType::Word(audio_id), true)?;
 
@@ -1380,7 +1383,10 @@ pub fn test_item(conn: &Connection,
 
             let a = audio::get_audio_file_by_id(conn, audio_id)?;
 
-            assert_eq!(ans.q_audio_bundle, a.bundle_id);
+            if ans.q_audio_bundle != a.bundle_id {
+                let bundle = audio::get_bundle_by_id(conn, a.bundle_id);
+                panic!("Q Answer: {:?}.\nAudio bundle: {:?}", ans, bundle);
+            }
 
             pending_item = new_pending_item(conn, user_id, QuizType::Question(audio_id), true)?;
 
@@ -1421,7 +1427,10 @@ pub fn test_item(conn: &Connection,
             let w = quiz::get_word_by_id(conn, var.id)?;
             let a = audio::get_audio_file_by_id(conn, audio_id)?;
 
-            assert_eq!(w.audio_bundle, a.bundle_id);
+            if w.audio_bundle != a.bundle_id {
+                let bundle = audio::get_bundle_by_id(conn, a.bundle_id);
+                panic!("Word: {:?}.\nAudio bundle: {:?}", w, bundle);
+            }
 
             pending_item = new_pending_item(conn, user_id, QuizType::Exercise(audio_id), true)?;
 

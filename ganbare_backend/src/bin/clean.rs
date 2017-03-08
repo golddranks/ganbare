@@ -131,12 +131,16 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
     Ok(logger)
 }
 
-fn normalize_unicode() {
-
+fn get_pooled_conn() -> Connection {
     let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
     let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
-    let pooled_conn = pool.get().unwrap();
+    pool.get().unwrap()
+}
+
+fn normalize_unicode() {
+
+    let pooled_conn = get_pooled_conn();
 
     let bundles = audio::get_all_bundles(&pooled_conn).unwrap();
 
@@ -755,6 +759,55 @@ fn missing_images() {
     
 }
 
+fn check_tests() {
+    use quiz::{QuizSerialized};
+
+    let pre_quiz = include!("../../../pretest.rs");
+    let post_quiz = include!("../../../posttest.rs");
+    let quizes = pre_quiz.into_iter().chain(post_quiz.into_iter());
+
+    let conn = get_pooled_conn();
+
+    for i in quizes {
+        match i {
+            QuizSerialized::Word(s, audio_id) => {
+                let w = quiz::get_word_by_str(&conn, s).chain_err(|| format!("Word {} not found", s)).unwrap();
+                let a = audio::get_audio_file_by_id(&conn, audio_id).unwrap();
+    
+                if w.audio_bundle != a.bundle_id {
+                    let bundle = audio::get_bundle_by_id(&conn, a.bundle_id);
+                    panic!("Word: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}", w, bundle, a.id);
+                }
+            }
+            QuizSerialized::Question(s, audio_id) => {
+    
+                let (_, ans) =
+                    quiz::get_question(&conn, s).chain_err(|| format!("Question {} not found", s)).unwrap();
+    
+                let a = audio::get_audio_file_by_id(&conn, audio_id).unwrap();
+    
+                if ans.q_audio_bundle != a.bundle_id {
+                    let bundle = audio::get_bundle_by_id(&conn, a.bundle_id);
+                    panic!("Q Answer: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}", ans, bundle, a.id);
+                }
+            }
+            QuizSerialized::Exercise(word, audio_id) => {
+    
+                let (_, var) = quiz::get_exercise(&conn, word)
+                            .chain_err(|| format!("Exercise {} not found", word)).unwrap();
+    
+                let w = quiz::get_word_by_id(&conn, var.id).unwrap();
+                let a = audio::get_audio_file_by_id(&conn, audio_id).unwrap();
+    
+                if w.audio_bundle != a.bundle_id {
+                    let bundle = audio::get_bundle_by_id(&conn, a.bundle_id);
+                    panic!("Word: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}", w, bundle, a.id);
+                }
+            }
+        };
+    }
+}
+
 fn main() {
     use clap::*;
 
@@ -794,6 +847,8 @@ fn main() {
     fix_image_filenames();
     println!("Replace oversized images");
     replace_images();
-    println!("Checking missing images!");
+    println!("Check for missing image files");
     missing_images();
+    println!("Check tests integrity!");
+    check_tests();
 }

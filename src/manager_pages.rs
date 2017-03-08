@@ -67,7 +67,10 @@ pub fn manage(req: &mut Request) -> PencilResult {
 
     let (_, sess) = auth_user(req, "editors")?; // Unauthorized
 
-    let context = new_template_context();
+    let show_id = req.args().get::<str>("show_id").map(|_| "true" ).unwrap_or("false");
+
+    let mut context = new_template_context();
+    context.insert("show_id", show_id);
 
     req.app
         .render_template("manage.html", &context)

@@ -19,6 +19,9 @@
 {{/partial}}
 
 {{#partial page_script_inline}}
+
+window["show_id"] = {{ show_id }};
+
 $.get("/api/build_number", function(resp) {
 	let build = resp[0];
 	let commit = resp[1];

@@ -387,6 +387,9 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 				var narrator_name = narrators[file.narrators_id].name;
 				var narrator_color = narrators[file.narrators_id].color;
 				var audio_button = proto_audio_button.clone().appendTo(bundle_html);
+				if (window["show_id"] == true) {
+					audio_button.append(file.id);
+				}
 				audio_button.data("file", file);
 				audio_button.prop('title', 'ID: '+file.id+' Narrator: '+narrator_name);
 				audio_button.css('background-color', narrator_color);
