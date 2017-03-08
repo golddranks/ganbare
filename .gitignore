@@ -2,6 +2,8 @@
 *.map
 .env
 .env.*
+posttest.rs
+pretest.rs
 .sass-cache
 *.css.map
 .DS_Store

@@ -45,7 +45,7 @@ pub fn get_new_quiz_pretest(conn: &Connection,
                             event: &Event)
                             -> Result<Option<Quiz>> {
 
-    let quizes = include!("../.env.pretest.rs");
+    let quizes = include!("../pretest.rs");
 
     let mut quiz = test::get_new_quiz_test(conn, user_id, event, &quizes)?;
 
@@ -62,7 +62,7 @@ pub fn get_new_quiz_posttest(conn: &Connection,
                              event: &Event)
                              -> Result<Option<Quiz>> {
 
-    let quizes = include!("../.env.posttest.rs");
+    let quizes = include!("../posttest.rs");
 
     let mut quiz = test::get_new_quiz_test(conn, user_id, event, &quizes)?;
 
