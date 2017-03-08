@@ -1,3 +1,10 @@
+{{#partial page_script_link}}
+	<script src="/static/js/howler.js"></script>
+	<script src="/static/js/recorder.min.js"></script>
+	<script src="/static/ts/mictest.js"></script>
+{{/partial}}
+
+
 {{#partial main_section}}
 	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
 	<section id="settings" style="display: none;">
@@ -6,47 +13,46 @@
 			<li><a href="/change_password">Vaihda salasanaa</a></li>
 		</ul>
 	</section>
+	
+<div id="errorSection" style="display: none; ">
+	<p id="errorStatus">{{ error_msg }}</p>
+</div>
+<section id="pretestExplanation">
+	<h1>Testi</h1>
+	<p class="wordyExplanation">Koejakson lopuksi testaamme lyhyesti, miten taitosi kuulla ja tuottaa aksentteja on muuttunut.
+	Älä stressaa turhia, vaan vastaa parhaasi mukaan kysymyksiin.</p>
+	<p class="wordyExplanation">Ohjelma esittelee ensin sanoja ja lauseita, ja tenttaa niitä sitten hetken päästä. Voit esittelyvaiheessa
+	kuunnella esiteltävän sanan tai lauseen kuinka monta kertaa haluat. Välillä sinun pitää vastata kysymykseen kahdesta vaihtoehdosta, ja välillä
+	sinun tulee ääntää sana itse.</p>
+	<button id="breaksBtn">Seuraava ></button>
+</section>
+<section id="breaksExplanation" style="display: none">
+	<h1>Testi</h1>
+	<p class="wordyExplanation">Normaalisti emme välitä, vaikka pitäisit taukoja välissä harjoitellessasi aksentteja, mutta ole hyvä
+	ja tee tämän testi pitämättä taukoja välissä.</p>
+	<p class="wordyExplanation">Testi on kaksiosainen, ja osien välissä voit pitää tauon. Varaa itsellesi
+	aikaa reilu viisi minuuttia ja meluton, häiriötön tila, jossa olet mieluusti yksin.</p>
+	<button id="checkMic">Seuraava ></button>
+</section>
+<section id="micCheckExplanation" style="display: none">
+	<h1>Testi</h1>
+	<p class="wordyExplanation">Testissä nauhoitetaan yhdessä vaiheessa ääntäsi mikrofonin avustuksella. Nauhoitus toimii vain
+	Chrome- ja Firefox-selaimilla, joten varmistathan etukäteen että käytät yhteensopivaa selainta.</p>
+	<p class="wordyExplanation">Ennen testin aloittamista tarkistamme mikrofonin ja kaiuttimien toimivuuden.</p>
+	<p class="wordyExplanation">Paina "nauhoita"-painiketta ja
+	sano normaaliin ääneen: "testi, testi", ja paina sitten "OK".</p>
+	<button id="recStart">Nauhoita <img src="/static/images/record.png" class="recordIcon"></button>
+	<button id="recDone" disabled>OK</button>
+</section>
 
-	<header>
-		<h1>{{ title }}</h1>
-		<p>Tieteellinen koe japanin ääntämyksestä</p>
-	</header>
-	<hr />
-	<p>Ensin pieni koe! Testaamme, kuinka hyvä olet aksenteissa jo valmiiksi.</p>
-	<p>Joo.</p>
-	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
+<section id="micCheckOk" style="display: none">
+	<h1>Testi</h1>
+	<p>Kuulitko oman äänesi? Jos kuulit, kaikki on kunnossa, ja voit aloittaa kokeen.</p>
+	<p>Jos et kuullut, varmista että kaiuttimet ovat päällä ja mikrofoni toimii, ja paina "tarkista uudelleen".</p>
+	<button id="checkMicAgain">tarkista uudelleen</button>
+	<form action="/ok" method="post" style="display: inline-block"><button>Aloita koe</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
+</section>
 
 {{/partial}}
-
-{{#partial page_script_inline}}
-
-/* menu */
-
-var main = $("#main");
-var settingsArea = $("#settings");
-var menuButton = $("#menuButton");
-
-function toggleMenu(event: Event) : void {
-	settingsArea.toggle();
-	main.toggleClass("menuOn");
-	event.stopPropagation(); 
-}
-
-function cancelMenu(event: Event): void {
-	settingsArea.hide();
-	main.removeClass("menuOn");
-	event.stopPropagation(); 
-}
-
-settingsArea.hide();
-settingsArea.click(cancelMenu);
-$("body").click(cancelMenu);
-menuButton.click(toggleMenu);
-$("#settingsMenu").click(function( event ) { event.stopPropagation(); });
-
-/* menu ends */
-
-{{/partial}}
-
 
 {{~> base.html ~}}

@@ -233,14 +233,24 @@ function checkMic() {
 	})
 }
 
-function getReadyForFirstTest() {
+function breaksExplanation() {
 	$("#pretestExplanation").hide();
+	$("#micCheckOk").hide();
+	$("#breaksExplanation").show();
+	$("#recStart").prop('disabled', false);
+	$("#recDone").prop('disabled', true);
+}
+
+function getReadyForFirstTest() {
+	$("#breaksExplanation").hide();
 	$("#micCheckOk").hide();
 	$("#micCheckExplanation").show();
 	$("#recStart").prop('disabled', false);
 	$("#recDone").prop('disabled', true);
 }
 
+
+$("#breaksBtn").click(breaksExplanation);
 $("#checkMic").click(getReadyForFirstTest);
 
 $("#checkMicAgain").click(function() {
