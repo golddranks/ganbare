@@ -644,10 +644,6 @@ fn replace_images() {
         }
     }
 
-    if image_names.len() > 0 {
-        println!("Copying image files");
-    }
-
     let original_images = std::fs::read_dir(&*IMAGE_DIR).expect("Can't find the dir src/bin/image_cleanup!");
     for f in original_images {
         let fname = f.unwrap().file_name();
@@ -656,6 +652,10 @@ fn replace_images() {
         if original_filenames.get(&just_name).is_some() {
             original_filenames.insert(just_name, Some(fname));
         }
+    }
+
+    if image_names.len() > 0 {
+        println!("Copying image files");
     }
 
     let new_images = std::fs::read_dir("src/bin/image_cleanup").expect("Couldn't read the image_cleanup dir?");
@@ -667,29 +667,34 @@ fn replace_images() {
             continue;
         }
         let orig_fname = match original_filenames.get(just_name).expect("ha?").as_ref() {
-            Some(o) => o,
-            None => continue,
+            Some(o) => Some(o),
+            None => None,
         };
 
-        let mut new_path = PathBuf::from("src/bin/image_cleanup");
+        let mut new_source_path = PathBuf::from("src/bin/image_cleanup");
+        let mut new_target_path = IMAGE_DIR.to_owned();
         let mut done_path = PathBuf::from("src/bin/image_cleanup_done");
-        new_path.push(&fname);
+        new_source_path.push(&fname);
+        new_target_path.push(&fname);
         done_path.push(&fname);
 
-
-        let mut old_path = IMAGE_DIR.to_owned();
-        let mut old_path_backup = IMAGE_DIR.to_owned();
-        old_path.push(&orig_fname);
-        old_path_backup.push(&orig_fname);
-        old_path_backup.set_extension(".bak");
-
-        match std::fs::rename(&old_path, &old_path_backup) {
-            Err(e) => { println!("Error: {:?}. {:?}", &old_path, e); continue },
-            _ => (),
+        if let Some(orig_fname) = orig_fname {
+            let mut old_path = IMAGE_DIR.to_owned();
+            let mut old_path_backup = IMAGE_DIR.to_owned();
+            old_path.push(&orig_fname);
+            old_path_backup.push(&orig_fname);
+            old_path_backup.set_extension(".bak");
+    
+            println!("Backing up: {:?} →　{:?}", &old_path, &old_path_backup);
+            match std::fs::rename(&old_path, &old_path_backup) {
+                Err(e) => { println!("Error: {:?}. {:?}", &old_path, e); continue },
+                _ => (),
+            }
         }
-        println!("{:?} → {:?}", &new_path, &old_path);
-        std::fs::copy(&new_path, &old_path).unwrap();
-        std::fs::rename(&new_path, &done_path).unwrap();
+
+        println!("{:?} → {:?}", &new_source_path, &new_target_path);
+        std::fs::copy(&new_source_path, &new_target_path).expect("Can't copy from image_cleanup to IMG_DIR?");
+        std::fs::rename(&new_source_path, &done_path).expect("Can't move from image_cleanup to image_cleanup_done?");
     }
 
 }
