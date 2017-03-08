@@ -16,3 +16,4 @@ target
 /static/ts/
 /user_audio/
 /ganbare_backend/src/bin/image_cleanup
+/ganbare_backend/src/bin/image_cleanup_done

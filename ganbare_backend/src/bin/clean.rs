@@ -496,8 +496,6 @@ fn fix_image_filenames() {
 
     let mut files = HashMap::<String, String>::new();
 
-    println!("Files");
-
     for f in fs_files {
         let f = f.unwrap();
         let f_name = f.file_name().to_str().unwrap().to_owned();
@@ -529,8 +527,6 @@ fn fix_image_filenames() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    println!("Words");
-
     let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
         .get_results(&conn)
         .unwrap();
@@ -551,8 +547,6 @@ fn fix_image_filenames() {
             }
         }
     }
-
-    println!("Answers");
 
     let answers: Vec<Answer> =
         question_answers::table.filter(question_answers::answer_text.like("%<img%"))
@@ -579,14 +573,19 @@ fn fix_image_filenames() {
 // This needs to write to database because it often needs to change the file format of the images (png -> jpg etc.)
 fn replace_images() {
     use schema::{words, question_answers};
+    use std::collections::HashMap;
 
     let new_images = std::fs::read_dir("src/bin/image_cleanup").expect("Can't find the dir src/bin/image_cleanup!");
     let mut image_names = vec![];
+
+    let mut original_filenames = HashMap::new();
 
     for f in new_images {
         let fname = f.unwrap().file_name();
         let fname = fname.to_str().unwrap();
         image_names.push((fname[0..fname.len()-4].to_owned(), fname[fname.len()-4..fname.len()].to_owned()));
+
+        original_filenames.insert(fname[0..fname.len()-4].to_owned(), None);
     }
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
@@ -596,15 +595,18 @@ fn replace_images() {
         .unwrap();
 
     for mut w in words {
-        for &(ref i, ref ext) in &image_names {
-            if w.explanation.contains(i) {
+        for &(ref fname, ref ext) in &image_names {
+            if w.explanation.contains(fname) {
+
                 let stitched = {
-                    let mut pieces = w.explanation.splitn(2, i);
+                    let mut pieces = w.explanation.splitn(2, fname);
                     let before = pieces.next().unwrap();
                     let ext_after = pieces.next().unwrap();
                     let after = ext_after.splitn(2, '"').skip(1).next().unwrap();
-                    format!("{}{}{}\"{}", before, i, ext, after)
+
+                    format!("{}{}{}\"{}", before, fname, ext, after)
                 };
+
                 if w.explanation != stitched {
                     println!("{} → {}", w.explanation, stitched);
                     w.explanation = stitched;
@@ -620,16 +622,18 @@ fn replace_images() {
             .unwrap();
 
     for mut a in answers {
-        for &(ref i, ref ext) in &image_names {
-            if a.answer_text.contains(i) {
+        for &(ref fname, ref ext) in &image_names {
+            if a.answer_text.contains(fname) {
+
                 let stitched = {
-                    let mut pieces = a.answer_text.splitn(2, i);
+                    let mut pieces = a.answer_text.splitn(2, fname);
                     let before = pieces.next().unwrap();
                     let ext_after = pieces.next().unwrap();
                     let after = ext_after.splitn(2, '"').skip(1).next().unwrap();
-    
-                    format!("{}{}{}\"{}", before, i, ext, after)
+        
+                    format!("{}{}{}\"{}", before, fname, ext, after)
                 };
+
                 if a.answer_text != stitched {
                     println!("{} → {}", a.answer_text, stitched);
                     a.answer_text = stitched;
@@ -640,23 +644,52 @@ fn replace_images() {
         }
     }
 
-    let new_images = std::fs::read_dir("src/bin/image_cleanup").unwrap();
+    if image_names.len() > 0 {
+        println!("Copying image files");
+    }
+
+    let original_images = std::fs::read_dir(&*IMAGE_DIR).expect("Can't find the dir src/bin/image_cleanup!");
+    for f in original_images {
+        let fname = f.unwrap().file_name();
+        let just_name = fname.to_str().unwrap()[0..fname.len()-4].to_owned();
+
+        if original_filenames.get(&just_name).is_some() {
+            original_filenames.insert(just_name, Some(fname));
+        }
+    }
+
+    let new_images = std::fs::read_dir("src/bin/image_cleanup").expect("Couldn't read the image_cleanup dir?");
 
     for f in new_images {
         let fname = f.unwrap().file_name();
+        let just_name = &fname.to_str().unwrap()[0..fname.len()-4];
+        if just_name.starts_with(".") {
+            continue;
+        }
+        let orig_fname = match original_filenames.get(just_name).expect("ha?").as_ref() {
+            Some(o) => o,
+            None => continue,
+        };
+
         let mut new_path = PathBuf::from("src/bin/image_cleanup");
+        let mut done_path = PathBuf::from("src/bin/image_cleanup_done");
+        new_path.push(&fname);
+        done_path.push(&fname);
+
+
         let mut old_path = IMAGE_DIR.to_owned();
         let mut old_path_backup = IMAGE_DIR.to_owned();
-        old_path.push(&fname);
-        new_path.push(&fname);
-        old_path_backup.push(&fname);
+        old_path.push(&orig_fname);
+        old_path_backup.push(&orig_fname);
         old_path_backup.set_extension(".bak");
+
         match std::fs::rename(&old_path, &old_path_backup) {
             Err(e) => { println!("Error: {:?}. {:?}", &old_path, e); continue },
             _ => (),
         }
         println!("{:?} → {:?}", &new_path, &old_path);
         std::fs::copy(&new_path, &old_path).unwrap();
+        std::fs::rename(&new_path, &done_path).unwrap();
     }
 
 }
