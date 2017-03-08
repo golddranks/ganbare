@@ -14,6 +14,7 @@ extern crate rand;
 extern crate regex;
 extern crate crypto;
 extern crate r2d2;
+extern crate magic;
 
 use ganbare_backend::*;
 use std::path::PathBuf;
@@ -481,10 +482,104 @@ fn check_priority_levels() {
 
 }
 
+fn fix_image_filenames() {
+    use ganbare_backend::schema::{question_answers, words};
+    use rand::thread_rng;
+    use rand::Rng;
+    use magic::{Cookie, flags};
+    use std::collections::HashMap;
+
+    let cookie = Cookie::open(flags::NONE).ok().unwrap();
+    cookie.load(&["src/bin/libmagic_images.txt"]).expect("Couldn't load image format recognition database!");
+
+    let fs_files = std::fs::read_dir(&*IMAGE_DIR).expect(&format!("Not found: {:?}", &*IMAGE_DIR));
+
+    let mut files = HashMap::<String, String>::new();
+
+    println!("Files");
+
+    for f in fs_files {
+        let f = f.unwrap();
+        let f_name = f.file_name().to_str().unwrap().to_owned();
+        if f_name.ends_with("00") {
+            let mut original_path = IMAGE_DIR.to_owned();
+            original_path.push(&f_name);
+            let mut new_f_name = f_name.replace(':', "-");
+            let format = cookie.file(&original_path).expect("Couldn't recognize file format!");
+            let extension = match &format[0..4] {
+                "PNG " => ".png",
+                "JPEG" => ".jpg",
+                "GIF " => ".gif",
+                _ => { println!("Unrecognised format: {:?}", &format); ".fileextension" },
+            };
+            new_f_name.truncate(19);
+            new_f_name.push('Z');
+            new_f_name.extend(thread_rng().gen_ascii_chars().take(10));
+            new_f_name.push_str(extension);
+            let mut new_path = IMAGE_DIR.to_owned();
+            new_path.push(&new_f_name);
+
+            std::fs::rename(original_path, new_path).unwrap();
+
+            println!("{:?} → {:?}", f_name, new_f_name);
+
+            files.insert(f_name, new_f_name);
+        }
+    }
+
+    let conn = db::connect(&*DATABASE_URL).unwrap();
+
+    println!("Words");
+
+    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
+        .get_results(&conn)
+        .unwrap();
+
+    for mut w in words {
+
+        let w_expl = w.explanation.to_owned();
+
+        for img_match in IMG_REGEX.captures_iter(&w_expl) {
+            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+
+            if let Some(new_img) = files.get(img) {
+                w.explanation = w.explanation.replace(img, new_img);
+
+                let _: Word = w.save_changes(&conn).unwrap();
+
+                println!("{:?} → {:?}", img, new_img);
+            }
+        }
+    }
+
+    println!("Answers");
+
+    let answers: Vec<Answer> =
+        question_answers::table.filter(question_answers::answer_text.like("%<img%"))
+            .get_results(&conn)
+            .unwrap();
+
+    for mut a in answers {
+        let a_text = a.answer_text.to_owned();
+        for img_match in IMG_REGEX.captures_iter(&a_text) {
+            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+
+            if let Some(new_img) = files.get(img) {
+                a.answer_text = a.answer_text.replace(img, new_img);
+
+                let _: Answer = a.save_changes(&conn).unwrap();
+
+                println!("{:?} → {:?}", img, new_img);
+            }
+        }
+    }
+    
+}
+
 fn replace_images() {
     use schema::{words, question_answers};
 
-    let new_images = std::fs::read_dir("src/bin/image_cleanup").unwrap();
+    let new_images = std::fs::read_dir("src/bin/image_cleanup").expect("Can't find the dir src/bin/img_cleanup!");
     let mut image_names = vec![];
 
     for f in new_images {
@@ -593,6 +688,8 @@ fn main() {
     check_priority_levels();
     println!("Merge redundant skills");
     merge_redundant_skills();
+    println!("Fix broken image filenames"); // They were broken because of a bug
+    fix_image_filenames();
     println!("Replace oversized images");
     replace_images();
 }

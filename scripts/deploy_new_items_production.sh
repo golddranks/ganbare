@@ -10,7 +10,7 @@ DEPLOY_DB_NAME=ganbare_production
 DEPLOY_AUDIO_DIR=/srv/ganbare_production/audio
 DEPLOY_IMAGES_DIR=/srv/ganbare_production/images
 
-pg_dump -h localhost --data-only --column-inserts -t audio_bundles -t narrators -t skill_nuggets -t audio_files -t words -t quiz_questions -t question_answers $LOCAL_DB_NAME -f new_items_temp.sql
+pg_dump -h localhost --data-only --column-inserts -t audio_bundles -t narrators -t skill_nuggets -t audio_files -t words -t exercises -t exercise_variants -t quiz_questions -t question_answers $LOCAL_DB_NAME -f new_items_temp.sql
 echo "Moving the SQL data to the server"
 rsync -r new_items_temp.sql $DEPLOY_SERVER:
 rm new_items_temp.sql

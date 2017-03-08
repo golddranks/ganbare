@@ -1,14 +1,6 @@
 #!/bin/sh
 
-echo "Local DB: $LOCAL_DB_NAME Remote DB: $DEPLOY_DB_NAME"
-
-DEPLOY_SERVER=ganba.re
-LOCAL_DB_NAME=ganbare_dev
-LOCAL_AUDIO_DIR=audio
-LOCAL_IMAGES_DIR=images
-DEPLOY_DB_NAME=ganbare_testing
-DEPLOY_AUDIO_DIR=/srv/ganbare_testing/audio
-DEPLOY_IMAGES_DIR=/srv/ganbare_testing/images
+echo "Local DB: $LOCAL_DB_NAME
 
 pg_dump -h localhost --data-only --column-inserts -t audio_bundles -t narrators -t skill_nuggets -t audio_files -t words -t exercises -t exercise_variants -t quiz_questions -t question_answers $LOCAL_DB_NAME -f new_items_temp.sql
 echo "Moving the SQL data to the server"

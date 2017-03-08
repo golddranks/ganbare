@@ -45,6 +45,21 @@ pub fn get_new_quiz_pretest(conn: &Connection,
                             event: &Event)
                             -> Result<Option<Quiz>> {
 
+// Words with only one sentence (and therefore suitable for testing)
+// かき
+// かく
+// いし
+// あし
+
+// Pre-test structure
+// 4 words: 2 q + 2 e
+// 2 sentences 1q + 1e
+
+// Post-test structure
+// 4 words: 2 q + 2 e, which of half are new, half are surely-known
+// 2 sentences 1q + 1e, which of half are new, half are surely-known
+
+
     let quizes = vec![QuizSerialized::Word("いし・", 5355),
                       QuizSerialized::Word("い・し", 5367),
                       QuizSerialized::Question("い・し", 6827),

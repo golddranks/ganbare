@@ -560,7 +560,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
             let mut filename = "%FT%H-%M-%SZ".to_string();
             filename.extend(thread_rng().gen_ascii_chars().take(10));
             filename.push_str(extension);
-            filename = chrono::UTC::now().to_rfc3339();
+            filename = format!("{}", chrono::UTC::now().format(&filename));
             new_path.push(&filename);
 
             let mut file = fs::File::create(new_path)?;
