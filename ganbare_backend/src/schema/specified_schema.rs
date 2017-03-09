@@ -295,6 +295,7 @@ table! {
         id -> Int4,
         email -> Nullable<Varchar>,
         joined -> Timestamptz,
+        last_seen -> Timestamptz,
     }
 }
 
