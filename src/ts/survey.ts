@@ -63,8 +63,8 @@ function incrementFactory() {
 	var answers_3 = [
 		"käyn monta tuntia viikossa",
 		"käyn kerran viikossa",
-		"olen käynyt satunnaisesti/<wbr>lyhytkestoisesti",
-		"en ole käynyt",
+		"käyn satunnaisesti/<wbr>lyhytkestoisesti",
+		"en tällä hetkellä",
 	];
 
 	var answers_4 = [
@@ -83,10 +83,52 @@ function incrementFactory() {
 	];
 
 	var answers_6 = [
-		"en ole koskaan välittänyt opiskella",
+		"en ole koskaan opiskellut erityisesti ääntämistä",
 		"olen kiinnittänyt johonkin yksittäiseen asiaan huomiota jos minulle on huomautettu siitä",
 		"olen oma-aloitteisesti opiskellut ääntämistä",
 		"käytän paljon aikaa ääntämisen opiskeluun",
+	];
+
+	var answers_7 = [
+		"en ole asunut lainkaan",
+		"olen asunut kuukauden tai vähemmän",
+		"olen asunut puoli vuotta tai vähemmän",
+		"olen asunut kaksi vuotta tai vähemmän",
+		"olen asunut pidempään kuin kaksi vuotta",
+	];
+
+	var answers_8 = [
+		"en ole juurikaan puhunut japaniksi (opetustilanteiden ulkopuolella)",
+		"olen kokeillut jutustella, mutta keskustelu on tökkivää eikä siitä tule mitään",
+		"pystyn välittämään mitä haluan sanoa, vaikka usein tapahtuu kommunikaatiokatkoksia",
+		"pystyn juttelemaan kohtalaisen sujuvasti",
+		"en koe, että minulla olisi mitään suurempia ongelmia jutella japaniksi",
+	];
+
+	var answers_9 = [
+		"En ole.",
+		"Olen läpäissyt N5-tason.",
+		"Olen läpäissyt N4-tason.",
+		"Olen läpäissyt N3-tason.",
+		"Olen läpäissyt N2-tason.",
+		"Olen läpäissyt N1-tason.",
+	];
+
+	var answers_10 = [
+		"En ole.",
+		"0 - 4 kk (lukukausi) viikoittaista opiskelua",
+		"5 - 8 kk (lukuvuosi) viikoittaista opiskelua",
+		"9 - 16 kk (2 lukuvuotta) viikoittaista opiskelua",
+		"13 - 24 kk (3 lukuvuotta) viikoittaista opiskelua",
+		"25 kk tai enemmän viikoittaista opiskelua",
+	];
+
+	var answers_11 = [
+		"En ole.",
+		"Olen käynyt lyhytkestoisessa vaihdossa (max 3 kk)",
+		"Olen opiskellut 3 kk - vuoden",
+		"Olen opiskellut 1 - 3 vuotta",
+		"Olen opiskellut pidempään kuin 3 vuotta",
 	];
 
 	var textfield = "textfield";
@@ -95,7 +137,7 @@ function incrementFactory() {
 
 	var questions = [
 
-	{q: "Kysymme alkuun lyhyesti siitä, millä tavalla olet yleensä tekemisissä japanin kielen kanssa. Kyselyssä oletetaan että olet ainakin jossain määrin aktiivinen japanin kielen opiskelija. Kyselyn lopussa on mahdollisuus tarkentaa vastauksia omin sanoin. Valitse vaihtoehto, joka kuvaa sinua parhaiten.", a: answers_0},
+	{q: "<p>Kysymme alkuun siitä, millä tavalla olet yleensä tekemisissä japanin kielen kanssa. Kyselyssä oletetaan että olet ainakin jossain määrin aktiivinen japanin kielen opiskelija.</p><p>Kyselyn lopussa on mahdollisuus tarkentaa vastauksia omin sanoin, ja voit aina peruuttaa ja vastata uudelleen kysymyksiin.</p><p>Valitse vaihtoehto, joka kuvaa sinua parhaiten.</p>", a: answers_0},
 	{q: "Juttelen ja/tai luen japaniksi sosiaalisessa mediassa, esim. Facebookissa, Twitterissä tai Linessä.", a: answers_1},
 	{q: "Luen japanilaisia tekstipainotteisia web-sivuja (esim. blogit, Q&A-sivustot, reseptisivustot...)", a: answers_1},
 	{q: "Katson YouTubesta ym. videopalveluista japaninkielisiä v-blogeja tai let's play -videoita.", a: answers_1},
@@ -111,14 +153,20 @@ function incrementFactory() {
 	{q: "Katson japanilaisia ajankohtaisohjelmia, komediaa ym. TV-ohjelmia tekstitysten kanssa.", a: answers_1},
 	{q: "Luen mangaa japaniksi.", a: answers_1},
 	{q: "Luen japanilaisia romaaneja, nuortenkirjoja ym. proosaa japaniksi.", a: answers_1},
+	{q: "Olen asunut Japanissa yksin tai ei-japaninkielisessä kodissa (asuntola, suomalaisen puolison kanssa tms.)", a: answers_7},
+	{q: "Olen asunut Japanissa japaninkielisessä kodissa (vaihtoperhe, japanilainen puoliso tms.)", a: answers_7},
+	{q: "Olen opiskellut japanilaisessa lukiossa, yliopistossa tai muussa koulussa.", a: answers_11},
 	{q: "Olen matkustanut Japaniin.", a: answers_2},
+	{q: "Rento rupattelu japaniksi sujuu minulta.", a: answers_8},
 	{q: "Haluaisin osata ääntää japania todella hyvin.", a: answers_5},
-	{q: "Olen opiskellut ääntämistä.", a: answers_6},
-	{q: "Opiskelen japania käymällä kursseilla.", a: answers_3},
-	{q: "Opiskelen japania jollain muulla tavalla, millä?", a: textfield},
+	{q: "Olen suorittanut JLPT-kokeen.", a: answers_9},
 	{q: "Mihin kohtaa nelikenttää sijoittaisit vahvuutesi japanin kielitaidossasi?", a: fourfold},
-	{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
+	{q: "Opiskelen tällä hetkellä japania käymällä kursseilla.", a: answers_3},
+	{q: "Olen opiskellut japania elämäni varrella kursseilla. (Arvio riittää, mutta älä laske mukaan kesälomia yms. vaan varsinaiset opiskeluviikot)", a: answers_10},
+	{q: "Olen opiskellut ääntämistä.", a: answers_6},
+	{q: "Opiskelen japania jollain muulla tavalla, millä?", a: textfield},
 	{q: "Mikä on äidinkielesi?", a: languages},
+	{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
 	];
 
 	var i = parseInt($("#answered_questions").val()) + 1 || 0;
