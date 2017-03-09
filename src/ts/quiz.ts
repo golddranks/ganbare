@@ -335,6 +335,7 @@ interface quizData {
 
 
 /* general things */
+
 var bitSlow = 600;
 var normalSlow = 500;
 var normalSpeed = 400;
@@ -342,6 +343,10 @@ var quiteFast = 200;
 var superFast = 100;
 
 var testing = window["testing"];
+
+var new_quiz_api = "/api/new_quiz" + (testing ? "_testing" : "");
+var next_quiz_api = "/api/next_quiz" + (testing ? "_testing" : "");
+
 var main = $("#main");
 var errorSection = $("#errorSection");
 var errorStatus = $("#errorStatus");
@@ -605,7 +610,7 @@ function answerExercise(isCorrect: boolean, exercise: ExerciseJson, quiz_data: q
 			full_answer_time: answeredInstant - quiz_data.askedInstant,
 			full_spent_time: answeredInstant - quiz_data.startedInstant,
 		};
-		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
+		var jqxhr = $.post(next_quiz_api, answered, function(result) {
 			clearError();
 			console.log("postAnswerExercise: got result");
 			nextQuestion(() => { showQuiz(result) });
@@ -638,7 +643,7 @@ function answerWord(word: WordJson, quiz_data: quizData) {
 			active_answer_time: quiz_data.active_answer_time,
 			full_spent_time: wordAnsweredInstant - quiz_data.wordShownInstant,
 		};
-		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
+		var jqxhr = $.post(next_quiz_api, answered, function(result) {
 			clearError();
 			console.log("postAnswerWord: got result");
 			nextQuestion(() => { showQuiz(result) });
@@ -704,7 +709,7 @@ function answerQuestion(ansId: number, isCorrect: boolean, question: QuestionJso
 			full_answer_time: answeredInstant - quiz_data.playbackStartedInstant,
 			full_spent_time: answeredInstant - quiz_data.startedInstant,
 		};
-		var jqxhr = $.post("/api/next_quiz", answered, function(result) {
+		var jqxhr = $.post(next_quiz_api, answered, function(result) {
 			clearError();
 			console.log("postAnswerQuestion: got result");
 			nextQuestion(() => { showQuiz(result) });
@@ -974,6 +979,7 @@ function showQuiz(quiz: Quiz): void {
 	if (quiz === null) {
 		if (testing) {
 			window.location.href = "/"; // Testing is over, reload the page.
+			return;
 		} else {
 			console.log("No cards!");
 			questionSection.show();
@@ -1002,9 +1008,9 @@ function showQuiz(quiz: Quiz): void {
 function start() {
 	clearError();
 	if (!checkRecordingSupport()) { return; }; // If required but not supported, abort.
-	var jqxhr = $.getJSON("/api/new_quiz", showQuiz);
+	var jqxhr = $.getJSON(new_quiz_api, showQuiz);
 	jqxhr.fail(function(e) {
-		console.log("Connection fails with getJSON. (/api/new_quiz)");
+		console.log("Connection fails with getJSON. ("+new_quiz_api+")");
 		connectionFailMessage(e);
 		setTimeout(start, 3000);
 	});

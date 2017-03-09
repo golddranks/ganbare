@@ -316,7 +316,7 @@ dependencies = [
  "hyper 0.10.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mime_multipart 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mime_multipart 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "textnonce 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -544,7 +544,7 @@ dependencies = [
 
 [[package]]
 name = "mime_multipart"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "buf-read-ext 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1238,7 +1238,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum memchr 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1dbccc0e46f1ea47b9f17e6d67c5a96bd27030519c519c9c91327e31275a47b4"
 "checksum mime 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b5c93a4bd787ddc6e7833c519b73a50883deb5863d76d9b71eb8216fb7f94e66"
 "checksum mime_guess 1.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "76da6df85047af8c0edfa53f48eb1073012ce1cc95c8fedc0a374f659a89dd65"
-"checksum mime_multipart 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2fac7bd6ef2063279d6fa54ded848a1809347a05810381dae11ff0173198046f"
+"checksum mime_multipart 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7d69cc11b4caafa3cb8434af7c4f9605511d2bee2737ccef325bfd5d65c733a7"
 "checksum multi_mut 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "816df386e5557ac1843a96f1ba8a7cbf4ab175d05ccc15c87a3cda27b4fbdece"
 "checksum native-tls 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b805ee0e8fa268f67a4e5c7f4f80adb8af1fc4428ea0ce5b0ecab1430ef17ec0"
 "checksum num 0.1.37 (registry+https://github.com/rust-lang/crates.io-index)" = "98b15ba84e910ea7a1973bccd3df7b31ae282bf9d8bd2897779950c9b8303d40"

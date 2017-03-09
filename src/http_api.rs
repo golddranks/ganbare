@@ -145,6 +145,18 @@ pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
 pub fn new_quiz(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
 
+    let new_quiz = time_it!("new_quiz", quiz::get_new_quiz(&conn, sess.user_id).err_500())?;
+    
+    match new_quiz {
+        Some(quiz) => quiz_to_json(quiz),
+        None => jsonify(&()),
+    }
+    .refresh_cookie(&sess)
+}
+
+pub fn new_quiz_testing(req: &mut Request) -> PencilResult {
+    let (conn, sess) = auth_user(req, "")?;
+
     let new_quiz = if let Some((ev, _)) = time_it!("is_ongoing pretest",
                                                    ganbare::event::is_ongoing(&conn,
                                                                               "pretest",
@@ -160,82 +172,94 @@ pub fn new_quiz(req: &mut Request) -> PencilResult {
         debug!("Posttest questions!");
         test::get_new_quiz_posttest(&conn, sess.user_id, &ev).err_500()?
     } else {
-        time_it!("new_quiz",
-                 quiz::get_new_quiz(&conn, sess.user_id).err_500())?
+        None
     };
 
     match new_quiz {
-
             Some(quiz) => quiz_to_json(quiz),
-
             None => jsonify(&()),
-
         }
         .refresh_cookie(&sess)
+}
+
+fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
+    let form = req.form();
+    let answer_type = parse!(form.get::<str>("type"));
+
+    if answer_type == "word" {
+        let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
+        let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
+        let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
+        let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
+        Ok(quiz::Answered::W(models::WAnsweredData {
+            id: id,
+            audio_times: audio_times,
+            checked_date: UTC::now(),
+            active_answer_time_ms: active_answer_time_ms,
+            full_spent_time_ms: full_spent_time_ms,
+        }))
+    } else if answer_type == "exercise" {
+        let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
+        let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
+        let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
+        let reflected_time_ms = str::parse::<i32>(&parse!(form.get("reflected_time")))?;
+        let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
+        let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
+        let answer_level = str::parse::<i32>(&parse!(form.get("answer_level")))?;
+        Ok(quiz::Answered::E(models::EAnsweredData {
+            id: id,
+            audio_times: audio_times,
+            active_answer_time_ms: active_answer_time_ms,
+            answered_date: UTC::now(),
+            reflected_time_ms: reflected_time_ms,
+            full_answer_time_ms: full_answer_time_ms,
+            answer_level: answer_level,
+            full_spent_time_ms: full_spent_time_ms,
+        }))
+    } else if answer_type == "question" {
+        let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
+        let answered_qa_id = str::parse::<i32>(&parse!(form.get("answered_qa_id")))?;
+        let answered_qa_id = if answered_qa_id > 0 {
+            Some(answered_qa_id)
+        } else {
+            None
+        }; // Negatives mean that question was unanswered (due to time limit)
+        let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
+        let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
+        let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
+        Ok(quiz::Answered::Q(models::QAnsweredData {
+            id: id,
+            answered_qa_id: answered_qa_id,
+            answered_date: UTC::now(),
+            active_answer_time_ms: active_answer_time_ms,
+            full_answer_time_ms: full_answer_time_ms,
+            full_spent_time_ms: full_spent_time_ms,
+        }))
+    } else {
+        Err(ErrorKind::FormParseError.into())
+    }
 }
 
 pub fn next_quiz(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
 
-    fn parse_answer(req: &mut Request) -> Result<quiz::Answered> {
-        let form = req.form();
-        let answer_type = parse!(form.get::<str>("type"));
+    let answer = err_400!(parse_next_quiz_answer(req), "Can't parse form data? {:?}", req.form());
 
-        if answer_type == "word" {
-            let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
-            let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
-            let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
-            let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
-            Ok(quiz::Answered::W(models::WAnsweredData {
-                id: id,
-                audio_times: audio_times,
-                checked_date: UTC::now(),
-                active_answer_time_ms: active_answer_time_ms,
-                full_spent_time_ms: full_spent_time_ms,
-            }))
-        } else if answer_type == "exercise" {
-            let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
-            let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
-            let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
-            let reflected_time_ms = str::parse::<i32>(&parse!(form.get("reflected_time")))?;
-            let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
-            let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
-            let answer_level = str::parse::<i32>(&parse!(form.get("answer_level")))?;
-            Ok(quiz::Answered::E(models::EAnsweredData {
-                id: id,
-                audio_times: audio_times,
-                active_answer_time_ms: active_answer_time_ms,
-                answered_date: UTC::now(),
-                reflected_time_ms: reflected_time_ms,
-                full_answer_time_ms: full_answer_time_ms,
-                answer_level: answer_level,
-                full_spent_time_ms: full_spent_time_ms,
-            }))
-        } else if answer_type == "question" {
-            let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
-            let answered_qa_id = str::parse::<i32>(&parse!(form.get("answered_qa_id")))?;
-            let answered_qa_id = if answered_qa_id > 0 {
-                Some(answered_qa_id)
-            } else {
-                None
-            }; // Negatives mean that question was unanswered (due to time limit)
-            let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
-            let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
-            let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
-            Ok(quiz::Answered::Q(models::QAnsweredData {
-                id: id,
-                answered_qa_id: answered_qa_id,
-                answered_date: UTC::now(),
-                active_answer_time_ms: active_answer_time_ms,
-                full_answer_time_ms: full_answer_time_ms,
-                full_spent_time_ms: full_spent_time_ms,
-            }))
-        } else {
-            Err(ErrorKind::FormParseError.into())
+    let new_quiz = time_it!("next_quiz",
+                 quiz::get_next_quiz(&conn, sess.user_id, answer)
+                     .err_500_debug(sess.user_id, &*req))?;
+
+    match new_quiz {
+            Some(quiz) => quiz_to_json(quiz),
+            None => jsonify(&()),
         }
-    };
+        .refresh_cookie(&sess)
+}
 
-    let answer = err_400!(parse_answer(req), "Can't parse form data? {:?}", req.form());
+pub fn next_quiz_testing(req: &mut Request) -> PencilResult {
+    let (conn, sess) = auth_user(req, "")?;
+
+    let answer = err_400!(parse_next_quiz_answer(req), "Can't parse form data? {:?}", req.form());
 
     let new_quiz = if let Some((ev, _)) =
         ganbare::event::is_ongoing(&conn, "pretest", sess.user_id).err_500()? {
@@ -244,9 +268,7 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
         ganbare::event::is_ongoing(&conn, "posttest", sess.user_id).err_500()? {
         test::get_next_quiz_posttest(&conn, sess.user_id, answer, &ev).err_500()?
     } else {
-        time_it!("next_quiz",
-                 quiz::get_next_quiz(&conn, sess.user_id, answer)
-                     .err_500_debug(sess.user_id, &*req))?
+        None
     };
 
     match new_quiz {
