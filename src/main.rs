@@ -383,7 +383,7 @@ pub fn main() {
             app_pages::retelling);
     app.get("/pretest_done", "pretest_done", app_pages::text_pages);
     app.get("/sorting", "sorting", app_pages::sorting_ceremony);
-    app.get("/posttest_info", "pretest_info", app_pages::text_pages);
+    app.get("/posttest_info", "posttest_info", app_pages::text_pages);
     app.get("/posttest", "posttest", app_pages::pre_post_test);
     app.get("/posttest_retelling",
             "posttest_retelling",
