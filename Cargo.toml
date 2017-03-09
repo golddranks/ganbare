@@ -1,6 +1,6 @@
 [package]
 name = "ganbare"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [features]
