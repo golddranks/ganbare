@@ -18,7 +18,8 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
     let form = req.form();
     let email = err_400!(form.get("email"), "email missing");
     let new_password = err_400!(form.get("new_password"), "new_password missing");
-    let new_password_check = err_400!(form.get::<str>("new_password_check"), "new_password_check missing");
+    let new_password_check = err_400!(form.get::<str>("new_password_check"),
+                                      "new_password_check missing");
     if new_password != new_password_check {
         return Ok(bad_request("passwords don't match"));
     };
@@ -51,14 +52,12 @@ pub fn fresh_install_post(req: &mut Request) -> PencilResult {
         Some((_, sess)) => {
             let mut context = new_template_context();
             context.insert("install_success", "success");
-            req.app
-                .render_template("fresh_install.html", &context)
-                .refresh_cookie(&sess)
+            req.app.render_template("fresh_install.html", &context).refresh_cookie(&sess)
         }
         None => {
             Err(internal_error(Error::from(ErrMsg("We just added the user, yet we can't login \
                                                    them in. A bug?"
-                .to_string()))))
+                                                          .to_string()))))
         }
     }
 }
@@ -67,14 +66,15 @@ pub fn manage(req: &mut Request) -> PencilResult {
 
     let (_, sess) = auth_user(req, "editors")?; // Unauthorized
 
-    let show_id = req.args().get::<str>("show_id").map(|_| "true" ).unwrap_or("false");
+    let show_id = req.args()
+        .get::<str>("show_id")
+        .map(|_| "true")
+        .unwrap_or("false");
 
     let mut context = new_template_context();
     context.insert("show_id", show_id);
 
-    req.app
-        .render_template("manage.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("manage.html", &context).refresh_cookie(&sess)
 }
 
 pub fn add_quiz_form(req: &mut Request) -> PencilResult {
@@ -83,9 +83,7 @@ pub fn add_quiz_form(req: &mut Request) -> PencilResult {
 
     let context = new_template_context();
 
-    req.app
-        .render_template("add_quiz.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("add_quiz.html", &context).refresh_cookie(&sess)
 }
 
 pub fn add_quiz_post(req: &mut Request) -> PencilResult {
@@ -95,7 +93,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
         let form = req.form();
         let files = req.files();
 
-        let lowest_fieldset = str::parse::<i32>(&parse!(form.get("lowest_fieldset")))?;
+        let lowest_fieldset = str::parse::<i32>(parse!(form.get("lowest_fieldset")))?;
         if lowest_fieldset > 10 {
             bail!(ErrorKind::FormParseError);
         }
@@ -106,16 +104,18 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
         let skill_nugget = parse!(form.get::<str>("skill_nugget"));
 
         let mut fieldsets = Vec::with_capacity(lowest_fieldset as usize);
-        for i in 1..lowest_fieldset+1 { // FIXME convert to inclusive range syntax when available
+        for i in 1..lowest_fieldset + 1 {
+            // FIXME convert to inclusive range syntax when available
 
-            let q_variations =
-                str::parse::<i32>(&parse!(form.get(&format!("choice_{}_q_variations", i))))?;
+            let q_variations = str::parse::<i32>(parse!(form.get(&format!("choice_{}_q_variations",
+                                                                           i))))?;
             if lowest_fieldset > 100 {
                 bail!(ErrorKind::FormParseError);
             }
 
             let mut q_variants = Vec::with_capacity(q_variations as usize);
-            for v in 1..q_variations+1 { // FIXME convert to inclusive range syntax when available
+            for v in 1..q_variations + 1 {
+                // FIXME convert to inclusive range syntax when available
                 if let Some(file) = files.get(&format!("choice_{}_q_variant_{}", i, v)) {
                     if file.size.expect("Size should've been parsed at this phase.") == 0 {
                         continue; // Don't save files with size 0;
@@ -125,12 +125,12 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                     q_variants.push((file.path.clone(),
                                      file.filename()
                                          .map_err(|_| {
-                                             Error::from_kind(ErrorKind::FormParseError)
-                                         })?,
+                                                      Error::from_kind(ErrorKind::FormParseError)
+                                                  })?,
                                      file.content_type()
                                          .ok_or_else(|| {
-                                             Error::from_kind(ErrorKind::FormParseError)
-                                         })?));
+                                                         Error::from_kind(ErrorKind::FormParseError)
+                                                     })?));
                 }
             }
             if q_variants.is_empty() {
@@ -178,9 +178,9 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
     let form = err_400!(parse_form(&mut *req), "Error with parsing form!");
     let result = manage::create_quiz(&conn, form.0, form.1, &*AUDIO_DIR);
     result.map_err(|e| match *e.kind() {
-            ErrorKind::FormParseError => abort(400).unwrap_err(),
-            _ => abort(500).unwrap_err(),
-        })?;
+                       ErrorKind::FormParseError => abort(400).unwrap_err(),
+                       _ => abort(500).unwrap_err(),
+                   })?;
 
     redirect("/add_quiz", 303).refresh_cookie(&sess)
 }
@@ -190,9 +190,7 @@ pub fn add_word_form(req: &mut Request) -> PencilResult {
 
     let context = new_template_context();
 
-    req.app
-        .render_template("add_word.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("add_word.html", &context).refresh_cookie(&sess)
 }
 
 pub fn add_word_post(req: &mut Request) -> PencilResult {
@@ -202,7 +200,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
         let form = req.form();
         let uploaded_files = req.files();
 
-        let num_variants = str::parse::<i32>(&parse!(form.get("audio_variations")))?;
+        let num_variants = str::parse::<i32>(parse!(form.get("audio_variations")))?;
         if num_variants > 20 {
             bail!(ErrorKind::FormParseError);
         }
@@ -212,7 +210,8 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
         let nugget = parse!(form.get::<str>("skill_nugget"));
 
         let mut files = Vec::with_capacity(num_variants as usize);
-        for v in 1..num_variants+1 { // FIXME convert to inclusive range syntax when available
+        for v in 1..num_variants + 1 {
+            // FIXME convert to inclusive range syntax when available
             if let Some(file) = uploaded_files.get(&format!("audio_variant_{}", v)) {
                 if file.size.expect("Size should've been parsed at this phase.") == 0 {
                     continue; // Don't save files with size 0;
@@ -228,14 +227,14 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
         }
 
         Ok(manage::NewWordFromStrings {
-            word: word.to_string(),
-            explanation: explanation.to_string(),
-            narrator: "",
-            nugget: nugget.to_owned(),
-            files: files,
-            skill_level: 0,
-            priority: 0,
-        })
+               word: word.to_string(),
+               explanation: explanation.to_string(),
+               narrator: "",
+               nugget: nugget.to_owned(),
+               files: files,
+               skill_level: 0,
+               priority: 0,
+           })
     }
 
     let (conn, sess) = auth_user(req, "editors")?;
@@ -252,9 +251,7 @@ pub fn add_users_form(req: &mut Request) -> PencilResult {
     let (_, sess) = auth_user(req, "admins")?;
 
     let context = new_template_context();
-    req.app
-        .render_template("add_users.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("add_users.html", &context).refresh_cookie(&sess)
 }
 
 pub fn add_users(req: &mut Request) -> PencilResult {
@@ -271,12 +268,13 @@ pub fn add_users(req: &mut Request) -> PencilResult {
         for field in fields {
             groups.push(err_400!(user::get_group(&conn, &field.to_lowercase()).err_500()?,
                                  "No such group?")
-                .id);
+                                .id);
         }
-        let (secret, hmac) = email::add_pending_email_confirm(&conn,
-                                                              COOKIE_HMAC_KEY.as_slice(),
-                                                              email,
-                                                              groups.as_ref()).err_500()?;
+        let (secret, hmac) =
+            email::add_pending_email_confirm(&conn,
+                                             COOKIE_HMAC_KEY.as_slice(),
+                                             email,
+                                             groups.as_ref()).err_500()?;
         email::send_confirmation(&*MAIL_QUEUE,
                                  email,
                                  &secret,
@@ -291,9 +289,7 @@ pub fn add_users(req: &mut Request) -> PencilResult {
     }
 
     let context = new_template_context();
-    req.app
-        .render_template("add_users.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("add_users.html", &context).refresh_cookie(&sess)
 }
 
 pub fn users(req: &mut Request) -> PencilResult {
@@ -301,9 +297,7 @@ pub fn users(req: &mut Request) -> PencilResult {
 
     let context = new_template_context();
 
-    req.app
-        .render_template("users.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("users.html", &context).refresh_cookie(&sess)
 }
 
 pub fn audio(req: &mut Request) -> PencilResult {
@@ -311,9 +305,7 @@ pub fn audio(req: &mut Request) -> PencilResult {
 
     let context = new_template_context();
 
-    req.app
-        .render_template("audio.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("audio.html", &context).refresh_cookie(&sess)
 }
 
 pub fn send_mail_form(req: &mut Request) -> PencilResult {
@@ -332,9 +324,7 @@ pub fn send_mail_form(req: &mut Request) -> PencilResult {
         }
     }
 
-    req.app
-        .render_template("send_mail.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("send_mail.html", &context).refresh_cookie(&sess)
 }
 
 pub fn send_mail_post(req: &mut Request) -> PencilResult {
@@ -347,9 +337,11 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
     if group_pending.is_none() && group.is_empty() {
         return Ok(bad_request("group is missing!"));
     }
-    let group =
-        err_400!(group.into_iter().map(|id| str::parse::<i32>(&id)).collect::<Vec<_>>().flip(),
-                 "group invalid");
+    let group = err_400!(group.into_iter()
+                             .map(|id| str::parse::<i32>(&id))
+                             .collect::<Vec<_>>()
+                             .flip(),
+                         "group invalid");
     let subject = err_400!(req.form().get("subject"), "subject missing");
     let body = err_400!(req.form().get("body"), "body missing");
 
@@ -372,8 +364,8 @@ pub fn send_mail_post(req: &mut Request) -> PencilResult {
     ganbare::email::send_freeform_email(&*MAIL_QUEUE,
                                         (&*EMAIL_ADDRESS, &*EMAIL_NAME),
                                         email_addrs.iter().map(|s| &**s),
-                                        &subject,
-                                        &body).err_500()?;
+                                        subject,
+                                        body).err_500()?;
 
     redirect("/send_mail", 303).refresh_cookie(&sess)
 }
@@ -383,7 +375,5 @@ pub fn events(req: &mut Request) -> PencilResult {
 
     let context = new_template_context();
 
-    req.app
-        .render_template("events.html", &context)
-        .refresh_cookie(&sess)
+    req.app.render_template("events.html", &context).refresh_cookie(&sess)
 }

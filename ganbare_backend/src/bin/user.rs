@@ -157,28 +157,26 @@ fn main() {
     use clap::*;
     let mut handlebars = Handlebars::new();
     handlebars.register_template_file("email_confirm_email.html",
-                                std::path::Path::new("../templates/email_confirm_email.html"))
+                                      std::path::Path::new("../templates/email_confirm_email.html"))
         .expect("Can't register templates/email_confirm_email.html?");
 
     let matches = App::new("ganba.re user control")
         .setting(AppSettings::SubcommandRequired)
         .version(crate_version!())
         .subcommand(SubCommand::with_name("passwd")
-            .about("Set passwords")
-            .arg(Arg::with_name("email").required(true)))
+                        .about("Set passwords")
+                        .arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("ls").about("List all users"))
-        .subcommand(SubCommand::with_name("rm")
-            .about("Remove user")
-            .arg(Arg::with_name("email").required(true)))
+        .subcommand(SubCommand::with_name("rm").about("Remove user").arg(Arg::with_name("email")
+                                                                             .required(true)))
         .subcommand(SubCommand::with_name("add")
-            .about("Add a new user")
-            .arg(Arg::with_name("email").required(true)))
+                        .about("Add a new user")
+                        .arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("force_add")
-            .about("Add a new user without email confirmation")
-            .arg(Arg::with_name("email").required(true)))
-        .subcommand(SubCommand::with_name("login")
-            .about("Login")
-            .arg(Arg::with_name("email").required(true)))
+                        .about("Add a new user without email confirmation")
+                        .arg(Arg::with_name("email").required(true)))
+        .subcommand(SubCommand::with_name("login").about("Login").arg(Arg::with_name("email")
+                                                                          .required(true)))
         .get_matches();
     let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
@@ -197,7 +195,11 @@ fn main() {
                 }
                 Ok(pw) => pw,
             };
-            match set_password(&pooled_conn, email, &password, &*RUNTIME_PEPPER, *PASSWORD_STRETCHING_TIME) {
+            match set_password(&pooled_conn,
+                               email,
+                               &password,
+                               &*RUNTIME_PEPPER,
+                               *PASSWORD_STRETCHING_TIME) {
                 Ok(user) => {
                     println!("Success! Password set for user {:?}", user);
                 }
@@ -245,7 +247,10 @@ fn main() {
                     return;
                 }
             }
-            let (secret, hmac) = match email::add_pending_email_confirm(&pooled_conn, &**COOKIE_HMAC_KEY, email, &[]) {
+            let (secret, hmac) = match email::add_pending_email_confirm(&pooled_conn,
+                                                   &**COOKIE_HMAC_KEY,
+                                                   email,
+                                                   &[]) {
                 Ok(secret) => secret,
                 Err(e) => {
                     println!("Error: {:?}", e);
@@ -275,7 +280,7 @@ fn main() {
                     }
 
                     println!("Sent an email confirmation! {:?}", u)
-                },
+                }
                 Err(err_chain) => {
                     for err in err_chain.iter() {
                         println!("Error: {}\nCause: {:?}", err, err.cause())
@@ -301,7 +306,11 @@ fn main() {
                 }
                 Ok(pw) => pw,
             };
-            match add_user(&pooled_conn, email, &password, &*RUNTIME_PEPPER, *PASSWORD_STRETCHING_TIME) {
+            match add_user(&pooled_conn,
+                           email,
+                           &password,
+                           &*RUNTIME_PEPPER,
+                           *PASSWORD_STRETCHING_TIME) {
                 Ok(u) => println!("Added user successfully: {:?}", u),
                 Err(err_chain) => {
                     for err in err_chain.iter() {

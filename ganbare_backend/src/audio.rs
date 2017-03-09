@@ -64,13 +64,13 @@ pub fn get_create_narrator(conn: &Connection, mut name: &str) -> Result<Narrator
 
 
     Ok(match narrator {
-        Some(narrator) => narrator,
-        None => {
-            diesel::insert(&NewNarrator { name: name }).into(narrators::table)
-                .get_result(&**conn)
-                .chain_err(|| "Database error!")?
-        }
-    })
+           Some(narrator) => narrator,
+           None => {
+               diesel::insert(&NewNarrator { name: name }).into(narrators::table)
+                   .get_result(&**conn)
+                   .chain_err(|| "Database error!")?
+           }
+       })
 }
 
 pub fn del_narrator(conn: &Connection, id: i32) -> Result<bool> {
@@ -216,10 +216,9 @@ fn default_narrator_id(conn: &Connection, opt_narrator: &mut Option<Narrator>) -
         Ok(narrator.id)
     } else {
 
-        let new_narrator: Narrator =
-            diesel::insert(&NewNarrator { name: "anonymous" }).into(narrators::table)
-                .get_result(&**conn)
-                .chain_err(|| "Couldn't create a new narrator!")?;
+        let new_narrator: Narrator = diesel::insert(&NewNarrator { name: "anonymous" }).into(narrators::table)
+            .get_result(&**conn)
+            .chain_err(|| "Couldn't create a new narrator!")?;
 
         info!("{:?}", &new_narrator);
         let narr_id = new_narrator.id;
@@ -230,10 +229,9 @@ fn default_narrator_id(conn: &Connection, opt_narrator: &mut Option<Narrator>) -
 
 pub fn new_bundle(conn: &Connection, name: &str) -> Result<AudioBundle> {
     use schema::audio_bundles;
-    let bundle: AudioBundle =
-        diesel::insert(&NewAudioBundle { listname: name }).into(audio_bundles::table)
-            .get_result(&**conn)
-            .chain_err(|| "Can't insert a new audio bundle!")?;
+    let bundle: AudioBundle = diesel::insert(&NewAudioBundle { listname: name }).into(audio_bundles::table)
+        .get_result(&**conn)
+        .chain_err(|| "Can't insert a new audio bundle!")?;
 
     info!("{:?}", bundle);
 
@@ -272,10 +270,9 @@ pub fn update_file(conn: &Connection,
                    -> Result<Option<AudioFile>> {
     use schema::audio_files;
 
-    let file: Option<AudioFile> =
-        diesel::update(audio_files::table.filter(audio_files::id.eq(id))).set(file)
-            .get_result(&**conn)
-            .optional()?;
+    let file: Option<AudioFile> = diesel::update(audio_files::table.filter(audio_files::id.eq(id))).set(file)
+        .get_result(&**conn)
+        .optional()?;
     Ok(file)
 }
 
@@ -289,20 +286,19 @@ pub fn get_create_bundle(conn: &Connection, listname: &str) -> Result<AudioBundl
     };
 
     Ok(match bundle {
-        Some(bundle) => bundle,
-        None => {
-            diesel::insert(&NewAudioBundle { listname: listname }).into(audio_bundles::table)
-                .get_result(&**conn)?
-        }
-    })
+           Some(bundle) => bundle,
+           None => {
+               diesel::insert(&NewAudioBundle { listname: listname }).into(audio_bundles::table)
+                   .get_result(&**conn)?
+           }
+       })
 }
 
 pub fn get_bundles_by_name(conn: &Connection, listname: &str) -> Result<Vec<AudioBundle>> {
     use schema::audio_bundles;
 
     let bundle: Vec<AudioBundle> = {
-        audio_bundles::table.filter(audio_bundles::listname.eq(listname))
-            .get_results(&**conn)?
+        audio_bundles::table.filter(audio_bundles::listname.eq(listname)).get_results(&**conn)?
     };
 
     Ok(bundle)
@@ -312,8 +308,7 @@ pub fn get_narrators_by_name(conn: &Connection, name: &str) -> Result<Vec<Narrat
     use schema::narrators;
 
     let narr: Vec<Narrator> = {
-        narrators::table.filter(narrators::name.eq(name))
-            .get_results(&**conn)?
+        narrators::table.filter(narrators::name.eq(name)).get_results(&**conn)?
     };
 
     Ok(narr)
@@ -353,17 +348,19 @@ pub fn save(conn: &Connection,
 
     let hash = &audio_file_hash("", &file.0)?[..];
 
-    if let Some::<AudioFile>(_) = audio_files::table
-        .filter(audio_files::file_sha2.eq(hash))
-        .get_result(&**conn)
-        .optional()?
-    {
+    if audio_files::table.filter(audio_files::file_sha2.eq(hash))
+            .get_result::<AudioFile>(&**conn)
+            .optional()?
+            .is_some() {
         debug!("The audio file already exists! Returning the existing one.");
-        return Err(ErrorKind::FileAlreadyExists(hash.to_owned()).into())
+        return Err(ErrorKind::FileAlreadyExists(hash.to_owned()).into());
     };
 
     save_file(&mut file.0,
-              file.1.as_ref().map(|s| s.as_str()).unwrap_or(""),
+              file.1
+                  .as_ref()
+                  .map(|s| s.as_str())
+                  .unwrap_or(""),
               audio_dir)?;
 
     let bundle_id = if let Some(ref bundle) = *bundle {
@@ -416,7 +413,7 @@ pub fn load_all_from_bundles(conn: &Connection,
         if q.is_empty() {
             return Err(ErrorKind::DatabaseOdd("Bug: Audio bundles should always have more than \
                                                zero members when created.")
-                .into());
+                               .into());
         }
     }
     Ok(q_audio_files)
@@ -454,9 +451,8 @@ pub fn get_all_bundles(conn: &Connection) -> Result<Vec<(AudioBundle, Vec<AudioF
     let bundles: Vec<AudioBundle> = audio_bundles::table.order(audio_bundles::listname.asc())
         .get_results(&**conn)?;
 
-    let audio_files = AudioFile::belonging_to(&bundles)
-        .load::<AudioFile>(&**conn)?
-        .grouped_by(&bundles);
+    let audio_files =
+        AudioFile::belonging_to(&bundles).load::<AudioFile>(&**conn)?.grouped_by(&bundles);
 
     let all = bundles.into_iter().zip(audio_files).collect();
     Ok(all)
@@ -475,9 +471,9 @@ pub fn get_audio_file_by_id(conn: &Connection, file_id: i32) -> Result<AudioFile
     let file: AudioFile = audio_files.filter(id.eq(file_id))
         .get_result(&**conn)
         .map_err(|e| match e {
-            e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
-            e => Error::with_chain(e, "Couldn't get the file!"),
-        })?;
+                     e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
+                     e => Error::with_chain(e, "Couldn't get the file!"),
+                 })?;
 
     Ok(file)
 }
@@ -495,9 +491,9 @@ pub fn get_file_path(conn: &Connection, file_id: i32) -> Result<(String, mime::M
     let file: AudioFile = audio_files.filter(id.eq(file_id))
         .get_result(&**conn)
         .map_err(|e| match e {
-            e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
-            e => Error::with_chain(e, "Couldn't get the file!"),
-        })?;
+                     e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
+                     e => Error::with_chain(e, "Couldn't get the file!"),
+                 })?;
 
     Ok((file.file_path,
         file.mime.parse().expect("The mimetype from the database should be always valid.")))
@@ -510,9 +506,9 @@ pub fn get_all_files(conn: &Connection) -> Result<Vec<(String, mime::Mime)>> {
 
     let files = files.into_iter()
         .map(|f| {
-            (f.file_path,
-             f.mime.parse().expect("The mimetype from the database should be always valid."))
-        })
+                 (f.file_path,
+                  f.mime.parse().expect("The mimetype from the database should be always valid."))
+             })
         .collect();
 
     Ok(files)
@@ -529,9 +525,9 @@ pub fn for_quiz(conn: &Connection, user_id: i32, pending_id: i32) -> Result<(Str
         .filter(pending_items::pending.eq(true))
         .get_result(&**conn)
         .map_err(|e| match e {
-            e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
-            e => Error::with_chain(e, "Couldn't get the file!"),
-        })?;
+                     e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
+                     e => Error::with_chain(e, "Couldn't get the file!"),
+                 })?;
     Ok((file.file_path,
         file.mime.parse().expect("The mimetype from the database should be always valid.")))
 

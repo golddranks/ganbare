@@ -78,11 +78,7 @@ pub fn get_hmac_for_sess(session_id: &str,
     encode_nopad(hmac_maker.result().code())
 }
 
-pub fn verify_hmac_for_sess_secret(
-                            secret: &[u8],
-                            refresh_count: i32,
-                            token: &[u8])
-                         -> bool {
+pub fn verify_hmac_for_sess_secret(secret: &[u8], refresh_count: i32, token: &[u8]) -> bool {
     use byteorder::WriteBytesExt;
 
     let mut refresh_times_bytes = [0_u8; 4];
@@ -95,10 +91,7 @@ pub fn verify_hmac_for_sess_secret(
     hmac_maker.result() == MacResult::new(token)
 }
 
-pub fn get_hmac_for_sess_secret(
-                            secret: &[u8],
-                            refresh_count: i32)
-                         -> Vec<u8> {
+pub fn get_hmac_for_sess_secret(secret: &[u8], refresh_count: i32) -> Vec<u8> {
     use byteorder::WriteBytesExt;
 
     let mut refresh_times_bytes = [0_u8; 4];
@@ -113,9 +106,9 @@ pub fn get_hmac_for_sess_secret(
 pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Result<usize> {
     use schema::sessions;
 
-    let deleted_count = diesel::delete(sessions::table
-        .filter(sessions::last_seen.lt(chrono::UTC::now()-how_old)))
-        .execute(&**conn)?;
+    let deleted_count =
+        diesel::delete(sessions::table.filter(sessions::last_seen.lt(chrono::UTC::now() -
+                                                                     how_old))).execute(&**conn)?;
 
     Ok(deleted_count)
 }
@@ -145,13 +138,13 @@ pub fn check_integrity(sess_id_str: &str,
 
     if hmac_checker.result() == MacResult::new_from_owned(hmac) {
         Ok(UserSession {
-            sess_id: sess_id,
-            user_id: user_id,
-            refreshed: refreshed,
-            refresh_now: false,
-            token: token,
-            refresh_count: refresh_count,
-        })
+               sess_id: sess_id,
+               user_id: user_id,
+               refreshed: refreshed,
+               refresh_now: false,
+               token: token,
+               refresh_count: refresh_count,
+           })
     } else {
         warn!("The HMAC doesn't agree with the cookie!");
         bail!(ErrorKind::AuthError)
@@ -172,7 +165,10 @@ pub fn check(sess: &UserSession, logout_cache: &Cache<i32, UserSession>) -> Resu
     }
 }
 
-pub fn db_check(conn: &Connection, sess: &UserSession, sess_expire: chrono::Duration) -> Result<Option<UserSession>> {
+pub fn db_check(conn: &Connection,
+                sess: &UserSession,
+                sess_expire: chrono::Duration)
+                -> Result<Option<UserSession>> {
     use schema::sessions;
 
     time_it!{"session::db_check", {
@@ -308,17 +304,17 @@ pub fn end(conn: &Connection, sess_id: i32) -> Result<Option<()>> {
     let deleted_count =
         diesel::delete(sessions::table.filter(sessions::id.eq(sess_id))).execute(&**conn)?;
     Ok(if deleted_count != 1 {
-        warn!("Somebody tried to log out with wrong credentials! (Either a bug or a hacking \
+           warn!("Somebody tried to log out with wrong credentials! (Either a bug or a hacking \
                attempt.)");
-        // Punishment sleep for wrong credentials
-        thread::sleep(Duration::from_millis(20 +
+           // Punishment sleep for wrong credentials
+           thread::sleep(Duration::from_millis(20 +
                                             OsRng::new()
             .expect("If we can't get OS RNG, we might as well crash.")
             .gen_range(0, 5)));
-        None
-    } else {
-        Some(())
-    })
+           None
+       } else {
+           Some(())
+       })
 }
 
 pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
@@ -338,11 +334,11 @@ pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
         .chain_err(|| "Couldn't start a session!")?;
 
     Ok(UserSession {
-        user_id: user.id,
-        sess_id: db_sess.id,
-        refreshed: db_sess.last_seen,
-        refresh_now: true,
-        token: get_hmac_for_sess_secret(&sess_secret[..], 0),
-        refresh_count: 0,
-    })
+           user_id: user.id,
+           sess_id: db_sess.id,
+           refreshed: db_sess.last_seen,
+           refresh_now: true,
+           token: get_hmac_for_sess_secret(&sess_secret[..], 0),
+           refresh_count: 0,
+       })
 }

@@ -2,10 +2,10 @@ use super::*;
 use quiz::{Answered, Quiz, QuizSerialized};
 
 pub fn save_answer_test_item(conn: &Connection,
-                         user_id: i32,
-                         event: &Event,
-                         answer_enum: &Answered)
-                         -> Result<()> {
+                             user_id: i32,
+                             event: &Event,
+                             answer_enum: &Answered)
+                             -> Result<()> {
     use schema::pending_items;
 
     let answered_id = match *answer_enum {
@@ -15,8 +15,7 @@ pub fn save_answer_test_item(conn: &Connection,
     };
 
     let mut pending_item: PendingItem =
-        pending_items::table.filter(pending_items::id.eq(answered_id))
-            .get_result(&**conn)?;
+        pending_items::table.filter(pending_items::id.eq(answered_id)).get_result(&**conn)?;
 
     assert!(pending_item.test_item);
 
@@ -53,10 +52,10 @@ pub fn save_answer_test_item(conn: &Connection,
 }
 
 pub fn get_new_quiz_test(conn: &Connection,
-                     user_id: i32,
-                     event: &Event,
-                     quizes: &[QuizSerialized])
-                     -> Result<Option<Quiz>> {
+                         user_id: i32,
+                         event: &Event,
+                         quizes: &[QuizSerialized])
+                         -> Result<Option<Quiz>> {
 
     let number = event::get_userdata(conn, event, user_id, "quiz_number")
         ?
@@ -106,10 +105,7 @@ pub struct RetellingJson {
     audio_src: String,
 }
 
-pub fn save_retelling(conn: &Connection,
-                                   user_id: i32,
-                                   event: &Event)
-                                   -> Result<usize> {
+pub fn save_retelling(conn: &Connection, user_id: i32, event: &Event) -> Result<usize> {
     let number = event::get_userdata(conn, event, user_id, "retelling_number")
         ?
         .and_then(|d| d.data.parse::<usize>().ok())
@@ -123,10 +119,10 @@ pub fn save_retelling(conn: &Connection,
 }
 
 pub fn get_new_retelling(conn: &Connection,
-                     user_id: i32,
-                     event: &Event,
-                     retellings: &[(&'static str, &'static str)])
-                     -> Result<Option<RetellingJson>> {
+                         user_id: i32,
+                         event: &Event,
+                         retellings: &[(&'static str, &'static str)])
+                         -> Result<Option<RetellingJson>> {
 
     let number = event::get_userdata(conn, event, user_id, "retelling_number")
         ?
@@ -141,8 +137,7 @@ pub fn get_new_retelling(conn: &Connection,
     let retelling = retellings[number];
 
     Ok(Some(RetellingJson {
-        img_src: retelling.0.into(),
-        audio_src: retelling.1.into(),
-    }))
+                img_src: retelling.0.into(),
+                audio_src: retelling.1.into(),
+            }))
 }
-

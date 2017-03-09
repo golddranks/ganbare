@@ -155,8 +155,7 @@ pub mod db {
 
     fn init_check_is_installed(conn: &Connection) -> Result<()> {
 
-        let count: i64 = schema::users::table.count()
-            .get_result(&**conn)?;
+        let count: i64 = schema::users::table.count().get_result(&**conn)?;
 
         DB_INSTALLED.store(count > 0, Ordering::Release);
         Ok(())
@@ -192,14 +191,14 @@ pub mod skill {
                 .chain_err(|| "Database error with skill_nuggets!")?;
 
         Ok(match skill_nugget {
-            Some(nugget) => nugget,
-            None => {
+               Some(nugget) => nugget,
+               None => {
             diesel::insert(&NewSkillNugget{ skill_summary: skill_summary })
                 .into(skill_nuggets::table)
                 .get_result(&**conn)
                 .chain_err(|| "Database error!")?
         }
-        })
+           })
     }
 
     pub fn get_skill_data(conn: &Connection,
@@ -207,9 +206,10 @@ pub mod skill {
                           -> Result<Vec<(SkillNugget, SkillData)>> {
         use schema::{skill_nuggets, skill_data};
 
-        let data: Vec<(SkillNugget, SkillData)> = skill_nuggets::table.inner_join(skill_data::table)
-            .filter(skill_data::user_id.eq(user_id))
-            .get_results(&**conn)?;
+        let data: Vec<(SkillNugget, SkillData)> =
+            skill_nuggets::table.inner_join(skill_data::table)
+                .filter(skill_data::user_id.eq(user_id))
+                .get_results(&**conn)?;
 
         Ok(data)
     }
@@ -222,9 +222,10 @@ pub mod skill {
         use schema::{due_items, question_data, exercise_data, quiz_questions, exercises, words,
                      pending_items, w_asked_data};
 
-        let data_q: Vec<(DueItem, QuestionData)> = due_items::table.inner_join(question_data::table)
-            .filter(due_items::user_id.eq(user_id))
-            .get_results(&**conn)?;
+        let data_q: Vec<(DueItem, QuestionData)> =
+            due_items::table.inner_join(question_data::table)
+                .filter(due_items::user_id.eq(user_id))
+                .get_results(&**conn)?;
 
         let mut questions: Vec<QuizQuestion> = vec![];
 
@@ -234,15 +235,16 @@ pub mod skill {
             questions.push(q);
         }
 
-        let data_e: Vec<(DueItem, ExerciseData)> = due_items::table.inner_join(exercise_data::table)
-            .filter(due_items::user_id.eq(user_id))
-            .get_results(&**conn)?;
+        let data_e: Vec<(DueItem, ExerciseData)> =
+            due_items::table.inner_join(exercise_data::table)
+                .filter(due_items::user_id.eq(user_id))
+                .get_results(&**conn)?;
 
         let mut exercises: Vec<Exercise> = vec![];
 
         for &(_, ref data) in &data_e {
             exercises.push(exercises::table.filter(exercises::id.eq(data.exercise_id))
-                .get_result(&**conn)?);
+                               .get_result(&**conn)?);
         }
 
         let data_w: Vec<(PendingItem, WAskedData)> =
@@ -253,15 +255,21 @@ pub mod skill {
         let mut words: Vec<Word> = vec![];
 
         for &(_, ref data) in &data_w {
-            words.push(words::table.filter(words::id.eq(data.word_id))
-                .get_result(&**conn)?);
+            words.push(words::table.filter(words::id.eq(data.word_id)).get_result(&**conn)?);
         }
 
-        let q =
-            data_q.into_iter().zip(questions.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
-        let e =
-            data_e.into_iter().zip(exercises.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
-        let w = data_w.into_iter().zip(words.into_iter()).map(|((a, b), c)| (a, b, c)).collect();
+        let q = data_q.into_iter()
+            .zip(questions.into_iter())
+            .map(|((a, b), c)| (a, b, c))
+            .collect();
+        let e = data_e.into_iter()
+            .zip(exercises.into_iter())
+            .map(|((a, b), c)| (a, b, c))
+            .collect();
+        let w = data_w.into_iter()
+            .zip(words.into_iter())
+            .map(|((a, b), c)| (a, b, c))
+            .collect();
 
         Ok((q, e, w))
     }
@@ -328,19 +336,19 @@ pub mod skill {
                 .get_result(&**conn)
                 .optional()?;
         Ok(if let Some(skill_data) = skill_data {
-            diesel::update(skill_data::table
+               diesel::update(skill_data::table
                             .filter(skill_data::user_id.eq(user_id))
                             .filter(skill_data::skill_nugget.eq(skill_id)))
                 .set(skill_data::skill_level.eq(skill_data.skill_level + level_increment))
                 .get_result(&**conn)?
-        } else {
-            diesel::insert(&SkillData {
-                    user_id: user_id,
-                    skill_nugget: skill_id,
-                    skill_level: level_increment,
-                }).into(skill_data::table)
-                .get_result(&**conn)?
-        })
+           } else {
+               diesel::insert(&SkillData {
+                                   user_id: user_id,
+                                   skill_nugget: skill_id,
+                                   skill_level: level_increment,
+                               }).into(skill_data::table)
+                       .get_result(&**conn)?
+           })
 
     }
 

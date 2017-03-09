@@ -1,4 +1,4 @@
-use *;
+use ::*;
 use ganbare::test::*;
 use ganbare::quiz::*;
 use ganbare::models::*;

@@ -11,10 +11,9 @@ pub struct Cache<K, V> {
     expires: Duration,
     cache: RwLock<HashMap<K, (Instant, V)>>,
     expiry_queue: RwLock<VecDeque<(Instant, K)>>,
-}   
+}
 
 impl<K: Hash + Eq + Clone + Debug, V: Clone> Cache<K, V> {
-
     pub fn new(expires: Duration) -> Self {
         Cache {
             expires: expires,
@@ -34,13 +33,12 @@ impl<K: Hash + Eq + Clone + Debug, V: Clone> Cache<K, V> {
         }
     }
 
-    pub fn get<Q>(&self, key: &Q)
-        -> Result<Option<V>>
-        where   K: Borrow<Q>,
-                Q: Hash + Eq
+    pub fn get<Q>(&self, key: &Q) -> Result<Option<V>>
+        where K: Borrow<Q>,
+              Q: Hash + Eq
     {
         if let Ok(cache) = self.cache.read() {
-            if let Some(&(expires, ref val)) = cache.get(key).clone() {
+            if let Some(&(expires, ref val)) = cache.get(key) {
                 if Instant::now() > expires {
                     Ok(None) // The map is not cleaned yet, but the value has expired
                 } else {
@@ -59,12 +57,15 @@ impl<K: Hash + Eq + Clone + Debug, V: Clone> Cache<K, V> {
             let mut removed = 0;
             loop {
                 if match queue.front() {
-                    Some(&(ref expires, _)) if &Instant::now() > expires => true,
-                    _ => false,
-                } {
+                       Some(&(ref expires, _)) if &Instant::now() > expires => true,
+                       _ => false,
+                   } {
                     let (expires, key) = queue.pop_front().unwrap();
                     cache.remove(&key);
-                    debug!("Removed {:?} (expired: {:?}, now: {:?}) from cache.", key, expires, Instant::now());
+                    debug!("Removed {:?} (expired: {:?}, now: {:?}) from cache.",
+                           key,
+                           expires,
+                           Instant::now());
                     removed += 1;
                 } else {
                     break;

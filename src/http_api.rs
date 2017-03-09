@@ -33,12 +33,12 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     if audio_name.next().is_some() {
         return abort(404);
     }
-    let audio_id = audio_id.parse::<i32>()
-        .expect("Pencil guarantees that Line ID should be an integer.");
+    let audio_id =
+        audio_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
     let (file_name, mime_type) = audio::get_file_path(&conn, audio_id).map_err(|e| match e.kind() {
-            &ErrorKind::FileNotFound => abort(404).unwrap_err(),
-            e => internal_error(e),
-        })?;
+                     &ErrorKind::FileNotFound => abort(404).unwrap_err(),
+                     e => internal_error(e),
+                 })?;
 
     use pencil::{PencilError, HTTPError};
 
@@ -47,19 +47,19 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
 
     time_it!("get_audio",
              send_file_range(file_path.to_str().expect("The path SHOULD be valid unicode!"),
-                       mime_type,
-                       false,
-                       req.headers().get()))
-        .set_static_cache()
-        .refresh_cookie(&sess)
-        .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => {
+                             mime_type,
+                             false,
+                             req.headers().get()))
+            .set_static_cache()
+            .refresh_cookie(&sess)
+            .map_err(|e| match e {
+                         PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Audio file not found? The audio file database/folder is borked? {:?}",
                        file_path);
                 internal_error(e)
             }
-            _ => internal_error(e),
-        })
+                         _ => internal_error(e),
+                     })
 }
 
 pub fn get_build_number(_: &mut Request) -> PencilResult {
@@ -74,14 +74,13 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
         .get("audio_name")
         .expect("Pencil guarantees that Line ID should exist as an arg.");
 
-    let asked_id = asked_id.parse::<i32>()
-        .expect("Pencil guarantees that Line ID should be an integer.");
+    let asked_id =
+        asked_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
 
-    let (file_name, mime_type) =
-        audio::for_quiz(&conn, sess.user_id, asked_id).map_err(|e| match e.kind() {
-                &ErrorKind::FileNotFound => abort(404).unwrap_err(),
-                e => internal_error(e),
-            })?;
+    let (file_name, mime_type) = audio::for_quiz(&conn, sess.user_id, asked_id).map_err(|e| match e.kind() {
+                     &ErrorKind::FileNotFound => abort(404).unwrap_err(),
+                     e => internal_error(e),
+                 })?;
 
     use pencil::{PencilError, HTTPError};
 
@@ -121,15 +120,15 @@ pub fn get_image(req: &mut Request) -> PencilResult {
                                  file_name,
                                  false,
                                  req.headers().get()))
-        .set_static_cache()
-        .refresh_cookie(&sess)
-        .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => {
+            .set_static_cache()
+            .refresh_cookie(&sess)
+            .map_err(|e| match e {
+                         PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Image file not found! {}", file_name);
                 e
             }
-            _ => internal_error(e),
-        })
+                         _ => internal_error(e),
+                     })
 }
 
 pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
@@ -145,13 +144,14 @@ pub fn quiz_to_json(quiz: quiz::Quiz) -> PencilResult {
 pub fn new_quiz(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
 
-    let new_quiz = time_it!("new_quiz", quiz::get_new_quiz(&conn, sess.user_id).err_500())?;
-    
+    let new_quiz = time_it!("new_quiz",
+                            quiz::get_new_quiz(&conn, sess.user_id).err_500())?;
+
     match new_quiz {
-        Some(quiz) => quiz_to_json(quiz),
-        None => jsonify(&()),
-    }
-    .refresh_cookie(&sess)
+            Some(quiz) => quiz_to_json(quiz),
+            None => jsonify(&()),
+        }
+        .refresh_cookie(&sess)
 }
 
 pub fn new_quiz_testing(req: &mut Request) -> PencilResult {
@@ -161,14 +161,12 @@ pub fn new_quiz_testing(req: &mut Request) -> PencilResult {
                                                    ganbare::event::is_ongoing(&conn,
                                                                               "pretest",
                                                                               sess.user_id)
-                                                       .err_500())? {
+                                                           .err_500())? {
         debug!("Pretest questions!");
         test::get_new_quiz_pretest(&conn, sess.user_id, &ev).err_500()?
-    } else if let Some((ev, _)) = time_it!("is_ongoing posttest",
-                                               ganbare::event::is_ongoing(&conn,
-                                                                          "posttest",
-                                                                           sess.user_id)
-                                                   .err_500())? {
+    } else if let Some((ev, _)) =
+        time_it!("is_ongoing posttest",
+                 ganbare::event::is_ongoing(&conn, "posttest", sess.user_id).err_500())? {
         debug!("Posttest questions!");
         test::get_new_quiz_posttest(&conn, sess.user_id, &ev).err_500()?
     } else {
@@ -187,54 +185,54 @@ fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
     let answer_type = parse!(form.get::<str>("type"));
 
     if answer_type == "word" {
-        let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
-        let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
-        let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
-        let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
+        let id = str::parse::<i32>(parse!(form.get("asked_id")))?;
+        let audio_times = str::parse::<i32>(parse!(form.get("times_audio_played")))?;
+        let active_answer_time_ms = str::parse::<i32>(parse!(form.get("active_answer_time")))?;
+        let full_spent_time_ms = str::parse::<i32>(parse!(form.get("full_spent_time")))?;
         Ok(quiz::Answered::W(models::WAnsweredData {
-            id: id,
-            audio_times: audio_times,
-            checked_date: UTC::now(),
-            active_answer_time_ms: active_answer_time_ms,
-            full_spent_time_ms: full_spent_time_ms,
-        }))
+                                 id: id,
+                                 audio_times: audio_times,
+                                 checked_date: UTC::now(),
+                                 active_answer_time_ms: active_answer_time_ms,
+                                 full_spent_time_ms: full_spent_time_ms,
+                             }))
     } else if answer_type == "exercise" {
-        let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
-        let audio_times = str::parse::<i32>(&parse!(form.get("times_audio_played")))?;
-        let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
-        let reflected_time_ms = str::parse::<i32>(&parse!(form.get("reflected_time")))?;
-        let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
-        let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
-        let answer_level = str::parse::<i32>(&parse!(form.get("answer_level")))?;
+        let id = str::parse::<i32>(parse!(form.get("asked_id")))?;
+        let audio_times = str::parse::<i32>(parse!(form.get("times_audio_played")))?;
+        let active_answer_time_ms = str::parse::<i32>(parse!(form.get("active_answer_time")))?;
+        let reflected_time_ms = str::parse::<i32>(parse!(form.get("reflected_time")))?;
+        let full_answer_time_ms = str::parse::<i32>(parse!(form.get("full_answer_time")))?;
+        let full_spent_time_ms = str::parse::<i32>(parse!(form.get("full_spent_time")))?;
+        let answer_level = str::parse::<i32>(parse!(form.get("answer_level")))?;
         Ok(quiz::Answered::E(models::EAnsweredData {
-            id: id,
-            audio_times: audio_times,
-            active_answer_time_ms: active_answer_time_ms,
-            answered_date: UTC::now(),
-            reflected_time_ms: reflected_time_ms,
-            full_answer_time_ms: full_answer_time_ms,
-            answer_level: answer_level,
-            full_spent_time_ms: full_spent_time_ms,
-        }))
+                                 id: id,
+                                 audio_times: audio_times,
+                                 active_answer_time_ms: active_answer_time_ms,
+                                 answered_date: UTC::now(),
+                                 reflected_time_ms: reflected_time_ms,
+                                 full_answer_time_ms: full_answer_time_ms,
+                                 answer_level: answer_level,
+                                 full_spent_time_ms: full_spent_time_ms,
+                             }))
     } else if answer_type == "question" {
-        let id = str::parse::<i32>(&parse!(form.get("asked_id")))?;
-        let answered_qa_id = str::parse::<i32>(&parse!(form.get("answered_qa_id")))?;
+        let id = str::parse::<i32>(parse!(form.get("asked_id")))?;
+        let answered_qa_id = str::parse::<i32>(parse!(form.get("answered_qa_id")))?;
         let answered_qa_id = if answered_qa_id > 0 {
             Some(answered_qa_id)
         } else {
             None
         }; // Negatives mean that question was unanswered (due to time limit)
-        let active_answer_time_ms = str::parse::<i32>(&parse!(form.get("active_answer_time")))?;
-        let full_answer_time_ms = str::parse::<i32>(&parse!(form.get("full_answer_time")))?;
-        let full_spent_time_ms = str::parse::<i32>(&parse!(form.get("full_spent_time")))?;
+        let active_answer_time_ms = str::parse::<i32>(parse!(form.get("active_answer_time")))?;
+        let full_answer_time_ms = str::parse::<i32>(parse!(form.get("full_answer_time")))?;
+        let full_spent_time_ms = str::parse::<i32>(parse!(form.get("full_spent_time")))?;
         Ok(quiz::Answered::Q(models::QAnsweredData {
-            id: id,
-            answered_qa_id: answered_qa_id,
-            answered_date: UTC::now(),
-            active_answer_time_ms: active_answer_time_ms,
-            full_answer_time_ms: full_answer_time_ms,
-            full_spent_time_ms: full_spent_time_ms,
-        }))
+                                 id: id,
+                                 answered_qa_id: answered_qa_id,
+                                 answered_date: UTC::now(),
+                                 active_answer_time_ms: active_answer_time_ms,
+                                 full_answer_time_ms: full_answer_time_ms,
+                                 full_spent_time_ms: full_spent_time_ms,
+                             }))
     } else {
         Err(ErrorKind::FormParseError.into())
     }
@@ -243,11 +241,13 @@ fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
 pub fn next_quiz(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
 
-    let answer = err_400!(parse_next_quiz_answer(req), "Can't parse form data? {:?}", req.form());
+    let answer = err_400!(parse_next_quiz_answer(req),
+                          "Can't parse form data? {:?}",
+                          req.form());
 
     let new_quiz = time_it!("next_quiz",
-                 quiz::get_next_quiz(&conn, sess.user_id, answer)
-                     .err_500_debug(sess.user_id, &*req))?;
+                            quiz::get_next_quiz(&conn, sess.user_id, answer)
+                                .err_500_debug(sess.user_id, &*req))?;
 
     match new_quiz {
             Some(quiz) => quiz_to_json(quiz),
@@ -259,7 +259,9 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
 pub fn next_quiz_testing(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
 
-    let answer = err_400!(parse_next_quiz_answer(req), "Can't parse form data? {:?}", req.form());
+    let answer = err_400!(parse_next_quiz_answer(req),
+                          "Can't parse form data? {:?}",
+                          req.form());
 
     let new_quiz = if let Some((ev, _)) =
         ganbare::event::is_ongoing(&conn, "pretest", sess.user_id).err_500()? {
@@ -390,8 +392,8 @@ pub fn merge_item(req: &mut Request) -> PencilResult {
     let id_from = req.view_args
         .get("id_from")
         .expect("Pencil guarantees that Line ID should exist as an arg.");
-    let id_from = id_from.parse::<i32>()
-        .expect("Pencil guarantees that Line ID should be an integer.");
+    let id_from =
+        id_from.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
     let id_to =
         req.view_args.get("id_to").expect("Pencil guarantees that Line ID should exist as an arg.");
     let id_to = id_to.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
@@ -623,7 +625,8 @@ pub fn update_item(req: &mut Request) -> PencilResult {
         }
         "update_event" => {
 
-            let item: ganbare::models::UpdateEvent = err_400!(serde_json::from_str(&text), "Couldn't parse the data!");
+            let item: ganbare::models::UpdateEvent = err_400!(serde_json::from_str(&text),
+                                                              "Couldn't parse the data!");
 
             if item.id != id {
                 return abort(400);
@@ -711,8 +714,7 @@ pub fn post_exercise(req: &mut Request) -> PencilResult {
     use ganbare::models::{UpdateExercise, UpdateExerciseVariant, NewExercise, ExerciseVariant};
 
     let (qq, aas): (UpdateExercise, Vec<UpdateExerciseVariant>) =
-        err_400!(serde_json::from_str(&text),
-                 "Error when parsing the JSON.");
+        err_400!(serde_json::from_str(&text), "Error when parsing the JSON.");
 
     fn parse_qq(qq: &UpdateExercise) -> Result<NewExercise> {
         let qq = NewExercise {
@@ -772,8 +774,8 @@ pub fn user(req: &mut Request) -> PencilResult {
     let user_id = req.view_args
         .remove("user_id")
         .expect("Pencil guarantees that Line ID should exist as an arg.");
-    let user_id = user_id.parse::<i32>()
-        .expect("Pencil guarantees that Line ID should be an integer.");
+    let user_id =
+        user_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
 
     let endpoint = req.endpoint().expect("Pencil guarantees this");
     let json = match endpoint.as_ref() {
@@ -836,7 +838,7 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
 
     let cl = err_400!(req.headers().get::<ContentLength>(),
                       "Content-Length must be set!")
-        .0;
+            .0;
     debug!("post_useraudio. Content-Length: {:?}", cl);
 
     if cl > 60_000 && event_name != "pretest_retelling" && event_name != "posttest_retelling" {
@@ -901,14 +903,10 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     let (quiz_number, rec_number) = match endpoint.as_ref() {
         "get_useraudio" => {
 
-            let quiz_number = err_400!(req.view_args
-                                           .remove("quiz_number")
-                                           .and_then(|d| d.parse::<usize>().ok()),
-                                       "quiz_number must be specified");
-            let rec_number = err_400!(req.view_args
-                                          .remove("rec_number")
-                                          .and_then(|d| d.parse::<usize>().ok()),
-                                      "rec_number must be specified");
+            let quiz_number = err_400!(req.view_args.remove("quiz_number").and_then(|d| d.parse::<usize>().ok()),
+                         "quiz_number must be specified");
+            let rec_number = err_400!(req.view_args.remove("rec_number").and_then(|d| d.parse::<usize>().ok()),
+                         "rec_number must be specified");
             (quiz_number, rec_number)
         }
         _ => unreachable!(),
@@ -935,24 +933,25 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     use hyper::header::{CacheControl, CacheDirective};
     use std::str::FromStr;
     send_file_range(file_path.to_str().expect("The path should be fully ASCII"),
-              mime::Mime::from_str("audio/ogg").unwrap(),
-              false,
-              req.headers().get())
-        .set_static_cache()
-        .refresh_cookie(&sess)
-        .map(|mut resp| {
-            resp.headers.set(CacheControl(vec![CacheDirective::NoCache, CacheDirective::NoStore]));
-            resp
-        })
-        .map_err(|e| match e {
-            PencilError::PenHTTPError(HTTPError::NotFound) => {
+                    mime::Mime::from_str("audio/ogg").unwrap(),
+                    false,
+                    req.headers().get())
+            .set_static_cache()
+            .refresh_cookie(&sess)
+            .map(|mut resp| {
+                     resp.headers.set(CacheControl(vec![CacheDirective::NoCache,
+                                                        CacheDirective::NoStore]));
+                     resp
+                 })
+            .map_err(|e| match e {
+                         PencilError::PenHTTPError(HTTPError::NotFound) => {
                 error!("Audio file not found? The audio file database/folder is borked? \
                         {:?}",
                        file_path);
                 internal_error(e)
             }
-            _ => internal_error(e),
-        })
+                         _ => internal_error(e),
+                     })
 }
 
 
@@ -972,7 +971,7 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
         "mic_check_rec" => {
             let cl = err_400!(req.headers().get::<ContentLength>(),
                               "Content-Length must be set!")
-                .0;
+                    .0;
             debug!("mic_check_rec with random token: {}. Content-Length: {:?}",
                    random_token,
                    cl);
@@ -993,8 +992,9 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
             debug!("mic_check_play with random token: {}", random_token);
             use std::str::FromStr;
 
-            let audio = err_400!(AUDIO_CACHE.get(&random_token).err_500()?, "No such audio clip!");
-            
+            let audio = err_400!(AUDIO_CACHE.get(&random_token).err_500()?,
+                                 "No such audio clip!");
+
             let mut resp = Response::from(&audio[..]);
             let mime = mime::Mime::from_str("audio/ogg").unwrap();
             resp.headers.set::<hyper::header::ContentType>(hyper::header::ContentType(mime));

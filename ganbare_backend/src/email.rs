@@ -66,8 +66,8 @@ pub fn send_confirmation(queue: &RwLock<VecDeque<Email>>,
         .from(from)
         .subject(&format!("【{}】Tervetuloa!", site_name))
         .html(hb_registry.render("email_confirm_email.html", &data)
-            .chain_err(|| "Handlebars template render error!")?
-            .as_ref())
+                  .chain_err(|| "Handlebars template render error!")?
+                  .as_ref())
         .build()
         .expect("Building email shouldn't fail.");
     enqueue_mail(email, queue)?;
@@ -94,8 +94,8 @@ pub fn send_pw_reset_email(queue: &RwLock<VecDeque<Email>>,
         .from(from)
         .subject(&format!("【{}】Salasanan vaihtaminen", site_name))
         .html(hb_registry.render("pw_reset_email.html", &data)
-            .chain_err(|| "Handlebars template render error!")?
-            .as_ref())
+                  .chain_err(|| "Handlebars template render error!")?
+                  .as_ref())
         .build()
         .expect("Building email shouldn't fail.");
     enqueue_mail(email, queue)?;
@@ -178,7 +178,7 @@ pub fn complete_pending_email_confirm(conn: &Connection,
     let user = user::add_user(&*conn, &email, password, pepper, stretching_time)?;
 
     for g in group_ids {
-        user::join_user_group_by_id(&conn, user.id, g)?;
+        user::join_user_group_by_id(conn, user.id, g)?;
     }
 
     diesel::delete(pending_email_confirms::table
@@ -189,9 +189,7 @@ pub fn complete_pending_email_confirm(conn: &Connection,
     Ok(user)
 }
 
-pub fn clean_old_pendings(conn: &Connection,
-                          duration: chrono::Duration)
-                          -> Result<usize> {
+pub fn clean_old_pendings(conn: &Connection, duration: chrono::Duration) -> Result<usize> {
     use schema::pending_email_confirms;
     let deadline = chrono::UTC::now() - duration;
     diesel::delete(pending_email_confirms::table.filter(pending_email_confirms::added.lt(deadline)))

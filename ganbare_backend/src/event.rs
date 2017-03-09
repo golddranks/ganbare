@@ -13,8 +13,7 @@ pub fn get_all(conn: &Connection)
                -> Result<Vec<(Event, Vec<(User, bool, Option<EventExperience>)>)>> {
     use schema::{users, events};
 
-    let events: Vec<Event> = events::table.order(events::priority)
-        .get_results(&**conn)?;
+    let events: Vec<Event> = events::table.order(events::priority).get_results(&**conn)?;
 
     let users: Vec<User> = users::table.get_results(&**conn)?;
 
@@ -105,8 +104,7 @@ pub fn state(conn: &Connection,
              -> Result<Option<(Event, EventExperience)>> {
     use schema::{event_experiences, events};
 
-    let event: Event = events::table.filter(events::name.eq(event_name))
-        .get_result(&**conn)?;
+    let event: Event = events::table.filter(events::name.eq(event_name)).get_result(&**conn)?;
 
     let ok = event_experiences::table.filter(event_experiences::user_id.eq(user_id))
         .filter(event_experiences::event_id.eq(event.id))
@@ -119,21 +117,20 @@ pub fn state(conn: &Connection,
 pub fn is_done(conn: &Connection, event_name: &str, user: &User) -> Result<bool> {
     let state = state(conn, event_name, user.id)?;
     Ok(match state {
-        Some((_, exp)) => {
-            match exp.event_finish {
-                Some(_) => true,
-                None => false,
-            }
-        }
-        None => false,
-    })
+           Some((_, exp)) => {
+               match exp.event_finish {
+                   Some(_) => true,
+                   None => false,
+               }
+           }
+           None => false,
+       })
 }
 
 
 pub fn is_published(conn: &Connection, event_name: &str) -> Result<bool> {
     use schema::events;
-    let ev: Event = events::table.filter(events::name.eq(event_name))
-        .get_result(&**conn)?;
+    let ev: Event = events::table.filter(events::name.eq(event_name)).get_result(&**conn)?;
 
     Ok(ev.published)
 }
@@ -149,26 +146,25 @@ pub fn initiate(conn: &Connection,
         return Ok(Some((ev, exp)));
     };
 
-    let ev: Event = events::table.filter(events::name.eq(event_name))
-        .get_result(&**conn)?;
+    let ev: Event = events::table.filter(events::name.eq(event_name)).get_result(&**conn)?;
 
     let exp: EventExperience = diesel::insert(&NewEventExperience {
-            user_id: user_id,
-            event_id: ev.id,
-        }).into(event_experiences::table)
-        .get_result(&**conn)?;
+                                                   user_id: user_id,
+                                                   event_id: ev.id,
+                                               }).into(event_experiences::table)
+            .get_result(&**conn)?;
 
     Ok(Some((ev, exp)))
 }
 
 pub fn require_started(conn: &Connection,
-                    event_name: &str,
-                    user_id: i32)
-                    -> Result<(Event, EventExperience)> {
+                       event_name: &str,
+                       user_id: i32)
+                       -> Result<(Event, EventExperience)> {
 
     let ev_state = state(conn, event_name, user_id)?;
 
-    if let Some(ev_exp @ (Event { published: true, .. }, .. )) = ev_state {
+    if let Some(ev_exp @ (Event { published: true, .. }, ..)) = ev_state {
         Ok(ev_exp)
     } else {
         bail!(ErrorKind::AccessDenied)
@@ -208,7 +204,8 @@ pub fn is_ongoing(conn: &Connection,
 
     let ev_state = state(conn, event_name, user_id)?;
 
-    if let Some(ev_exp @ ( Event { published: true, .. }, EventExperience { event_finish: None, .. })) = ev_state {
+    if let Some(ev_exp @ (Event { published: true, .. },
+                 EventExperience { event_finish: None, .. })) = ev_state {
 
         match ev_exp.0.required_group {
             Some(group_id) => {
@@ -219,15 +216,13 @@ pub fn is_ongoing(conn: &Connection,
                         .filter(group_memberships::user_id.eq(user_id))
                         .get_result(&**conn)
                         .optional()?;
-            
+
                 match group_membership {
                     Some(_) => Ok(Some(ev_exp)),
                     None => Ok(None),
                 }
-            },
-            None => {
-                Ok(Some(ev_exp))
             }
+            None => Ok(Some(ev_exp)),
         }
     } else {
         Ok(None)
@@ -244,8 +239,8 @@ pub fn set_done(conn: &Connection,
     if let Some((ev, mut exp)) = state(conn, event_name, user_id)? {
         exp.event_finish = Some(chrono::UTC::now());
         diesel::update(event_experiences::table.filter(event_experiences::event_id.eq(ev.id))
-                .filter(event_experiences::user_id.eq(user_id))).set(&exp)
-            .execute(&**conn)?;
+                           .filter(event_experiences::user_id.eq(user_id))).set(&exp)
+                .execute(&**conn)?;
         Ok(Some((ev, exp)))
     } else {
         Ok(None)
@@ -257,13 +252,15 @@ pub fn remove_exp(conn: &Connection, event_id: i32, user_id: i32) -> Result<bool
 
     let count_userdata =
         diesel::delete(event_userdata::table.filter(event_userdata::event_id.eq(event_id))
-                .filter(event_userdata::user_id.eq(user_id))).execute(&**conn)?;
+                           .filter(event_userdata::user_id.eq(user_id))).execute(&**conn)?;
 
     let count_exp =
         diesel::delete(event_experiences::table.filter(event_experiences::event_id.eq(event_id))
-                .filter(event_experiences::user_id.eq(user_id))).execute(&**conn)?;
+                           .filter(event_experiences::user_id.eq(user_id))).execute(&**conn)?;
 
-    debug!("Removing event exp! Userdata rows: {}, exp rows: {}", count_userdata, count_exp);
+    debug!("Removing event exp! Userdata rows: {}, exp rows: {}",
+           count_userdata,
+           count_exp);
 
     Ok(count_exp == 1)
 }
@@ -277,36 +274,36 @@ pub fn save_userdata(conn: &Connection,
     use schema::event_userdata;
 
     time_it!("save_userdata",
-    match key {
-        None => {
-            Ok(diesel::insert(&NewEventUserdata {
-                    event_id: event.id,
-                    user_id: user_id,
-                    key: key,
-                    data: data,
-                }).into(event_userdata::table)
-                .get_result(&**conn)?)
-        }
-        Some(k) => {
-            let result =
+             match key {
+                 None => {
+                     Ok(diesel::insert(&NewEventUserdata {
+                                            event_id: event.id,
+                                            user_id: user_id,
+                                            key: key,
+                                            data: data,
+                                        }).into(event_userdata::table)
+                                .get_result(&**conn)?)
+                 }
+                 Some(k) => {
+        let result =
                 diesel::update(event_userdata::table.filter(event_userdata::event_id.eq(event.id))
                         .filter(event_userdata::user_id.eq(user_id))
                         .filter(event_userdata::key.eq(k))).set(&UpdateEventUserdata { data: data })
                     .get_result(&**conn)
                     .optional()?;
-            if let Some(userdata) = result {
-                Ok(userdata)
-            } else {
-                Ok(diesel::insert(&NewEventUserdata {
-                        event_id: event.id,
-                        user_id: user_id,
-                        key: key,
-                        data: data,
-                    }).into(event_userdata::table)
-                    .get_result(&**conn)?)
-            }
+        if let Some(userdata) = result {
+            Ok(userdata)
+        } else {
+            Ok(diesel::insert(&NewEventUserdata {
+                                   event_id: event.id,
+                                   user_id: user_id,
+                                   key: key,
+                                   data: data,
+                               }).into(event_userdata::table)
+                       .get_result(&**conn)?)
         }
-    })
+    }
+             })
 }
 
 pub fn get_userdata(conn: &Connection,

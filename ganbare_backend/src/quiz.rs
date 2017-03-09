@@ -88,35 +88,32 @@ fn new_pending_item(conn: &Connection,
     };
 
     Ok(diesel::insert(&NewPendingItem {
-            user_id: user_id,
-            audio_file_id: audio_file_id,
-            item_type: item_type,
-            test_item: test_item,
-        }).into(pending_items::table)
-        .get_result(&**conn)?)
+                           user_id: user_id,
+                           audio_file_id: audio_file_id,
+                           item_type: item_type,
+                           test_item: test_item,
+                       }).into(pending_items::table)
+               .get_result(&**conn)?)
 }
 
 fn register_future_q_answer(conn: &Connection, data: &QAskedData) -> Result<()> {
     use schema::q_asked_data;
 
-    diesel::insert(data).into(q_asked_data::table)
-        .execute(&**conn)?;
+    diesel::insert(data).into(q_asked_data::table).execute(&**conn)?;
     Ok(())
 }
 
 fn register_future_e_answer(conn: &Connection, data: &EAskedData) -> Result<()> {
     use schema::e_asked_data;
 
-    diesel::insert(data).into(e_asked_data::table)
-        .execute(&**conn)?;
+    diesel::insert(data).into(e_asked_data::table).execute(&**conn)?;
     Ok(())
 }
 
 fn register_future_w_answer(conn: &Connection, data: &WAskedData) -> Result<()> {
     use schema::w_asked_data;
 
-    diesel::insert(data).into(w_asked_data::table)
-        .execute(&**conn)?;
+    diesel::insert(data).into(w_asked_data::table).execute(&**conn)?;
     Ok(())
 }
 
@@ -217,11 +214,9 @@ fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData) ->
     pending_item.pending = false;
     let _: PendingItem = pending_item.save_changes(&**conn)?;
 
-    diesel::insert(answered).into(w_answered_data::table)
-        .execute(&**conn)?;
+    diesel::insert(answered).into(w_answered_data::table).execute(&**conn)?;
 
-    let word: Word = words::table.filter(words::id.eq(asked.word_id))
-        .get_result(&**conn)?;
+    let word: Word = words::table.filter(words::id.eq(asked.word_id)).get_result(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
@@ -265,8 +260,7 @@ fn log_answer_question(conn: &Connection,
 
     let correct = asked.correct_qa_id == answered.answered_qa_id.unwrap_or(-1);
 
-    diesel::insert(answered).into(q_answered_data::table)
-        .execute(&**conn)?;
+    diesel::insert(answered).into(q_answered_data::table).execute(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
@@ -301,8 +295,7 @@ fn log_answer_question(conn: &Connection,
     // Update the data for the question (Diesel doesn't support UPSERT so we have to branch)
 
     let question: QuizQuestion =
-        quiz_questions::table.filter(quiz_questions::id.eq(asked.question_id))
-            .get_result(&**conn)?;
+        quiz_questions::table.filter(quiz_questions::id.eq(asked.question_id)).get_result(&**conn)?;
 
     let questiondata: Option<(QuestionData, DueItem)> =
         question_data::table.inner_join(due_items::table)
@@ -314,25 +307,25 @@ fn log_answer_question(conn: &Connection,
     // Update the data for this question (due date, statistics etc.)
     Ok(if let Some((_, due_item)) = questiondata {
 
-        log_answer_due_item(conn, due_item, question.skill_id, correct, metrics)?;
+           log_answer_due_item(conn, due_item, question.skill_id, correct, metrics)?;
 
-    } else {
-        // New!
+       } else {
+           // New!
 
-        let due_item = log_answer_new_due_item(conn,
+           let due_item = log_answer_new_due_item(conn,
                                                user_id,
                                                "question",
                                                question.skill_id,
                                                correct,
                                                metrics)?;
 
-        let questiondata = QuestionData {
+           let questiondata = QuestionData {
             question_id: asked.question_id,
             due: due_item.id,
         };
-        let _: QuestionData = diesel::insert(&questiondata).into(question_data::table)
+           let _: QuestionData = diesel::insert(&questiondata).into(question_data::table)
             .get_result(&**conn)?;
-    })
+       })
 }
 
 fn log_answer_exercise(conn: &Connection,
@@ -359,8 +352,7 @@ fn log_answer_exercise(conn: &Connection,
     pending_item.pending = false;
     let _: PendingItem = pending_item.save_changes(&**conn)?;
 
-    diesel::insert(answered).into(e_answered_data::table)
-        .execute(&**conn)?;
+    diesel::insert(answered).into(e_answered_data::table).execute(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
@@ -404,26 +396,27 @@ fn log_answer_exercise(conn: &Connection,
     // Update the data for this word exercise (due date, statistics etc.)
     Ok(if let Some((_, due_item)) = exercisedata {
 
-        log_answer_due_item(conn, due_item, exercise.skill_id, correct, metrics)?;
+           log_answer_due_item(conn, due_item, exercise.skill_id, correct, metrics)?;
 
-    } else {
-        // New!
+       } else {
+           // New!
 
-        let due_item = log_answer_new_due_item(conn,
+           let due_item = log_answer_new_due_item(conn,
                                                user_id,
                                                "exercise",
                                                exercise.skill_id,
                                                correct,
                                                metrics)?;
 
-        let exercisedata = ExerciseData {
+           let exercisedata = ExerciseData {
             due: due_item.id,
             exercise_id: asked.exercise_id,
         };
-        let _: ExerciseData = diesel::insert(&exercisedata).into(exercise_data::table)
-            .get_result(&**conn)
-            .chain_err(|| "Couldn't save the question tally data to database!")?;
-    })
+           let _: ExerciseData =
+            diesel::insert(&exercisedata).into(exercise_data::table)
+                .get_result(&**conn)
+                .chain_err(|| "Couldn't save the question tally data to database!")?;
+       })
 }
 
 
@@ -484,8 +477,8 @@ fn load_word(conn: &Connection, id: i32) -> Result<Option<Word>> {
     use schema::words;
 
     Ok(words::table.filter(words::id.eq(id))
-        .get_result(&**conn)
-        .optional()?)
+           .get_result(&**conn)
+           .optional()?)
 }
 
 fn choose_next_due_item(conn: &Connection, user_id: i32) -> Result<Option<(DueItem, QuizType)>> {
@@ -505,14 +498,17 @@ fn choose_next_due_item(conn: &Connection, user_id: i32) -> Result<Option<(DueIt
             .first(&**conn)
             .optional()?;
 
-    let due_item = due_questions.into_iter().zip(due_exercises).next().map(|zipped| match zipped {
-        ((di, Some(qdata)), (_, None)) => (di, QuizType::Question(qdata.question_id)),
-        ((_, None), (di, Some(edata))) => (di, QuizType::Exercise(edata.exercise_id)),
-        e => {
+    let due_item = due_questions.into_iter()
+        .zip(due_exercises)
+        .next()
+        .map(|zipped| match zipped {
+                 ((di, Some(qdata)), (_, None)) => (di, QuizType::Question(qdata.question_id)),
+                 ((_, None), (di, Some(edata))) => (di, QuizType::Exercise(edata.exercise_id)),
+                 e => {
             println!("WHY? {:?}", e);
             unreachable!()
         }
-    });
+             });
 
     Ok(due_item)
 }
@@ -539,23 +535,23 @@ fn choose_random_overdue_item(conn: &Connection, user_id: i32) -> Result<Option<
         .optional()?;
 
     Ok(match due {
-        Some(ref due) if due.item_type == "question" => {
+           Some(ref due) if due.item_type == "question" => {
             Some(QuizType::Question(question_data::table.filter(question_data::due.eq(due.id))
                 .get_result::<QuestionData>(&**conn)?
                 .question_id))
         }
-        Some(ref due) if due.item_type == "exercise" => {
+           Some(ref due) if due.item_type == "exercise" => {
             Some(QuizType::Exercise(exercise_data::table.filter(exercise_data::due.eq(due.id))
                 .get_result::<ExerciseData>(&**conn)?
                 .exercise_id))
         }
-        Some(_) => {
-            return Err(ErrorKind::DatabaseOdd("Database contains due_item with an odd item_type \
+           Some(_) => {
+               return Err(ErrorKind::DatabaseOdd("Database contains due_item with an odd item_type \
                                                value!")
-                .into())
-        }
-        None => None,
-    })
+                                  .into())
+           }
+           None => None,
+       })
 }
 
 fn choose_random_overdue_item_include_cooldown(conn: &Connection,
@@ -570,23 +566,23 @@ fn choose_random_overdue_item_include_cooldown(conn: &Connection,
         .optional()?;
 
     Ok(match due {
-        Some(ref due) if due.item_type == "question" => {
+           Some(ref due) if due.item_type == "question" => {
             Some(QuizType::Question(question_data::table.filter(question_data::due.eq(due.id))
                 .get_result::<QuestionData>(&**conn)?
                 .question_id))
         }
-        Some(ref due) if due.item_type == "exercise" => {
+           Some(ref due) if due.item_type == "exercise" => {
             Some(QuizType::Exercise(exercise_data::table.filter(exercise_data::due.eq(due.id))
                 .get_result::<ExerciseData>(&**conn)?
                 .exercise_id))
         }
-        Some(_) => {
-            return Err(ErrorKind::DatabaseOdd("Database contains due_item with an odd item_type \
+           Some(_) => {
+               return Err(ErrorKind::DatabaseOdd("Database contains due_item with an odd item_type \
                                                value!")
-                .into())
-        }
-        None => None,
-    })
+                                  .into())
+           }
+           None => None,
+       })
 }
 
 fn choose_new_question(conn: &Connection, user_id: i32) -> Result<Option<QuizQuestion>> {
@@ -955,9 +951,9 @@ fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Q
     if chrono::UTC::now() < metrics.break_until {
         let due_string = metrics.break_until.to_rfc3339();
         return Ok(Some(Quiz::F(FutureJson {
-            quiz_type: "future",
-            due_date: due_string,
-        })));
+                                   quiz_type: "future",
+                                   due_date: due_string,
+                               })));
     }
 
     // This is important because we have to zero the counts
@@ -1035,9 +1031,9 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
         let due_string = metrics.break_until.to_rfc3339();
         return Ok(Some(Quiz::F(FutureJson {
-            quiz_type: "future",
-            due_date: due_string,
-        })));
+                                   quiz_type: "future",
+                                   due_date: due_string,
+                               })));
     }
 
     let words = metrics.new_words_since_break >= metrics.max_words_since_break || no_new_words;
@@ -1070,9 +1066,9 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
         let due_string = metrics.break_until.to_rfc3339();
         return Ok(Some(Quiz::F(FutureJson {
-            quiz_type: "future",
-            due_date: due_string,
-        })));
+                                   quiz_type: "future",
+                                   due_date: due_string,
+                               })));
     }
 
     unreachable!("check_break. Either the break limits or daily limits should be full and those \
@@ -1118,73 +1114,73 @@ pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
     use schema::{q_asked_data, e_asked_data, w_asked_data};
 
     Ok(match pi {
-        pi if pi.item_type == "question" => {
+           pi if pi.item_type == "question" => {
 
-            let asked: QAskedData = q_asked_data::table.filter(q_asked_data::id.eq(pi.id))
-                .get_result(&**conn)?;
+        let asked: QAskedData = q_asked_data::table.filter(q_asked_data::id.eq(pi.id))
+            .get_result(&**conn)?;
 
-            let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
+        let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
                 else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
                     )) };
 
-            let mut answer_choices: Vec<_> =
-                answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
-            thread_rng().shuffle(&mut answer_choices);
+        let mut answer_choices: Vec<_> =
+            answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
+        thread_rng().shuffle(&mut answer_choices);
 
-            Quiz::Q(QuestionJson {
-                quiz_type: "question",
-                asked_id: pi.id,
-                explanation: question.q_explanation,
-                question: question.question_text,
-                right_a: asked.correct_qa_id,
-                answers: answer_choices,
-            })
+        Quiz::Q(QuestionJson {
+                    quiz_type: "question",
+                    asked_id: pi.id,
+                    explanation: question.q_explanation,
+                    question: question.question_text,
+                    right_a: asked.correct_qa_id,
+                    answers: answer_choices,
+                })
 
-        }
-        pi if pi.item_type == "exercise" => {
+    }
+           pi if pi.item_type == "exercise" => {
 
-            let asked: EAskedData = e_asked_data::table.filter(e_asked_data::id.eq(pi.id))
-                .get_result(&**conn)?;
+        let asked: EAskedData = e_asked_data::table.filter(e_asked_data::id.eq(pi.id))
+            .get_result(&**conn)?;
 
-            let word = try_or!{ load_word(conn, asked.word_id)?,
+        let word = try_or!{ load_word(conn, asked.word_id)?,
                 else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
                     )) };
 
-            Quiz::E(ExerciseJson {
-                quiz_type: "exercise",
-                event_name: "training",
-                asked_id: pi.id,
-                word: word.word.nfc().collect::<String>(),
-                explanation: word.explanation,
-                must_record: false,
-            })
+        Quiz::E(ExerciseJson {
+                    quiz_type: "exercise",
+                    event_name: "training",
+                    asked_id: pi.id,
+                    word: word.word.nfc().collect::<String>(),
+                    explanation: word.explanation,
+                    must_record: false,
+                })
 
-        }
-        pi if pi.item_type == "word" => {
+    }
+           pi if pi.item_type == "word" => {
 
-            let asked: WAskedData = w_asked_data::table.filter(w_asked_data::id.eq(pi.id))
-                .get_result(&**conn)?;
+        let asked: WAskedData = w_asked_data::table.filter(w_asked_data::id.eq(pi.id))
+            .get_result(&**conn)?;
 
-            let word = try_or!{ load_word(conn, asked.word_id)?,
+        let word = try_or!{ load_word(conn, asked.word_id)?,
                 else bail!(
                     ErrorKind::DatabaseOdd(
                         "Bug: If the item was set pending in the first place, it should exists!"
                     )) };
 
-            Quiz::W(WordJson {
-                quiz_type: "word",
-                asked_id: pi.id,
-                word: word.word.nfc().collect::<String>(),
-                explanation: word.explanation,
-                show_accents: asked.show_accents,
-            })
-        }
-        _ => unreachable!("Bug: There is only three kinds of quiz types!"),
-    })
+        Quiz::W(WordJson {
+                    quiz_type: "word",
+                    asked_id: pi.id,
+                    word: word.word.nfc().collect::<String>(),
+                    explanation: word.explanation,
+                    show_accents: asked.show_accents,
+                })
+    }
+           _ => unreachable!("Bug: There is only three kinds of quiz types!"),
+       })
 }
 
 pub fn return_pending_item(conn: &Connection, user_id: i32) -> Result<Option<Quiz>> {
@@ -1299,25 +1295,22 @@ pub fn return_word(conn: &Connection, user_id: i32, the_word: Word) -> Result<Op
 pub fn get_word_by_str(conn: &Connection, word: &str) -> Result<Word> {
     use schema::words;
 
-    Ok(words::table.filter(words::word.eq(word))
-        .get_result(&**conn)?)
+    Ok(words::table.filter(words::word.eq(word)).get_result(&**conn)?)
 }
 pub fn get_word_by_id(conn: &Connection, id: i32) -> Result<Word> {
     use schema::words;
 
-    Ok(words::table.filter(words::id.eq(id))
-        .get_result(&**conn)?)
+    Ok(words::table.filter(words::id.eq(id)).get_result(&**conn)?)
 }
 
 pub fn get_exercise(conn: &Connection, word: &str) -> Result<(Exercise, ExerciseVariant)> {
     use schema::{words, exercises, exercise_variants};
 
-    let word: Word = words::table.filter(words::word.eq(word))
-        .get_result(&**conn)?;
+    let word: Word = words::table.filter(words::word.eq(word)).get_result(&**conn)?;
 
     Ok(exercises::table.inner_join(exercise_variants::table)
-        .filter(exercise_variants::id.eq(word.id))
-        .get_result(&**conn)?)
+           .filter(exercise_variants::id.eq(word.id))
+           .get_result(&**conn)?)
 }
 
 pub fn get_question(conn: &Connection, answer_text: &str) -> Result<(QuizQuestion, Answer)> {
@@ -1327,8 +1320,8 @@ pub fn get_question(conn: &Connection, answer_text: &str) -> Result<(QuizQuestio
         .get_result(&**conn)?;
 
     Ok(quiz_questions::table.inner_join(question_answers::table)
-        .filter(question_answers::q_audio_bundle.eq(bundle.id))
-        .get_result(&**conn)?)
+           .filter(question_answers::q_audio_bundle.eq(bundle.id))
+           .get_result(&**conn)?)
 }
 
 pub enum QuizSerialized {
@@ -1369,12 +1362,12 @@ pub fn test_item(conn: &Connection,
                     )) };
 
             Quiz::W(WordJson {
-                quiz_type: "word",
-                asked_id: pending_item.id,
-                word: word.word.nfc().collect::<String>(),
-                explanation: word.explanation,
-                show_accents: asked_data.show_accents,
-            })
+                        quiz_type: "word",
+                        asked_id: pending_item.id,
+                        word: word.word.nfc().collect::<String>(),
+                        explanation: word.explanation,
+                        show_accents: asked_data.show_accents,
+                    })
         }
         QuizSerialized::Question(s, audio_id) => {
 
@@ -1410,13 +1403,13 @@ pub fn test_item(conn: &Connection,
 
 
             Quiz::Q(QuestionJson {
-                quiz_type: "question",
-                asked_id: pending_item.id,
-                explanation: question.q_explanation,
-                question: question.question_text,
-                right_a: asked_data.correct_qa_id,
-                answers: answer_choices,
-            })
+                        quiz_type: "question",
+                        asked_id: pending_item.id,
+                        explanation: question.q_explanation,
+                        question: question.question_text,
+                        right_a: asked_data.correct_qa_id,
+                        answers: answer_choices,
+                    })
 
         }
         QuizSerialized::Exercise(word, audio_id) => {
@@ -1449,13 +1442,13 @@ pub fn test_item(conn: &Connection,
                     )) };
 
             Quiz::E(ExerciseJson {
-                quiz_type: "exercise",
-                event_name: "pretest or posttest",
-                asked_id: pending_item.id,
-                word: word.word.nfc().collect::<String>(),
-                explanation: word.explanation,
-                must_record: false,
-            })
+                        quiz_type: "exercise",
+                        event_name: "pretest or posttest",
+                        asked_id: pending_item.id,
+                        word: word.word.nfc().collect::<String>(),
+                        explanation: word.explanation,
+                        must_record: false,
+                    })
         }
     };
 

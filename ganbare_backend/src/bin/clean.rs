@@ -55,9 +55,9 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
     let r4 = regex::Regex::new(r#"<br .*?>"#).expect("<- that is a valid regex there");
 
 
-    let words: Vec<Word> =
-        words::table.filter(words::explanation.like("%span%").or(words::explanation.like("%<br %")))
-            .get_results(&conn)?;
+    let words: Vec<Word> = words::table.filter(words::explanation.like("%span%")
+                                                   .or(words::explanation.like("%<br %")))
+        .get_results(&conn)?;
 
     for mut w in words {
         let before = format!("{:?}", w);
@@ -73,7 +73,7 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
 
     let answers: Vec<Answer> =
         question_answers::table.filter(question_answers::answer_text.like("%span%")
-                .or(question_answers::answer_text.like("%<br %")))
+                                           .or(question_answers::answer_text.like("%<br %")))
             .get_results(&conn)?;
 
     for mut a in answers {
@@ -99,8 +99,8 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
 
     let mut logger = vec![];
 
-    let words: Vec<Word> = words::table
-        .filter(words::explanation.like("%http://%").or(words::explanation.like("%https://%")))
+    let words: Vec<Word> = words::table.filter(words::explanation.like("%http://%")
+                                                   .or(words::explanation.like("%https://%")))
         .get_results(&conn)?;
 
     for mut w in words {
@@ -186,8 +186,11 @@ fn clean_unused_audio() {
 
     let fs_files = std::fs::read_dir(&*AUDIO_DIR).unwrap();
 
-    let db_files: HashSet<String> =
-        audio::get_all_files(&pooled_conn).unwrap().into_iter().map(|f| f.0).collect();
+    let db_files: HashSet<String> = audio::get_all_files(&pooled_conn)
+        .unwrap()
+        .into_iter()
+        .map(|f| f.0)
+        .collect();
 
     let mut trash_dir = AUDIO_DIR.clone();
     trash_dir.push("trash");
@@ -225,14 +228,15 @@ fn clean_unused_images() {
 
     let mut db_files: HashSet<String> = HashSet::new();
 
-    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
-        .get_results(&conn)
-        .unwrap();
+    let words: Vec<Word> =
+        words::table.filter(words::explanation.like("%<img%")).get_results(&conn).unwrap();
 
     for w in words {
 
         for img_match in IMG_REGEX.captures_iter(&w.explanation) {
-            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+            let img = img_match.get(1)
+                .expect("The whole match won't match without this submatch.")
+                .as_str();
             db_files.insert(img.to_string());
         }
     }
@@ -244,7 +248,9 @@ fn clean_unused_images() {
 
     for a in answers {
         for img_match in IMG_REGEX.captures_iter(&a.answer_text) {
-            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+            let img = img_match.get(1)
+                .expect("The whole match won't match without this submatch.")
+                .as_str();
             db_files.insert(img.to_string());
         }
     }
@@ -278,9 +284,8 @@ fn add_br_between_images_and_text() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
-        .get_results(&conn)
-        .unwrap();
+    let words: Vec<Word> =
+        words::table.filter(words::explanation.like("%<img%")).get_results(&conn).unwrap();
 
     for mut w in words {
         let new_text = BR_IMG_REGEX.replace_all(&w.explanation, "$1<br>$2").into_owned();
@@ -317,20 +322,22 @@ fn fix_skill_names() {
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
     let mut cleanup_str = String::with_capacity(300);
-    std::fs::File::open("src/bin/skill_cleanup.txt").unwrap().read_to_string(&mut cleanup_str)
+    std::fs::File::open("src/bin/skill_cleanup.txt")
+        .unwrap()
+        .read_to_string(&mut cleanup_str)
         .expect("Why can't it read to a string?");
     let cleanup = cleanup_str.lines().map(|l| {
-        let words = l.split_at(l.find('\t').unwrap());
-        (words.0, &words.1[1..])
-    });
+                                              let words = l.split_at(l.find('\t').unwrap());
+                                              (words.0, &words.1[1..])
+                                          });
 
     for (from, to) in cleanup {
 
-        let skill: Option<SkillNugget> = skill_nuggets::table
-            .filter(skill_nuggets::skill_summary.eq(from))
-            .get_result(&conn)
-            .optional()
-            .expect("Shoot!");
+        let skill: Option<SkillNugget> =
+            skill_nuggets::table.filter(skill_nuggets::skill_summary.eq(from))
+                .get_result(&conn)
+                .optional()
+                .expect("Shoot!");
 
         if let Some(mut skill) = skill {
             println!("{} → {}", from, to);
@@ -360,9 +367,11 @@ SELECT MIN(id), COUNT(id), skill_summary FROM skill_nuggets GROUP BY skill_summa
         let original_id = o.0;
         let original_summary = &o.2;
 
-        let dupes: Vec<SkillNugget> = skill_nuggets::table
-            .filter(skill_nuggets::skill_summary.eq(original_summary).and(skill_nuggets::id.ne(original_id)))
-            .get_results(&conn).expect("DB error");
+        let dupes: Vec<SkillNugget> =
+            skill_nuggets::table.filter(skill_nuggets::skill_summary.eq(original_summary)
+                                            .and(skill_nuggets::id.ne(original_id)))
+                .get_results(&conn)
+                .expect("DB error");
 
         for d in dupes {
             println!("Going to remove {:?}, replacing with {:?}", d, o);
@@ -390,42 +399,48 @@ fn add_audio_file_hashes() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let all_hashless_audio_files: Vec<AudioFile> = audio_files::table
-        .filter(audio_files::file_sha2.is_null())
-        .get_results(&conn).unwrap();
+    let all_hashless_audio_files: Vec<AudioFile> =
+        audio_files::table.filter(audio_files::file_sha2.is_null()).get_results(&conn).unwrap();
 
-    for AudioFile{ id, file_path, .. } in all_hashless_audio_files {
+    for AudioFile { id, file_path, .. } in all_hashless_audio_files {
 
         let hash = audio::audio_file_hash(&file_path, &*AUDIO_DIR).unwrap();
 
-        let f : Option<AudioFile> = diesel::update(audio_files::table
-                .filter(audio_files::file_path.eq(&file_path)))
-            .set(audio_files::file_sha2.eq(&hash[..]))
-            .get_result(&conn)
-            .optional()
-            .or_else(|_| {
-                use schema::pending_items;
+        let f: Option<AudioFile> =
+            diesel::update(audio_files::table.filter(audio_files::file_path.eq(&file_path)))
+                .set(audio_files::file_sha2.eq(&hash[..]))
+                .get_result(&conn)
+                .optional()
+                .or_else(|_| {
+                    use schema::pending_items;
 
-                let existing: AudioFile = audio_files::table
-                    .filter(audio_files::file_sha2.eq(&hash[..])).get_result(&conn).unwrap();
-                println!("Hash/file already exists! Bundle: {} Existing: {} {} New: {} {}",
-                    existing.bundle_id, existing.id, existing.file_path, id, &file_path);
-                println!("Deleting the newer one.");
-                let updated = diesel::update(
+                    let existing: AudioFile =
+                        audio_files::table.filter(audio_files::file_sha2.eq(&hash[..]))
+                            .get_result(&conn)
+                            .unwrap();
+                    println!("Hash/file already exists! Bundle: {} Existing: {} {} New: {} {}",
+                             existing.bundle_id,
+                             existing.id,
+                             existing.file_path,
+                             id,
+                             &file_path);
+                    println!("Deleting the newer one.");
+                    let updated = diesel::update(
                         pending_items::table
                             .filter(pending_items::audio_file_id.eq(id))
                     )
                     .set(pending_items::audio_file_id.eq(existing.id))
                     .execute(&conn).expect("Couldn't update!");
-                let deleted = diesel::delete(
-                        audio_files::table
-                            .filter(audio_files::id.eq(id))
-                    )
-                    .execute(&conn).expect("Couldn't delete!");
+                    let deleted = diesel::delete(audio_files::table.filter(audio_files::id.eq(id)))
+                        .execute(&conn)
+                        .expect("Couldn't delete!");
 
-                println!("Deleted audio_files rows: {} Updated pending_items rows: {}", deleted, updated);
-                Ok::<_, errors::Error>(None)
-            }).unwrap();
+                    println!("Deleted audio_files rows: {} Updated pending_items rows: {}",
+                             deleted,
+                             updated);
+                    Ok::<_, errors::Error>(None)
+                })
+                .unwrap();
 
         if f.is_some() {
             println!("Set hash: {}", &file_path);
@@ -438,9 +453,8 @@ fn check_skill_levels() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let questions: Vec<QuizQuestion> = quiz_questions::table
-        .filter(quiz_questions::skill_level.eq(1))
-        .get_results(&conn).unwrap();
+    let questions: Vec<QuizQuestion> =
+        quiz_questions::table.filter(quiz_questions::skill_level.eq(1)).get_results(&conn).unwrap();
 
     for mut q in questions {
         println!("Raising a skill level of a question from 1 → 2. {:?}", q);
@@ -448,9 +462,8 @@ fn check_skill_levels() {
         let _: QuizQuestion = q.save_changes(&conn).unwrap();
     }
 
-    let exercises: Vec<Exercise> = exercises::table
-        .filter(exercises::skill_level.eq(1))
-        .get_results(&conn).unwrap();
+    let exercises: Vec<Exercise> =
+        exercises::table.filter(exercises::skill_level.eq(1)).get_results(&conn).unwrap();
 
     for mut e in exercises {
         println!("Raising a skill level of a exercise from 1 → 2. {:?}", e);
@@ -464,20 +477,20 @@ fn check_priority_levels() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let priority_skills: Vec<i32> = words::table
-        .inner_join(skill_nuggets::table)
+    let priority_skills: Vec<i32> = words::table.inner_join(skill_nuggets::table)
         .filter(words::skill_level.ge(5))
         .select(skill_nuggets::id)
-        .get_results(&conn).unwrap();
+        .get_results(&conn)
+        .unwrap();
 
     for skill_id in priority_skills {
 
-        let priority_words: Vec<Word> = diesel::update(
-            words::table
-                .filter(words::skill_nugget.eq(skill_id).and(words::priority.lt(2)))
-            )
-            .set(words::priority.eq(2))
-            .get_results(&conn).unwrap();
+        let priority_words: Vec<Word> =
+            diesel::update(words::table.filter(words::skill_nugget.eq(skill_id)
+                                                   .and(words::priority.lt(2))))
+                    .set(words::priority.eq(2))
+                    .get_results(&conn)
+                    .unwrap();
 
         for word in priority_words {
             println!("Raised a priority level of a word {:?}", word);
@@ -502,7 +515,10 @@ fn fix_image_filenames() {
 
     for f in fs_files {
         let f = f.unwrap();
-        let f_name = f.file_name().to_str().unwrap().to_owned();
+        let f_name = f.file_name()
+            .to_str()
+            .unwrap()
+            .to_owned();
         if f_name.ends_with("00") {
             let mut original_path = IMAGE_DIR.to_owned();
             original_path.push(&f_name);
@@ -512,7 +528,10 @@ fn fix_image_filenames() {
                 "PNG " => ".png",
                 "JPEG" => ".jpg",
                 "GIF " => ".gif",
-                _ => { println!("Unrecognised format: {:?}", &format); ".fileextension" },
+                _ => {
+                    println!("Unrecognised format: {:?}", &format);
+                    ".fileextension"
+                }
             };
             new_f_name.truncate(19);
             new_f_name.push('Z');
@@ -531,16 +550,17 @@ fn fix_image_filenames() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
-        .get_results(&conn)
-        .unwrap();
+    let words: Vec<Word> =
+        words::table.filter(words::explanation.like("%<img%")).get_results(&conn).unwrap();
 
     for mut w in words {
 
         let w_expl = w.explanation.to_owned();
 
         for img_match in IMG_REGEX.captures_iter(&w_expl) {
-            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+            let img = img_match.get(1)
+                .expect("The whole match won't match without this submatch.")
+                .as_str();
 
             if let Some(new_img) = files.get(img) {
                 w.explanation = w.explanation.replace(img, new_img);
@@ -560,7 +580,9 @@ fn fix_image_filenames() {
     for mut a in answers {
         let a_text = a.answer_text.to_owned();
         for img_match in IMG_REGEX.captures_iter(&a_text) {
-            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+            let img = img_match.get(1)
+                .expect("The whole match won't match without this submatch.")
+                .as_str();
 
             if let Some(new_img) = files.get(img) {
                 a.answer_text = a.answer_text.replace(img, new_img);
@@ -571,7 +593,7 @@ fn fix_image_filenames() {
             }
         }
     }
-    
+
 }
 
 // This needs to write to database because it often needs to change the file format of the images (png -> jpg etc.)
@@ -587,16 +609,16 @@ fn replace_images() {
     for f in new_images {
         let fname = f.unwrap().file_name();
         let fname = fname.to_str().unwrap();
-        image_names.push((fname[0..fname.len()-4].to_owned(), fname[fname.len()-4..fname.len()].to_owned()));
+        image_names.push((fname[0..fname.len() - 4].to_owned(),
+                          fname[fname.len() - 4..fname.len()].to_owned()));
 
-        original_filenames.insert(fname[0..fname.len()-4].to_owned(), None);
+        original_filenames.insert(fname[0..fname.len() - 4].to_owned(), None);
     }
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
-        .get_results(&conn)
-        .unwrap();
+    let words: Vec<Word> =
+        words::table.filter(words::explanation.like("%<img%")).get_results(&conn).unwrap();
 
     for mut w in words {
         for &(ref fname, ref ext) in &image_names {
@@ -606,7 +628,10 @@ fn replace_images() {
                     let mut pieces = w.explanation.splitn(2, fname);
                     let before = pieces.next().unwrap();
                     let ext_after = pieces.next().unwrap();
-                    let after = ext_after.splitn(2, '"').skip(1).next().unwrap();
+                    let after = ext_after.splitn(2, '"')
+                        .skip(1)
+                        .next()
+                        .unwrap();
 
                     format!("{}{}{}\"{}", before, fname, ext, after)
                 };
@@ -633,8 +658,11 @@ fn replace_images() {
                     let mut pieces = a.answer_text.splitn(2, fname);
                     let before = pieces.next().unwrap();
                     let ext_after = pieces.next().unwrap();
-                    let after = ext_after.splitn(2, '"').skip(1).next().unwrap();
-        
+                    let after = ext_after.splitn(2, '"')
+                        .skip(1)
+                        .next()
+                        .unwrap();
+
                     format!("{}{}{}\"{}", before, fname, ext, after)
                 };
 
@@ -648,10 +676,11 @@ fn replace_images() {
         }
     }
 
-    let original_images = std::fs::read_dir(&*IMAGE_DIR).expect("Can't find the dir src/bin/image_cleanup!");
+    let original_images =
+        std::fs::read_dir(&*IMAGE_DIR).expect("Can't find the dir src/bin/image_cleanup!");
     for f in original_images {
         let fname = f.unwrap().file_name();
-        let just_name = fname.to_str().unwrap()[0..fname.len()-4].to_owned();
+        let just_name = fname.to_str().unwrap()[0..fname.len() - 4].to_owned();
 
         if original_filenames.get(&just_name).is_some() {
             original_filenames.insert(just_name, Some(fname));
@@ -662,11 +691,12 @@ fn replace_images() {
         println!("Copying image files");
     }
 
-    let new_images = std::fs::read_dir("src/bin/image_cleanup").expect("Couldn't read the image_cleanup dir?");
+    let new_images =
+        std::fs::read_dir("src/bin/image_cleanup").expect("Couldn't read the image_cleanup dir?");
 
     for f in new_images {
         let fname = f.unwrap().file_name();
-        let just_name = &fname.to_str().unwrap()[0..fname.len()-4];
+        let just_name = &fname.to_str().unwrap()[0..fname.len() - 4];
         if just_name.starts_with(".") {
             continue;
         }
@@ -688,10 +718,13 @@ fn replace_images() {
             old_path.push(&orig_fname);
             old_path_backup.push(&orig_fname);
             old_path_backup.set_extension(".bak");
-    
+
             println!("Backing up: {:?} →　{:?}", &old_path, &old_path_backup);
             match std::fs::rename(&old_path, &old_path_backup) {
-                Err(e) => { println!("Error: {:?}. {:?}", &old_path, e); continue },
+                Err(e) => {
+                    println!("Error: {:?}. {:?}", &old_path, e);
+                    continue;
+                }
                 _ => (),
             }
         }
@@ -716,7 +749,10 @@ fn missing_images() {
 
     for f in fs_files {
         let f = f.unwrap();
-        let f_name = f.file_name().to_str().unwrap().to_owned();
+        let f_name = f.file_name()
+            .to_str()
+            .unwrap()
+            .to_owned();
         files.insert(f_name);
         file_counter += 1;
     }
@@ -724,17 +760,20 @@ fn missing_images() {
 
     let conn = db::connect(&*DATABASE_URL).unwrap();
 
-    let words: Vec<Word> = words::table.filter(words::explanation.like("%<img%"))
-        .get_results(&conn)
-        .unwrap();
+    let words: Vec<Word> =
+        words::table.filter(words::explanation.like("%<img%")).get_results(&conn).unwrap();
 
     for w in words {
 
         for img_match in IMG_REGEX.captures_iter(&w.explanation) {
-            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+            let img = img_match.get(1)
+                .expect("The whole match won't match without this submatch.")
+                .as_str();
 
             if !files.contains(img) {
-                println!("Warning: {:?} references file {:?} that doesn't exist", w.explanation, img);
+                println!("Warning: {:?} references file {:?} that doesn't exist",
+                         w.explanation,
+                         img);
             }
             ref_counter += 1;
         }
@@ -747,20 +786,26 @@ fn missing_images() {
 
     for a in answers {
         for img_match in IMG_REGEX.captures_iter(&a.answer_text) {
-            let img = img_match.get(1).expect("The whole match won't match without this submatch.").as_str();
+            let img = img_match.get(1)
+                .expect("The whole match won't match without this submatch.")
+                .as_str();
 
             if !files.contains(img) {
-                println!("Warning: {:?} references file {:?} that doesn't exist", a.answer_text, img);
+                println!("Warning: {:?} references file {:?} that doesn't exist",
+                         a.answer_text,
+                         img);
             }
             ref_counter += 1;
         }
     }
-    println!("Checked {:?} files and {:?} references.", file_counter, ref_counter);
-    
+    println!("Checked {:?} files and {:?} references.",
+             file_counter,
+             ref_counter);
+
 }
 
 fn check_tests() {
-    use quiz::{QuizSerialized};
+    use quiz::QuizSerialized;
 
     let pre_quiz = include!("../../../pretest.rs");
     let post_quiz = include!("../../../posttest.rs");
@@ -771,37 +816,50 @@ fn check_tests() {
     for i in quizes {
         match i {
             QuizSerialized::Word(s, audio_id) => {
-                let w = quiz::get_word_by_str(&conn, s).chain_err(|| format!("Word {} not found", s)).unwrap();
+                let w = quiz::get_word_by_str(&conn, s)
+                    .chain_err(|| format!("Word {} not found", s))
+                    .unwrap();
                 let a = audio::get_audio_file_by_id(&conn, audio_id).unwrap();
-    
+
                 if w.audio_bundle != a.bundle_id {
                     let bundle = audio::get_bundle_by_id(&conn, a.bundle_id);
-                    panic!("Word: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}", w, bundle, a.id);
+                    panic!("Word: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}",
+                           w,
+                           bundle,
+                           a.id);
                 }
             }
             QuizSerialized::Question(s, audio_id) => {
-    
-                let (_, ans) =
-                    quiz::get_question(&conn, s).chain_err(|| format!("Question {} not found", s)).unwrap();
-    
+
+                let (_, ans) = quiz::get_question(&conn, s)
+                    .chain_err(|| format!("Question {} not found", s))
+                    .unwrap();
+
                 let a = audio::get_audio_file_by_id(&conn, audio_id).unwrap();
-    
+
                 if ans.q_audio_bundle != a.bundle_id {
                     let bundle = audio::get_bundle_by_id(&conn, a.bundle_id);
-                    panic!("Q Answer: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}", ans, bundle, a.id);
+                    panic!("Q Answer: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}",
+                           ans,
+                           bundle,
+                           a.id);
                 }
             }
             QuizSerialized::Exercise(word, audio_id) => {
-    
+
                 let (_, var) = quiz::get_exercise(&conn, word)
-                            .chain_err(|| format!("Exercise {} not found", word)).unwrap();
-    
+                    .chain_err(|| format!("Exercise {} not found", word))
+                    .unwrap();
+
                 let w = quiz::get_word_by_id(&conn, var.id).unwrap();
                 let a = audio::get_audio_file_by_id(&conn, audio_id).unwrap();
-    
+
                 if w.audio_bundle != a.bundle_id {
                     let bundle = audio::get_bundle_by_id(&conn, a.bundle_id);
-                    panic!("Word: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}", w, bundle, a.id);
+                    panic!("Word: {:?}.\nAudio bundle: {:?}, Audio file ID: {:?}",
+                           w,
+                           bundle,
+                           a.id);
                 }
             }
         };

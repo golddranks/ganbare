@@ -60,7 +60,7 @@ pub fn favicon(_: &mut Request) -> PencilResult {
     send_file("static/images/speaker_pink.png",
               "image/x-icon".parse().expect("We now statically this mime is good"),
               false)
-        .set_static_cache()
+            .set_static_cache()
 }
 
 pub fn source_maps(req: &mut Request) -> PencilResult {
@@ -74,7 +74,7 @@ pub fn source_maps(req: &mut Request) -> PencilResult {
     send_from_directory("src", file_path, false)
 }
 
-use std::collections::{VecDeque};
+use std::collections::VecDeque;
 use std::sync::RwLock;
 use lettre::email::Email;
 use lettre::transport::smtp::SmtpTransportBuilder;
@@ -162,7 +162,9 @@ pub fn background_control_thread() {
 
         match AUDIO_CACHE.clean_expired() {
             Ok((remaining, removed)) if removed > 0 => {
-                debug!("Removed an old temp audio recordings. Remaining: {}, Removed: {}", remaining, removed);
+                debug!("Removed an old temp audio recordings. Remaining: {}, Removed: {}",
+                       remaining,
+                       removed);
             }
             Err(e) => {
                 error!("background_control_thread::AUDIO_CACHE.clean_expired: Error: {}",
@@ -173,7 +175,9 @@ pub fn background_control_thread() {
 
         match LOGGED_OUT_CACHE.clean_expired() {
             Ok((remaining, removed)) if removed > 0 => {
-                debug!("Removed logged out sessions from memory cache. Remaining: {}, Removed: {}", remaining, removed);
+                debug!("Removed logged out sessions from memory cache. Remaining: {}, Removed: {}",
+                       remaining,
+                       removed);
             }
             Err(e) => {
                 error!("background_control_thread::LOGGED_OUT_CACHE.clean_expired: Error: {}",
@@ -183,14 +187,14 @@ pub fn background_control_thread() {
         }
 
         let mut outgoing_mails = vec![];
-        if let Ok(mut mails) = MAIL_QUEUE.try_write()
-            .or_else(|e| {
-                debug!("The queue is locked. Skipping.");
-                Err(e)
-            }) {
+        if let Ok(mut mails) =
+            MAIL_QUEUE.try_write().or_else(|e| {
+                                               debug!("The queue is locked. Skipping.");
+                                               Err(e)
+                                           }) {
             outgoing_mails.extend(mails.drain(..));
         }
-        if outgoing_mails.len() > 0 {
+        if ! outgoing_mails.is_empty() {
             info!("Sending {} mails!", outgoing_mails.len());
             for email in outgoing_mails.drain(..) {
                 match mailer.send(email) {
@@ -267,9 +271,9 @@ fn set_headers(_req: &Request, resp: &mut pencil::Response) {
     if *PARANOID {
         resp.headers.set(ContentSecurityPolicy(CONTENT_SECURITY_POLICY.clone()));
         resp.headers.set(StrictTransportSecurity {
-            include_subdomains: true,
-            max_age: 31536000,
-        });
+                             include_subdomains: true,
+                             max_age: 31536000,
+                         });
     }
 }
 
@@ -565,8 +569,12 @@ pub fn main() {
     app.get("/api/new_quiz", "new_quiz", http_api::new_quiz);
     app.post("/api/next_quiz", "next_quiz", http_api::next_quiz);
 
-    app.get("/api/new_quiz_testing", "new_quiz_testing", http_api::new_quiz_testing);
-    app.post("/api/next_quiz_testing", "next_quiz_testing", http_api::next_quiz_testing);
+    app.get("/api/new_quiz_testing",
+            "new_quiz_testing",
+            http_api::new_quiz_testing);
+    app.post("/api/next_quiz_testing",
+             "next_quiz_testing",
+             http_api::next_quiz_testing);
 
     app.get("/api/audio/<audio_name:string>",
             "get_audio",

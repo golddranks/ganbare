@@ -145,15 +145,18 @@ pub fn create_or_update_word(conn: &Connection,
     match conn.transaction(|| {
         let mut narrator = Some(audio::get_create_narrator(conn, w.narrator)?);
         let mut bundle = Some(audio::get_create_bundle(conn, &w.word)?);
-    
+
         for mut file in &mut w.files {
-            audio_file = Some(audio::save(&*conn, &mut narrator, &mut file, &mut bundle, audio_dir)?);
+            audio_file =
+                Some(audio::save(&*conn, &mut narrator, &mut file, &mut bundle, audio_dir)?);
         }
         Ok(())
     }) {
         Err(Error(ErrorKind::FileAlreadyExists(hash), ..)) => {
-            audio_file = audio_files::table.filter(audio_files::file_sha2.eq(hash)).get_result(&**conn).optional()?;
-        },
+            audio_file = audio_files::table.filter(audio_files::file_sha2.eq(hash))
+                .get_result(&**conn)
+                .optional()?;
+        }
         Err(e) => return Err(e),
         Ok(()) => (),
     };
@@ -177,8 +180,7 @@ pub fn create_or_update_word(conn: &Connection,
             priority: w.priority,
         };
 
-        let word = diesel::insert(&new_word).into(words::table)
-            .get_result(&**conn)?;
+        let word = diesel::insert(&new_word).into(words::table).get_result(&**conn)?;
         return Ok(word);
     }
 
@@ -203,7 +205,9 @@ pub fn get_exercise(conn: &Connection,
 }
 
 pub fn get_word(conn: &Connection, id: i32) -> Result<Option<Word>> {
-    Ok(schema::words::table.filter(schema::words::id.eq(id)).get_result(&**conn).optional()?)
+    Ok(schema::words::table.filter(schema::words::id.eq(id))
+           .get_result(&**conn)
+           .optional()?)
 }
 
 pub fn publish_question(conn: &Connection, id: i32, published: bool) -> Result<()> {
@@ -238,8 +242,7 @@ pub fn update_word(conn: &Connection,
                    -> Result<Option<Word>> {
     use schema::words;
 
-    item.explanation = item.explanation
-        .try_map(|s| sanitize_links(&s, image_dir))?;
+    item.explanation = item.explanation.try_map(|s| sanitize_links(&s, image_dir))?;
 
     let item = diesel::update(words::table.filter(words::id.eq(id))).set(&item)
         .get_result(&**conn)
@@ -278,13 +281,11 @@ pub fn update_answer(conn: &Connection,
                      -> Result<Option<Answer>> {
     use schema::question_answers;
 
-    item.answer_text = item.answer_text
-        .try_map(|s| sanitize_links(&s, image_dir))?;
+    item.answer_text = item.answer_text.try_map(|s| sanitize_links(&s, image_dir))?;
 
-    let item =
-        diesel::update(question_answers::table.filter(question_answers::id.eq(id))).set(&item)
-            .get_result(&**conn)
-            .optional()?;
+    let item = diesel::update(question_answers::table.filter(question_answers::id.eq(id))).set(&item)
+        .get_result(&**conn)
+        .optional()?;
     Ok(item)
 }
 
@@ -295,19 +296,17 @@ pub fn update_variant(conn: &Connection,
 
     use schema::exercise_variants;
 
-    let item =
-        diesel::update(exercise_variants::table.filter(exercise_variants::id.eq(id))).set(&item)
-            .get_result(&**conn)
-            .optional()?;
+    let item = diesel::update(exercise_variants::table.filter(exercise_variants::id.eq(id))).set(&item)
+        .get_result(&**conn)
+        .optional()?;
     Ok(item)
 }
 
 pub fn remove_word(conn: &Connection, id: i32) -> Result<Option<Word>> {
     use schema::words;
 
-    let word: Option<Word> =
-        diesel::delete(words::table.filter(words::id.eq(id))).get_result(&**conn)
-            .optional()?;
+    let word: Option<Word> = diesel::delete(words::table.filter(words::id.eq(id))).get_result(&**conn)
+        .optional()?;
 
     Ok(word)
 }
@@ -343,13 +342,12 @@ pub fn post_question(conn: &Connection,
 
     debug!("Post question: {:?} and answers: {:?}", question, answers);
 
-    let q: QuizQuestion = diesel::insert(&question).into(quiz_questions::table)
-        .get_result(&**conn)?;
+    let q: QuizQuestion =
+        diesel::insert(&question).into(quiz_questions::table).get_result(&**conn)?;
 
     for aa in &mut answers {
         aa.question_id = q.id;
-        diesel::insert(aa).into(question_answers::table)
-            .execute(&**conn)?;
+        diesel::insert(aa).into(question_answers::table).execute(&**conn)?;
     }
     Ok(q.id)
 }
@@ -362,13 +360,11 @@ pub fn post_exercise(conn: &Connection,
 
     conn.transaction(|| -> Result<i32> {
 
-            let q: Exercise = diesel::insert(&exercise).into(exercises::table)
-                .get_result(&**conn)?;
+            let q: Exercise = diesel::insert(&exercise).into(exercises::table).get_result(&**conn)?;
 
             for aa in &mut answers {
                 aa.exercise_id = q.id;
-                diesel::insert(aa).into(exercise_variants::table)
-                    .execute(&**conn)?;
+                diesel::insert(aa).into(exercise_variants::table).execute(&**conn)?;
             }
             Ok(q.id)
 
@@ -510,26 +506,25 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
     let mut result = text.to_string();
     for url_match in URL_REGEX.captures_iter(text) {
 
-        let url = url_match.get(1)
-            .expect("The whole match won't match without this submatch.")
-            .as_str();
+        let url =
+            url_match.get(1).expect("The whole match won't match without this submatch.").as_str();
 
         info!("Outbound link found: {}", url);
 
         if CONVERTED_LINKS.read()
-            .expect("If the lock is poisoned, we're screwed anyway")
-            .contains_key(url) {
-            let new_url = &CONVERTED_LINKS.read()
-                .expect("If the lock is poisoned, we're screwed anyway")
-                               [url];
+               .expect("If the lock is poisoned, we're screwed anyway")
+               .contains_key(url) {
+            let new_url =
+                &CONVERTED_LINKS.read().expect("If the lock is poisoned, we're screwed anyway")
+                     [url];
             result = result.replace(url, new_url);
         } else {
 
             info!("Downloading the link target.");
             let desanitized_url = url.replace("&amp;", "&");
             let req = HTTP_CLIENT.get(&desanitized_url);
-            let mut resp = req.send()
-                .map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
+            let mut resp =
+                req.send().map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
 
             assert!(resp.status().is_success());
 
@@ -589,20 +584,20 @@ fn test_sanitize_links() {
                         com/1016045/326/i/950/depositphotos_3267906-stock-photo-cool-emoticon.\
                         jpg\" testing",
                                 tempdir.path())
-        .unwrap();
+            .unwrap();
     assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 1);
     let result2 = sanitize_links("Testing \"http://static4.depositphotos.\
                         com/1016045/326/i/950/depositphotos_3267906-stock-photo-cool-emoticon.\
                         jpg\" testing",
                                  tempdir.path())
-        .unwrap();
+            .unwrap();
     assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 1);
     assert_eq!(result.len(), 64);
     assert_eq!(result, result2);
     let result3 = sanitize_links("Testing \"https://c2.staticflickr.\
                                   com/2/1216/1408154388_b34a66bdcf.jpg\" testing",
                                  tempdir.path())
-        .unwrap();
+            .unwrap();
     assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 2);
     assert_eq!(result3.len(), 64);
     assert_ne!(result, result3);

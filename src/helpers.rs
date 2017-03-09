@@ -313,8 +313,12 @@ fn get_session_cookie(cookies: &Cookie) -> Result<Option<session::UserSession>> 
             Err(_) => bail!("Couldn't parse the cookie!"),
         }
     }
-    if let (Some(session_id), Some(hmac), Some(user_id), Some(refreshed), Some(token), Some(refresh_count)) =
-        (session_id, hmac, user_id, refreshed, token, refresh_count) {
+    if let (Some(session_id),
+            Some(hmac),
+            Some(user_id),
+            Some(refreshed),
+            Some(token),
+            Some(refresh_count)) = (session_id, hmac, user_id, refreshed, token, refresh_count) {
         let sess = session::check_integrity(session_id,
                                             user_id,
                                             refreshed,
@@ -338,9 +342,12 @@ pub struct TemplateContext<'a> {
 }
 
 impl<'a> TemplateContext<'a> {
-    pub fn insert<K, V>(&mut self, key: K, value: V) -> std::option::Option<std::borrow::Cow<'a, str>>
-    where K: Into<Cow<'a, str>>,
-          V: Into<Cow<'a, str>>
+    pub fn insert<K, V>(&mut self,
+                        key: K,
+                        value: V)
+                        -> std::option::Option<std::borrow::Cow<'a, str>>
+        where K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
     {
         self.map.insert(key.into(), value.into())
     }
@@ -365,7 +372,7 @@ pub fn new_template_context<'a>() -> TemplateContext<'a> {
 
 
 pub fn get_sess(conn: &Connection, req: &Request) -> Result<Option<UserSession>> {
-    if let Some(Some(Some(sess))) = req.cookies().try_map(get_session_cookie).ok() {
+    if let Ok(Some(Some(sess))) = req.cookies().try_map(get_session_cookie) {
         if session::check(&sess, &*LOGGED_OUT_CACHE)? {
             Ok(Some(sess))
         } else {
@@ -401,7 +408,7 @@ pub fn try_auth_user(req: &mut Request)
                      -> StdResult<Option<(Connection, UserSession)>, PencilError> {
 
     time_it!{"try_auth_user",
-        if let Some(Some(Some(sess))) = req.cookies().try_map(get_session_cookie).ok() {
+        if let Ok(Some(Some(sess))) = req.cookies().try_map(get_session_cookie) {
             let conn = db_connect().err_500()?;
             if session::check(&sess, &*LOGGED_OUT_CACHE).err_500()? {
                 Ok(Some((conn, sess)))
@@ -509,8 +516,7 @@ impl HeaderProcessor for Response {
                                            format!("{}", refreshed.finish()),
                                            format!("{}", hmac_cookie.finish()),
                                            format!("{}", token.finish()),
-                                           format!("{}", refresh_count.finish()),
-                                           ]));
+                                           format!("{}", refresh_count.finish())]));
         }
         Ok(self)
     }
@@ -540,8 +546,7 @@ impl HeaderProcessor for Response {
                                        format!("{}", user_id.finish()),
                                        format!("{}", refreshed.finish()),
                                        format!("{}", hmac.finish()),
-                                       format!("{}", token.finish()),
-                                       ]));
+                                       format!("{}", token.finish())]));
         self
     }
 
@@ -558,15 +563,11 @@ impl HeaderProcessor for PencilResult {
     }
 
     fn expire_cookie(self) -> Self {
-        self.and_then(|resp| {
-            Ok(<Response as HeaderProcessor>::expire_cookie(resp))
-        })
+        self.and_then(|resp| Ok(<Response as HeaderProcessor>::expire_cookie(resp)))
     }
 
     fn set_static_cache(self) -> Self {
-        self.and_then(|resp| {
-            Ok(<Response as HeaderProcessor>::set_static_cache(resp))
-        })
+        self.and_then(|resp| Ok(<Response as HeaderProcessor>::set_static_cache(resp)))
     }
 }
 
@@ -761,15 +762,12 @@ pub fn check_if_cached(req: &mut Request) -> Option<PencilResult> {
         Some(&IfModifiedSince(HttpDate(tm))) if tm >= *TIME_AT_SERVER_START => {
             let mut cached_resp = Response::new_empty();
             cached_resp.status_code = 304;
-            return Some(Ok(cached_resp));
+            Some(Ok(cached_resp))
         }
-        None => {
+        _ => {
             // No caching requested
-            return None;
-        }
-        Some(_) => {
-            // Stale cache
-            return None;
+            // or stale cache
+            None
         }
     }
 }

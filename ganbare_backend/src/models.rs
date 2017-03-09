@@ -6,26 +6,35 @@ use std::marker::PhantomData;
 use std::fmt::{self, Formatter};
 use serde::de::Error;
 
-fn double_option<T: Deserialize, D>(de: D) -> Result<Option<Option<T>>, D::Error> where D: Deserializer {
+fn double_option<T: Deserialize, D>(de: D) -> Result<Option<Option<T>>, D::Error>
+    where D: Deserializer
+{
     #[derive(Debug)]
-    struct DoubleOptionVisitor<T> { _inner: PhantomData<T> };
+    struct DoubleOptionVisitor<T> {
+        _inner: PhantomData<T>,
+    };
 
     impl<T: Deserialize> Visitor for DoubleOptionVisitor<T> {
         type Value = Option<Option<T>>;
         fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-            write!(formatter, "Either a missing field, a field with null/None, or a field with value T")
+            write!(formatter,
+                   "Either a missing field, a field with null/None, or a field with value T")
         }
-        fn visit_none<E>(self) -> Result<Self::Value, E> where E: Error {
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+            where E: Error
+        {
             Ok(Some(None))
         }
-        fn visit_some<D>(self, de: D) -> Result<Self::Value, D::Error> where D: Deserializer {
+        fn visit_some<D>(self, de: D) -> Result<Self::Value, D::Error>
+            where D: Deserializer
+        {
             match T::deserialize(de) {
                 Ok(val) => Ok(Some(Some(val))),
                 Err(e) => Err(e),
             }
         }
     }
-    de.deserialize_option(DoubleOptionVisitor::<T> { _inner: PhantomData } )
+    de.deserialize_option(DoubleOptionVisitor::<T> { _inner: PhantomData })
 }
 
 #[derive(Insertable)]

@@ -17,16 +17,15 @@ enum Group {
 pub fn get_user(conn: &Connection, user_id: i32) -> Result<User> {
     use schema::users::dsl::*;
 
-    Ok(users.filter(id.eq(user_id))
-        .first(&**conn)?)
+    Ok(users.filter(id.eq(user_id)).first(&**conn)?)
 }
 
 pub fn get_user_by_email(conn: &Connection, user_email: &str) -> Result<Option<User>> {
     use schema::users::dsl::*;
 
     Ok(users.filter(sql::lower(email).eq(sql::lower(user_email)))
-        .first(&**conn)
-        .optional()?)
+           .first(&**conn)
+           .optional()?)
 }
 
 fn get_user_pass_by_email(conn: &Connection, user_email: &str) -> Result<(User, Password)> {
@@ -38,9 +37,9 @@ fn get_user_pass_by_email(conn: &Connection, user_email: &str) -> Result<(User, 
         .filter(sql::lower(users::email).eq(sql::lower(user_email)))
         .first(&**conn)
         .or_else(|e| match e {
-            e @ NotFound => Err(e).chain_err(|| ErrorKind::NoSuchUser(user_email.into())),
-            e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
-        })
+                     e @ NotFound => Err(e).chain_err(|| ErrorKind::NoSuchUser(user_email.into())),
+                     e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
+                 })
 }
 
 
@@ -97,17 +96,13 @@ pub fn add_user(conn: &Connection,
 
     let new_user = NewUser { email: email };
 
-    let user: User = diesel::insert(&new_user).into(users::table)
-        .get_result(&**conn)?;
+    let user: User = diesel::insert(&new_user).into(users::table).get_result(&**conn)?;
 
-    diesel::insert(&pw.into_db(user.id)).into(passwords::table)
-        .execute(&**conn)?;
+    diesel::insert(&pw.into_db(user.id)).into(passwords::table).execute(&**conn)?;
 
-    diesel::insert(&NewUserMetrics { id: user.id }).into(user_metrics::table)
-        .execute(&**conn)?;
+    diesel::insert(&NewUserMetrics { id: user.id }).into(user_metrics::table).execute(&**conn)?;
 
-    diesel::insert(&NewUserStats { id: user.id }).into(user_stats::table)
-        .execute(&**conn)?;
+    diesel::insert(&NewUserStats { id: user.id }).into(user_stats::table).execute(&**conn)?;
 
     info!("Created a new user, with email {:?}.", email);
     Ok(user)
@@ -121,10 +116,11 @@ pub fn set_password(conn: &Connection,
                     -> Result<User> {
     use schema::{users, passwords};
 
-    let (u, p): (User, Option<Password>) = users::table.left_outer_join(passwords::table)
-        .filter(sql::lower(users::email).eq(sql::lower(user_email)))
-        .first(&**conn)
-        .chain_err(|| "Error when trying to retrieve user!")?;
+    let (u, p): (User, Option<Password>) =
+        users::table.left_outer_join(passwords::table)
+            .filter(sql::lower(users::email).eq(sql::lower(user_email)))
+            .first(&**conn)
+            .chain_err(|| "Error when trying to retrieve user!")?;
     if p.is_none() {
 
         let pw = password::set_password(password, pepper, stretching_time)
@@ -152,19 +148,19 @@ pub fn check_password_reset(conn: &Connection,
             .optional()?;
 
     Ok(match confirm {
-        Some((c, u)) => {
-            if c.added < chrono::UTC::now() - chrono::Duration::days(1) {
-                diesel::delete(
+           Some((c, u)) => {
+               if c.added < chrono::UTC::now() - chrono::Duration::days(1) {
+                   diesel::delete(
                     reset_email_secrets::table
                         .filter(reset_email_secrets::user_id.eq(c.user_id))
                 ).execute(&**conn)?;
-                None
-            } else {
-                Some((c, u))
-            }
-        }
-        None => None,
-    })
+                   None
+               } else {
+                   Some((c, u))
+               }
+           }
+           None => None,
+       })
 }
 
 pub fn invalidate_password_reset(conn: &Connection, secret: &ResetEmailSecrets) -> Result<()> {
@@ -213,13 +209,15 @@ pub fn send_pw_change_email(conn: &Connection,
 
     let (new_secret, hmac) = session::new_token_and_hmac(hmac_key)?;
 
-    let result = diesel::insert(&ResetEmailSecrets {
-            secret: new_secret,
-            user_id: user.id,
-            email: user.email.expect("We just found this user by the email address!"),
-            added: chrono::UTC::now(),
-        }).into(reset_email_secrets::table)
-        .get_result(&**conn)?;
+    let result =
+        diesel::insert(&ResetEmailSecrets {
+                            secret: new_secret,
+                            user_id: user.id,
+                            email:
+                                user.email.expect("We just found this user by the email address!"),
+                            added: chrono::UTC::now(),
+                        }).into(reset_email_secrets::table)
+                .get_result(&**conn)?;
 
     Ok((result, hmac))
 }
@@ -231,17 +229,17 @@ pub fn remove_user_by_email(conn: &Connection, rm_email: &str) -> Result<User> {
     diesel::delete(users.filter(sql::lower(email).eq(sql::lower(rm_email))))
         .get_result(&**conn)
         .map_err(|e| match e {
-            e @ NotFound => Error::with_chain(e, ErrorKind::NoSuchUser(rm_email.into())),
-            e => Error::with_chain(e, "Couldn't remove the user!"),
-        })
+                     e @ NotFound => Error::with_chain(e, ErrorKind::NoSuchUser(rm_email.into())),
+                     e => Error::with_chain(e, "Couldn't remove the user!"),
+                 })
 }
 
 pub fn deactivate_user(conn: &Connection, id: i32) -> Result<Option<User>> {
     use schema::users;
 
     let user = match users::table.filter(users::id.eq(id))
-        .get_result::<User>(&**conn)
-        .optional()? {
+              .get_result::<User>(&**conn)
+              .optional()? {
         Some(u) => u,
         None => return Ok(None),
     };
@@ -259,8 +257,8 @@ pub fn remove_user_completely(conn: &Connection, id: i32) -> Result<Option<User>
     use schema::users;
 
     let user = match users::table.filter(users::id.eq(id))
-        .get_result::<User>(&**conn)
-        .optional()? {
+              .get_result::<User>(&**conn)
+              .optional()? {
         Some(u) => u,
         None => return Ok(None),
     };
@@ -311,11 +309,11 @@ pub fn join_user_group_by_id(conn: &Connection,
     use schema::group_memberships;
 
     let membership: GroupMembership = diesel::insert(&GroupMembership {
-            user_id: user_id,
-            group_id: group_id,
-            anonymous: false,
-        }).into(group_memberships::table)
-        .get_result(&**conn)?;
+                                                          user_id: user_id,
+                                                          group_id: group_id,
+                                                          anonymous: false,
+                                                      }).into(group_memberships::table)
+            .get_result(&**conn)?;
     Ok(membership)
 }
 
@@ -383,23 +381,23 @@ pub fn join_user_group_by_name(conn: &Connection,
 
     // FIXME when diesel gets UPSERT, streamline this
     let membership: Option<GroupMembership> = diesel::insert(&GroupMembership {
-            user_id: user_id,
-            group_id: group.id,
-            anonymous: false,
-        }).into(group_memberships::table)
-        .get_result(&**conn)
-        .optional()
-        .or_else(|e| match e {
-            DatabaseError(UniqueViolation, _) => Ok(None),
-            e => Err(e),
-        })?;
+                                                                  user_id: user_id,
+                                                                  group_id: group.id,
+                                                                  anonymous: false,
+                                                              }).into(group_memberships::table)
+            .get_result(&**conn)
+            .optional()
+            .or_else(|e| match e {
+                         DatabaseError(UniqueViolation, _) => Ok(None),
+                         e => Err(e),
+                     })?;
 
     if let Some(membership) = membership {
         Ok(membership)
     } else {
         Ok(group_memberships::table.filter(group_memberships::user_id.eq(user_id)
-                .and(group_memberships::group_id.eq(group.id)))
-            .get_result(&**conn)?)
+                                               .and(group_memberships::group_id.eq(group.id)))
+               .get_result(&**conn)?)
     }
 
 }
@@ -427,9 +425,10 @@ pub fn check_user_group(conn: &Connection, user_id: i32, group_name: &str) -> Re
         return Ok(true);
     };
 
-    let group: Option<UserGroup> = user_groups::table.filter(user_groups::group_name.eq(group_name))
-        .get_result(&**conn)
-        .optional()?;
+    let group: Option<UserGroup> =
+        user_groups::table.filter(user_groups::group_name.eq(group_name))
+            .get_result(&**conn)
+            .optional()?;
 
     let group = if let Some(g) = group {
         g
@@ -472,8 +471,7 @@ pub fn get_group(conn: &Connection, group_name: &str) -> Result<Option<UserGroup
 pub fn all_groups(conn: &Connection) -> Result<Vec<UserGroup>> {
     use schema::user_groups;
 
-    let groups = user_groups::table.order(user_groups::id)
-        .get_results(&**conn)?;
+    let groups = user_groups::table.order(user_groups::id).get_results(&**conn)?;
 
     Ok(groups)
 }
@@ -515,8 +513,11 @@ pub fn get_all(conn: &Connection)
 
     let user_data: Vec<(User, UserMetrics, UserStats, Vec<GroupMembership>, i64, Vec<String>)> =
         users.into_iter()
-            .zip(users_metrics.into_iter().zip(user_stats.into_iter()
-                .zip(user_groups.into_iter().zip(overdues.into_iter().zip(sessions.into_iter())))))
+            .zip(users_metrics.into_iter()
+                     .zip(user_stats.into_iter()
+                              .zip(user_groups.into_iter()
+                                       .zip(overdues.into_iter()
+                                                .zip(sessions.into_iter())))))
             .map(|(u, (mut m, (mut s, (g, (o, sess)))))| {
                 (u,
                  m.remove(0),
@@ -536,10 +537,9 @@ pub fn get_all(conn: &Connection)
 pub fn set_metrics(conn: &Connection, metrics: &UpdateUserMetrics) -> Result<Option<UserMetrics>> {
     use schema::user_metrics;
 
-    let item =
-        diesel::update(user_metrics::table.filter(user_metrics::id.eq(metrics.id))).set(metrics)
-            .get_result(&**conn)
-            .optional()?;
+    let item = diesel::update(user_metrics::table.filter(user_metrics::id.eq(metrics.id))).set(metrics)
+        .get_result(&**conn)
+        .optional()?;
 
     Ok(item)
 }

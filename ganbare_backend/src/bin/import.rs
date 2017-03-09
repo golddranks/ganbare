@@ -52,9 +52,18 @@ fn import_batch(path: &str, narrator: &str, sentences: bool) {
                 continue;
             }
             .to_owned();
-        let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
+        let file_name = path.file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned();
 
-        let mut word = path.file_stem().unwrap().to_str().unwrap().nfc().collect::<String>();
+        let mut word = path.file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .nfc()
+            .collect::<String>();
 
         let mut last_char =
             word.chars().next_back().expect("The word surely is longer than 0 characters!");
@@ -140,9 +149,9 @@ fn full_sentence<'a>(conn: &Connection,
                 } else {
                     return None;
                 }
-    
+
                 println!("Ugh, no {} found, trying {}", word, variant);
-    
+
                 words::table.filter(words::word.eq(&variant))
                     .select(words::explanation)
                     .get_result(&**conn)
@@ -154,16 +163,18 @@ fn full_sentence<'a>(conn: &Connection,
                 Some(e) => e,
                 None => {
                     println!("Nope, trying with skill {}", &nugget);
-                    let variants: Vec<(SkillNugget, Word)> = skill_nuggets::table
-                        .inner_join(words::table)
-                        .filter(skill_nuggets::skill_summary.eq(&nugget))
-                        .get_results(&**conn)
-                        .expect("Database borkage toot toot");
-                        
+                    let variants: Vec<(SkillNugget, Word)> =
+                        skill_nuggets::table.inner_join(words::table)
+                            .filter(skill_nuggets::skill_summary.eq(&nugget))
+                            .get_results(&**conn)
+                            .expect("Database borkage toot toot");
+
                     let mut variant_explanation = None;
                     for (_skill_nugget, word_with_suffix) in variants {
                         if word_with_suffix.word.contains(&word) {
-                            println!("At least these exist. Word: {}  Explanation: {}", word_with_suffix.word, word_with_suffix.explanation );
+                            println!("At least these exist. Word: {}  Explanation: {}",
+                                     word_with_suffix.word,
+                                     word_with_suffix.explanation);
                             variant_explanation = Some(word_with_suffix.explanation);
                             break;
                         }
@@ -182,8 +193,11 @@ fn full_sentence<'a>(conn: &Connection,
         if !word.contains('・') {
             word.push('＝');
         }
-    
-        let second_codepoint = word.char_indices().nth(1).unwrap().0;
+
+        let second_codepoint = word.char_indices()
+            .nth(1)
+            .unwrap()
+            .0;
         if word.chars().nth(1).unwrap() == '・' {
             word.insert(0, '／');
         } else {
@@ -191,21 +205,24 @@ fn full_sentence<'a>(conn: &Connection,
         }
 
         sentence = sentence.replace(&nugget, &word);
-    } else if !sentence.contains('／') || (!sentence.contains('・') && !sentence.contains('＝')) {
+    } else if !sentence.contains('／') ||
+              (!sentence.contains('・') && !sentence.contains('＝')) {
         println!("If the sentence doesn't contain the word as-is,\
-            it should at least contain accent markup to make up for it! {} and {} Skipping.", &nugget, &sentence);
+            it should at least contain accent markup to make up for it! {} and {} Skipping.",
+                 &nugget,
+                 &sentence);
         return None;
     }
 
     Some(manage::NewWordFromStrings {
-        word: sentence,
-        explanation: explanation,
-        nugget: nugget,
-        narrator: narrator,
-        files: files,
-        skill_level: 5,
-        priority: 0,
-    })
+             word: sentence,
+             explanation: explanation,
+             nugget: nugget,
+             narrator: narrator,
+             files: files,
+             skill_level: 5,
+             priority: 0,
+         })
 }
 
 fn simple_word<'a>(filename: &str,

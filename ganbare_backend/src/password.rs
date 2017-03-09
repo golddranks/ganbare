@@ -62,11 +62,11 @@ fn pepper_salt_pw_hash(plaintext_pw: &str,
     let mut output_hash = [0_u8; 24];
     bcrypt(initial_rounds as u32, &salt, &peppered_pw, &mut output_hash);
     Ok(HashedPassword {
-        hash: output_hash,
-        salt: salt,
-        initial_rounds: initial_rounds,
-        extra_rounds: 0,
-    })
+           hash: output_hash,
+           salt: salt,
+           initial_rounds: initial_rounds,
+           extra_rounds: 0,
+       })
 }
 
 pub fn set_password(plaintext_pw: &str,
