@@ -866,11 +866,14 @@ function showExercise(exercise: ExerciseJson) {
 		word_play_button.one('click', function() {word_avatar.fadeOut(quiteFast, function() {
 		
 			let quiz_data: quizData = { startedInstant: Date.now(), answered: false, sent: false };
-			setTimeout( start_recording, 1200);
+			setTimeout( function() {
+				start_recording();
+				exerciseOkButton.show();
+				buttonSection.show();
+			}, 1200);
 			console.log("Exercise started");
+
 			wordShowSection.slideDown();
-			exerciseOkButton.show();
-			buttonSection.show();
 			wordShowKana.html(accentuate(exercise.word, false));
 			wordExplanation.html(exercise.explanation);
 		
@@ -888,9 +891,9 @@ function showExercise(exercise: ExerciseJson) {
 
 			exerciseAudio.once('end', function(){
 
-				audioFinishedAndUserAudioUploaded();
 
 				setTimeout(function() {
+					audioFinishedAndUserAudioUploaded();
 					wordButtonLabel.text("Itsearvio");
 					wordButtonLabel.show();
 					exerciseFailureButton.show();
