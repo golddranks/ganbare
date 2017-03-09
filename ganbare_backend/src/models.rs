@@ -62,6 +62,7 @@ pub struct User {
     pub id: i32,
     pub email: Option<String>,
     pub joined: DateTime<UTC>,
+    pub last_seen: DateTime<UTC>,
 }
 
 

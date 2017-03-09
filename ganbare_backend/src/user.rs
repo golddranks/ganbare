@@ -545,18 +545,12 @@ pub fn set_metrics(conn: &Connection, metrics: &UpdateUserMetrics) -> Result<Opt
 }
 
 pub fn get_slackers(conn: &Connection, inactive: Duration) -> Result<Vec<(i32, String)>> {
-    use schema::{users, sessions};
-    use diesel::expression::all;
+    use schema::{users};
 
-    let non_slackers = users::table.inner_join(sessions::table)
-        .filter(sessions::last_seen.gt(chrono::UTC::now() - inactive))
-        .select(users::id);
-
-    let slackers: Vec<(i32, Option<String>)> = users::table.left_outer_join(sessions::table)
+    let slackers: Vec<(i32, Option<String>)> = users::table
         .filter(users::email.is_not_null())
-        .filter(users::id.ne(all(non_slackers)))
+        .filter(users::last_seen.gt(chrono::UTC::now() - inactive))
         .select((users::id, users::email))
-        .distinct()
         .get_results(&**conn)?;
 
     let mut true_slackers = vec![];

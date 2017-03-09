@@ -1,6 +1,6 @@
 [root]
 name = "ganbare"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "chrono 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cookie 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
