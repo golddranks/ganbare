@@ -549,7 +549,7 @@ pub fn get_slackers(conn: &Connection, inactive: Duration) -> Result<Vec<(i32, S
 
     let slackers: Vec<(i32, Option<String>)> = users::table
         .filter(users::email.is_not_null())
-        .filter(users::last_seen.gt(chrono::UTC::now() - inactive))
+        .filter(users::last_seen.lt(chrono::UTC::now() - inactive))
         .select((users::id, users::email))
         .get_results(&**conn)?;
 
