@@ -92,6 +92,9 @@
 		});
 
 		user_exp.forEach(function(ue) {
+			if (ue.user.email === null) {
+				return;
+			}
 			var userRow = $('<tr><td>'+ue.user.email+'</td></tr>').appendTo(usersList);
 			eventResp.forEach(function(tuple) {
 				var event = tuple[0];
