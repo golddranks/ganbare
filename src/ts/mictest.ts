@@ -233,18 +233,46 @@ function checkMic() {
 	})
 }
 
+function explainThings() {
+	$("#pretestExplanation").show();
+	$("#breaksExplanation").hide();
+	$("#micCheckExplanation").hide();
+	$("#micCheckOk").hide();
+
+	$("#prevBreaks").prop('disabled', false);
+	$("#recStart").prop('disabled', false);
+	$("#recDone").prop('disabled', true);
+}
+
 function breaksExplanation() {
 	$("#pretestExplanation").hide();
-	$("#micCheckOk").hide();
 	$("#breaksExplanation").show();
+	$("#micCheckExplanation").hide();
+	$("#micCheckOk").hide();
+
+	$("#prevBreaks").prop('disabled', false);
 	$("#recStart").prop('disabled', false);
 	$("#recDone").prop('disabled', true);
 }
 
 function getReadyForFirstTest() {
+	$("#pretestExplanation").hide();
 	$("#breaksExplanation").hide();
-	$("#micCheckOk").hide();
 	$("#micCheckExplanation").show();
+	$("#micCheckOk").hide();
+
+	$("#prevBreaks").prop('disabled', false);
+	$("#recStart").prop('disabled', false);
+	$("#recDone").prop('disabled', true);
+}
+
+function checkMicAgain() {
+	$("#pretestExplanation").hide();
+	$("#breaksExplanation").hide();
+	$("#micCheckExplanation").show();
+	$("#micCheckOk").hide();
+
+	$("#prevBreaks").prop('disabled', false);
 	$("#recStart").prop('disabled', false);
 	$("#recDone").prop('disabled', true);
 }
@@ -253,16 +281,14 @@ function getReadyForFirstTest() {
 $("#breaksBtn").click(breaksExplanation);
 $("#checkMic").click(getReadyForFirstTest);
 
-$("#checkMicAgain").click(function() {
-	$("#pretestExplanation").hide();
-	$("#micCheckOk").hide();
-	$("#micCheckExplanation").show();
-	$("#recStart").prop('disabled', false);
-	$("#recDone").prop('disabled', true);
-});
+$("#prevExplanation").click(explainThings);
+$("#prevBreaks").click(breaksExplanation);
+
+$("#checkMicAgain").click(checkMicAgain);
 
 $("#recStart").click(function() {
 	$("#recStart").prop('disabled', true);
+	$("#prevBreaks").prop('disabled', true);
 	checkMic();
 });
 

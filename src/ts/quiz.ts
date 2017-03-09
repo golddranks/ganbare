@@ -869,7 +869,7 @@ function showExercise(exercise: ExerciseJson) {
 			setTimeout( function() {
 				start_recording();
 				exerciseOkButton.show();
-				buttonSection.show();
+				buttonSection.slideDown();
 			}, 1200);
 			console.log("Exercise started");
 

@@ -24,8 +24,9 @@
 	<p class="wordyExplanation">Ohjelma esittelee ensin sanoja ja lauseita, ja tenttaa niitä sitten hetken päästä. Voit esittelyvaiheessa
 	kuunnella esiteltävän sanan tai lauseen niin monta kertaa kuin haluat.</p>
 	<p class="wordyExplanation">Vastausvaiheessa sinun tulee välillä valita kahdesta vaihtoehdosta ja välillä
-	ääntää sana itse – seuraa näytön ohjeita.</p>
-	<button id="breaksBtn">Seuraava ></button>
+	ääntää sana itse – seuraa näytön ohjeita. Vastausaika on rajoitettu 8 sekuntiin.</p>
+	<p><button disabled>< Edellinen</button>
+	<button id="breaksBtn">Seuraava ></button></p>
 </section>
 <section id="breaksExplanation" style="display: none">
 	<h1>Testi</h1>
@@ -33,7 +34,8 @@
 	että tekisit tämän alkutestin pitämättä taukoja kesken kysymysten.</p>
 	<p class="wordyExplanation">Testi voi tuntua turhauttavan vaikealta, mutta älä lannistu!</p>
 	<p class="wordyExplanation">Varaa itsellesi aikaa noin 10 minuuttia, sekä meluton, häiriötön tila, jossa olet mieluusti yksin.</p>
-	<button id="checkMic">Seuraava ></button>
+	<p><button id="prevExplanation">< Edellinen</button>
+	<button id="checkMic">Seuraava ></button></p>
 </section>
 <section id="micCheckExplanation" style="display: none">
 	<h1>Testi</h1>
@@ -41,8 +43,9 @@
 	<p class="wordyExplanation">Ennen testin aloittamista tarkistamme mikrofonin ja kaiuttimien toimivuuden.</p>
 	<p class="wordyExplanation">Paina "nauhoita"-painiketta ja
 	sano normaaliin ääneen: "testi, testi", ja paina sitten "OK".</p>
+	<p><button id="prevBreaks">< Edellinen</button>
 	<button id="recStart">Nauhoita <img src="/static/images/record.png" class="recordIcon"></button>
-	<button id="recDone" disabled>OK</button>
+	<button id="recDone" disabled>OK</button></p>
 </section>
 
 <section id="micCheckOk" style="display: none">
