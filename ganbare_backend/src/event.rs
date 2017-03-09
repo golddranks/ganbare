@@ -114,8 +114,8 @@ pub fn state(conn: &Connection,
 }
 
 
-pub fn is_done(conn: &Connection, event_name: &str, user: &User) -> Result<bool> {
-    let state = state(conn, event_name, user.id)?;
+pub fn is_done(conn: &Connection, event_name: &str, user_id: i32) -> Result<bool> {
+    let state = state(conn, event_name, user_id)?;
     Ok(match state {
            Some((_, exp)) => {
                match exp.event_finish {

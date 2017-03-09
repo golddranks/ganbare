@@ -29,6 +29,13 @@ pub use ganbare_backend::PERF_TRACE;
 
 lazy_static! {
 
+    pub static ref TRAINING_PERIOD: TimeDuration = {
+        dotenv::dotenv().ok();
+        TimeDuration::days(env::var("GANBARE_TRAINING_PERIOD_DAYS")
+            .map(|s| s.parse().unwrap_or(10))
+            .unwrap_or(10))
+    };
+
     pub static ref NAG_EMAIL_GRACE_PERIOD: TimeDuration = {
         dotenv::dotenv().ok();
         TimeDuration::hours(env::var("GANBARE_NAG_EMAIL_GRACE_PERIOD_HOURS")

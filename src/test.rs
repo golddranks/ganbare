@@ -99,17 +99,17 @@ pub fn get_new_retelling_posttest(conn: &Connection,
                                   event: &Event)
                                   -> Result<Option<RetellingJson>> {
 
-    let retellings = vec![("static/content_images/retelling/yamada.jpg",
+    let retellings = vec![("static/content_images/retelling/yamada.png",
                            "static/content_audio/retelling/yamada.mp3"),
-                          ("static/content_images/retelling/nishida.jpg",
+                          ("static/content_images/retelling/nishida.png",
                            "static/content_audio/retelling/nishida.mp3"),
-                          ("static/content_images/retelling/mari_a.jpg",
+                          ("static/content_images/retelling/mari_a.png",
                            "static/content_audio/retelling/mari_a.mp3"),
-                          ("static/content_images/retelling/mari_b.jpg",
+                          ("static/content_images/retelling/mari_b.png",
                            "static/content_audio/retelling/mari_b.mp3"),
-                          ("static/content_images/retelling/mari_c.jpg",
+                          ("static/content_images/retelling/mari_c.png",
                            "static/content_audio/retelling/mari_c.mp3"),
-                          ("static/content_images/retelling/mari_d.jpg",
+                          ("static/content_images/retelling/mari_d.png",
                            "static/content_audio/retelling/mari_d.mp3")];
     test::get_new_retelling(conn, user_id, event, &retellings)
 }

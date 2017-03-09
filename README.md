@@ -47,6 +47,7 @@ The following have defaults, and you may omit them:
     GANBARE_EMAIL_EXPIRE_DAYS How old sessions are cleaned. Defaults to 14 days.
     GANBARE_SESSION_EXPIRE_DAYS How account invitation emails are cleaned. Defaults to 14 days.
     RUST_LOG Log level. Try ganbare=debug,ganbare_backend=debug if you want to debug stuff.
+    GANBARE_TRAINING_PERIOD_DAYS Defaults to 10. This many days since starting training add users to group "posttest".
 
 During build, you need the following env var too: 
 

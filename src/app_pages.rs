@@ -17,7 +17,23 @@ fn dispatch_events(conn: &Connection,
         // the event "training" is the default mode
     };
 
-    event::initiate(conn, &*event.name, user_id).err_500()?;
+    let ev_exp = event::initiate(conn, &*event.name, user_id).err_500()?;
+
+    use ganbare_backend::Event;
+    use ganbare_backend::EventExperience;
+
+    if let Some((Event { name, .. }, EventExperience { event_init, .. })) = ev_exp {
+        if name == "training" && event_init < chrono::UTC::now() - *TRAINING_PERIOD {
+
+            // User has trained for the whole training period; has he done posttest yet?
+            if !event::is_done(conn, "posttest", user_id).err_500()?
+                && user::check_user_group(conn, user_id, "subjects").err_500()? // user must be a member of "subjects" to be able to take tests
+            {
+                user::join_user_group_by_name(&conn, user_id, "posttest").err_500()?;
+                return dispatch_events(conn, user_id);
+            }
+        }
+    }
 
     let redirect = match &*event.name {
         "welcome" => redirect("/welcome", 303),
@@ -115,7 +131,7 @@ pub fn text_pages(req: &mut Request) -> PencilResult {
 }
 
 pub fn pre_post_test(req: &mut Request) -> PencilResult {
-    let (conn, sess) = auth_user(req, "subjects")?;
+    let (conn, sess) = auth_user(req, "subjects")?; // FIXME should user be allowed in with group posttest only
 
     let mut context = new_template_context();
 
