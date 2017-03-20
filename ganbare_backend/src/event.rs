@@ -39,15 +39,16 @@ pub fn dispatch_event(conn: &Connection, user_id: i32) -> Result<Option<Event>> 
     use schema::{events, event_experiences, group_memberships};
     use diesel::expression::dsl::{any, all};
 
-    let groups = group_memberships::table.filter(group_memberships::user_id.eq(user_id))
-        .select(group_memberships::group_id.nullable());
+    let groups = group_memberships::table
+        .filter(group_memberships::user_id.eq(user_id))
+        .select(group_memberships::group_id);
 
     let finished_events = event_experiences::table.filter(event_experiences::user_id.eq(user_id))
         .filter(event_experiences::event_finish.is_not_null())
         .select(event_experiences::event_id);
 
     let event = events::table.filter(events::published.eq(true))
-        .filter(events::required_group.eq(any(groups)).or(events::required_group.is_null()))
+        .filter(events::required_group.eq(any(groups).nullable()).or(events::required_group.is_null()))
         .filter(events::id.ne(all(finished_events)))
         .order(events::priority.asc())
         .first(&**conn)

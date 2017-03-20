@@ -7,9 +7,9 @@ authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 specify_schema = []
 
 [dependencies]
-diesel = { version = "0.11", features = ["chrono", "large-tables"]}
-diesel_codegen = {version = "0.11", default-features = false, features = ["postgres", "dotenv"] }
-dotenv = "0.8"
+diesel = { version = "0.12", features = ["chrono", "large-tables"]}
+diesel_codegen = {version = "0.12", default-features = false, features = ["postgres", "dotenv"] }
+dotenv = "0.9"
 rust-crypto = "0.2"
 error-chain = { version = "0.10", default-features = false}
 clap = "2.20"
@@ -32,7 +32,7 @@ try_map = "0.2"
 handlebars = "0.25"
 reqwest = "0.4"
 r2d2 = "0.7"
-r2d2-diesel = "0.11"
+r2d2-diesel = "0.12"
 byteorder = "1.0"
 serde = "0.9"
 serde_derive = "0.9"
