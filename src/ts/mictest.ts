@@ -100,7 +100,7 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 
 		let doneSemaphore = createSemaphore(2);
 
-		function doneCB(afterDone: ()=>void) {
+		function doneCB(afterDone: (_argument: any)=>void) {
 			doneSemaphore(afterDone);
 		}
 
@@ -179,7 +179,7 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 			callback(true, startCB, finishedCB, doneCB);
 		}
 	} else {
-		callback(false, ()=>{}, finishedCB, (afterDone: ()=>void)=>{ afterDone(); });
+		callback(false, ()=>{}, finishedCB, (afterDone: (_argument: any)=>void)=>{ afterDone(null); });
 	}
 
 }

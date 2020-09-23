@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:buster
 MAINTAINER Pyry Kontio <pyry.kontio@drasa.eu>
 USER root
 
