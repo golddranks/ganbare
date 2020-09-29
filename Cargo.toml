@@ -14,7 +14,7 @@ ganbare_backend = { path = "ganbare_backend" }
 chrono = { version = "0.3", features = ["serde"]}
 rand = "0.3"
 sharp_pencil = "0.4"
-hyper = { version = "0.10" , default-features = false }
+hyper = { version = "0.10.13" , default-features = false }
 env_logger = "0.4"
 log = "0.3"
 lazy_static = "1"
