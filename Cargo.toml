@@ -37,3 +37,6 @@ data-encoding = "1.1"
 time = "0.1"
 serde_json = "0.9"
 serde = "0.9"
+
+[patch.crates-io]
+lettre = { git = "https://github.com/golddranks/lettre", branch = "v0.6.x" }
