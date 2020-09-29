@@ -7,17 +7,17 @@ authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 specify_schema = ["ganbare_backend/specify_schema"]
 
 [dependencies]
-diesel_codegen = { version = "0.12", default-features = false, features = ["postgres", "dotenv"] }
-dotenv = "0.9"
+diesel = { version = "1", features = ["chrono", "32-column-tables", "postgres"]}
+dotenv = "0.15"
 ganbare_backend = { path = "ganbare_backend" }
-chrono = { version = "0.3", features = ["serde"]}
+chrono = { version = "0.4", features = ["serde"]}
 rand = "0.3"
-sharp_pencil = "0.4"
-hyper = { version = "0.10" , default-features = false }
+sharp_pencil = { path = "/Users/kon/repos/sharp_pencil" }
+headers = "0.3"
 env_logger = "0.4"
-log = "0.3"
-lazy_static = "0.2"
-handlebars = { version = "0.25", features = ["partial_legacy"] }
+log = "0.4"
+lazy_static = "1"
+handlebars = "3"
 unicode-normalization = "0.1"
 regex = "0.2"
 tempdir = "0.3"
@@ -31,8 +31,9 @@ error-chain = { version = "0.10", default-features = false }
 r2d2 = "0.7"
 r2d2-diesel = "0.12"
 rust-crypto = "0.2"
-lettre = "0.6"
+lettre = "0.9"
+lettre_email = "0.9"
 data-encoding = "1.1"
 time = "0.1"
-serde_json = "0.9"
-serde = "0.9"
+serde_json = "1"
+serde = "1"

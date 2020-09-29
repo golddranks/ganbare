@@ -2,15 +2,14 @@ extern crate ganbare_backend;
 extern crate diesel;
 extern crate handlebars;
 
-#[macro_use]
 extern crate clap;
 extern crate rpassword;
 extern crate dotenv;
-extern crate rustc_serialize;
 #[macro_use]
 extern crate lazy_static;
 extern crate r2d2;
 extern crate lettre;
+extern crate data_encoding;
 
 use ganbare_backend::models::User;
 use ganbare_backend::Connection;
@@ -18,31 +17,26 @@ use handlebars::Handlebars;
 use ganbare_backend::errors::*;
 use ganbare_backend::user::*;
 use ganbare_backend::email;
-use rustc_serialize::base64::FromBase64;
-use std::net::{SocketAddr, ToSocketAddrs};
-use diesel::LoadDsl;
 use std::env;
 use std::time::Duration;
 use ganbare_backend::ConnManager;
 use std::sync::RwLock;
 use std::collections::VecDeque;
-use lettre::email::Email;
-use lettre::transport::smtp::SmtpTransportBuilder;
-use lettre::transport::EmailTransport;
+use lettre_email::Email;
+use lettre::{SmtpClient, SmtpTransport, smtp::authentication::Credentials};
+use lettre::Transport;
+use data_encoding::BASE64;
 
 
 lazy_static! {
 
     pub static ref COOKIE_HMAC_KEY: Vec<u8> ={
         dotenv::dotenv().ok();
-        let hmac_key = env::var("GANBARE_COOKIE_HMAC_KEY")
+        let hmac_key = BASE64.decode(env::var("GANBARE_COOKIE_HMAC_KEY")
             .expect(
                 "Environmental variable GANBARE_COOKIE_HMAC_KEY must be set!\
                 (format: 256-bit random value encoded as base64)"
-            )
-            .from_base64().expect(
-                "Environmental variable GANBARE_COOKIE_HMAC_KEY isn't valid Base64!
-            ");
+            ).as_bytes()).expect("Environmental variable GANBARE_COOKIE_HMAC_KEY isn't valid Base64!");
         if hmac_key.len() != 32 {
             panic!("The value must be 256-bit, that is, 32 bytes long!")
         }
@@ -70,13 +64,11 @@ lazy_static! {
 
     static ref RUNTIME_PEPPER : Vec<u8> = {
         dotenv::dotenv().ok();
-        let pepper = env::var("GANBARE_RUNTIME_PEPPER")
+        let pepper = BASE64.decode(env::var("GANBARE_RUNTIME_PEPPER")
             .expect(
                 "Environmental variable GANBARE_RUNTIME_PEPPER must be set!\
                 (format: 256-bit random value encoded as base64)"
-            )
-            .from_base64()
-            .expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
+            ).as_bytes()).expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
         if pepper.len() != 32 {
             panic!("The value must be 256-bit, that is, 32 bytes long!")
         }
@@ -100,15 +92,14 @@ lazy_static! {
             )
     };
 
-    pub static ref EMAIL_SERVER : SocketAddr = {
+    pub static ref EMAIL_SERVER : String = {
         dotenv::dotenv().ok();
-        let binding = env::var("GANBARE_EMAIL_SERVER")
+        env::var("GANBARE_EMAIL_SERVER")
             .expect(
                 "GANBARE_EMAIL_SERVER:\
                 Specify an outbound email server,\
                 like this: mail.yourisp.com:25"
-            );
-        binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port")
+            )
     };
 
     pub static ref EMAIL_SMTP_USERNAME : String = {
@@ -148,8 +139,9 @@ lazy_static! {
 
 pub fn list_users(conn: &Connection) -> Result<Vec<User>> {
     use ganbare_backend::schema::users::dsl::*;
+    use crate::ganbare_backend::RunQueryDsl;
 
-    users.load::<User>(&**conn).chain_err(|| "Can't load users")
+    users.load::<User>(&**conn).context("Can't load users")
 }
 
 
@@ -178,9 +170,8 @@ fn main() {
         .subcommand(SubCommand::with_name("login").about("Login").arg(Arg::with_name("email")
                                                                           .required(true)))
         .get_matches();
-    let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
     let pooled_conn = pool.get().unwrap();
 
     match matches.subcommand() {
@@ -230,22 +221,17 @@ fn main() {
             };
         }
         ("add", Some(args)) => {
-            use ganbare_backend::errors::ErrorKind::NoSuchUser;
             let email = args.value_of("email").unwrap();
-            match get_user_by_email(&pooled_conn, email) {
-                Err(Error(kind, _)) => {
-                    match kind {
-                        NoSuchUser(email) => println!("Adding a user with email {}", email),
-                        _ => {
-                            println!("Error: {:?}", kind);
-                            return;
-                        }
-                    }
-                }
-                Ok(_) => {
+            match get_user_by_email(&pooled_conn, email).handle::<NoSuchUser>() {
+                Ok(NoSuchUser{ username }) => println!("Adding a user with email {}", username),
+                Err(Ok(_)) => {
                     println!("Error: User already exists!");
                     return;
-                }
+                },
+                Err(Err(err)) => {
+                    println!("Error: {:?}", err);
+                    return;
+                },
             }
             let (secret, hmac) = match email::add_pending_email_confirm(&pooled_conn,
                                                    &**COOKIE_HMAC_KEY,
@@ -266,24 +252,23 @@ fn main() {
                                            &handlebars,
                                            (&*EMAIL_ADDRESS, &*EMAIL_NAME)) {
                 Ok(u) => {
+                    let client = SmtpClient::new_simple(&*EMAIL_SERVER)
+                        .expect("Error with e-mail server address.")
+                        .credentials(Credentials::new(EMAIL_SMTP_USERNAME.to_owned(), EMAIL_SMTP_PASSWORD.to_owned()));
 
-                    let mut mailer = SmtpTransportBuilder::new(&*EMAIL_SERVER)
-                        .expect("Couldn't setup the email transport!")
-                        .encrypt()
-                        .credentials(EMAIL_SMTP_USERNAME.as_str(), EMAIL_SMTP_PASSWORD.as_str())
-                        .build();
+                    let mut mailer = SmtpTransport::new(client);
 
                     if let Ok(mut mails) = MAIL_QUEUE.write() {
                         for email in mails.drain(..) {
-                            mailer.send(email).expect("Couldn't send email!");
+                            mailer.send(email.into()).expect("Couldn't send email!");
                         }
                     }
 
                     println!("Sent an email confirmation! {:?}", u)
                 }
-                Err(err_chain) => {
-                    for err in err_chain.iter() {
-                        println!("Error: {}\nCause: {:?}", err, err.cause())
+                Err(err) => {
+                    for err in err.chain() {
+                        println!("Error: {}\nCause: {:?}", err, err.source())
                     }
                 }
             }
@@ -312,8 +297,8 @@ fn main() {
                            &*RUNTIME_PEPPER,
                            *PASSWORD_STRETCHING_TIME) {
                 Ok(u) => println!("Added user successfully: {:?}", u),
-                Err(err_chain) => {
-                    for err in err_chain.iter() {
+                Err(err) => {
+                    for err in err.chain() {
                         println!("Error: {}", err)
                     }
                 }
@@ -331,8 +316,8 @@ fn main() {
             };
             match auth_user(&pooled_conn, email, &password, &*RUNTIME_PEPPER) {
                 Ok(u) => println!("Logged in successfully: {:?}", u),
-                Err(err_chain) => {
-                    for err in err_chain.iter() {
+                Err(err) => {
+                    for err in err.chain() {
                         println!("Error: {}", err)
                     }
                 }

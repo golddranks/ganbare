@@ -1,9 +1,10 @@
 
-use super::*;
-use mime;
+use crate::*;
+use crate::errors::ResultExt;
+use mime::{self, Mime};
 
-use std::path::PathBuf;
-use std::path::Path;
+use std::io::Cursor;
+use std::path::{Path, PathBuf};
 
 
 #[derive(Debug)]
@@ -32,12 +33,12 @@ pub fn create_quiz(conn: &Connection,
     // Sanity check
     if answers.is_empty() {
         warn!("Can't create a question with 0 answers!");
-        return Err(ErrorKind::FormParseError.into());
+        return Err(anyhow!("Can't create a question with 0 answers"));
     }
     for a in &answers {
         if a.q_variants.is_empty() {
             warn!("Can't create a question with 0 audio files for question!");
-            return Err(ErrorKind::FormParseError.into());
+            return Err(anyhow!("ErrorKind::FormParseError"));
         }
     }
 
@@ -51,9 +52,9 @@ pub fn create_quiz(conn: &Connection,
         skill_level: 2, // FIXME
     };
 
-    let quiz: QuizQuestion = diesel::insert(&new_quiz).into(quiz_questions::table)
+    let quiz: QuizQuestion = diesel::insert_into(quiz_questions::table).values(&new_quiz)
         .get_result(&**conn)
-        .chain_err(|| "Couldn't create a new question!")?;
+        .context("Couldn't create a new question!")?;
 
     info!("{:?}", &quiz);
 
@@ -85,9 +86,9 @@ pub fn create_quiz(conn: &Connection,
             q_audio_bundle: q_bundle.id,
         };
 
-        let answer: Answer = diesel::insert(&new_answer).into(question_answers::table)
+        let answer: Answer = diesel::insert_into(question_answers::table).values(&new_answer)
             .get_result(&**conn)
-            .chain_err(|| "Couldn't create a new answer!")?;
+            .context("Couldn't create a new answer!")?;
 
         info!("{:?}", &answer);
 
@@ -151,14 +152,14 @@ pub fn create_or_update_word(conn: &Connection,
                 Some(audio::save(&*conn, &mut narrator, &mut file, &mut bundle, audio_dir)?);
         }
         Ok(())
-    }) {
-        Err(Error(ErrorKind::FileAlreadyExists(hash), ..)) => {
-            audio_file = audio_files::table.filter(audio_files::file_sha2.eq(hash))
+    }).handle::<errors::FileAlreadyExists>() {
+        Ok(e) => {
+            audio_file = audio_files::table.filter(audio_files::file_sha2.eq(e.hash))
                 .get_result(&**conn)
                 .optional()?;
         }
-        Err(e) => return Err(e),
-        Ok(()) => (),
+        Err(Err(e)) => Err(e)?,
+        Err(Ok(o)) => o,
     };
 
     let audio_file = audio_file.expect("If we are here, everything was successful.");
@@ -180,7 +181,7 @@ pub fn create_or_update_word(conn: &Connection,
             priority: w.priority,
         };
 
-        let word = diesel::insert(&new_word).into(words::table).get_result(&**conn)?;
+        let word = diesel::insert_into(words::table).values(&new_word).get_result(&**conn)?;
         return Ok(word);
     }
 
@@ -235,14 +236,17 @@ pub fn publish_word(conn: &Connection, id: i32, published: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn update_word(conn: &Connection,
+pub async fn update_word(conn: &Connection,
                    id: i32,
                    mut item: UpdateWord,
                    image_dir: &Path)
                    -> Result<Option<Word>> {
     use schema::words;
 
-    item.explanation = item.explanation.try_map(|s| sanitize_links(&s, image_dir))?;
+    item.explanation = match item.explanation {
+        Some(s) => Some(sanitize_links(&s, image_dir).await?),
+        None => None,
+    };
 
     let item = diesel::update(words::table.filter(words::id.eq(id))).set(&item)
         .get_result(&**conn)
@@ -274,14 +278,17 @@ pub fn update_question(conn: &Connection,
 }
 
 
-pub fn update_answer(conn: &Connection,
+pub async fn update_answer(conn: &Connection,
                      id: i32,
                      mut item: UpdateAnswer,
                      image_dir: &Path)
                      -> Result<Option<Answer>> {
     use schema::question_answers;
 
-    item.answer_text = item.answer_text.try_map(|s| sanitize_links(&s, image_dir))?;
+    item.answer_text = match item.answer_text {
+        Some(s) => Some(sanitize_links(&s, image_dir).await?),
+        None => None,
+    };
 
     let item = diesel::update(question_answers::table.filter(question_answers::id.eq(id))).set(&item)
         .get_result(&**conn)
@@ -343,11 +350,11 @@ pub fn post_question(conn: &Connection,
     debug!("Post question: {:?} and answers: {:?}", question, answers);
 
     let q: QuizQuestion =
-        diesel::insert(&question).into(quiz_questions::table).get_result(&**conn)?;
+        diesel::insert_into(quiz_questions::table).values(&question).get_result(&**conn)?;
 
     for aa in &mut answers {
         aa.question_id = q.id;
-        diesel::insert(aa).into(question_answers::table).execute(&**conn)?;
+        diesel::insert_into(question_answers::table).values(aa.to_owned()).execute(&**conn)?;
     }
     Ok(q.id)
 }
@@ -360,16 +367,16 @@ pub fn post_exercise(conn: &Connection,
 
     conn.transaction(|| -> Result<i32> {
 
-            let q: Exercise = diesel::insert(&exercise).into(exercises::table).get_result(&**conn)?;
+            let q: Exercise = diesel::insert_into(exercises::table).values(&exercise).get_result(&**conn)?;
 
             for aa in &mut answers {
                 aa.exercise_id = q.id;
-                diesel::insert(aa).into(exercise_variants::table).execute(&**conn)?;
+                diesel::insert_into(exercise_variants::table).values(aa.to_owned()).execute(&**conn)?;
             }
             Ok(q.id)
 
         })
-        .chain_err(|| ErrorKind::from("Transaction failed"))
+        .context("Transaction failed")
 
 }
 
@@ -472,7 +479,7 @@ pub fn replace_audio_bundle(conn: &Connection, bundle_id: i32, new_bundle_id: i3
 
 use regex::Regex;
 use reqwest::Client;
-use reqwest::header::ContentType;
+use headers::{ContentType, HeaderMapExt};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -490,14 +497,12 @@ lazy_static! {
         = RwLock::new(HashMap::<String, String>::new());
 
     static ref HTTP_CLIENT: Client
-        = Client::new().expect("If this fails, we are done for anyway.");
+        = Client::new();
 }
 
-pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
+pub async fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
     use rand::{thread_rng, Rng};
-    use mime::Mime;
-    use mime::TopLevel::Image;
-    use mime::SubLevel::{Png, Jpeg, Gif};
+    use mime::{IMAGE, PNG, JPEG, GIF};
     use std::fs;
     use std::io;
 
@@ -523,43 +528,41 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
             info!("Downloading the link target.");
             let desanitized_url = url.replace("&amp;", "&");
             let req = HTTP_CLIENT.get(&desanitized_url);
-            let mut resp =
-                req.send().map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
+            let resp =
+                req.send().await.map_err(|e| anyhow!("Couldn't load the URL. {:?}", e))?;
 
             assert!(resp.status().is_success());
 
-            let extension = {
-                let fuzzy_guess_url: Option<&str> = EXTENSION_GUESS.captures_iter(url)
-                    .next()
-                    .and_then(|c| c.get(0))
-                    .map(|g| g.as_str());
-                let file_extension = url_match.get(2).map(|m| m.as_str());
-                let content_type = resp.headers().get::<ContentType>();
-
-                debug!("Original file extension: {:?}, Guess from URL: {:?}, Content type: {:?}",
-                       file_extension,
-                       fuzzy_guess_url,
-                       content_type);
-
-                match content_type {
-                    Some(&ContentType(Mime(Image, Png, _))) => ".png",
-                    Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
-                    Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
-                    Some(_) | None => {
-                        file_extension.or_else(|| fuzzy_guess_url).unwrap_or(".noextension")
-                    }
-                }
+            let fuzzy_guess_url: Option<&str> = EXTENSION_GUESS.captures_iter(url)
+                .next()
+                .and_then(|c| c.get(0))
+                .map(|g| g.as_str());
+            let file_extension = url_match.get(2).map(|m| m.as_str());
+            let mimetype = resp.headers().typed_get::<ContentType>().map(|ctype| Mime::from(ctype));
+            let mimetype = mimetype.as_ref()
+                .map(|mime| (mime.type_(), mime.subtype()));
+        
+            debug!("Original file extension: {:?}, Guess from URL: {:?}, Content type: {:?}",
+                file_extension,
+                fuzzy_guess_url,
+                mimetype);
+        
+            let extension = match mimetype {
+                Some((IMAGE, PNG)) => ".png",
+                Some((IMAGE, JPEG)) => ".jpg",
+                Some((IMAGE, GIF)) => ".gif",
+                _ => file_extension.or_else(|| fuzzy_guess_url).unwrap_or(".noextension"),
             };
 
             let mut new_path = image_dir.to_owned();
             let mut filename = "%FT%H-%M-%SZ".to_string();
-            filename.extend(thread_rng().gen_ascii_chars().take(10));
+            filename.extend(thread_rng().sample_iter(&rand::distributions::Alphanumeric).take(10));
             filename.push_str(extension);
-            filename = format!("{}", chrono::UTC::now().format(&filename));
+            filename = format!("{}", chrono::offset::Utc::now().format(&filename));
             new_path.push(&filename);
 
             let mut file = fs::File::create(new_path)?;
-            io::copy(&mut resp, &mut file)?;
+            io::copy(&mut Cursor::new(resp.bytes().await?), &mut file)?;
             info!("Saved the file to {:?}", file);
             let new_url = String::from("/api/images/") + &filename;
 
@@ -575,28 +578,29 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
 
 #[test]
 fn test_sanitize_links() {
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
     use tempdir;
     use std::fs;
 
     let tempdir = tempdir::TempDir::new("").unwrap();
     assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 0);
-    let result = sanitize_links("Testing \"http://static4.depositphotos.\
+    let result = rt.block_on(sanitize_links("Testing \"http://static4.depositphotos.\
                         com/1016045/326/i/950/depositphotos_3267906-stock-photo-cool-emoticon.\
                         jpg\" testing",
-                                tempdir.path())
+                                tempdir.path()))
             .unwrap();
     assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 1);
-    let result2 = sanitize_links("Testing \"http://static4.depositphotos.\
+    let result2 = rt.block_on(sanitize_links("Testing \"http://static4.depositphotos.\
                         com/1016045/326/i/950/depositphotos_3267906-stock-photo-cool-emoticon.\
                         jpg\" testing",
-                                 tempdir.path())
+                                 tempdir.path()))
             .unwrap();
     assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 1);
     assert_eq!(result.len(), 64);
     assert_eq!(result, result2);
-    let result3 = sanitize_links("Testing \"https://c2.staticflickr.\
+    let result3 = rt.block_on(sanitize_links("Testing \"https://c2.staticflickr.\
                                   com/2/1216/1408154388_b34a66bdcf.jpg\" testing",
-                                 tempdir.path())
+                                 tempdir.path()))
             .unwrap();
     assert_eq!(fs::read_dir(tempdir.path()).unwrap().count(), 2);
     assert_eq!(result3.len(), 64);

@@ -1,12 +1,11 @@
 use super::*;
 use std::thread;
 use std::time::Duration;
-use rand::{Rng, OsRng};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha2::Sha512;
-use chrono::{self, DateTime, UTC};
-use data_encoding::base64url::{encode_nopad, decode_nopad};
+use chrono::{self, DateTime, offset::Utc};
+use data_encoding::BASE64URL_NOPAD;
 
 pub const SESSID_BITS: usize = 128;
 pub const HMAC_BITS: usize = 512;
@@ -15,34 +14,26 @@ pub const HMAC_BITS: usize = 512;
 pub struct UserSession {
     pub sess_id: i32,
     pub user_id: i32,
-    pub refreshed: DateTime<UTC>,
+    pub refreshed: DateTime<Utc>,
     pub refresh_now: bool,
     pub token: Vec<u8>,
     pub refresh_count: i32,
 }
 
 pub fn new_token_and_hmac(hmac_key: &[u8]) -> Result<(String, String)> {
-    use crypto::hmac::Hmac;
-    use crypto::mac::Mac;
-    use crypto::sha2::Sha512;
-
     let token = session::fresh_token()?;
     let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
     hmac_checker.input(&token[..]);
     let hmac = hmac_checker.result();
-    let token_base64url = encode_nopad(&token[..]);
-    let hmac_base64url = encode_nopad(hmac.code());
+    let token_base64url = BASE64URL_NOPAD.encode(&token[..]);
+    let hmac_base64url = BASE64URL_NOPAD.encode(hmac.code());
 
     Ok((token_base64url, hmac_base64url))
 }
 
 pub fn verify_token(token_base64url: &str, hmac_base64url: &str, hmac_key: &[u8]) -> Result<bool> {
-    use crypto::hmac::Hmac;
-    use crypto::mac::{Mac, MacResult};
-    use crypto::sha2::Sha512;
-
-    let token = decode_nopad(token_base64url.as_bytes())?;
-    let hmac = decode_nopad(hmac_base64url.as_bytes())?;
+    let token = data_encoding::BASE64URL_NOPAD.decode(token_base64url.as_bytes())?;
+    let hmac = data_encoding::BASE64URL_NOPAD.decode(hmac_base64url.as_bytes())?;
 
     let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
     hmac_checker.input(token.as_slice());
@@ -54,12 +45,7 @@ pub fn verify_token(token_base64url: &str, hmac_base64url: &str, hmac_key: &[u8]
 }
 
 pub fn fresh_token() -> Result<[u8; SESSID_BITS / 8]> {
-    use rand::{Rng, OsRng};
-    let mut session_id = [0_u8; SESSID_BITS / 8];
-    OsRng::new()
-        .chain_err(|| "Unable to connect to the system random number generator!")?
-        .fill_bytes(&mut session_id);
-    Ok(session_id)
+    Ok(rand::random())
 }
 
 pub fn get_hmac_for_sess(session_id: &str,
@@ -75,7 +61,7 @@ pub fn get_hmac_for_sess(session_id: &str,
     hmac_maker.input(refreshed.as_bytes());
     hmac_maker.input(refresh_count.as_bytes());
     hmac_maker.input(token);
-    encode_nopad(hmac_maker.result().code())
+    BASE64URL_NOPAD.encode(hmac_maker.result().code())
 }
 
 pub fn verify_hmac_for_sess_secret(secret: &[u8], refresh_count: i32, token: &[u8]) -> bool {
@@ -107,7 +93,7 @@ pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Resul
     use schema::sessions;
 
     let deleted_count =
-        diesel::delete(sessions::table.filter(sessions::last_seen.lt(chrono::UTC::now() -
+        diesel::delete(sessions::table.filter(sessions::last_seen.lt(Utc::now() -
                                                                      how_old))).execute(&**conn)?;
 
     Ok(deleted_count)
@@ -124,10 +110,10 @@ pub fn check_integrity(sess_id_str: &str,
     let sess_id = sess_id_str.parse()?;
     let user_id = user_id_str.parse()?;
     let refresh_count = refresh_count_str.parse()?;
-    let refreshed = DateTime::parse_from_rfc3339(refreshed_str)?.with_timezone(&UTC);
+    let refreshed = DateTime::parse_from_rfc3339(refreshed_str)?.with_timezone(&Utc);
 
-    let hmac = decode_nopad(hmac.as_bytes())?;
-    let token = decode_nopad(token_base64url.as_bytes())?;
+    let hmac = data_encoding::BASE64URL_NOPAD.decode(hmac.as_bytes())?;
+    let token = data_encoding::BASE64URL_NOPAD.decode(token_base64url.as_bytes())?;
 
     let mut hmac_checker = Hmac::new(Sha512::new(), secret_key);
     hmac_checker.input(sess_id_str.as_bytes());
@@ -147,14 +133,14 @@ pub fn check_integrity(sess_id_str: &str,
            })
     } else {
         warn!("The HMAC doesn't agree with the cookie!");
-        bail!(ErrorKind::AuthError)
+        return Err(anyhow!("AuthError"));
     }
 }
 
 use helpers::Cache;
 
 pub fn check(sess: &UserSession, logout_cache: &Cache<i32, UserSession>) -> Result<bool> {
-    if sess.refreshed > chrono::UTC::now() - chrono::Duration::minutes(5) {
+    if sess.refreshed > chrono::offset::Utc::now() - chrono::Duration::minutes(5) {
         if logout_cache.get(&sess.sess_id)?.is_some() {
             Ok(false) // User was recently logged out so don't trust their cookie!
         } else {
@@ -165,7 +151,7 @@ pub fn check(sess: &UserSession, logout_cache: &Cache<i32, UserSession>) -> Resu
     }
 }
 
-fn update_user_last_seen(conn: &Connection, user_id: i32, last_seen: chrono::DateTime<UTC>) -> Result<()> {
+fn update_user_last_seen(conn: &Connection, user_id: i32, last_seen: chrono::DateTime<chrono::offset::Utc>) -> Result<()> {
     use schema::users;
 
     diesel::update(users::table.filter(users::id.eq(user_id)))
@@ -182,12 +168,12 @@ pub fn db_check(conn: &Connection,
 
     time_it!{"session::db_check", {
 
-        let oldest_viable = chrono::UTC::now() - sess_expire;
+        let oldest_viable = chrono::offset::Utc::now() - sess_expire;
         if sess.refreshed < oldest_viable {
             return Ok(None); // The session is expired
         }
         
-        let session_refreshed = chrono::UTC::now();
+        let session_refreshed = chrono::offset::Utc::now();
 
         let db_sess: Option<Session> = diesel::update(sessions::table
             .filter(
@@ -258,6 +244,7 @@ pub fn db_check(conn: &Connection,
 
 pub fn end(conn: &Connection, sess_id: i32) -> Result<Option<()>> {
     use schema::sessions;
+    use rand::Rng;
 
     let deleted_count =
         diesel::delete(sessions::table.filter(sessions::id.eq(sess_id))).execute(&**conn)?;
@@ -265,10 +252,7 @@ pub fn end(conn: &Connection, sess_id: i32) -> Result<Option<()>> {
            warn!("Somebody tried to log out with wrong credentials! (Either a bug or a hacking \
                attempt.)");
            // Punishment sleep for wrong credentials
-           thread::sleep(Duration::from_millis(20 +
-                                            OsRng::new()
-            .expect("If we can't get OS RNG, we might as well crash.")
-            .gen_range(0, 5)));
+           thread::sleep(Duration::from_millis(20 + rand::thread_rng().gen_range(0, 5)));
            None
        } else {
            Some(())
@@ -280,7 +264,7 @@ pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
 
     let sess_secret = fresh_token()?;
 
-    let session_started = chrono::UTC::now();
+    let session_started = Utc::now();
 
     let new_sess = NewSession {
         user_id: user.id,
@@ -291,9 +275,9 @@ pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
 
     update_user_last_seen(conn, user.id, session_started)?;
 
-    let db_sess: Session = diesel::insert(&new_sess).into(sessions::table)
+    let db_sess: Session = diesel::insert_into(sessions::table).values(&new_sess)
         .get_result(&**conn)
-        .chain_err(|| "Couldn't start a session!")?;
+        .context("Couldn't start a session!")?;
 
     Ok(UserSession {
            user_id: user.id,

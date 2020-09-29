@@ -5,34 +5,38 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate serde;
 
+extern crate dotenv;
+
 #[macro_use]
 pub extern crate diesel;
-#[macro_use]
-extern crate diesel_codegen;
+extern crate diesel_migrations;
 extern crate r2d2;
 extern crate r2d2_diesel;
-#[macro_use]
-extern crate error_chain;
 #[macro_use]
 extern crate log;
 extern crate mime;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate anyhow;
+extern crate lettre;
+extern crate lettre_email;
+extern crate sharp_pencil as pencil;
 extern crate try_map;
 extern crate tempdir;
 extern crate crypto;
 pub extern crate chrono;
 extern crate rand;
-extern crate rustc_serialize;
 extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;
 extern crate reqwest;
-extern crate dotenv;
 #[macro_use]
 extern crate binary_macros;
 extern crate byteorder;
+extern crate headers;
+extern crate thiserror;
+extern crate futures_util;
 
 pub use try_map::{FallibleMapExt, FlipResultExt};
 use std::sync::atomic::{Ordering, AtomicBool};
@@ -95,7 +99,6 @@ pub mod models;
 pub mod event;
 pub mod email;
 pub mod password;
-pub mod errors;
 pub mod user;
 pub mod session;
 pub mod audio;
@@ -103,19 +106,19 @@ pub mod quiz;
 pub mod manage;
 pub mod test;
 pub mod helpers;
+pub mod errors;
 
-
-pub use models::*;
 pub use errors::*;
+pub use models::*;
 
 
 
 
 pub mod sql {
-    use diesel::types;
+    use diesel::sql_types::{Nullable, Text, Numeric};
 
-    no_arg_sql_function!(random, types::Numeric);
-    sql_function!(lower, lower_sql_function, (string: types::Nullable<types::Text>) -> types::Nullable<types::Text>);
+    no_arg_sql_function!(random, Numeric);
+    sql_function!(fn lower(string: Nullable<Text>) -> Nullable<Text>);
 }
 
 
@@ -124,7 +127,7 @@ pub mod db {
     use super::*;
 
     pub fn check(conn: &Connection) -> Result<bool> {
-        run_migrations(conn).chain_err(|| "Couldn't run the migrations.")?;
+        run_migrations(conn).context("Couldn't run the migrations.")?;
         init_check_is_installed(conn)?;
         Ok(is_installed())
     }
@@ -140,7 +143,7 @@ pub mod db {
 
     #[cfg(debug_assertions)]
     fn run_migrations(conn: &Connection) -> Result<()> {
-        diesel::migrations::run_pending_migrations(&**conn)?;
+        diesel_migrations::run_pending_migrations(&**conn)?;
         info!("Migrations checked.");
         Ok(())
     }
@@ -163,7 +166,7 @@ pub mod db {
 
     pub fn connect(database_url: &str) -> Result<DieselPgConnection> {
 
-        DieselPgConnection::establish(database_url).chain_err(|| "Error connecting to database!")
+        DieselPgConnection::establish(database_url).context("Error connecting to database!")
     }
 
 }
@@ -188,15 +191,15 @@ pub mod skill {
             skill_nuggets::table.filter(skill_nuggets::skill_summary.eq(skill_summary))
                 .get_result(&**conn)
                 .optional()
-                .chain_err(|| "Database error with skill_nuggets!")?;
+                .context("Database error with skill_nuggets!")?;
 
         Ok(match skill_nugget {
                Some(nugget) => nugget,
                None => {
-            diesel::insert(&NewSkillNugget{ skill_summary: skill_summary })
-                .into(skill_nuggets::table)
+            diesel::insert_into(skill_nuggets::table).values(&NewSkillNugget{ skill_summary: skill_summary })
+                
                 .get_result(&**conn)
-                .chain_err(|| "Database error!")?
+                .context("Database error!")?
         }
            })
     }
@@ -342,11 +345,11 @@ pub mod skill {
                 .set(skill_data::skill_level.eq(skill_data.skill_level + level_increment))
                 .get_result(&**conn)?
            } else {
-               diesel::insert(&SkillData {
+               diesel::insert_into(skill_data::table).values(&SkillData {
                                    user_id: user_id,
                                    skill_nugget: skill_id,
                                    skill_level: level_increment,
-                               }).into(skill_data::table)
+                               })
                        .get_result(&**conn)?
            })
 

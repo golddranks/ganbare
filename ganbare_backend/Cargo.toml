@@ -2,39 +2,44 @@
 name = "ganbare_backend"
 version = "0.3.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
+edition = "2018"
 
 [features]
 specify_schema = []
 
 [dependencies]
-diesel = { version = "0.12", features = ["chrono", "large-tables"]}
-diesel_codegen = {version = "0.12", default-features = false, features = ["postgres", "dotenv"] }
-dotenv = "0.9"
+diesel = { version = "1", features = ["chrono", "32-column-tables", "postgres"]}
+diesel_migrations = "1"
+dotenv = "0.15"
 rust-crypto = "0.2"
-error-chain = { version = "0.10", default-features = false}
 clap = "2.20"
-chrono = { version = "0.3", features = ["serde"]}
-rpassword = "0.3"
-rand = "0.3"
-rustc-serialize = "0.3"
-binary_macros = "0.6"
-env_logger = "0.4"
-data-encoding = "1.1"
-lazy_static = "0.2"
-sharp_pencil = "0.4"
-log = "0.3"
-lettre = "0.6"
-mime = "0.2"
+chrono = { version = "0.4", features = ["serde"]}
+rpassword = "5"
+rand = "0.7"
+binary_macros = "1.0"
+env_logger = "0.7"
+data-encoding = "2"
+lazy_static = "1"
+sharp_pencil = { path = "/Users/kon/repos/sharp_pencil" }
+log = "0.4"
+lettre = "0.9"
+lettre_email = "0.9"
+mime = "0.3"
 tempdir = "0.3"
-regex = "0.2"
+regex = "1"
 unicode-normalization = "0.1"
-try_map = "0.2"
-handlebars = "0.25"
-reqwest = "0.4"
-r2d2 = "0.7"
-r2d2-diesel = "0.12"
+try_map = "0.3"
+handlebars = "3"
+reqwest = "0.10"
+r2d2 = "0.8"
+r2d2-diesel = "1"
 byteorder = "1.0"
-serde = "0.9"
-serde_derive = "0.9"
-serde_json = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_derive = "1"
+serde_json = "1"
 magic = "0.12"
+anyhow = "1"
+headers = "0.3"
+thiserror = "1"
+futures-util = "0.3"
+tokio = { version = "0.2", features = ["full"] }

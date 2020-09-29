@@ -87,33 +87,33 @@ fn new_pending_item(conn: &Connection,
         Word(id) => ("word", id),
     };
 
-    Ok(diesel::insert(&NewPendingItem {
+    Ok(diesel::insert_into(pending_items::table).values(&NewPendingItem {
                            user_id: user_id,
                            audio_file_id: audio_file_id,
                            item_type: item_type,
                            test_item: test_item,
-                       }).into(pending_items::table)
+                       })
                .get_result(&**conn)?)
 }
 
 fn register_future_q_answer(conn: &Connection, data: &QAskedData) -> Result<()> {
     use schema::q_asked_data;
 
-    diesel::insert(data).into(q_asked_data::table).execute(&**conn)?;
+    diesel::insert_into(q_asked_data::table).values(data).execute(&**conn)?;
     Ok(())
 }
 
 fn register_future_e_answer(conn: &Connection, data: &EAskedData) -> Result<()> {
     use schema::e_asked_data;
 
-    diesel::insert(data).into(e_asked_data::table).execute(&**conn)?;
+    diesel::insert_into(e_asked_data::table).values(data).execute(&**conn)?;
     Ok(())
 }
 
 fn register_future_w_answer(conn: &Connection, data: &WAskedData) -> Result<()> {
     use schema::w_asked_data;
 
-    diesel::insert(data).into(w_asked_data::table).execute(&**conn)?;
+    diesel::insert_into(w_asked_data::table).values(data).execute(&**conn)?;
     Ok(())
 }
 
@@ -130,7 +130,7 @@ fn log_answer_due_item(conn: &Connection,
     } else {
         0
     };
-    due_item.cooldown_delay = chrono::UTC::now() +
+    due_item.cooldown_delay = chrono::offset::Utc::now() +
                               chrono::Duration::seconds(metrics.cooldown_delay as i64);
 
     if due_item.correct_streak_this_time >= metrics.streak_limit {
@@ -146,7 +146,7 @@ fn log_answer_due_item(conn: &Connection,
         } else {
             0
         };
-        due_item.due_date = chrono::UTC::now() +
+        due_item.due_date = chrono::offset::Utc::now() +
                             chrono::Duration::seconds(due_item.due_delay as i64);
         if due_item.correct_streak_overall >= metrics.streak_skill_bump_criteria {
 
@@ -185,13 +185,13 @@ fn log_answer_new_due_item(conn: &Connection,
         user_id: user_id,
         correct_streak_this_time: 0,
         correct_streak_overall: 0,
-        due_date: chrono::UTC::now(),
+        due_date: chrono::offset::Utc::now(),
         due_delay: 0,
-        cooldown_delay: chrono::UTC::now(),
+        cooldown_delay: chrono::offset::Utc::now(),
         item_type: item_type,
     };
 
-    let due_item: DueItem = diesel::insert(&new_due_item).into(due_items::table)
+    let due_item: DueItem = diesel::insert_into(due_items::table).values(&new_due_item)
         .get_result(&**conn)?;
 
     Ok(log_answer_due_item(conn, due_item, skill_id, correct, metrics)?)
@@ -214,7 +214,7 @@ fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData) ->
     pending_item.pending = false;
     let _: PendingItem = pending_item.save_changes(&**conn)?;
 
-    diesel::insert(answered).into(w_answered_data::table).execute(&**conn)?;
+    diesel::insert_into(w_answered_data::table).values(answered).execute(&**conn)?;
 
     let word: Word = words::table.filter(words::id.eq(asked.word_id)).get_result(&**conn)?;
 
@@ -260,7 +260,7 @@ fn log_answer_question(conn: &Connection,
 
     let correct = asked.correct_qa_id == answered.answered_qa_id.unwrap_or(-1);
 
-    diesel::insert(answered).into(q_answered_data::table).execute(&**conn)?;
+    diesel::insert_into(q_answered_data::table).values(answered).execute(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
@@ -323,7 +323,7 @@ fn log_answer_question(conn: &Connection,
             question_id: asked.question_id,
             due: due_item.id,
         };
-           let _: QuestionData = diesel::insert(&questiondata).into(question_data::table)
+           let _: QuestionData = diesel::insert_into(question_data::table).values(&questiondata)
             .get_result(&**conn)?;
        })
 }
@@ -352,7 +352,7 @@ fn log_answer_exercise(conn: &Connection,
     pending_item.pending = false;
     let _: PendingItem = pending_item.save_changes(&**conn)?;
 
-    diesel::insert(answered).into(e_answered_data::table).execute(&**conn)?;
+    diesel::insert_into(e_answered_data::table).values(answered).execute(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
@@ -413,17 +413,11 @@ fn log_answer_exercise(conn: &Connection,
             exercise_id: asked.exercise_id,
         };
            let _: ExerciseData =
-            diesel::insert(&exercisedata).into(exercise_data::table)
+            diesel::insert_into(exercise_data::table).values(&exercisedata)
                 .get_result(&**conn)
-                .chain_err(|| "Couldn't save the question tally data to database!")?;
+                .context("Couldn't save the question tally data to database!")?;
        })
 }
-
-
-
-
-
-
 
 
 
@@ -517,7 +511,7 @@ pub fn count_overdue_items(conn: &Connection, user_id: i32) -> Result<i64> {
     use schema::due_items;
 
     let count: i64 = due_items::table.filter(due_items::user_id.eq(user_id))
-        .filter(due_items::due_date.lt(chrono::UTC::now()))
+        .filter(due_items::due_date.lt(chrono::offset::Utc::now()))
         .count()
         .get_result(&**conn)?;
 
@@ -528,8 +522,8 @@ fn choose_random_overdue_item(conn: &Connection, user_id: i32) -> Result<Option<
     use schema::{due_items, question_data, exercise_data};
 
     let due: Option<DueItem> = due_items::table.filter(due_items::user_id.eq(user_id))
-        .filter(due_items::due_date.lt(chrono::UTC::now()))
-        .filter(due_items::cooldown_delay.lt(chrono::UTC::now()))
+        .filter(due_items::due_date.lt(chrono::offset::Utc::now()))
+        .filter(due_items::cooldown_delay.lt(chrono::offset::Utc::now()))
         .order(sql::random)
         .first(&**conn)
         .optional()?;
@@ -544,13 +538,11 @@ fn choose_random_overdue_item(conn: &Connection, user_id: i32) -> Result<Option<
             Some(QuizType::Exercise(exercise_data::table.filter(exercise_data::due.eq(due.id))
                 .get_result::<ExerciseData>(&**conn)?
                 .exercise_id))
-        }
-           Some(_) => {
-               return Err(ErrorKind::DatabaseOdd("Database contains due_item with an odd item_type \
-                                               value!")
-                                  .into())
-           }
-           None => None,
+            },
+            Some(_) => {
+               return Err(anyhow!("Database contains due_item with an odd item_type value!"));
+            },
+            None => None,
        })
 }
 
@@ -560,7 +552,7 @@ fn choose_random_overdue_item_include_cooldown(conn: &Connection,
     use schema::{due_items, question_data, exercise_data};
 
     let due: Option<DueItem> = due_items::table.filter(due_items::user_id.eq(user_id))
-        .filter(due_items::due_date.lt(chrono::UTC::now()))
+        .filter(due_items::due_date.lt(chrono::offset::Utc::now()))
         .order(sql::random)
         .first(&**conn)
         .optional()?;
@@ -577,9 +569,7 @@ fn choose_random_overdue_item_include_cooldown(conn: &Connection,
                 .exercise_id))
         }
            Some(_) => {
-               return Err(ErrorKind::DatabaseOdd("Database contains due_item with an odd item_type \
-                                               value!")
-                                  .into())
+               return Err(anyhow!("Database contains due_item with an odd item_type value!"));
            }
            None => None,
        })
@@ -610,13 +600,13 @@ fn choose_new_question(conn: &Connection, user_id: i32) -> Result<Option<QuizQue
 */
     let new_question: Option<QuizQuestion> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::Integer,
-        diesel::types::Text,
-        diesel::types::Text,
-        diesel::types::Text,
-        diesel::types::Bool,
-        diesel::types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Text,
+        diesel::sql_types::Text,
+        diesel::sql_types::Text,
+        diesel::sql_types::Bool,
+        diesel::sql_types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -674,10 +664,10 @@ fn choose_new_exercise(conn: &Connection, user_id: i32) -> Result<Option<Exercis
 */
     let new_exercise: Option<Exercise> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::Integer,
-        diesel::types::Bool,
-        diesel::types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Bool,
+        diesel::sql_types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -714,7 +704,7 @@ fn choose_cooldown_q_or_e(conn: &Connection,
 
     if metrics.quizes_since_break >= metrics.max_quizes_since_break ||
        metrics.quizes_today >= metrics.max_quizes_today ||
-       metrics.break_until > chrono::UTC::now() {
+       metrics.break_until > chrono::offset::Utc::now() {
         return Ok(None);
     }
 
@@ -748,7 +738,7 @@ fn choose_q_or_e(conn: &Connection,
 
     if metrics.quizes_since_break >= metrics.max_quizes_since_break ||
        metrics.quizes_today >= metrics.max_quizes_today ||
-       metrics.break_until > chrono::UTC::now() {
+       metrics.break_until > chrono::offset::Utc::now() {
         debug!("Enough quizes for today. The break/daily limits are full.");
         return Ok(None);
     }
@@ -792,14 +782,14 @@ fn choose_new_random_word(conn: &Connection, user_id: i32) -> Result<Option<Word
 */
     let new_word: Option<Word> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::Text,
-        diesel::types::Text,
-        diesel::types::Integer,
-        diesel::types::Integer,
-        diesel::types::Bool,
-        diesel::types::Integer,
-        diesel::types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Text,
+        diesel::sql_types::Text,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Bool,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -871,14 +861,14 @@ fn choose_new_paired_word(conn: &Connection, user_id: i32) -> Result<Option<Word
 */
     let new_word: Option<Word> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::Text,
-        diesel::types::Text,
-        diesel::types::Integer,
-        diesel::types::Integer,
-        diesel::types::Bool,
-        diesel::types::Integer,
-        diesel::types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Text,
+        diesel::sql_types::Text,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Bool,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -924,7 +914,7 @@ fn choose_new_word(conn: &Connection, metrics: &mut UserMetrics) -> Result<Optio
 
     if metrics.new_words_since_break >= metrics.max_words_since_break ||
        metrics.new_words_today >= metrics.max_words_today ||
-       metrics.break_until > chrono::UTC::now() {
+       metrics.break_until > chrono::offset::Utc::now() {
         debug!("Enough words for today. The break/daily limits are full.");
         return Ok(None);
     }
@@ -948,7 +938,7 @@ fn choose_new_word(conn: &Connection, metrics: &mut UserMetrics) -> Result<Optio
 fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
     use schema::user_stats;
 
-    if chrono::UTC::now() < metrics.break_until {
+    if chrono::offset::Utc::now() < metrics.break_until {
         let due_string = metrics.break_until.to_rfc3339();
         return Ok(Some(Quiz::F(FutureJson {
                                    quiz_type: "future",
@@ -960,7 +950,7 @@ fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Q
     // once every day even though we wouldn't break a single time!
     // We are having 1 AM as the change point of the day
     // (That's 3 AM in Finland, where the users of this app are likely to reside)
-    if chrono::UTC::now() > (metrics.today.date().and_hms(1, 0, 0) + chrono::Duration::hours(24)) {
+    if chrono::offset::Utc::now() > (metrics.today.date().and_hms(1, 0, 0) + chrono::Duration::hours(24)) {
 
         let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(metrics.id))
             .get_result(&**conn)?;
@@ -968,7 +958,7 @@ fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Q
         stats.days_used += 1;
         let _: UserStats = stats.save_changes(&**conn)?;
 
-        metrics.today = chrono::UTC::today().and_hms(1, 0, 0);
+        metrics.today = chrono::offset::Utc::today().and_hms(1, 0, 0);
         metrics.new_words_since_break = 0;
         metrics.quizes_since_break = 0;
         metrics.new_words_today = 0;
@@ -979,7 +969,7 @@ fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Q
 
 pub fn things_left_to_do(conn: &Connection,
                          user_id: i32)
-                         -> Result<(Option<chrono::DateTime<chrono::UTC>>, bool, bool)> {
+                         -> Result<(Option<chrono::DateTime<chrono::offset::Utc>>, bool, bool)> {
 
     let next_existing_due =
         choose_next_due_item(conn, user_id)?.map(|(due_item, _)| due_item.due_date);
@@ -1026,7 +1016,7 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
             // Nothing else left but due items – so no use breaking until there is some available
             metrics.break_until =
                 max(metrics.break_until,
-                    next_existing_due.unwrap_or_else(|| chrono::date::MAX.and_hms(0, 0, 0)));
+                    next_existing_due.unwrap_or_else(|| chrono::MAX_DATE.and_hms(0, 0, 0)));
         }
 
         let due_string = metrics.break_until.to_rfc3339();
@@ -1046,19 +1036,19 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     if words && new_quizes && due_quizes {
         debug!("Starting a break because the break limits are full.");
 
-        let time_since_last_break = chrono::UTC::now().signed_duration_since(metrics.break_until);
+        let time_since_last_break = chrono::offset::Utc::now().signed_duration_since(metrics.break_until);
 
         let discounted_breaktime = max(Duration::seconds(0),
                                        Duration::seconds(metrics.break_length as i64) -
                                        time_since_last_break);
 
-        metrics.break_until = chrono::UTC::now() + discounted_breaktime;
+        metrics.break_until = chrono::offset::Utc::now() + discounted_breaktime;
 
         if no_new_words && no_new_quizes {
             // Nothing else left but due items – so no use breaking until there is some available
             metrics.break_until =
                 max(metrics.break_until,
-                    next_existing_due.unwrap_or_else(|| chrono::date::MAX.and_hms(0, 0, 0)));
+                    next_existing_due.unwrap_or_else(|| chrono::MAX_DATE.and_hms(0, 0, 0)));
         }
 
         metrics.new_words_since_break = 0;
@@ -1077,13 +1067,8 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
 
 fn ask_new_question(conn: &Connection, id: i32) -> Result<(QuizQuestion, i32, Vec<Answer>, i32)> {
-    use rand::Rng;
-
-    let (question, answers, q_audio_bundles) = try_or!{ load_question(conn, id)?,
-                else bail!(
-                    ErrorKind::DatabaseOdd(
-                        "This function was called on the premise that the data exists!"
-                    )) };
+    let (question, answers, q_audio_bundles) = load_question(conn, id)?
+        .ok_or(anyhow!("This function was called on the premise that the data exists!"))?;
 
     let mut rng = thread_rng();
     let random_answer_index = rng.gen_range(0, answers.len());
@@ -1096,11 +1081,9 @@ fn ask_new_question(conn: &Connection, id: i32) -> Result<(QuizQuestion, i32, Ve
 }
 
 fn ask_new_exercise(conn: &Connection, id: i32) -> Result<(Exercise, Word, i32)> {
-    let (exercise, _, mut words) = try_or!( load_exercise(conn, id)?,
-                else bail!(
-                    ErrorKind::DatabaseOdd(
+    let (exercise, _, mut words) = load_exercise(conn, id)?.ok_or(anyhow!(
                         "This function was called on the premise that the data exists!"
-                    )) );
+                    ))?;
 
     let random_answer_index = thread_rng().gen_range(0, words.len());
     let word = words.swap_remove(random_answer_index);
@@ -1112,6 +1095,7 @@ fn ask_new_exercise(conn: &Connection, id: i32) -> Result<(Exercise, Word, i32)>
 
 pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
     use schema::{q_asked_data, e_asked_data, w_asked_data};
+    use rand::prelude::SliceRandom;
 
     Ok(match pi {
            pi if pi.item_type == "question" => {
@@ -1119,15 +1103,14 @@ pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
         let asked: QAskedData = q_asked_data::table.filter(q_asked_data::id.eq(pi.id))
             .get_result(&**conn)?;
 
-        let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
-                else bail!(
-                    ErrorKind::DatabaseOdd(
+        let (question, answers, _) = load_question(conn, asked.question_id)?
+            .ok_or(anyhow!(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    )) };
+                    ))?;
 
         let mut answer_choices: Vec<_> =
             answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
-        thread_rng().shuffle(&mut answer_choices);
+            answer_choices.shuffle(&mut thread_rng());
 
         Quiz::Q(QuestionJson {
                     quiz_type: "question",
@@ -1144,11 +1127,10 @@ pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
         let asked: EAskedData = e_asked_data::table.filter(e_asked_data::id.eq(pi.id))
             .get_result(&**conn)?;
 
-        let word = try_or!{ load_word(conn, asked.word_id)?,
-                else bail!(
-                    ErrorKind::DatabaseOdd(
+        let word = load_word(conn, asked.word_id)?
+                .ok_or(anyhow!(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    )) };
+                    ))?;
 
         Quiz::E(ExerciseJson {
                     quiz_type: "exercise",
@@ -1165,11 +1147,10 @@ pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
         let asked: WAskedData = w_asked_data::table.filter(w_asked_data::id.eq(pi.id))
             .get_result(&**conn)?;
 
-        let word = try_or!{ load_word(conn, asked.word_id)?,
-                else bail!(
-                    ErrorKind::DatabaseOdd(
+        let word = load_word(conn, asked.word_id)?
+                .ok_or(anyhow!(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    )) };
+                    ))?;
 
         Quiz::W(WordJson {
                     quiz_type: "word",
@@ -1203,6 +1184,7 @@ pub fn return_pending_item(conn: &Connection, user_id: i32) -> Result<Option<Qui
 }
 
 pub fn return_q_or_e(conn: &Connection, user_id: i32, quiztype: QuizType) -> Result<Option<Quiz>> {
+    use rand::prelude::SliceRandom;
 
     match quiztype {
         QuizType::Question(id) => {
@@ -1222,7 +1204,7 @@ pub fn return_q_or_e(conn: &Connection, user_id: i32, quiztype: QuizType) -> Res
 
             let mut answer_choices: Vec<_> =
                 answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
-            thread_rng().shuffle(&mut answer_choices);
+                answer_choices.shuffle(&mut thread_rng());
 
             let quiz_json = QuestionJson {
                 quiz_type: "question",
@@ -1334,10 +1316,11 @@ pub fn test_item(conn: &Connection,
                  user_id: i32,
                  quiz_str: &QuizSerialized)
                  -> Result<(Quiz, i32)> {
+    use rand::prelude::SliceRandom;
     let pending_item;
     let test_item = match *quiz_str {
         QuizSerialized::Word(s, audio_id) => {
-            let w = quiz::get_word_by_str(conn, s).chain_err(|| format!("Word {} not found", s))?;
+            let w = quiz::get_word_by_str(conn, s).with_context(|| format!("Word {} not found", s))?;
             let a = audio::get_audio_file_by_id(conn, audio_id)?;
 
             if w.audio_bundle != a.bundle_id {
@@ -1355,11 +1338,10 @@ pub fn test_item(conn: &Connection,
 
             register_future_w_answer(conn, &asked_data)?;
 
-            let word = try_or!{ load_word(conn, asked_data.word_id)?,
-                else bail!(
-                    ErrorKind::DatabaseOdd(
+            let word = load_word(conn, asked_data.word_id)?
+                .ok_or(anyhow!(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    )) };
+                    ))?;
 
             Quiz::W(WordJson {
                         quiz_type: "word",
@@ -1372,7 +1354,7 @@ pub fn test_item(conn: &Connection,
         QuizSerialized::Question(s, audio_id) => {
 
             let (q, ans) =
-                quiz::get_question(conn, s).chain_err(|| format!("Question {} not found", s))?;
+                quiz::get_question(conn, s).with_context(|| format!("Question {} not found", s))?;
 
             let a = audio::get_audio_file_by_id(conn, audio_id)?;
 
@@ -1391,15 +1373,14 @@ pub fn test_item(conn: &Connection,
 
             register_future_q_answer(conn, &asked_data)?;
 
-            let (question, answers, _) = try_or!{ load_question(conn, asked_data.question_id)?,
-                else bail!(
-                    ErrorKind::DatabaseOdd(
+            let (question, answers, _) = load_question(conn, asked_data.question_id)?
+                .ok_or(anyhow!(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    )) };
+                    ))?;
 
             let mut answer_choices: Vec<_> =
                 answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
-            thread_rng().shuffle(&mut answer_choices);
+                answer_choices.shuffle(&mut thread_rng());
 
 
             Quiz::Q(QuestionJson {
@@ -1415,7 +1396,7 @@ pub fn test_item(conn: &Connection,
         QuizSerialized::Exercise(word, audio_id) => {
 
             let (e, var) = quiz::get_exercise(conn, word)
-                        .chain_err(|| format!("Exercise {} not found", word))?;
+                        .with_context(|| format!("Exercise {} not found", word))?;
 
             let w = quiz::get_word_by_id(conn, var.id)?;
             let a = audio::get_audio_file_by_id(conn, audio_id)?;
@@ -1435,11 +1416,10 @@ pub fn test_item(conn: &Connection,
 
             register_future_e_answer(conn, &asked_data)?;
 
-            let word = try_or!{ load_word(conn, asked_data.word_id)?,
-                else bail!(
-                    ErrorKind::DatabaseOdd(
+            let word = load_word(conn, asked_data.word_id)?
+            .ok_or(anyhow!(
                         "Bug: If the item was set pending in the first place, it should exists!"
-                    )) };
+                    ))?;
 
             Quiz::E(ExerciseJson {
                         quiz_type: "exercise",

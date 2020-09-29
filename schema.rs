@@ -370,16 +370,6 @@ joinable!(w_asked_data -> words (word_id));
 joinable!(words -> audio_bundles (audio_bundle));
 joinable!(words -> skill_nuggets (skill_nugget));
 
-
-
-
-
-joinable!(question_answers -> audio_bundles (a_audio_bundle));
-
-
-
-
-
 allow_tables_to_appear_in_same_query!(
     anon_aliases,
     audio_bundles,

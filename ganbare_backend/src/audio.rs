@@ -11,17 +11,19 @@ use mime;
 fn save_file(path: &mut PathBuf, orig_filename: &str, audio_dir: &Path) -> Result<()> {
     info!("Saving file {:?}", &orig_filename);
     use rand::Rng;
+    use rand::distributions::Alphanumeric;
     let mut new_path = audio_dir.to_owned();
     let mut filename = "%FT%H-%M-%SZ".to_string();
-    filename.extend(thread_rng().gen_ascii_chars().take(10));
+
+    filename.extend(thread_rng().sample_iter(&Alphanumeric).take(10));
     filename.push_str(".");
     filename.push_str(Path::new(orig_filename)
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("noextension"));
-    new_path.push(chrono::UTC::now().to_rfc3339());
+    new_path.push(chrono::offset::Utc::now().to_rfc3339());
     info!("Renaming {:?} to {:?}", &*path, &new_path);
-    fs::rename(&*path, &new_path).chain_err(|| "Can't rename the audio file.")?;
+    fs::rename(&*path, &new_path).context("Can't rename the audio file.")?;
     mem::swap(path, &mut new_path);
     Ok(())
 }
@@ -59,16 +61,16 @@ pub fn get_create_narrator(conn: &Connection, mut name: &str) -> Result<Narrator
         narrators::table.filter(narrators::name.eq(name))
             .get_result(&**conn)
             .optional()
-            .chain_err(|| "Database error with narrators!")?
+            .context("Database error with narrators!")?
     };
 
 
     Ok(match narrator {
            Some(narrator) => narrator,
            None => {
-               diesel::insert(&NewNarrator { name: name }).into(narrators::table)
+               diesel::insert_into(narrators::table).values(&NewNarrator { name: name })
                    .get_result(&**conn)
-                   .chain_err(|| "Database error!")?
+                   .context("Database error!")?
            }
        })
 }
@@ -216,9 +218,9 @@ fn default_narrator_id(conn: &Connection, opt_narrator: &mut Option<Narrator>) -
         Ok(narrator.id)
     } else {
 
-        let new_narrator: Narrator = diesel::insert(&NewNarrator { name: "anonymous" }).into(narrators::table)
+        let new_narrator: Narrator = diesel::insert_into(narrators::table).values(&NewNarrator { name: "anonymous" })
             .get_result(&**conn)
-            .chain_err(|| "Couldn't create a new narrator!")?;
+            .context("Couldn't create a new narrator!")?;
 
         info!("{:?}", &new_narrator);
         let narr_id = new_narrator.id;
@@ -229,9 +231,9 @@ fn default_narrator_id(conn: &Connection, opt_narrator: &mut Option<Narrator>) -
 
 pub fn new_bundle(conn: &Connection, name: &str) -> Result<AudioBundle> {
     use schema::audio_bundles;
-    let bundle: AudioBundle = diesel::insert(&NewAudioBundle { listname: name }).into(audio_bundles::table)
+    let bundle: AudioBundle = diesel::insert_into(audio_bundles::table).values(&NewAudioBundle { listname: name })
         .get_result(&**conn)
-        .chain_err(|| "Can't insert a new audio bundle!")?;
+        .context("Can't insert a new audio bundle!")?;
 
     info!("{:?}", bundle);
 
@@ -288,7 +290,7 @@ pub fn get_create_bundle(conn: &Connection, listname: &str) -> Result<AudioBundl
     Ok(match bundle {
            Some(bundle) => bundle,
            None => {
-               diesel::insert(&NewAudioBundle { listname: listname }).into(audio_bundles::table)
+               diesel::insert_into(audio_bundles::table).values(&NewAudioBundle { listname: listname })
                    .get_result(&**conn)?
            }
        })
@@ -353,7 +355,7 @@ pub fn save(conn: &Connection,
             .optional()?
             .is_some() {
         debug!("The audio file already exists! Returning the existing one.");
-        return Err(ErrorKind::FileAlreadyExists(hash.to_owned()).into());
+        return Err(anyhow!("ErrorKind::FileAlreadyExists {:?}", hash.to_owned()));
     };
 
     save_file(&mut file.0,
@@ -388,9 +390,9 @@ pub fn save(conn: &Connection,
         file_sha2: hash,
     };
 
-    let audio_file: AudioFile = diesel::insert(&new_q_audio).into(audio_files::table)
+    let audio_file: AudioFile = diesel::insert_into(audio_files::table).values(&new_q_audio)
         .get_result(&**conn)
-        .chain_err(|| "Couldn't create a new audio file!")?;
+        .context("Couldn't create a new audio file!")?;
 
     info!("{:?}", &audio_file);
 
@@ -405,15 +407,14 @@ pub fn load_all_from_bundles(conn: &Connection,
 
     let q_audio_files: Vec<Vec<AudioFile>> = AudioFile::belonging_to(&*bundles)
         .load(&**conn)
-        .chain_err(|| "Can't load quiz!")?
+        .context("Can't load quiz!")?
         .grouped_by(&*bundles);
 
     for q in &q_audio_files {
         // Sanity check
         if q.is_empty() {
-            return Err(ErrorKind::DatabaseOdd("Bug: Audio bundles should always have more than \
-                                               zero members when created.")
-                               .into());
+            return Err(anyhow!("Bug: Audio bundles should always have more than \
+            zero members when created."));
         }
     }
     Ok(q_audio_files)
@@ -425,20 +426,20 @@ pub fn load_all_from_bundle(conn: &Connection, bundle_id: i32) -> Result<Vec<Aud
     let q_audio_files: Vec<AudioFile> =
         audio_files::table.filter(audio_files::bundle_id.eq(bundle_id))
             .get_results(&**conn)
-            .chain_err(|| "Can't load quiz!")?;
+            .context("Can't load quiz!")?;
     Ok(q_audio_files)
 }
 
 pub fn load_random_from_bundle(conn: &Connection, bundle_id: i32) -> Result<AudioFile> {
     use schema::{audio_files, narrators};
-    use rand::{Rng, thread_rng};
+    use rand::Rng;
 
     let mut q_audio_files: Vec<(AudioFile, Narrator)> =
         audio_files::table.inner_join(narrators::table)
             .filter(narrators::published.eq(true))
             .filter(audio_files::bundle_id.eq(bundle_id))
             .get_results(&**conn)
-            .chain_err(|| "Can't load quiz!")?;
+            .context("Can't load quiz!")?;
 
     // Panics if q_audio_files.len() == 0
     let random_index = thread_rng().gen_range(0, q_audio_files.len());
@@ -471,8 +472,8 @@ pub fn get_audio_file_by_id(conn: &Connection, file_id: i32) -> Result<AudioFile
     let file: AudioFile = audio_files.filter(id.eq(file_id))
         .get_result(&**conn)
         .map_err(|e| match e {
-                     e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
-                     e => Error::with_chain(e, "Couldn't get the file!"),
+                     e @ NotFound => anyhow!("ErrorKind::FileNotFound {}", e),
+                     e => anyhow!("Couldn't get the file! {}", e),
                  })?;
 
     Ok(file)
@@ -491,8 +492,8 @@ pub fn get_file_path(conn: &Connection, file_id: i32) -> Result<(String, mime::M
     let file: AudioFile = audio_files.filter(id.eq(file_id))
         .get_result(&**conn)
         .map_err(|e| match e {
-                     e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
-                     e => Error::with_chain(e, "Couldn't get the file!"),
+                     e @ NotFound => anyhow!("ErrorKind::FileNotFound {}", e),
+                     e => anyhow!("Couldn't get the file! {}", e),
                  })?;
 
     Ok((file.file_path,
@@ -525,8 +526,8 @@ pub fn for_quiz(conn: &Connection, user_id: i32, pending_id: i32) -> Result<(Str
         .filter(pending_items::pending.eq(true))
         .get_result(&**conn)
         .map_err(|e| match e {
-                     e @ NotFound => Error::with_chain(e, ErrorKind::FileNotFound),
-                     e => Error::with_chain(e, "Couldn't get the file!"),
+                     e @ NotFound => anyhow!("ErrorKind::FileNotFound {}", e),
+                     e => anyhow!("Couldn't get the file! {}", e),
                  })?;
     Ok((file.file_path,
         file.mime.parse().expect("The mimetype from the database should be always valid.")))

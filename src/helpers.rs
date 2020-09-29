@@ -16,7 +16,7 @@ use std::path::PathBuf;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 pub use std::time::{Instant, Duration};
 use time::Duration as TimeDuration;
-use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
+use headers::{IfModifiedSince, LastModified, CacheControl};
 use time;
 use r2d2;
 use ganbare_backend::ConnManager;
@@ -518,7 +518,7 @@ impl HeaderProcessor for Response {
                 .secure(*PARANOID)
                 .domain(SITE_DOMAIN.as_str())
                 .expires(time::now_utc() + time::Duration::weeks(2));
-            self.set_cookie(SetCookie(vec![format!("{}", session_id.finish()),
+            self.headers_mut()..set_cookie(SetCookie(vec![format!("{}", session_id.finish()),
                                            format!("{}", user_id.finish()),
                                            format!("{}", refreshed.finish()),
                                            format!("{}", hmac_cookie.finish()),
@@ -558,8 +558,8 @@ impl HeaderProcessor for Response {
     }
 
     fn set_static_cache(mut self) -> Self {
-        self.headers.set(LastModified(HttpDate(*TIME_AT_SERVER_START)));
-        self.headers.set(CacheControl(vec![CacheDirective::MaxAge(*CACHE_MAX_AGE)]));
+        self.headers.set(LastModified::from(*TIME_AT_SERVER_START));
+        self.headers.set(CacheControl::new().with_max_age(*CACHE_MAX_AGE));
         self
     }
 }
@@ -623,7 +623,7 @@ impl<T> CarrierInternal<T, errors::Error> for Option<T> {
     fn ok_or(self) -> std::result::Result<T, errors::Error> {
         match self {
             Some(a) => Ok(a),
-            None => Err(errors::ErrorKind::NoneResult.into()),
+            None => Err(NoneResult.into()),
         }
     }
 }
@@ -716,7 +716,7 @@ pub fn do_logout(conn: &Connection, sess: &UserSession) -> StdResult<(), PencilE
 macro_rules! parse {
     ($expression:expr) => {
         $expression
-            .ok_or(Error::from_kind(ErrorKind::FormParseError))?;
+            .ok_or(Error::from_kind(FormParseError))?;
     }
 }
 

@@ -1,14 +1,9 @@
-extern crate lettre;
-extern crate sharp_pencil as pencil;
-
 use std::time::Duration;
 
-use self::lettre::email::{EmailBuilder, Email};
-use self::pencil::Handlebars;
+use lettre_email::{EmailBuilder, Email};
+use pencil::Handlebars;
 use std::sync::RwLock;
-use std::collections::{VecDeque, BTreeMap};
-use rustc_serialize::json::{Json, ToJson};
-use email::lettre::email::SendableEmail;
+use std::collections::VecDeque;
 
 use schema::pending_email_confirms;
 use super::*;
@@ -21,6 +16,7 @@ struct EmailData<'a> {
     site_name: &'a str,
 }
 
+/*
 impl<'a> ToJson for EmailData<'a> {
     fn to_json(&self) -> Json {
         let mut m: BTreeMap<String, Json> = BTreeMap::new();
@@ -31,17 +27,18 @@ impl<'a> ToJson for EmailData<'a> {
         m.to_json()
     }
 }
+*/
 
 fn enqueue_mail(email: Email, queue: &RwLock<VecDeque<Email>>) -> Result<()> {
 
-    info!("Enqueuing mail to {:?}", email.to_addresses());
+    info!("Enqueuing mail to {:?}", email);
 
     match queue.write() {
         Ok(mut q) => {
             q.push_back(email);
             Ok(())
         }
-        _ => Err(Error::from_kind("Couldn't open the email queue for writing.".into())),
+        _ => Err(anyhow!("Couldn't open the email queue for writing.")),
     }
 }
 
@@ -66,8 +63,7 @@ pub fn send_confirmation(queue: &RwLock<VecDeque<Email>>,
         .from(from)
         .subject(&format!("【{}】Tervetuloa!", site_name))
         .html(hb_registry.render("email_confirm_email.html", &data)
-                  .chain_err(|| "Handlebars template render error!")?
-                  .as_ref())
+                  .context("Handlebars template render error!")?)
         .build()
         .expect("Building email shouldn't fail.");
     enqueue_mail(email, queue)?;
@@ -94,8 +90,7 @@ pub fn send_pw_reset_email(queue: &RwLock<VecDeque<Email>>,
         .from(from)
         .subject(&format!("【{}】Salasanan vaihtaminen", site_name))
         .html(hb_registry.render("pw_reset_email.html", &data)
-                  .chain_err(|| "Handlebars template render error!")?
-                  .as_ref())
+                  .context("Handlebars template render error!")?)
         .build()
         .expect("Building email shouldn't fail.");
     enqueue_mail(email, queue)?;
@@ -140,15 +135,14 @@ pub fn add_pending_email_confirm(conn: &Connection,
             secret: secret.as_ref(),
             groups: groups,
         };
-        diesel::insert(&confirm).into(pending_email_confirms::table)
+        diesel::insert_into(pending_email_confirms::table).values(&confirm)
             .execute(&**conn)
-            .chain_err(|| "Error :(")?;
+            .context("Error :(")?;
     }
     Ok((secret, hmac))
 }
 
 pub fn get_all_pending_email_confirms(conn: &Connection) -> Result<Vec<String>> {
-    use schema::pending_email_confirms;
     let emails: Vec<String> = pending_email_confirms::table.select(pending_email_confirms::email)
         .get_results(&**conn)?;
 
@@ -173,8 +167,7 @@ pub fn complete_pending_email_confirm(conn: &Connection,
                                       stretching_time: Duration)
                                       -> Result<User> {
 
-    let (email, group_ids) = try_or!(check_pending_email_confirm(&conn, secret)?,
-        else return Err(ErrorKind::NoSuchSess.into()));
+    let (email, group_ids) = check_pending_email_confirm(&conn, secret)?.ok_or(anyhow!("ErrorKind::NoSuchSess"))?;
     let user = user::add_user(&*conn, &email, password, pepper, stretching_time)?;
 
     for g in group_ids {
@@ -184,17 +177,16 @@ pub fn complete_pending_email_confirm(conn: &Connection,
     diesel::delete(pending_email_confirms::table
         .filter(pending_email_confirms::secret.eq(secret)))
         .execute(&**conn)
-        .chain_err(|| "Couldn't delete the pending request.")?;
+        .context("Couldn't delete the pending request.")?;
 
     Ok(user)
 }
 
 pub fn clean_old_pendings(conn: &Connection, duration: chrono::Duration) -> Result<usize> {
-    use schema::pending_email_confirms;
-    let deadline = chrono::UTC::now() - duration;
+    let deadline = chrono::offset::Utc::now() - duration;
     diesel::delete(pending_email_confirms::table.filter(pending_email_confirms::added.lt(deadline)))
         .execute(&**conn)
-        .chain_err(|| "Couldn't delete the old pending requests.")
+        .context("Couldn't delete the old pending requests.")
 }
 
 pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
@@ -224,9 +216,9 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
             continue; // We don't send emails to users that don't belong to the "nag_emails" group.
         }
 
-        let last_nag = stats.last_nag_email.unwrap_or_else(|| chrono::date::MIN.and_hms(0, 0, 0));
+        let last_nag = stats.last_nag_email.unwrap_or_else(|| chrono::MIN_DATE.and_hms(0, 0, 0));
 
-        if last_nag > chrono::UTC::now() - nag_grace_period {
+        if last_nag > chrono::offset::Utc::now() - nag_grace_period {
             continue; // We have sent a nag email recently
         }
 
@@ -241,14 +233,13 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
             .from(from)
             .subject(&format!("【{}】Minne katosit? (´・ω・`)", site_name))
             .html(hb_registry.render("slacker_heatenings.html", &data) // FIXME
-                .chain_err(|| "Handlebars template render error!")?
-                .as_ref())
+                .context("Handlebars template render error!")?)
             .build()
             .expect("Building email shouldn't fail.");
 
         enqueue_mail(email, queue)?;
 
-        stats.last_nag_email = Some(chrono::UTC::now());
+        stats.last_nag_email = Some(chrono::offset::Utc::now());
         let _: UserStats = stats.save_changes(&**conn)?;
 
         info!("Sent slacker heatening email to {}!", email_addr);

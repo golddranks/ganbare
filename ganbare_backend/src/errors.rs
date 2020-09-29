@@ -1,3 +1,44 @@
+use std::fmt::Debug;
+
+pub use anyhow::{Result, anyhow, Context};
+
+pub trait ResultExt: Sized {
+    fn handle<E>(self: Self) -> std::result::Result<E, Self>
+        where E: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static;
+}
+
+impl<T> ResultExt for Result<T, anyhow::Error> {
+    fn handle<E>(self: Self) -> Result<E, Self>
+        where E: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static {
+        match self {
+            Ok(ok) => Err(Ok(ok)),
+            Err(err) => match err.downcast::<E>() {
+                Ok(err_to_handle) => Ok(err_to_handle),
+                Err(unknown_err) => Err(Err(unknown_err)),
+            }
+        }
+    }
+}
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+#[error("FileAlreadyExists")]
+pub struct FileAlreadyExists{pub hash: Vec<u8>}
+#[derive(Error, Debug)]
+#[error("NoSuchUser")]
+pub struct NoSuchUser{pub username: String}
+#[derive(Error, Debug)]
+#[error("PasswordDoesntMatch")]
+pub struct PasswordDoesntMatch;
+#[derive(Error, Debug)]
+#[error("RateLimitExceeded")]
+pub struct RateLimitExceeded;
+#[derive(Error, Debug)]
+#[error("NoneResultYo")]
+pub struct NoneResultYo;
+
+/*
 error_chain! {
         foreign_links {
             ParseBoolError(::std::str::ParseBoolError);
@@ -81,9 +122,6 @@ error_chain! {
                 description("RateLimit exceeded")
                 display("RateLimit exceeded")
             }
-            FileAlreadyExists(hash: Vec<u8>) {
-                description("File already exists!")
-                display("File already exists!")
-            }
         }
     }
+*/

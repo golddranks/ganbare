@@ -1,11 +1,11 @@
 
 use super::*;
-use chrono::UTC;
+use chrono::offset::Utc;
 use pencil::{abort, jsonify, Response, redirect};
 use pencil::helpers::{send_file_range, send_from_directory_range};
 use regex;
 use std::io::{self, Read};
-use hyper::header::ContentLength;
+use headers::ContentLength;
 use serde_json;
 
 use ganbare::audio;
@@ -36,7 +36,7 @@ pub fn get_audio(req: &mut Request) -> PencilResult {
     let audio_id =
         audio_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
     let (file_name, mime_type) = audio::get_file_path(&conn, audio_id).map_err(|e| match e.kind() {
-                     &ErrorKind::FileNotFound => abort(404).unwrap_err(),
+                     &FileNotFound => abort(404).unwrap_err(),
                      e => internal_error(e),
                  })?;
 
@@ -78,7 +78,7 @@ pub fn quiz_audio(req: &mut Request) -> PencilResult {
         asked_id.parse::<i32>().expect("Pencil guarantees that Line ID should be an integer.");
 
     let (file_name, mime_type) = audio::for_quiz(&conn, sess.user_id, asked_id).map_err(|e| match e.kind() {
-                     &ErrorKind::FileNotFound => abort(404).unwrap_err(),
+                     &FileNotFound => abort(404).unwrap_err(),
                      e => internal_error(e),
                  })?;
 
@@ -192,7 +192,7 @@ fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
         Ok(quiz::Answered::W(models::WAnsweredData {
                                  id: id,
                                  audio_times: audio_times,
-                                 checked_date: UTC::now(),
+                                 checked_date: Utc::now(),
                                  active_answer_time_ms: active_answer_time_ms,
                                  full_spent_time_ms: full_spent_time_ms,
                              }))
@@ -208,7 +208,7 @@ fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
                                  id: id,
                                  audio_times: audio_times,
                                  active_answer_time_ms: active_answer_time_ms,
-                                 answered_date: UTC::now(),
+                                 answered_date: Utc::now(),
                                  reflected_time_ms: reflected_time_ms,
                                  full_answer_time_ms: full_answer_time_ms,
                                  answer_level: answer_level,
@@ -228,13 +228,13 @@ fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
         Ok(quiz::Answered::Q(models::QAnsweredData {
                                  id: id,
                                  answered_qa_id: answered_qa_id,
-                                 answered_date: UTC::now(),
+                                 answered_date: Utc::now(),
                                  active_answer_time_ms: active_answer_time_ms,
                                  full_answer_time_ms: full_answer_time_ms,
                                  full_spent_time_ms: full_spent_time_ms,
                              }))
     } else {
-        Err(ErrorKind::FormParseError.into())
+        Err(FormParseError.into())
     }
 }
 
@@ -657,33 +657,33 @@ pub fn post_question(req: &mut Request) -> PencilResult {
 
     fn parse_qq(qq: &UpdateQuestion) -> Result<NewQuizQuestion> {
         let qq = NewQuizQuestion {
-            skill_id: qq.skill_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            skill_id: qq.skill_id.ok_or_else(|| Error::from_kind(FormParseError))?,
             q_name: qq.q_name
                 .as_ref()
-                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
+                .ok_or_else(|| Error::from_kind(FormParseError))?
                 .as_str(),
             q_explanation: qq.q_explanation
                 .as_ref()
-                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
+                .ok_or_else(|| Error::from_kind(FormParseError))?
                 .as_str(),
             question_text: qq.question_text
                 .as_ref()
-                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
+                .ok_or_else(|| Error::from_kind(FormParseError))?
                 .as_str(),
-            skill_level: qq.skill_level.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            skill_level: qq.skill_level.ok_or_else(|| Error::from_kind(FormParseError))?,
         };
         Ok(qq)
     }
 
     fn parse_aa(aa: &UpdateAnswer) -> Result<NewAnswer> {
         let aa = NewAnswer {
-            question_id: aa.question_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            question_id: aa.question_id.ok_or_else(|| Error::from_kind(FormParseError))?,
             a_audio_bundle: aa.a_audio_bundle.unwrap_or(None),
             q_audio_bundle: aa.q_audio_bundle
-                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+                .ok_or_else(|| Error::from_kind(FormParseError))?,
             answer_text: aa.answer_text
                 .as_ref()
-                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?
+                .ok_or_else(|| Error::from_kind(FormParseError))?
                 .as_str(),
         };
         Ok(aa)
@@ -718,16 +718,16 @@ pub fn post_exercise(req: &mut Request) -> PencilResult {
 
     fn parse_qq(qq: &UpdateExercise) -> Result<NewExercise> {
         let qq = NewExercise {
-            skill_id: qq.skill_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
-            skill_level: qq.skill_level.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            skill_id: qq.skill_id.ok_or_else(|| Error::from_kind(FormParseError))?,
+            skill_level: qq.skill_level.ok_or_else(|| Error::from_kind(FormParseError))?,
         };
         Ok(qq)
     }
 
     fn parse_aa(aa: &UpdateExerciseVariant) -> Result<ExerciseVariant> {
         let aa = ExerciseVariant {
-            id: aa.id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
-            exercise_id: aa.exercise_id.ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?,
+            id: aa.id.ok_or_else(|| Error::from_kind(FormParseError))?,
+            exercise_id: aa.exercise_id.ok_or_else(|| Error::from_kind(FormParseError))?,
         };
         Ok(aa)
     }
@@ -930,7 +930,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
     let mut file_path = USER_AUDIO_DIR.clone();
     file_path.push(&filename.data);
     use pencil::{PencilError, HTTPError};
-    use hyper::header::{CacheControl, CacheDirective};
+    use headers::{CacheControl};
     use std::str::FromStr;
     send_file_range(file_path.to_str().expect("The path should be fully ASCII"),
                     mime::Mime::from_str("audio/ogg").unwrap(),
@@ -939,8 +939,7 @@ pub fn get_useraudio(req: &mut Request) -> PencilResult {
             .set_static_cache()
             .refresh_cookie(&sess)
             .map(|mut resp| {
-                     resp.headers.set(CacheControl(vec![CacheDirective::NoCache,
-                                                        CacheDirective::NoStore]));
+                     resp.headers.set(CacheControl::new().with_no_cache().with_no_store());
                      resp
                  })
             .map_err(|e| match e {
@@ -997,7 +996,7 @@ pub fn mic_check(req: &mut Request) -> PencilResult {
 
             let mut resp = Response::from(&audio[..]);
             let mime = mime::Mime::from_str("audio/ogg").unwrap();
-            resp.headers.set::<hyper::header::ContentType>(hyper::header::ContentType(mime));
+            resp.headers.set::<headers::ContentType>(headers::ContentType(mime));
             resp.refresh_cookie(&sess)
         }
         _ => unreachable!(),

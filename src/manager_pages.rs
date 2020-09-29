@@ -95,7 +95,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
 
         let lowest_fieldset = str::parse::<i32>(parse!(form.get("lowest_fieldset")))?;
         if lowest_fieldset > 10 {
-            bail!(ErrorKind::FormParseError);
+            bail!(FormParseError);
         }
 
         let q_name = parse!(form.get::<str>("name"));
@@ -110,7 +110,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
             let q_variations = str::parse::<i32>(parse!(form.get(&format!("choice_{}_q_variations",
                                                                            i))))?;
             if lowest_fieldset > 100 {
-                bail!(ErrorKind::FormParseError);
+                bail!(FormParseError);
             }
 
             let mut q_variants = Vec::with_capacity(q_variations as usize);
@@ -125,11 +125,11 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                     q_variants.push((file.path.clone(),
                                      file.filename()
                                          .map_err(|_| {
-                                                      Error::from_kind(ErrorKind::FormParseError)
+                                                      Error::from_kind(FormParseError)
                                                   })?,
                                      file.content_type()
                                          .ok_or_else(|| {
-                                                         Error::from_kind(ErrorKind::FormParseError)
+                                                         Error::from_kind(FormParseError)
                                                      })?));
                 }
             }
@@ -147,9 +147,9 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
                     answer_audio_path =
                         Some((cloned_path.path.clone(),
                               cloned_path.filename()
-                                  .map_err(|_| Error::from_kind(ErrorKind::FormParseError))?,
+                                  .map_err(|_| Error::from_kind(FormParseError))?,
                               cloned_path.content_type()
-                                  .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?))
+                                  .ok_or_else(|| Error::from_kind(FormParseError))?))
                 }
             } else {
                 answer_audio_path = None;
@@ -178,7 +178,7 @@ pub fn add_quiz_post(req: &mut Request) -> PencilResult {
     let form = err_400!(parse_form(&mut *req), "Error with parsing form!");
     let result = manage::create_quiz(&conn, form.0, form.1, &*AUDIO_DIR);
     result.map_err(|e| match *e.kind() {
-                       ErrorKind::FormParseError => abort(400).unwrap_err(),
+                       FormParseError => abort(400).unwrap_err(),
                        _ => abort(500).unwrap_err(),
                    })?;
 
@@ -202,7 +202,7 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
 
         let num_variants = str::parse::<i32>(parse!(form.get("audio_variations")))?;
         if num_variants > 20 {
-            bail!(ErrorKind::FormParseError);
+            bail!(FormParseError);
         }
 
         let word = parse!(form.get::<str>("word"));
@@ -220,9 +220,9 @@ pub fn add_word_post(req: &mut Request) -> PencilResult {
                 file.do_not_delete_on_drop();
                 files.push((file.path.clone(),
                             file.filename()
-                                .map_err(|_| Error::from_kind(ErrorKind::FormParseError))?,
+                                .map_err(|_| Error::from_kind(FormParseError))?,
                             file.content_type()
-                                .ok_or_else(|| Error::from_kind(ErrorKind::FormParseError))?));
+                                .ok_or_else(|| Error::from_kind(FormParseError))?));
             }
         }
 
@@ -309,7 +309,7 @@ pub fn audio(req: &mut Request) -> PencilResult {
 }
 
 pub fn send_mail_form(req: &mut Request) -> PencilResult {
-    use hyper::header::Referer;
+    use headers::Referer;
 
     let (_, sess) = auth_user(req, "editors")?;
 

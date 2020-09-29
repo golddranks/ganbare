@@ -149,10 +149,10 @@ pub fn initiate(conn: &Connection,
 
     let ev: Event = events::table.filter(events::name.eq(event_name)).get_result(&**conn)?;
 
-    let exp: EventExperience = diesel::insert(&NewEventExperience {
+    let exp: EventExperience = diesel::insert_into(event_experiences::table).values(&NewEventExperience {
                                                    user_id: user_id,
                                                    event_id: ev.id,
-                                               }).into(event_experiences::table)
+                                               })
             .get_result(&**conn)?;
 
     Ok(Some((ev, exp)))
@@ -168,7 +168,7 @@ pub fn require_started(conn: &Connection,
     if let Some(ev_exp @ (Event { published: true, .. }, ..)) = ev_state {
         Ok(ev_exp)
     } else {
-        bail!(ErrorKind::AccessDenied)
+        Err(anyhow!("ErrorKind::AccessDenied"))
     }
 }
 
@@ -182,7 +182,7 @@ pub fn require_done(conn: &Connection,
     if let Some(ev_exp @ (_, EventExperience { event_finish: Some(_), .. })) = ev_state {
         Ok(ev_exp)
     } else {
-        bail!(ErrorKind::AccessDenied)
+        Err(anyhow!("ErrorKind::AccessDenied"))
     }
 }
 
@@ -194,7 +194,7 @@ pub fn require_ongoing(conn: &Connection,
     if let Some(ev_exp) = is_ongoing(conn, event_name, user_id)? {
         Ok(ev_exp)
     } else {
-        bail!(ErrorKind::AccessDenied)
+        Err(anyhow!("ErrorKind::AccessDenied"))
     }
 }
 
@@ -238,7 +238,7 @@ pub fn set_done(conn: &Connection,
     use schema::event_experiences;
 
     if let Some((ev, mut exp)) = state(conn, event_name, user_id)? {
-        exp.event_finish = Some(chrono::UTC::now());
+        exp.event_finish = Some(chrono::offset::Utc::now());
         diesel::update(event_experiences::table.filter(event_experiences::event_id.eq(ev.id))
                            .filter(event_experiences::user_id.eq(user_id))).set(&exp)
                 .execute(&**conn)?;
@@ -277,12 +277,12 @@ pub fn save_userdata(conn: &Connection,
     time_it!("save_userdata",
              match key {
                  None => {
-                     Ok(diesel::insert(&NewEventUserdata {
+                     Ok(diesel::insert_into(event_userdata::table).values(&NewEventUserdata {
                                             event_id: event.id,
                                             user_id: user_id,
                                             key: key,
                                             data: data,
-                                        }).into(event_userdata::table)
+                                        })
                                 .get_result(&**conn)?)
                  }
                  Some(k) => {
@@ -295,12 +295,12 @@ pub fn save_userdata(conn: &Connection,
         if let Some(userdata) = result {
             Ok(userdata)
         } else {
-            Ok(diesel::insert(&NewEventUserdata {
+            Ok(diesel::insert_into(event_userdata::table).values(&NewEventUserdata {
                                    event_id: event.id,
                                    user_id: user_id,
                                    key: key,
                                    data: data,
-                               }).into(event_userdata::table)
+                               })
                        .get_result(&**conn)?)
         }
     }

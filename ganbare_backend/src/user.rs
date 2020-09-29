@@ -1,6 +1,7 @@
 use super::*;
 use std::time::Instant;
 use chrono::Duration;
+use crate::errors::ResultExt;
 
 /* TODO FIXME this can be a full-blown typed group system some day
 enum Group {
@@ -37,8 +38,8 @@ fn get_user_pass_by_email(conn: &Connection, user_email: &str) -> Result<(User, 
         .filter(sql::lower(users::email).eq(sql::lower(user_email)))
         .first(&**conn)
         .or_else(|e| match e {
-                     e @ NotFound => Err(e).chain_err(|| ErrorKind::NoSuchUser(user_email.into())),
-                     e => Err(e).chain_err(|| "Error when trying to retrieve user!"),
+                     NotFound => Err(NoSuchUser{username: user_email.to_owned()}.into()),
+                     e => Err(e).context("Error when trying to retrieve user!"),
                  })
 }
 
@@ -48,25 +49,19 @@ pub fn auth_user(conn: &Connection,
                  plaintext_pw: &str,
                  pepper: &[u8])
                  -> Result<Option<User>> {
-    let (user, hashed_pw_from_db) = match get_user_pass_by_email(conn, email) {
-        Err(err) => {
-            match *err.kind() {
-                ErrorKind::NoSuchUser(_) => return Ok(None),
-                _ => Err(err),
-            }
-        }
-        ok => ok,
+    let (user, hashed_pw_from_db) = match get_user_pass_by_email(conn, email)
+        .handle::<NoSuchUser>()
+    {
+        Ok(NoSuchUser{..}) => return Ok(None),
+        Err(other) => other,
     }?;
 
     let time_before = Instant::now();
-    match password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper) {
-        Err(err) => {
-            match *err.kind() {
-                ErrorKind::PasswordDoesntMatch => return Ok(None),
-                _ => Err(err),
-            }
-        }
-        ok => ok,
+    let pw_nomach = password::check_password(plaintext_pw, hashed_pw_from_db.into(), pepper)
+        .handle::<PasswordDoesntMatch>();
+    match pw_nomach {
+        Ok(PasswordDoesntMatch) => return Ok(None),
+        Err(other) => other,
     }?;
     let time_after = Instant::now();
     info!("Checked password. Time spent: {} ms",
@@ -86,23 +81,23 @@ pub fn add_user(conn: &Connection,
     use schema::{users, passwords, user_metrics, user_stats};
 
     if email.len() > 254 {
-        return Err(ErrorKind::EmailAddressTooLong.into());
+        return Err(anyhow!("EmailAddressTooLong"));
     };
     if !email.contains('@') {
-        return Err(ErrorKind::EmailAddressNotValid.into());
+        return Err(anyhow!("EmailAddressNotValid"));
     };
 
     let pw = password::set_password(password, pepper, stretching_time)?;
 
     let new_user = NewUser { email: email };
 
-    let user: User = diesel::insert(&new_user).into(users::table).get_result(&**conn)?;
+    let user: User = diesel::insert_into(users::table).values(&new_user).get_result(&**conn)?;
 
-    diesel::insert(&pw.into_db(user.id)).into(passwords::table).execute(&**conn)?;
+    diesel::insert_into(passwords::table).values(&pw.into_db(user.id)).execute(&**conn)?;
 
-    diesel::insert(&NewUserMetrics { id: user.id }).into(user_metrics::table).execute(&**conn)?;
+    diesel::insert_into(user_metrics::table).values(&NewUserMetrics { id: user.id }).execute(&**conn)?;
 
-    diesel::insert(&NewUserStats { id: user.id }).into(user_stats::table).execute(&**conn)?;
+    diesel::insert_into(user_stats::table).values(&NewUserStats { id: user.id }).execute(&**conn)?;
 
     info!("Created a new user, with email {:?}.", email);
     Ok(user)
@@ -120,19 +115,19 @@ pub fn set_password(conn: &Connection,
         users::table.left_outer_join(passwords::table)
             .filter(sql::lower(users::email).eq(sql::lower(user_email)))
             .first(&**conn)
-            .chain_err(|| "Error when trying to retrieve user!")?;
+            .context("Error when trying to retrieve user!")?;
     if p.is_none() {
 
         let pw = password::set_password(password, pepper, stretching_time)
-            .chain_err(|| "Setting password didn't succeed!")?;
+            .context("Setting password didn't succeed!")?;
 
-        diesel::insert(&pw.into_db(u.id)).into(passwords::table)
+        diesel::insert_into(passwords::table).values(&pw.into_db(u.id))
             .execute(&**conn)
-            .chain_err(|| "Couldn't insert the new password into database!")?;
+            .context("Couldn't insert the new password into database!")?;
 
         Ok(u)
     } else {
-        Err("Password already set!".into())
+        Err(anyhow!("Password already set!"))
     }
 }
 
@@ -149,7 +144,7 @@ pub fn check_password_reset(conn: &Connection,
 
     Ok(match confirm {
            Some((c, u)) => {
-               if c.added < chrono::UTC::now() - chrono::Duration::days(1) {
+               if c.added < chrono::offset::Utc::now() - chrono::Duration::days(1) {
                    diesel::delete(
                     reset_email_secrets::table
                         .filter(reset_email_secrets::user_id.eq(c.user_id))
@@ -187,8 +182,8 @@ pub fn send_pw_change_email(conn: &Connection,
             .optional()?;
 
     if let Some((secret, user)) = earlier_email {
-        if secret.added > chrono::UTC::now() - chrono::Duration::days(1) {
-            return Err(ErrorKind::RateLimitExceeded.into()); // Flood filter
+        if secret.added > chrono::offset::Utc::now() - chrono::Duration::days(1) {
+            return Err(errors::RateLimitExceeded.into()); // Flood filter
         } else {
             // Possible to send a new request; delete/invalidate the earlier ones:
             diesel::delete(
@@ -204,19 +199,19 @@ pub fn send_pw_change_email(conn: &Connection,
 
     let user = match user {
         Some(user) => user,
-        None => return Err(ErrorKind::NoSuchUser(email.to_string()).into()),
+        None => return Err(errors::NoSuchUser{ username: email.to_owned() }.into()),
     };
 
     let (new_secret, hmac) = session::new_token_and_hmac(hmac_key)?;
 
     let result =
-        diesel::insert(&ResetEmailSecrets {
+        diesel::insert_into(reset_email_secrets::table).values(&ResetEmailSecrets {
                             secret: new_secret,
                             user_id: user.id,
                             email:
                                 user.email.expect("We just found this user by the email address!"),
-                            added: chrono::UTC::now(),
-                        }).into(reset_email_secrets::table)
+                            added: chrono::offset::Utc::now(),
+                        })
                 .get_result(&**conn)?;
 
     Ok((result, hmac))
@@ -229,8 +224,8 @@ pub fn remove_user_by_email(conn: &Connection, rm_email: &str) -> Result<User> {
     diesel::delete(users.filter(sql::lower(email).eq(sql::lower(rm_email))))
         .get_result(&**conn)
         .map_err(|e| match e {
-                     e @ NotFound => Error::with_chain(e, ErrorKind::NoSuchUser(rm_email.into())),
-                     e => Error::with_chain(e, "Couldn't remove the user!"),
+                     NotFound => anyhow!("ErrorKind::NoSuchUser {}", rm_email),
+                     e => anyhow!("Couldn't remove the user! {}", e),
                  })
 }
 
@@ -294,7 +289,7 @@ pub fn change_password(conn: &Connection,
                        -> Result<()> {
 
     let pw = password::set_password(new_password, pepper, stretching_time)
-        .chain_err(|| "Setting password didn't succeed!")?;
+        .context("Setting password didn't succeed!")?;
 
     let _: models::Password = pw.into_db(user_id).save_changes(&**conn)?;
 
@@ -308,11 +303,11 @@ pub fn join_user_group_by_id(conn: &Connection,
                              -> Result<GroupMembership> {
     use schema::group_memberships;
 
-    let membership: GroupMembership = diesel::insert(&GroupMembership {
+    let membership: GroupMembership = diesel::insert_into(group_memberships::table).values(&GroupMembership {
                                                           user_id: user_id,
                                                           group_id: group_id,
                                                           anonymous: false,
-                                                      }).into(group_memberships::table)
+                                                      })
             .get_result(&**conn)?;
     Ok(membership)
 }
@@ -380,11 +375,11 @@ pub fn join_user_group_by_name(conn: &Connection,
         .first(&**conn)?;
 
     // FIXME when diesel gets UPSERT, streamline this
-    let membership: Option<GroupMembership> = diesel::insert(&GroupMembership {
+    let membership: Option<GroupMembership> = diesel::insert_into(group_memberships::table).values(&GroupMembership {
                                                                   user_id: user_id,
                                                                   group_id: group.id,
                                                                   anonymous: false,
-                                                              }).into(group_memberships::table)
+                                                              })
             .get_result(&**conn)
             .optional()
             .or_else(|e| match e {
@@ -433,7 +428,7 @@ pub fn check_user_group(conn: &Connection, user_id: i32, group_name: &str) -> Re
     let group = if let Some(g) = group {
         g
     } else {
-        return Err(ErrorKind::NoneResult.into());
+        return Err(errors::NoneResultYo.into());
     };
 
     let exists: Option<GroupMembership> =
@@ -460,7 +455,7 @@ pub fn get_users_by_group(conn: &Connection,
 pub fn get_group(conn: &Connection, group_name: &str) -> Result<Option<UserGroup>> {
     use schema::user_groups;
 
-    let group: Option<(UserGroup)> =
+    let group: Option<UserGroup> =
         user_groups::table.filter(user_groups::group_name.eq(group_name))
             .get_result(&**conn)
             .optional()?;
@@ -549,7 +544,7 @@ pub fn get_slackers(conn: &Connection, inactive: Duration) -> Result<Vec<(i32, S
 
     let slackers: Vec<(i32, Option<String>)> = users::table
         .filter(users::email.is_not_null())
-        .filter(users::last_seen.lt(chrono::UTC::now() - inactive))
+        .filter(users::last_seen.lt(chrono::offset::Utc::now() - inactive))
         .select((users::id, users::email))
         .get_results(&**conn)?;
 

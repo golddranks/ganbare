@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  db:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.database
+    image: golddranks/ganbare_database:tag
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: password

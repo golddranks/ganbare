@@ -1,5 +1,4 @@
 extern crate ganbare_backend;
-#[macro_use]
 extern crate clap;
 extern crate dotenv;
 extern crate mime;
@@ -15,8 +14,10 @@ extern crate regex;
 extern crate crypto;
 extern crate r2d2;
 extern crate magic;
+extern crate tokio;
 
 use ganbare_backend::*;
+use tokio::runtime::Runtime;
 use std::path::PathBuf;
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
@@ -92,6 +93,7 @@ pub fn tidy_span_and_br_tags() -> Result<Vec<String>> {
 }
 
 pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
+    let mut rt = Runtime::new()?;
     use ganbare_backend::schema::{words, question_answers};
     use ganbare_backend::manage::sanitize_links;
 
@@ -105,7 +107,7 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
 
     for mut w in words {
         let before = format!("{:?}", w);
-        w.explanation = sanitize_links(&w.explanation, &*IMAGE_DIR)?;
+        w.explanation = rt.block_on(sanitize_links(&w.explanation, &*IMAGE_DIR))?;
         logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n",
                             before,
                             w));
@@ -120,7 +122,7 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
 
     for mut a in answers {
         let before = format!("{:?}", a);
-        a.answer_text = sanitize_links(&a.answer_text, &*IMAGE_DIR)?;
+        a.answer_text = rt.block_on(sanitize_links(&a.answer_text, &*IMAGE_DIR))?;
         logger.push(format!("Converted an outbound image link to inbound!\n{}\n→\n{:?}\n",
                             before,
                             a));
@@ -132,9 +134,8 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
 }
 
 fn get_pooled_conn() -> Connection {
-    let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
     pool.get().unwrap()
 }
 
@@ -179,9 +180,8 @@ fn normalize_unicode() {
 }
 
 fn clean_unused_audio() {
-    let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
     let pooled_conn = pool.get().unwrap();
 
     let fs_files = std::fs::read_dir(&*AUDIO_DIR).unwrap();
@@ -356,9 +356,9 @@ fn merge_redundant_skills() {
 
     let originals: Vec<(i32, i64, String)> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::BigInt,
-        diesel::types::Text,
+        diesel::sql_types::Integer,
+        diesel::sql_types::BigInt,
+        diesel::sql_types::Text,
         )>(r###"
 SELECT MIN(id), COUNT(id), skill_summary FROM skill_nuggets GROUP BY skill_summary HAVING COUNT(id) > 1;
 "###).get_results(&conn).expect("DB error");
@@ -438,7 +438,7 @@ fn add_audio_file_hashes() {
                     println!("Deleted audio_files rows: {} Updated pending_items rows: {}",
                              deleted,
                              updated);
-                    Ok::<_, errors::Error>(None)
+                    Ok::<_, anyhow::Error>(None)
                 })
                 .unwrap();
 
@@ -505,6 +505,7 @@ fn fix_image_filenames() {
     use rand::Rng;
     use magic::{Cookie, flags};
     use std::collections::HashMap;
+    use rand::distributions::Alphanumeric;
 
     let cookie = Cookie::open(flags::NONE).ok().unwrap();
     cookie.load(&["src/bin/libmagic_images.txt"]).expect("Couldn't load image format recognition database!");
@@ -535,7 +536,7 @@ fn fix_image_filenames() {
             };
             new_f_name.truncate(19);
             new_f_name.push('Z');
-            new_f_name.extend(thread_rng().gen_ascii_chars().take(10));
+            new_f_name.extend(thread_rng().sample_iter(&Alphanumeric).take(10));
             new_f_name.push_str(extension);
             let mut new_path = IMAGE_DIR.to_owned();
             new_path.push(&new_f_name);
@@ -817,7 +818,7 @@ fn check_tests() {
         match i {
             QuizSerialized::Word(s, audio_id) => {
                 let w = quiz::get_word_by_str(&conn, s)
-                    .chain_err(|| format!("Word {} not found", s))
+                    .with_context(|| format!("Word {} not found", s))
                     .unwrap();
                 let a = audio::get_audio_file_by_id(&conn, audio_id).unwrap();
 
@@ -832,7 +833,7 @@ fn check_tests() {
             QuizSerialized::Question(s, audio_id) => {
 
                 let (_, ans) = quiz::get_question(&conn, s)
-                    .chain_err(|| format!("Question {} not found", s))
+                    .with_context(|| format!("Question {} not found", s))
                     .unwrap();
 
                 let a = audio::get_audio_file_by_id(&conn, audio_id).unwrap();
@@ -848,7 +849,7 @@ fn check_tests() {
             QuizSerialized::Exercise(word, audio_id) => {
 
                 let (_, var) = quiz::get_exercise(&conn, word)
-                    .chain_err(|| format!("Exercise {} not found", word))
+                    .with_context(|| format!("Exercise {} not found", word))
                     .unwrap();
 
                 let w = quiz::get_word_by_id(&conn, var.id).unwrap();
@@ -869,13 +870,13 @@ fn check_tests() {
 fn main() {
     use clap::*;
 
-    env_logger::init().unwrap();
+    env_logger::init();
     info!("Starting.");
 
     App::new("ganba.re audio cleaning tool").version(crate_version!());
 
-
-    for line in outbound_urls_to_inbound().unwrap() {
+    let urls = outbound_urls_to_inbound().unwrap();
+    for line in urls {
         println!("{}", line);
     }
 

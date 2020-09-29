@@ -4,8 +4,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate mime;
-#[macro_use]
-extern crate hyper;
+extern crate headers;
 
 #[macro_use]
 extern crate error_chain;
@@ -27,6 +26,7 @@ extern crate cookie;
 extern crate typemap;
 extern crate crypto;
 extern crate lettre;
+extern crate lettre_email;
 extern crate data_encoding;
 extern crate serde;
 extern crate serde_json;
@@ -48,11 +48,9 @@ pub use std::result::Result as StdResult;
 pub use pencil::{Request, PencilResult, PencilError};
 
 pub use ganbare::models::{User, Session};
-pub use ganbare::errors::ErrorKind::Msg as ErrMsg;
 pub use ganbare::errors::Result;
-pub use ganbare::errors::{Error, ErrorKind};
+pub use ganbare::errors::Error;
 pub use ganbare::Connection;
-use lettre::transport::EmailTransport;
 pub use ganbare::helpers::Cache;
 
 pub fn favicon(_: &mut Request) -> PencilResult {
@@ -76,8 +74,8 @@ pub fn source_maps(req: &mut Request) -> PencilResult {
 
 use std::collections::VecDeque;
 use std::sync::RwLock;
-use lettre::email::Email;
-use lettre::transport::smtp::SmtpTransportBuilder;
+use lettre_email::Email;
+use lettre::SmtpTransport;
 
 lazy_static! {
     pub static ref AUDIO_CACHE: Cache<u64, Vec<u8>> =
@@ -108,11 +106,10 @@ pub fn background_control_thread() {
     let mut app = Pencil::new(".");
     include_templates!(app, "templates", "slacker_heatenings.html");
 
-    let mut mailer = SmtpTransportBuilder::new(&*EMAIL_SERVER)
-        .expect("Couldn't setup the email transport!")
-        .encrypt()
-        .credentials(EMAIL_SMTP_USERNAME.as_str(), EMAIL_SMTP_PASSWORD.as_str())
-        .build();
+    let client = SmtpClient::new_simple(&*EMAIL_SERVER)?
+                    .credentials(Credentials(EMAIL_SMTP_USERNAME.to_owned(), EMAIL_SMTP_PASSWORD.to_owned()));
+
+    let mut mailer = SmtpTransport::new(client)?;
 
     loop {
         sleep(Duration::from_secs(5));
@@ -208,7 +205,7 @@ pub fn background_control_thread() {
 }
 
 fn csrf_check(req: &mut Request) -> Option<PencilResult> {
-    use hyper::header::{Origin, Referer, Host};
+    use headers::{Origin, Referer, Host};
     use url::Url;
 
     let origin = req.headers().get();
@@ -262,15 +259,9 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
 }
 
 fn set_headers(_req: &Request, resp: &mut pencil::Response) {
-    use hyper::header::*;
-
-    header! {
-        (ContentSecurityPolicy, "Content-Security-Policy") => [String]
-    }
-
     if *PARANOID {
-        resp.headers.set(ContentSecurityPolicy(CONTENT_SECURITY_POLICY.clone()));
-        resp.headers.set(StrictTransportSecurity {
+        resp.headers.insert("Content-Security-Policy", CONTENT_SECURITY_POLICY.clone());
+        resp.headers.typed_insert(StrictTransportSecurity {
                              include_subdomains: true,
                              max_age: 31536000,
                          });

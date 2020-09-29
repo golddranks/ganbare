@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::time::{Instant, Duration};
-use errors::Result;
+use crate::{Result, anyhow};
 
 pub struct Cache<K, V> {
     expires: Duration,
@@ -29,7 +29,7 @@ impl<K: Hash + Eq + Clone + Debug, V: Clone> Cache<K, V> {
             queue.push_back((expires, key));
             Ok(())
         } else {
-            Err("Poisoned locks?".into())
+            Err(anyhow!("Poisoned locks?"))
         }
     }
 
@@ -48,7 +48,7 @@ impl<K: Hash + Eq + Clone + Debug, V: Clone> Cache<K, V> {
                 Ok(None)
             }
         } else {
-            Err("Poisoned locks?".into())
+            Err(anyhow!("Poisoned locks?"))
         }
     }
 
@@ -73,7 +73,7 @@ impl<K: Hash + Eq + Clone + Debug, V: Clone> Cache<K, V> {
             }
             Ok((queue.len(), removed))
         } else {
-            Err("Poisoned locks?".into())
+            Err(anyhow!("Poisoned locks?"))
         }
     }
 }
