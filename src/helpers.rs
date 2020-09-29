@@ -643,12 +643,11 @@ macro_rules! err_400 {
         match CarrierInternal::ok_or($t) {
             Ok(a) => { a },
             Err(e) => {
-                use std::error::Error;
                 return Ok(bad_request(
                     format!(
                         concat!(
                             "<h1>HTTP 400 Bad Request {:?}: ", $format_string, "</h1>"
-                        ), e.description() $(, $param)*
+                        ), e $(, $param)*
                     )
                 ))
             },

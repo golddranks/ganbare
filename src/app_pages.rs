@@ -9,7 +9,7 @@ use ganbare::session;
 
 fn dispatch_events(conn: &Connection,
                    user_id: i32)
-                   -> StdResult<Option<PencilResult>, PencilError> {
+                   -> StdResult<Option<PencilResult>, pencil::PencilError> {
 
     let event = match event::dispatch_event(conn, user_id).err_500()? {
         Some(e) => e,

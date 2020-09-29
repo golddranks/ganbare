@@ -4,6 +4,7 @@ version = "0.3.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [features]
+default = ["specify_schema"]
 specify_schema = []
 
 [dependencies]
@@ -20,7 +21,7 @@ rustc-serialize = "0.3"
 binary_macros = "0.6"
 env_logger = "0.4"
 data-encoding = "1.1"
-lazy_static = "0.2"
+lazy_static = "1"
 sharp_pencil = "0.4"
 log = "0.3"
 lettre = "0.6"

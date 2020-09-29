@@ -45,7 +45,7 @@ pub use ganbare_backend as ganbare;
 pub use helpers::*;
 
 pub use std::result::Result as StdResult;
-pub use pencil::{Request, PencilResult, PencilError};
+pub use pencil::{Request, PencilResult};
 
 pub use ganbare::models::{User, Session};
 pub use ganbare::errors::ErrorKind::Msg as ErrMsg;
@@ -131,8 +131,8 @@ pub fn background_control_thread() {
             Ok(()) => (),
             Err(e) => {
                 error!("background_control_thread::send_nag_emails: Error: {}. Cause: {:?}",
-                       e.description(),
-                       e.cause());
+                       e,
+                       e.source());
             }
         };
 

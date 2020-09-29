@@ -828,7 +828,6 @@ pub fn user(req: &mut Request) -> PencilResult {
 pub fn post_useraudio(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
     use std::fs;
-    use std::io;
     use rand::thread_rng;
     use rand::Rng;
 
