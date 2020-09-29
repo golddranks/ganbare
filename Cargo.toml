@@ -4,6 +4,7 @@ version = "1.0.3"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
 
 [features]
+default = [ "specify_schema" ]
 specify_schema = ["ganbare_backend/specify_schema"]
 
 [dependencies]

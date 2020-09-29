@@ -406,7 +406,7 @@ pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
         return pencil::abort(401);
     }
 
-    let changed = req.args().get("changed");
+    let changed: Option<&str> = req.args().get("changed");
     let conn = db_connect().err_500()?;
 
     let email = match user::check_password_reset(&conn, secret).err_500()? {
