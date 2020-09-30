@@ -8,9 +8,9 @@ default = ["specify_schema"]
 specify_schema = []
 
 [dependencies]
-diesel = { version = "0.14", features = ["chrono", "large-tables", "postgres"]}
-diesel_codegen = {version = "0.14", default-features = false, features = ["postgres", "dotenv"] }
-dotenv = "0.9"
+diesel = { version = "0.15", features = ["chrono", "large-tables", "postgres"]}
+diesel_codegen = {version = "0.15", default-features = false, features = ["postgres", "dotenv"] }
+dotenv = "0.10"
 rust-crypto = "0.2"
 error-chain = { version = "0.10", default-features = false}
 clap = "2.20"
