@@ -76,7 +76,7 @@ pub fn set_password(plaintext_pw: &str,
                     pepper: &[u8],
                     stretch_time: Duration)
                     -> Result<HashedPassword> {
-    use rand::{OsRng, Rng};
+    use rand::{Rng, thread_rng, RngCore};
 
     if plaintext_pw.len() < 8 {
         return Err(ErrorKind::PasswordTooShort.into());
@@ -86,7 +86,7 @@ pub fn set_password(plaintext_pw: &str,
     };
 
     let mut salt = [0_u8; 16];
-    OsRng::new()?.fill_bytes(&mut salt);
+    thread_rng().fill_bytes(&mut salt);
 
     let mut rounds = 10;
     let start_time = Instant::now();

@@ -13,6 +13,9 @@ extern crate error_chain;
 #[macro_use]
 pub extern crate ganbare_backend;
 
+#[macro_use] 
+extern crate diesel_migrations;
+
 extern crate try_map;
 extern crate sharp_pencil as pencil;
 extern crate dotenv;

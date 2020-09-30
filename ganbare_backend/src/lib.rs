@@ -7,8 +7,10 @@ extern crate serde;
 
 #[macro_use]
 pub extern crate diesel;
+
 #[macro_use]
-extern crate diesel_codegen;
+pub extern crate diesel_migrations;
+
 extern crate r2d2;
 extern crate r2d2_diesel;
 #[macro_use]
@@ -139,7 +141,7 @@ pub mod db {
 
     #[cfg(debug_assertions)]
     fn run_migrations(conn: &Connection) -> Result<()> {
-        diesel::migrations::run_pending_migrations(&**conn)?;
+        diesel_migrations::run_pending_migrations(&**conn)?;
         info!("Migrations checked.");
         Ok(())
     }

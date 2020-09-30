@@ -8,31 +8,31 @@ default = ["specify_schema"]
 specify_schema = []
 
 [dependencies]
-diesel = { version = "0.16", features = ["chrono", "large-tables", "postgres"]}
-diesel_codegen = {version = "0.16", default-features = false, features = ["postgres", "dotenv"] }
-dotenv = "0.10"
+diesel = { version = "0.99", features = ["chrono", "large-tables", "postgres"]}
+diesel_migrations = { version = "0.99" }
+dotenv = "0.15"
 rust-crypto = "0.2"
 error-chain = { version = "0.12", default-features = false}
 clap = "2.20"
 chrono = { version = "0.4", features = ["serde"]}
-rpassword = "0.3"
-rand = "0.3"
-binary_macros = "0.6"
-env_logger = "0.4"
-data-encoding = "1.1"
+rpassword = "5.0"
+rand = "0.7"
+binary_macros = "1.0"
+env_logger = "0.7"
+data-encoding = "2"
 lazy_static = "1"
 sharp_pencil = "0.4"
-log = "0.3"
+log = "0.4"
 lettre = "0.6"
 mime = "0.2"
 tempdir = "0.3"
 regex = "1.0"
 unicode-normalization = "0.1"
-try_map = "0.2"
+try_map = "0.3"
 handlebars = "3.5"
 reqwest = "0.6"
-r2d2 = "0.7"
-r2d2-diesel = "0.16"
+r2d2 = "0.8"
+r2d2-diesel = "0.99"
 byteorder = "1.0"
 serde = { version = "1.0", features = [ "derive" ] }
 serde_derive = "1.0"

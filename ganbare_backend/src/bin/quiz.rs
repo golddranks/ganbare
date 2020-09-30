@@ -55,9 +55,8 @@ fn main() {
         .subcommand(SubCommand::with_name("addq").about("Add a question"))
         .get_matches();
 
-    let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
     let conn = pool.get().unwrap();
 
     match matches.subcommand() {

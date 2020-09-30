@@ -35,9 +35,8 @@ lazy_static! {
 }
 
 fn import_batch(path: &str, narrator: &str, sentences: bool) {
-    let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
     let pooled_conn = pool.get().unwrap();
 
     let files = std::fs::read_dir(path).unwrap();
@@ -247,7 +246,7 @@ fn simple_word<'a>(filename: &str,
 fn main() {
     use clap::*;
 
-    env_logger::init().unwrap();
+    env_logger::init();
     info!("Starting.");
 
     let matches = App::new("ganba.re word import tool")

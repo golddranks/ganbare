@@ -72,9 +72,9 @@ lazy_static! {
     };
 
     pub static ref COOKIE_HMAC_KEY: Vec<u8> = {
-        use data_encoding::base64::decode;
+        use data_encoding::BASE64;
         dotenv::dotenv().ok();
-        let hmac_key = decode(env::var("GANBARE_COOKIE_HMAC_KEY")
+        let hmac_key = BASE64.decode(env::var("GANBARE_COOKIE_HMAC_KEY")
             .expect(
                 "Environmental variable GANBARE_COOKIE_HMAC_KEY must be set!\
                 (format: 256-bit random value encoded as base64)"
@@ -224,9 +224,9 @@ lazy_static! {
     };
 
     pub static ref RUNTIME_PEPPER : Vec<u8> = {
-        use data_encoding::base64::decode;
+        use data_encoding::BASE64;
         dotenv::dotenv().ok();
-        let pepper = decode(env::var("GANBARE_RUNTIME_PEPPER")
+        let pepper = BASE64.decode(env::var("GANBARE_RUNTIME_PEPPER")
             .expect(
                 "Environmental variable GANBARE_RUNTIME_PEPPER must be set!\
                 (format: 256-bit random value encoded as base64)"
@@ -263,10 +263,9 @@ lazy_static! {
     };
 
     pub static ref POOL: r2d2::Pool<ConnManager> = {
-       let config = r2d2::Config::default();
        let manager = ConnManager::new(DATABASE_URL.as_str());
 
-       r2d2::Pool::new(config, manager).expect("Failed to create pool.")
+       r2d2::Pool::new(manager).expect("Failed to create pool.")
     };
 }
 
@@ -467,7 +466,7 @@ pub trait HeaderProcessor {
 
 impl HeaderProcessor for Response {
     fn refresh_cookie(mut self, sess: &UserSession) -> PencilResult {
-        use data_encoding::base64url::encode_nopad;
+        use data_encoding::BASE64URL_NOPAD;
 
         if sess.refresh_now {
             let session_id = sess.sess_id.to_string();
@@ -480,7 +479,7 @@ impl HeaderProcessor for Response {
                                                   &refresh_count,
                                                   sess.token.as_slice(),
                                                   &*COOKIE_HMAC_KEY);
-            let token_base64 = encode_nopad(sess.token.as_slice());
+            let token_base64 = BASE64URL_NOPAD.encode(sess.token.as_slice());
 
             let session_id = CookiePair::build("session_id", session_id)
                 .path("/")

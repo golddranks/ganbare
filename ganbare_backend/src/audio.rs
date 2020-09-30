@@ -11,9 +11,10 @@ use mime;
 fn save_file(path: &mut PathBuf, orig_filename: &str, audio_dir: &Path) -> Result<()> {
     info!("Saving file {:?}", &orig_filename);
     use rand::Rng;
+    use rand::distributions::Alphanumeric;
     let mut new_path = audio_dir.to_owned();
     let mut filename = "%FT%H-%M-%SZ".to_string();
-    filename.extend(thread_rng().gen_ascii_chars().take(10));
+    filename.extend(thread_rng().sample_iter(Alphanumeric).take(10));
     filename.push_str(".");
     filename.push_str(Path::new(orig_filename)
         .extension()

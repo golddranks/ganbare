@@ -500,6 +500,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
     use mime::SubLevel::{Png, Jpeg, Gif};
     use std::fs;
     use std::io;
+    use rand::distributions::Alphanumeric;
 
     info!("Sanitizing text: {}", text);
 
@@ -553,7 +554,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
 
             let mut new_path = image_dir.to_owned();
             let mut filename = "%FT%H-%M-%SZ".to_string();
-            filename.extend(thread_rng().gen_ascii_chars().take(10));
+            filename.extend(thread_rng().sample_iter(Alphanumeric).take(10));
             filename.push_str(extension);
             filename = format!("{}", chrono::offset::Utc::now().format(&filename));
             new_path.push(&filename);

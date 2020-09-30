@@ -1,5 +1,5 @@
 use super::*;
-use rand::{Rng, thread_rng};
+use rand::{Rng, thread_rng, seq::SliceRandom};
 use unicode_normalization::UnicodeNormalization;
 
 #[derive(Debug, Clone, Serialize)]
@@ -443,7 +443,8 @@ pub fn load_question(conn: &Connection,
     let qq = try_or!{ qq, else return Ok(None) };
 
     let (aas, q_bundles): (Vec<Answer>, Vec<AudioBundle>) =
-        question_answers::table.inner_join(audio_bundles::table)
+        question_answers::table.inner_join(audio_bundles::table
+                .on(question_answers::q_audio_bundle.eq(audio_bundles::id)))
             .filter(question_answers::question_id.eq(qq.id))
             .load(&**conn)?
             .into_iter()
@@ -1127,7 +1128,7 @@ pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
 
         let mut answer_choices: Vec<_> =
             answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
-        thread_rng().shuffle(&mut answer_choices);
+            answer_choices.shuffle(&mut thread_rng());
 
         Quiz::Q(QuestionJson {
                     quiz_type: "question",
@@ -1222,7 +1223,7 @@ pub fn return_q_or_e(conn: &Connection, user_id: i32, quiztype: QuizType) -> Res
 
             let mut answer_choices: Vec<_> =
                 answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
-            thread_rng().shuffle(&mut answer_choices);
+            answer_choices.shuffle(&mut thread_rng());
 
             let quiz_json = QuestionJson {
                 quiz_type: "question",
@@ -1399,7 +1400,7 @@ pub fn test_item(conn: &Connection,
 
             let mut answer_choices: Vec<_> =
                 answers.into_iter().map(|a| (a.id, a.answer_text)).collect();
-            thread_rng().shuffle(&mut answer_choices);
+                answer_choices.shuffle(&mut thread_rng());
 
 
             Quiz::Q(QuestionJson {

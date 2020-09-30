@@ -6,10 +6,10 @@ error_chain! {
             ParseFloatError(::std::num::ParseFloatError);
             StdIoError(::std::io::Error);
             DieselError(::diesel::result::Error);
-            DieselMigrationError(::diesel::migrations::RunMigrationsError);
+            DieselMigrationError(::diesel_migrations::RunMigrationsError);
             FmtError(::std::fmt::Error);
-            R2D2Error(::r2d2::GetTimeout);
-            DataEncodingError(::data_encoding::decode::Error);
+            R2D2Error(::r2d2::Error);
+            DataEncodingError(::data_encoding::DecodeError);
             ChronoParseError(::chrono::ParseError);
         }
         errors {

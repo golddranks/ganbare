@@ -60,8 +60,7 @@ table! {
 }
 
 table! {
-    event_experiences (user_id,
-    event_id) {
+    event_experiences (user_id, event_id) {
         user_id -> Int4,
         event_id -> Int4,
         event_init -> Timestamptz,
@@ -91,8 +90,7 @@ table! {
 }
 
 table! {
-    exercise_data (due,
-    exercise_id) {
+    exercise_data (due, exercise_id) {
         exercise_id -> Int4,
         due -> Int4,
     }
@@ -115,8 +113,7 @@ table! {
 }
 
 table! {
-    group_memberships (user_id,
-    group_id) {
+    group_memberships (user_id, group_id) {
         user_id -> Int4,
         group_id -> Int4,
         anonymous -> Bool,
@@ -192,8 +189,7 @@ table! {
 }
 
 table! {
-    question_data (due,
-    question_id) {
+    question_data (due, question_id) {
         question_id -> Int4,
         due -> Int4,
     }
@@ -232,8 +228,7 @@ table! {
 }
 
 table! {
-    skill_data (user_id,
-    skill_nugget) {
+    skill_data (user_id, skill_nugget) {
         user_id -> Int4,
         skill_nugget -> Int4,
         skill_level -> Int4,
@@ -330,48 +325,83 @@ table! {
     }
 }
 
-joinable!(passwords -> users (id));
-joinable!(sessions -> users (user_id));
-joinable!(group_memberships -> users (user_id));
-joinable!(group_memberships -> user_groups (group_id));
-joinable!(anon_aliases -> users (user_id));
 joinable!(anon_aliases -> user_groups (group_id));
-joinable!(audio_files -> narrators (narrators_id));
+joinable!(anon_aliases -> users (user_id));
 joinable!(audio_files -> audio_bundles (bundle_id));
-joinable!(words -> audio_bundles (audio_bundle));
-joinable!(words -> skill_nuggets (skill_nugget));
-joinable!(quiz_questions -> skill_nuggets (skill_id));
-joinable!(question_answers -> quiz_questions (question_id));
-joinable!(exercises -> skill_nuggets (skill_id));
-joinable!(exercise_variants -> words (id));
-joinable!(exercise_variants -> exercises (exercise_id));
+joinable!(audio_files -> narrators (narrators_id));
 joinable!(due_items -> users (user_id));
-joinable!(pending_items -> users (user_id));
+joinable!(e_answered_data -> e_asked_data (id));
+joinable!(e_asked_data -> exercise_variants (word_id));
+joinable!(e_asked_data -> exercises (exercise_id));
+joinable!(e_asked_data -> pending_items (id));
+joinable!(event_experiences -> events (event_id));
+joinable!(event_experiences -> users (user_id));
+joinable!(event_userdata -> events (event_id));
+joinable!(event_userdata -> users (user_id));
+joinable!(events -> user_groups (required_group));
+joinable!(exercise_data -> due_items (due));
+joinable!(exercise_data -> exercises (exercise_id));
+joinable!(exercise_variants -> exercises (exercise_id));
+joinable!(exercise_variants -> words (id));
+joinable!(exercises -> skill_nuggets (skill_id));
+joinable!(group_memberships -> user_groups (group_id));
+joinable!(group_memberships -> users (user_id));
+joinable!(passwords -> users (id));
 joinable!(pending_items -> audio_files (audio_file_id));
-joinable!(q_asked_data -> pending_items (id));
-joinable!(q_asked_data -> quiz_questions (question_id));
-joinable!(q_asked_data -> question_answers (correct_qa_id));
+joinable!(pending_items -> users (user_id));
 joinable!(q_answered_data -> q_asked_data (id));
 joinable!(q_answered_data -> question_answers (answered_qa_id));
-joinable!(e_asked_data -> pending_items (id));
-joinable!(e_asked_data -> exercises (exercise_id));
-joinable!(e_asked_data -> exercise_variants (word_id));
-joinable!(e_answered_data -> e_asked_data (id));
+joinable!(q_asked_data -> pending_items (id));
+joinable!(q_asked_data -> question_answers (correct_qa_id));
+joinable!(q_asked_data -> quiz_questions (question_id));
+joinable!(question_answers -> quiz_questions (question_id));
+joinable!(question_data -> due_items (due));
+joinable!(question_data -> quiz_questions (question_id));
+joinable!(quiz_questions -> skill_nuggets (skill_id));
+joinable!(reset_email_secrets -> users (user_id));
+joinable!(sessions -> users (user_id));
+joinable!(skill_data -> skill_nuggets (skill_nugget));
+joinable!(skill_data -> users (user_id));
+joinable!(user_metrics -> users (id));
+joinable!(user_stats -> users (id));
+joinable!(w_answered_data -> w_asked_data (id));
 joinable!(w_asked_data -> pending_items (id));
 joinable!(w_asked_data -> words (word_id));
-joinable!(w_answered_data -> w_asked_data (id));
-joinable!(question_data -> quiz_questions (question_id));
-joinable!(question_data -> due_items (due));
-joinable!(exercise_data -> exercises (exercise_id));
-joinable!(exercise_data -> due_items (due));
-joinable!(skill_data -> users (user_id));
-joinable!(skill_data -> skill_nuggets (skill_nugget));
-joinable!(user_metrics -> users (id));
-joinable!(event_experiences -> users (user_id));
-joinable!(event_experiences -> events (event_id));
-joinable!(event_userdata -> users (user_id));
-joinable!(event_userdata -> events (event_id));
-joinable!(user_stats -> users (id));
-joinable!(reset_email_secrets -> users (user_id));
-joinable!(events -> user_groups (required_group));
-joinable!(question_answers -> audio_bundles (a_audio_bundle));
+joinable!(words -> audio_bundles (audio_bundle));
+joinable!(words -> skill_nuggets (skill_nugget));
+
+allow_tables_to_appear_in_same_query!(
+    anon_aliases,
+    audio_bundles,
+    audio_files,
+    due_items,
+    e_answered_data,
+    e_asked_data,
+    event_experiences,
+    event_userdata,
+    events,
+    exercise_data,
+    exercise_variants,
+    exercises,
+    group_memberships,
+    narrators,
+    passwords,
+    pending_email_confirms,
+    pending_items,
+    q_answered_data,
+    q_asked_data,
+    question_answers,
+    question_data,
+    quiz_questions,
+    reset_email_secrets,
+    sessions,
+    skill_data,
+    skill_nuggets,
+    user_groups,
+    user_metrics,
+    user_stats,
+    users,
+    w_answered_data,
+    w_asked_data,
+    words,
+);

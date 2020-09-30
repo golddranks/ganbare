@@ -132,9 +132,8 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
 }
 
 fn get_pooled_conn() -> Connection {
-    let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
     pool.get().unwrap()
 }
 
@@ -179,9 +178,8 @@ fn normalize_unicode() {
 }
 
 fn clean_unused_audio() {
-    let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
     let pooled_conn = pool.get().unwrap();
 
     let fs_files = std::fs::read_dir(&*AUDIO_DIR).unwrap();
@@ -503,6 +501,7 @@ fn fix_image_filenames() {
     use ganbare_backend::schema::{question_answers, words};
     use rand::thread_rng;
     use rand::Rng;
+    use rand::distributions::Alphanumeric;
     use magic::{Cookie, flags};
     use std::collections::HashMap;
 
@@ -535,7 +534,7 @@ fn fix_image_filenames() {
             };
             new_f_name.truncate(19);
             new_f_name.push('Z');
-            new_f_name.extend(thread_rng().gen_ascii_chars().take(10));
+            new_f_name.extend(thread_rng().sample_iter(Alphanumeric).take(10));
             new_f_name.push_str(extension);
             let mut new_path = IMAGE_DIR.to_owned();
             new_path.push(&new_f_name);
@@ -869,7 +868,7 @@ fn check_tests() {
 fn main() {
     use clap::*;
 
-    env_logger::init().unwrap();
+    env_logger::init();
     info!("Starting.");
 
     App::new("ganba.re audio cleaning tool").version(crate_version!());

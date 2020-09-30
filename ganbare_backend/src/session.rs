@@ -1,12 +1,12 @@
 use super::*;
 use std::thread;
 use std::time::Duration;
-use rand::{Rng, OsRng};
+use rand::{Rng, thread_rng};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha2::Sha512;
 use chrono::{self, DateTime, offset::Utc};
-use data_encoding::base64url::{encode_nopad, decode_nopad};
+use data_encoding::BASE64URL_NOPAD;
 
 pub const SESSID_BITS: usize = 128;
 pub const HMAC_BITS: usize = 512;
@@ -30,8 +30,8 @@ pub fn new_token_and_hmac(hmac_key: &[u8]) -> Result<(String, String)> {
     let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
     hmac_checker.input(&token[..]);
     let hmac = hmac_checker.result();
-    let token_base64url = encode_nopad(&token[..]);
-    let hmac_base64url = encode_nopad(hmac.code());
+    let token_base64url = BASE64URL_NOPAD.encode(&token[..]);
+    let hmac_base64url = BASE64URL_NOPAD.encode(hmac.code());
 
     Ok((token_base64url, hmac_base64url))
 }
@@ -41,8 +41,8 @@ pub fn verify_token(token_base64url: &str, hmac_base64url: &str, hmac_key: &[u8]
     use crypto::mac::{Mac, MacResult};
     use crypto::sha2::Sha512;
 
-    let token = decode_nopad(token_base64url.as_bytes())?;
-    let hmac = decode_nopad(hmac_base64url.as_bytes())?;
+    let token = BASE64URL_NOPAD.decode(token_base64url.as_bytes())?;
+    let hmac = BASE64URL_NOPAD.decode(hmac_base64url.as_bytes())?;
 
     let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
     hmac_checker.input(token.as_slice());
@@ -54,10 +54,9 @@ pub fn verify_token(token_base64url: &str, hmac_base64url: &str, hmac_key: &[u8]
 }
 
 pub fn fresh_token() -> Result<[u8; SESSID_BITS / 8]> {
-    use rand::{Rng, OsRng};
+    use rand::{Rng, thread_rng, RngCore};
     let mut session_id = [0_u8; SESSID_BITS / 8];
-    OsRng::new()
-        .chain_err(|| "Unable to connect to the system random number generator!")?
+    thread_rng()
         .fill_bytes(&mut session_id);
     Ok(session_id)
 }
@@ -75,7 +74,7 @@ pub fn get_hmac_for_sess(session_id: &str,
     hmac_maker.input(refreshed.as_bytes());
     hmac_maker.input(refresh_count.as_bytes());
     hmac_maker.input(token);
-    encode_nopad(hmac_maker.result().code())
+    BASE64URL_NOPAD.encode(hmac_maker.result().code())
 }
 
 pub fn verify_hmac_for_sess_secret(secret: &[u8], refresh_count: i32, token: &[u8]) -> bool {
@@ -126,8 +125,8 @@ pub fn check_integrity(sess_id_str: &str,
     let refresh_count = refresh_count_str.parse()?;
     let refreshed = DateTime::parse_from_rfc3339(refreshed_str)?.with_timezone(&Utc);
 
-    let hmac = decode_nopad(hmac.as_bytes())?;
-    let token = decode_nopad(token_base64url.as_bytes())?;
+    let hmac = BASE64URL_NOPAD.decode(hmac.as_bytes())?;
+    let token = BASE64URL_NOPAD.decode(token_base64url.as_bytes())?;
 
     let mut hmac_checker = Hmac::new(Sha512::new(), secret_key);
     hmac_checker.input(sess_id_str.as_bytes());
@@ -266,8 +265,7 @@ pub fn end(conn: &Connection, sess_id: i32) -> Result<Option<()>> {
                attempt.)");
            // Punishment sleep for wrong credentials
            thread::sleep(Duration::from_millis(20 +
-                                            OsRng::new()
-            .expect("If we can't get OS RNG, we might as well crash.")
+                                            thread_rng()
             .gen_range(0, 5)));
            None
        } else {

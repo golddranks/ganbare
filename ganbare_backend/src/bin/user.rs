@@ -34,7 +34,7 @@ lazy_static! {
 
     pub static ref COOKIE_HMAC_KEY: Vec<u8> ={
         dotenv::dotenv().ok();
-        let hmac_key = data_encoding::base64::decode(env::var("GANBARE_COOKIE_HMAC_KEY")
+        let hmac_key = data_encoding::BASE64.decode(env::var("GANBARE_COOKIE_HMAC_KEY")
             .expect(
                 "Environmental variable GANBARE_COOKIE_HMAC_KEY must be set!\
                 (format: 256-bit random value encoded as base64)"
@@ -68,7 +68,7 @@ lazy_static! {
 
     static ref RUNTIME_PEPPER : Vec<u8> = {
         dotenv::dotenv().ok();
-        let pepper = data_encoding::base64::decode(env::var("GANBARE_RUNTIME_PEPPER")
+        let pepper = data_encoding::BASE64.decode(env::var("GANBARE_RUNTIME_PEPPER")
             .expect(
                 "Environmental variable GANBARE_RUNTIME_PEPPER must be set!\
                 (format: 256-bit random value encoded as base64)"
@@ -175,9 +175,8 @@ fn main() {
         .subcommand(SubCommand::with_name("login").about("Login").arg(Arg::with_name("email")
                                                                           .required(true)))
         .get_matches();
-    let config = r2d2::Config::default();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(config, manager).expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
     let pooled_conn = pool.get().unwrap();
 
     match matches.subcommand() {
