@@ -201,9 +201,6 @@ pub struct UpdateAudioFile {
 #[derive(Insertable, Queryable, Associations, Identifiable,
     Debug, AsChangeset, Serialize, Deserialize)]
 #[table_name="audio_bundles"]
-
-
-
 pub struct AudioBundle {
     pub id: i32,
     pub listname: String,

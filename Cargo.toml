@@ -8,20 +8,20 @@ default = [ "specify_schema" ]
 specify_schema = ["ganbare_backend/specify_schema"]
 
 [dependencies]
-diesel = { version = "0.15", features = ["chrono", "large-tables", "postgres"]}
-diesel_codegen = { version = "0.15", default-features = false, features = ["postgres", "dotenv"] }
-dotenv = "0.10"
+diesel = { version = "0.16", features = ["chrono", "large-tables", "postgres"]}
+diesel_codegen = { version = "0.16", default-features = false, features = ["postgres", "dotenv"] }
+dotenv = "0.15"
 ganbare_backend = { path = "ganbare_backend" }
 chrono = { version = "0.4", features = ["serde"]}
 rand = "0.3"
 sharp_pencil = "0.4"
-hyper = { version = "0.10.13" , default-features = false }
+hyper = "0.10.13"
 env_logger = "0.4"
 log = "0.4"
 lazy_static = "1"
 handlebars = { version = "3.5"}
 unicode-normalization = "0.1"
-regex = "0.2"
+regex = "1.0"
 tempdir = "0.3"
 try_map = "0.2"
 mime = "0.2"
@@ -29,9 +29,9 @@ url = "1.2"
 multi_mut = "0.1"
 cookie = "0.7"
 typemap = "0.3"
-error-chain = { version = "0.10", default-features = false }
+error-chain = { version = "0.12", default-features = false }
 r2d2 = "0.7"
-r2d2-diesel = "0.15"
+r2d2-diesel = "0.16"
 rust-crypto = "0.2"
 lettre = "0.6"
 data-encoding = "1.1"
