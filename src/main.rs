@@ -314,7 +314,7 @@ fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
 use pencil::Pencil;
 
 pub fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     info!("Starting.");
     check_env_vars();
     let conn = db_connect().expect("Can't connect to database!");

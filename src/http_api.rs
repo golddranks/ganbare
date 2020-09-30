@@ -830,6 +830,7 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
     use std::fs;
     use rand::thread_rng;
     use rand::Rng;
+    use rand::distributions::Alphanumeric;
 
     let event_name = req.view_args
         .remove("event_name")
@@ -850,7 +851,7 @@ pub fn post_useraudio(req: &mut Request) -> PencilResult {
 
     let mut new_path = USER_AUDIO_DIR.to_owned();
     let mut filename = "%FT%H-%M-%SZ".to_string();
-    filename.extend(thread_rng().gen_ascii_chars().take(10));
+    filename.extend(thread_rng().sample_iter(Alphanumeric).take(10));
     filename.push_str(".ogg");
     filename = time::strftime(&filename, &time::now()).unwrap();
     new_path.push(&filename);

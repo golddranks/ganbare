@@ -13,10 +13,10 @@ diesel_codegen = { version = "0.16", default-features = false, features = ["post
 dotenv = "0.15"
 ganbare_backend = { path = "ganbare_backend" }
 chrono = { version = "0.4", features = ["serde"]}
-rand = "0.3"
+rand = "0.7"
 sharp_pencil = "0.4"
 hyper = "0.10.13"
-env_logger = "0.4"
+env_logger = "0.7"
 log = "0.4"
 lazy_static = "1"
 handlebars = { version = "3.5"}

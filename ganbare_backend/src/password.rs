@@ -69,6 +69,7 @@ fn pepper_salt_pw_hash(plaintext_pw: &str,
        })
 }
 
+#[cfg(test)]
 const TEST_STRETCHING_TIME: Duration = Duration::from_millis(500);
 
 pub fn set_password(plaintext_pw: &str,

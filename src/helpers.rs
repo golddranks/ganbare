@@ -460,7 +460,7 @@ impl<'r, 'a, 'b, 'c> IntoIp for &'r Request<'a, 'b, 'c> {
 }
 
 pub trait HeaderProcessor {
-    fn refresh_cookie(self, &UserSession) -> PencilResult;
+    fn refresh_cookie(self, sess: &UserSession) -> PencilResult;
     fn expire_cookie(self) -> Self;
     fn set_static_cache(self) -> Self;
 }
@@ -725,8 +725,9 @@ pub fn rate_limit<O, F: FnOnce() -> O>(pause_duration: Duration,
                                        function: F)
                                        -> O {
     use std::thread;
-    use rand::{Rng, OsRng};
-    let mut os_rng = OsRng::new().expect("If the OS RNG is not present, just crash.");
+    use rand::Rng;
+    use rand::thread_rng;
+    let mut os_rng = thread_rng();
 
     // I THINK 0-5 ms of random duration is enough to mask all kinds of regularities
     // such as rounding artefacts etc.
