@@ -7,7 +7,6 @@ use self::lettre::email::{EmailBuilder, Email};
 use self::pencil::Handlebars;
 use std::sync::RwLock;
 use std::collections::{VecDeque, BTreeMap};
-use rustc_serialize::json::{Json, ToJson};
 use email::lettre::email::SendableEmail;
 
 use schema::pending_email_confirms;
@@ -20,7 +19,7 @@ struct EmailData<'a> {
     site_link: &'a str,
     site_name: &'a str,
 }
-
+/*
 impl<'a> ToJson for EmailData<'a> {
     fn to_json(&self) -> Json {
         let mut m: BTreeMap<String, Json> = BTreeMap::new();
@@ -30,7 +29,7 @@ impl<'a> ToJson for EmailData<'a> {
         m.insert("site_name".to_string(), self.site_name.to_json());
         m.to_json()
     }
-}
+}*/
 
 fn enqueue_mail(email: Email, queue: &RwLock<VecDeque<Email>>) -> Result<()> {
 
@@ -191,7 +190,7 @@ pub fn complete_pending_email_confirm(conn: &Connection,
 
 pub fn clean_old_pendings(conn: &Connection, duration: chrono::Duration) -> Result<usize> {
     use schema::pending_email_confirms;
-    let deadline = chrono::UTC::now() - duration;
+    let deadline = chrono::offset::Utc::now() - duration;
     diesel::delete(pending_email_confirms::table.filter(pending_email_confirms::added.lt(deadline)))
         .execute(&**conn)
         .chain_err(|| "Couldn't delete the old pending requests.")
@@ -224,9 +223,9 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
             continue; // We don't send emails to users that don't belong to the "nag_emails" group.
         }
 
-        let last_nag = stats.last_nag_email.unwrap_or_else(|| chrono::date::MIN.and_hms(0, 0, 0));
+        let last_nag = stats.last_nag_email.unwrap_or_else(|| chrono::MIN_DATE.and_hms(0, 0, 0));
 
-        if last_nag > chrono::UTC::now() - nag_grace_period {
+        if last_nag > chrono::offset::Utc::now() - nag_grace_period {
             continue; // We have sent a nag email recently
         }
 
@@ -248,7 +247,7 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
 
         enqueue_mail(email, queue)?;
 
-        stats.last_nag_email = Some(chrono::UTC::now());
+        stats.last_nag_email = Some(chrono::offset::Utc::now());
         let _: UserStats = stats.save_changes(&**conn)?;
 
         info!("Sent slacker heatening email to {}!", email_addr);

@@ -238,7 +238,7 @@ pub fn set_done(conn: &Connection,
     use schema::event_experiences;
 
     if let Some((ev, mut exp)) = state(conn, event_name, user_id)? {
-        exp.event_finish = Some(chrono::UTC::now());
+        exp.event_finish = Some(chrono::offset::Utc::now());
         diesel::update(event_experiences::table.filter(event_experiences::event_id.eq(ev.id))
                            .filter(event_experiences::user_id.eq(user_id))).set(&exp)
                 .execute(&**conn)?;

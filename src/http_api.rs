@@ -1,6 +1,6 @@
 
 use super::*;
-use chrono::UTC;
+use chrono::offset::Utc;
 use pencil::{abort, jsonify, Response, redirect};
 use pencil::helpers::{send_file_range, send_from_directory_range};
 use regex;
@@ -192,7 +192,7 @@ fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
         Ok(quiz::Answered::W(models::WAnsweredData {
                                  id: id,
                                  audio_times: audio_times,
-                                 checked_date: UTC::now(),
+                                 checked_date: Utc::now(),
                                  active_answer_time_ms: active_answer_time_ms,
                                  full_spent_time_ms: full_spent_time_ms,
                              }))
@@ -208,7 +208,7 @@ fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
                                  id: id,
                                  audio_times: audio_times,
                                  active_answer_time_ms: active_answer_time_ms,
-                                 answered_date: UTC::now(),
+                                 answered_date: Utc::now(),
                                  reflected_time_ms: reflected_time_ms,
                                  full_answer_time_ms: full_answer_time_ms,
                                  answer_level: answer_level,
@@ -228,7 +228,7 @@ fn parse_next_quiz_answer(req: &mut Request) -> Result<quiz::Answered> {
         Ok(quiz::Answered::Q(models::QAnsweredData {
                                  id: id,
                                  answered_qa_id: answered_qa_id,
-                                 answered_date: UTC::now(),
+                                 answered_date: Utc::now(),
                                  active_answer_time_ms: active_answer_time_ms,
                                  full_answer_time_ms: full_answer_time_ms,
                                  full_spent_time_ms: full_spent_time_ms,

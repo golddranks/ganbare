@@ -130,7 +130,7 @@ fn log_answer_due_item(conn: &Connection,
     } else {
         0
     };
-    due_item.cooldown_delay = chrono::UTC::now() +
+    due_item.cooldown_delay = chrono::offset::Utc::now() +
                               chrono::Duration::seconds(metrics.cooldown_delay as i64);
 
     if due_item.correct_streak_this_time >= metrics.streak_limit {
@@ -146,7 +146,7 @@ fn log_answer_due_item(conn: &Connection,
         } else {
             0
         };
-        due_item.due_date = chrono::UTC::now() +
+        due_item.due_date = chrono::offset::Utc::now() +
                             chrono::Duration::seconds(due_item.due_delay as i64);
         if due_item.correct_streak_overall >= metrics.streak_skill_bump_criteria {
 
@@ -185,9 +185,9 @@ fn log_answer_new_due_item(conn: &Connection,
         user_id: user_id,
         correct_streak_this_time: 0,
         correct_streak_overall: 0,
-        due_date: chrono::UTC::now(),
+        due_date: chrono::offset::Utc::now(),
         due_delay: 0,
-        cooldown_delay: chrono::UTC::now(),
+        cooldown_delay: chrono::offset::Utc::now(),
         item_type: item_type,
     };
 
@@ -517,7 +517,7 @@ pub fn count_overdue_items(conn: &Connection, user_id: i32) -> Result<i64> {
     use schema::due_items;
 
     let count: i64 = due_items::table.filter(due_items::user_id.eq(user_id))
-        .filter(due_items::due_date.lt(chrono::UTC::now()))
+        .filter(due_items::due_date.lt(chrono::offset::Utc::now()))
         .count()
         .get_result(&**conn)?;
 
@@ -528,8 +528,8 @@ fn choose_random_overdue_item(conn: &Connection, user_id: i32) -> Result<Option<
     use schema::{due_items, question_data, exercise_data};
 
     let due: Option<DueItem> = due_items::table.filter(due_items::user_id.eq(user_id))
-        .filter(due_items::due_date.lt(chrono::UTC::now()))
-        .filter(due_items::cooldown_delay.lt(chrono::UTC::now()))
+        .filter(due_items::due_date.lt(chrono::offset::Utc::now()))
+        .filter(due_items::cooldown_delay.lt(chrono::offset::Utc::now()))
         .order(sql::random)
         .first(&**conn)
         .optional()?;
@@ -560,7 +560,7 @@ fn choose_random_overdue_item_include_cooldown(conn: &Connection,
     use schema::{due_items, question_data, exercise_data};
 
     let due: Option<DueItem> = due_items::table.filter(due_items::user_id.eq(user_id))
-        .filter(due_items::due_date.lt(chrono::UTC::now()))
+        .filter(due_items::due_date.lt(chrono::offset::Utc::now()))
         .order(sql::random)
         .first(&**conn)
         .optional()?;
@@ -714,7 +714,7 @@ fn choose_cooldown_q_or_e(conn: &Connection,
 
     if metrics.quizes_since_break >= metrics.max_quizes_since_break ||
        metrics.quizes_today >= metrics.max_quizes_today ||
-       metrics.break_until > chrono::UTC::now() {
+       metrics.break_until > chrono::offset::Utc::now() {
         return Ok(None);
     }
 
@@ -748,7 +748,7 @@ fn choose_q_or_e(conn: &Connection,
 
     if metrics.quizes_since_break >= metrics.max_quizes_since_break ||
        metrics.quizes_today >= metrics.max_quizes_today ||
-       metrics.break_until > chrono::UTC::now() {
+       metrics.break_until > chrono::offset::Utc::now() {
         debug!("Enough quizes for today. The break/daily limits are full.");
         return Ok(None);
     }
@@ -924,7 +924,7 @@ fn choose_new_word(conn: &Connection, metrics: &mut UserMetrics) -> Result<Optio
 
     if metrics.new_words_since_break >= metrics.max_words_since_break ||
        metrics.new_words_today >= metrics.max_words_today ||
-       metrics.break_until > chrono::UTC::now() {
+       metrics.break_until > chrono::offset::Utc::now() {
         debug!("Enough words for today. The break/daily limits are full.");
         return Ok(None);
     }
@@ -948,7 +948,7 @@ fn choose_new_word(conn: &Connection, metrics: &mut UserMetrics) -> Result<Optio
 fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Quiz>> {
     use schema::user_stats;
 
-    if chrono::UTC::now() < metrics.break_until {
+    if chrono::offset::Utc::now() < metrics.break_until {
         let due_string = metrics.break_until.to_rfc3339();
         return Ok(Some(Quiz::F(FutureJson {
                                    quiz_type: "future",
@@ -960,7 +960,7 @@ fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Q
     // once every day even though we wouldn't break a single time!
     // We are having 1 AM as the change point of the day
     // (That's 3 AM in Finland, where the users of this app are likely to reside)
-    if chrono::UTC::now() > (metrics.today.date().and_hms(1, 0, 0) + chrono::Duration::hours(24)) {
+    if chrono::offset::Utc::now() > (metrics.today.date().and_hms(1, 0, 0) + chrono::Duration::hours(24)) {
 
         let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(metrics.id))
             .get_result(&**conn)?;
@@ -968,7 +968,7 @@ fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Q
         stats.days_used += 1;
         let _: UserStats = stats.save_changes(&**conn)?;
 
-        metrics.today = chrono::UTC::today().and_hms(1, 0, 0);
+        metrics.today = chrono::offset::Utc::today().and_hms(1, 0, 0);
         metrics.new_words_since_break = 0;
         metrics.quizes_since_break = 0;
         metrics.new_words_today = 0;
@@ -979,7 +979,7 @@ fn clear_limits(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Q
 
 pub fn things_left_to_do(conn: &Connection,
                          user_id: i32)
-                         -> Result<(Option<chrono::DateTime<chrono::UTC>>, bool, bool)> {
+                         -> Result<(Option<chrono::DateTime<chrono::offset::Utc>>, bool, bool)> {
 
     let next_existing_due =
         choose_next_due_item(conn, user_id)?.map(|(due_item, _)| due_item.due_date);
@@ -1026,7 +1026,7 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
             // Nothing else left but due items – so no use breaking until there is some available
             metrics.break_until =
                 max(metrics.break_until,
-                    next_existing_due.unwrap_or_else(|| chrono::date::MAX.and_hms(0, 0, 0)));
+                    next_existing_due.unwrap_or_else(|| chrono::MAX_DATE.and_hms(0, 0, 0)));
         }
 
         let due_string = metrics.break_until.to_rfc3339();
@@ -1046,19 +1046,19 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     if words && new_quizes && due_quizes {
         debug!("Starting a break because the break limits are full.");
 
-        let time_since_last_break = chrono::UTC::now().signed_duration_since(metrics.break_until);
+        let time_since_last_break = chrono::offset::Utc::now().signed_duration_since(metrics.break_until);
 
         let discounted_breaktime = max(Duration::seconds(0),
                                        Duration::seconds(metrics.break_length as i64) -
                                        time_since_last_break);
 
-        metrics.break_until = chrono::UTC::now() + discounted_breaktime;
+        metrics.break_until = chrono::offset::Utc::now() + discounted_breaktime;
 
         if no_new_words && no_new_quizes {
             // Nothing else left but due items – so no use breaking until there is some available
             metrics.break_until =
                 max(metrics.break_until,
-                    next_existing_due.unwrap_or_else(|| chrono::date::MAX.and_hms(0, 0, 0)));
+                    next_existing_due.unwrap_or_else(|| chrono::MAX_DATE.and_hms(0, 0, 0)));
         }
 
         metrics.new_words_since_break = 0;

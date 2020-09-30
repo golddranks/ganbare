@@ -5,7 +5,7 @@ use rand::{Rng, OsRng};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha2::Sha512;
-use chrono::{self, DateTime, UTC};
+use chrono::{self, DateTime, offset::Utc};
 use data_encoding::base64url::{encode_nopad, decode_nopad};
 
 pub const SESSID_BITS: usize = 128;
@@ -15,7 +15,7 @@ pub const HMAC_BITS: usize = 512;
 pub struct UserSession {
     pub sess_id: i32,
     pub user_id: i32,
-    pub refreshed: DateTime<UTC>,
+    pub refreshed: DateTime<Utc>,
     pub refresh_now: bool,
     pub token: Vec<u8>,
     pub refresh_count: i32,
@@ -107,7 +107,7 @@ pub fn clean_old_sessions(conn: &Connection, how_old: chrono::Duration) -> Resul
     use schema::sessions;
 
     let deleted_count =
-        diesel::delete(sessions::table.filter(sessions::last_seen.lt(chrono::UTC::now() -
+        diesel::delete(sessions::table.filter(sessions::last_seen.lt(chrono::offset::Utc::now() -
                                                                      how_old))).execute(&**conn)?;
 
     Ok(deleted_count)
@@ -124,7 +124,7 @@ pub fn check_integrity(sess_id_str: &str,
     let sess_id = sess_id_str.parse()?;
     let user_id = user_id_str.parse()?;
     let refresh_count = refresh_count_str.parse()?;
-    let refreshed = DateTime::parse_from_rfc3339(refreshed_str)?.with_timezone(&UTC);
+    let refreshed = DateTime::parse_from_rfc3339(refreshed_str)?.with_timezone(&Utc);
 
     let hmac = decode_nopad(hmac.as_bytes())?;
     let token = decode_nopad(token_base64url.as_bytes())?;
@@ -154,7 +154,7 @@ pub fn check_integrity(sess_id_str: &str,
 use helpers::Cache;
 
 pub fn check(sess: &UserSession, logout_cache: &Cache<i32, UserSession>) -> Result<bool> {
-    if sess.refreshed > chrono::UTC::now() - chrono::Duration::minutes(5) {
+    if sess.refreshed > chrono::offset::Utc::now() - chrono::Duration::minutes(5) {
         if logout_cache.get(&sess.sess_id)?.is_some() {
             Ok(false) // User was recently logged out so don't trust their cookie!
         } else {
@@ -165,7 +165,7 @@ pub fn check(sess: &UserSession, logout_cache: &Cache<i32, UserSession>) -> Resu
     }
 }
 
-fn update_user_last_seen(conn: &Connection, user_id: i32, last_seen: chrono::DateTime<UTC>) -> Result<()> {
+fn update_user_last_seen(conn: &Connection, user_id: i32, last_seen: chrono::DateTime<Utc>) -> Result<()> {
     use schema::users;
 
     diesel::update(users::table.filter(users::id.eq(user_id)))
@@ -182,12 +182,12 @@ pub fn db_check(conn: &Connection,
 
     time_it!{"session::db_check", {
 
-        let oldest_viable = chrono::UTC::now() - sess_expire;
+        let oldest_viable = chrono::offset::Utc::now() - sess_expire;
         if sess.refreshed < oldest_viable {
             return Ok(None); // The session is expired
         }
         
-        let session_refreshed = chrono::UTC::now();
+        let session_refreshed = chrono::offset::Utc::now();
 
         let db_sess: Option<Session> = diesel::update(sessions::table
             .filter(
@@ -280,7 +280,7 @@ pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
 
     let sess_secret = fresh_token()?;
 
-    let session_started = chrono::UTC::now();
+    let session_started = chrono::offset::Utc::now();
 
     let new_sess = NewSession {
         user_id: user.id,

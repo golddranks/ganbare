@@ -149,7 +149,7 @@ pub fn check_password_reset(conn: &Connection,
 
     Ok(match confirm {
            Some((c, u)) => {
-               if c.added < chrono::UTC::now() - chrono::Duration::days(1) {
+               if c.added < chrono::offset::Utc::now() - chrono::Duration::days(1) {
                    diesel::delete(
                     reset_email_secrets::table
                         .filter(reset_email_secrets::user_id.eq(c.user_id))
@@ -187,7 +187,7 @@ pub fn send_pw_change_email(conn: &Connection,
             .optional()?;
 
     if let Some((secret, user)) = earlier_email {
-        if secret.added > chrono::UTC::now() - chrono::Duration::days(1) {
+        if secret.added > chrono::offset::Utc::now() - chrono::Duration::days(1) {
             return Err(ErrorKind::RateLimitExceeded.into()); // Flood filter
         } else {
             // Possible to send a new request; delete/invalidate the earlier ones:
@@ -215,7 +215,7 @@ pub fn send_pw_change_email(conn: &Connection,
                             user_id: user.id,
                             email:
                                 user.email.expect("We just found this user by the email address!"),
-                            added: chrono::UTC::now(),
+                            added: chrono::offset::Utc::now(),
                         }).into(reset_email_secrets::table)
                 .get_result(&**conn)?;
 
@@ -549,7 +549,7 @@ pub fn get_slackers(conn: &Connection, inactive: Duration) -> Result<Vec<(i32, S
 
     let slackers: Vec<(i32, Option<String>)> = users::table
         .filter(users::email.is_not_null())
-        .filter(users::last_seen.lt(chrono::UTC::now() - inactive))
+        .filter(users::last_seen.lt(chrono::offset::Utc::now() - inactive))
         .select((users::id, users::email))
         .get_results(&**conn)?;
 

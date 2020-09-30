@@ -7,7 +7,6 @@ extern crate rpassword;
 extern crate lettre;
 extern crate dotenv;
 extern crate handlebars;
-extern crate rustc_serialize;
 extern crate r2d2;
 
 use ganbare_backend::{Connection, ConnManager};

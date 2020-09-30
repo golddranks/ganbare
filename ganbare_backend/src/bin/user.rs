@@ -6,11 +6,11 @@ extern crate handlebars;
 extern crate clap;
 extern crate rpassword;
 extern crate dotenv;
-extern crate rustc_serialize;
 #[macro_use]
 extern crate lazy_static;
 extern crate r2d2;
 extern crate lettre;
+extern crate data_encoding;
 
 use ganbare_backend::models::User;
 use ganbare_backend::Connection;
@@ -18,7 +18,6 @@ use handlebars::Handlebars;
 use ganbare_backend::errors::*;
 use ganbare_backend::user::*;
 use ganbare_backend::email;
-use rustc_serialize::base64::FromBase64;
 use std::net::{SocketAddr, ToSocketAddrs};
 use diesel::LoadDsl;
 use std::env;
@@ -35,12 +34,11 @@ lazy_static! {
 
     pub static ref COOKIE_HMAC_KEY: Vec<u8> ={
         dotenv::dotenv().ok();
-        let hmac_key = env::var("GANBARE_COOKIE_HMAC_KEY")
+        let hmac_key = data_encoding::base64::decode(env::var("GANBARE_COOKIE_HMAC_KEY")
             .expect(
                 "Environmental variable GANBARE_COOKIE_HMAC_KEY must be set!\
                 (format: 256-bit random value encoded as base64)"
-            )
-            .from_base64().expect(
+            ).as_bytes()).expect(
                 "Environmental variable GANBARE_COOKIE_HMAC_KEY isn't valid Base64!
             ");
         if hmac_key.len() != 32 {
@@ -70,12 +68,11 @@ lazy_static! {
 
     static ref RUNTIME_PEPPER : Vec<u8> = {
         dotenv::dotenv().ok();
-        let pepper = env::var("GANBARE_RUNTIME_PEPPER")
+        let pepper = data_encoding::base64::decode(env::var("GANBARE_RUNTIME_PEPPER")
             .expect(
                 "Environmental variable GANBARE_RUNTIME_PEPPER must be set!\
                 (format: 256-bit random value encoded as base64)"
-            )
-            .from_base64()
+            ).as_bytes())
             .expect("Environmental variable GANBARE_RUNTIME_PEPPER isn't valid Base64!");
         if pepper.len() != 32 {
             panic!("The value must be 256-bit, that is, 32 bytes long!")

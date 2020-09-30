@@ -19,7 +19,7 @@ fn save_file(path: &mut PathBuf, orig_filename: &str, audio_dir: &Path) -> Resul
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("noextension"));
-    new_path.push(chrono::UTC::now().to_rfc3339());
+    new_path.push(chrono::offset::Utc::now().to_rfc3339());
     info!("Renaming {:?} to {:?}", &*path, &new_path);
     fs::rename(&*path, &new_path).chain_err(|| "Can't rename the audio file.")?;
     mem::swap(path, &mut new_path);

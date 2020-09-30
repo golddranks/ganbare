@@ -24,7 +24,6 @@ extern crate tempdir;
 extern crate crypto;
 pub extern crate chrono;
 extern crate rand;
-extern crate rustc_serialize;
 extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;

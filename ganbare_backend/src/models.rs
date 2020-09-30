@@ -1,40 +1,16 @@
 use super::schema::*;
-use chrono::{DateTime, UTC};
+use chrono::{DateTime, offset::Utc};
 use serde::{Deserializer, Deserialize};
 use serde::de::Visitor;
 use std::marker::PhantomData;
 use std::fmt::{self, Formatter};
 use serde::de::Error;
 
-fn double_option<T: Deserialize, D>(de: D) -> Result<Option<Option<T>>, D::Error>
-    where D: Deserializer
+pub fn double_option<'de, T, D>(de: D) -> Result<Option<Option<T>>, D::Error>
+    where T: Deserialize<'de>,
+          D: Deserializer<'de>
 {
-    #[derive(Debug)]
-    struct DoubleOptionVisitor<T> {
-        _inner: PhantomData<T>,
-    };
-
-    impl<T: Deserialize> Visitor for DoubleOptionVisitor<T> {
-        type Value = Option<Option<T>>;
-        fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-            write!(formatter,
-                   "Either a missing field, a field with null/None, or a field with value T")
-        }
-        fn visit_none<E>(self) -> Result<Self::Value, E>
-            where E: Error
-        {
-            Ok(Some(None))
-        }
-        fn visit_some<D>(self, de: D) -> Result<Self::Value, D::Error>
-            where D: Deserializer
-        {
-            match T::deserialize(de) {
-                Ok(val) => Ok(Some(Some(val))),
-                Err(e) => Err(e),
-            }
-        }
-    }
-    de.deserialize_option(DoubleOptionVisitor::<T> { _inner: PhantomData })
+    Deserialize::deserialize(de).map(Some)
 }
 
 #[derive(Insertable)]
@@ -43,26 +19,26 @@ pub struct NewUser<'a> {
     pub email: &'a str,
 }
 
-#[has_many(passwords, foreign_key = "id")]
+
 // actually, the relationship is one-to-1..0
-#[has_many(user_metrics, foreign_key = "id")]
+
 // actually, the relationship is one-to-1..0
-#[has_many(user_stats, foreign_key = "id")]
+
 // actually, the relationship is one-to-1..0
-#[has_many(sessions, foreign_key = "user_id")]
-#[has_many(skill_data, foreign_key = "user_id")]
-#[has_many(event_experiences, foreign_key = "user_id")]
-#[has_many(group_memberships, foreign_key = "user_id")]
-#[has_many(anon_aliases, foreign_key = "user_id")]
-#[has_many(pending_items, foreign_key = "user_id")]
-#[has_many(due_items, foreign_key = "user_id")]
-#[has_many(reset_email_secrets, foreign_key = "user_id")]
+
+
+
+
+
+
+
+
 #[derive(Identifiable, Clone, Queryable, Debug, Associations, AsChangeset, Serialize)]
 pub struct User {
     pub id: i32,
     pub email: Option<String>,
-    pub joined: DateTime<UTC>,
-    pub last_seen: DateTime<UTC>,
+    pub joined: DateTime<Utc>,
+    pub last_seen: DateTime<Utc>,
 }
 
 
@@ -81,8 +57,8 @@ pub struct Password {
 #[table_name="sessions"]
 pub struct NewSession<'a> {
     pub user_id: i32,
-    pub started: DateTime<UTC>,
-    pub last_seen: DateTime<UTC>,
+    pub started: DateTime<Utc>,
+    pub last_seen: DateTime<Utc>,
     pub secret: &'a [u8],
 }
 
@@ -94,8 +70,8 @@ pub struct NewSession<'a> {
 pub struct Session {
     pub id: i32,
     pub user_id: i32,
-    pub started: DateTime<UTC>,
-    pub last_seen: DateTime<UTC>,
+    pub started: DateTime<Utc>,
+    pub last_seen: DateTime<Utc>,
     pub secret: Vec<u8>,
     pub refresh_count: i32,
 }
@@ -106,7 +82,7 @@ pub struct PendingEmailConfirm {
     pub secret: String,
     pub email: String,
     pub groups: Vec<i32>,
-    pub added: DateTime<UTC>,
+    pub added: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
@@ -120,9 +96,9 @@ pub struct NewPendingEmailConfirm<'a> {
 #[derive(Identifiable, Queryable, Debug, Insertable, Associations,
     AsChangeset, Serialize, Deserialize)]
 #[table_name="user_groups"]
-#[has_many(group_memberships, foreign_key = "group_id")]
-#[has_many(anon_aliases, foreign_key = "group_id")]
-#[has_many(events, foreign_key = "required_group")]
+
+
+
 pub struct UserGroup {
     pub id: i32,
     pub group_name: String,
@@ -160,10 +136,10 @@ pub struct NewSkillNugget<'a> {
 
 #[derive(Insertable, Queryable, Associations, AsChangeset, Identifiable, Debug, Serialize)]
 #[table_name="skill_nuggets"]
-#[has_many(quiz_questions, foreign_key = "skill_id")]
-#[has_many(exercises, foreign_key = "skill_id")]
-#[has_many(skill_data, foreign_key = "skill_nugget")]
-#[has_many(words, foreign_key = "skill_nugget")]
+
+
+
+
 pub struct SkillNugget {
     pub id: i32,
     pub skill_summary: String,
@@ -178,7 +154,7 @@ pub struct NewNarrator<'a> {
 #[derive(Insertable, Queryable, Associations, Identifiable,
     AsChangeset,Debug, Serialize, Deserialize)]
 #[table_name="narrators"]
-#[has_many(audio_files, foreign_key = "narrators_id")]
+
 pub struct Narrator {
     pub id: i32,
     pub name: String,
@@ -200,7 +176,7 @@ Identifiable, Debug, Serialize, AsChangeset)]
 #[table_name="audio_files"]
 #[belongs_to(Narrator, foreign_key = "narrators_id")]
 #[belongs_to(AudioBundle, foreign_key = "bundle_id")]
-#[has_many(pending_items, foreign_key = "audio_file_id")]
+
 pub struct AudioFile {
     pub id: i32,
     pub narrators_id: i32,
@@ -225,9 +201,9 @@ pub struct UpdateAudioFile {
 #[derive(Insertable, Queryable, Associations, Identifiable,
     Debug, AsChangeset, Serialize, Deserialize)]
 #[table_name="audio_bundles"]
-#[has_many(audio_files, foreign_key = "bundle_id")]
-#[has_many(question_answers, foreign_key = "q_audio_bundle")]
-#[has_many(words, foreign_key = "audio_bundle")]
+
+
+
 pub struct AudioBundle {
     pub id: i32,
     pub listname: String,
@@ -251,9 +227,9 @@ pub struct NewQuizQuestion<'a> {
 
 #[derive(Insertable, Queryable, Associations, Identifiable, AsChangeset, Debug, Serialize)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
-#[has_many(question_answers, foreign_key = "question_id")]
-#[has_many(question_data, foreign_key = "question_id")]
-#[has_many(q_asked_data, foreign_key = "question_id")]
+
+
+
 #[table_name="quiz_questions"]
 pub struct QuizQuestion {
     pub id: i32,
@@ -313,9 +289,9 @@ pub struct UpdateAnswer {
 #[derive(Insertable, Queryable, Associations, Identifiable,
     Debug, Serialize, Deserialize, AsChangeset)]
 #[belongs_to(SkillNugget, foreign_key = "skill_id")]
-#[has_many(exercise_variants, foreign_key = "exercise_id")]
-#[has_many(exercise_data, foreign_key = "exercise_id")]
-#[has_many(e_asked_data, foreign_key = "exercise_id")]
+
+
+
 #[table_name="exercises"]
 pub struct Exercise {
     pub id: i32,
@@ -372,8 +348,8 @@ pub struct NewWord<'a> {
 #[table_name="words"]
 #[belongs_to(SkillNugget, foreign_key = "skill_nugget")]
 #[belongs_to(AudioBundle, foreign_key = "audio_bundle")]
-#[has_many(w_asked_data, foreign_key = "word_id")]
-#[has_many(exercise_variants, foreign_key = "id")]
+
+
 pub struct Word {
     pub id: i32,
     pub word: String,
@@ -402,14 +378,14 @@ pub struct UpdateWord {
 AsChangeset, Serialize)]
 #[table_name="due_items"]
 #[belongs_to(User, foreign_key = "user_id")]
-#[has_many(question_data, foreign_key = "due")]
-#[has_many(exercise_data, foreign_key = "due")]
+
+
 pub struct DueItem {
     pub id: i32,
     pub user_id: i32,
-    pub due_date: DateTime<UTC>,
+    pub due_date: DateTime<Utc>,
     pub due_delay: i32,
-    pub cooldown_delay: DateTime<UTC>,
+    pub cooldown_delay: DateTime<Utc>,
     pub correct_streak_overall: i32,
     pub correct_streak_this_time: i32,
     pub item_type: String,
@@ -419,9 +395,9 @@ pub struct DueItem {
 #[table_name="due_items"]
 pub struct NewDueItem<'a> {
     pub user_id: i32,
-    pub due_date: DateTime<UTC>,
+    pub due_date: DateTime<Utc>,
     pub due_delay: i32,
-    pub cooldown_delay: DateTime<UTC>,
+    pub cooldown_delay: DateTime<Utc>,
     pub correct_streak_overall: i32,
     pub correct_streak_this_time: i32,
     pub item_type: &'a str,
@@ -432,14 +408,14 @@ AsChangeset, Serialize, Deserialize)]
 #[table_name="pending_items"]
 #[belongs_to(User, foreign_key = "user_id")]
 #[belongs_to(AudioFile, foreign_key = "audio_file_id")]
-#[has_many(q_asked_data, foreign_key = "id")]
-#[has_many(e_asked_data, foreign_key = "id")]
-#[has_many(w_asked_data, foreign_key = "id")]
+
+
+
 pub struct PendingItem {
     pub id: i32,
     pub user_id: i32,
     pub audio_file_id: i32,
-    pub asked_date: DateTime<UTC>,
+    pub asked_date: DateTime<Utc>,
     pub pending: bool,
     pub item_type: String,
     pub test_item: bool,
@@ -459,7 +435,7 @@ pub struct NewPendingItem<'a> {
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(QuizQuestion, foreign_key = "question_id")]
 #[belongs_to(Answer, foreign_key = "correct_qa_id")]
-#[has_many(q_answered_data, foreign_key = "id")]
+
 pub struct QAskedData {
     pub id: i32,
     pub question_id: i32,
@@ -472,7 +448,7 @@ pub struct QAskedData {
 pub struct QAnsweredData {
     pub id: i32,
     pub answered_qa_id: Option<i32>,
-    pub answered_date: DateTime<UTC>,
+    pub answered_date: DateTime<Utc>,
     pub active_answer_time_ms: i32,
     pub full_answer_time_ms: i32,
     pub full_spent_time_ms: i32,
@@ -483,7 +459,7 @@ pub struct QAnsweredData {
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(Exercise, foreign_key = "exercise_id")]
 #[belongs_to(Word, foreign_key = "word_id")]
-#[has_many(e_answered_data, foreign_key = "id")]
+
 pub struct EAskedData {
     pub id: i32,
     pub exercise_id: i32,
@@ -496,7 +472,7 @@ pub struct EAskedData {
 #[belongs_to(EAskedData, foreign_key = "id")]
 pub struct EAnsweredData {
     pub id: i32,
-    pub answered_date: DateTime<UTC>,
+    pub answered_date: DateTime<Utc>,
     pub active_answer_time_ms: i32,
     pub full_answer_time_ms: i32,
     pub audio_times: i32,
@@ -510,7 +486,7 @@ AsChangeset, Serialize, Deserialize)]
 #[table_name="w_asked_data"]
 #[belongs_to(PendingItem, foreign_key = "id")]
 #[belongs_to(Word, foreign_key = "word_id")]
-#[has_many(w_answered_data, foreign_key = "id")]
+
 pub struct WAskedData {
     pub id: i32,
     pub word_id: i32,
@@ -525,7 +501,7 @@ pub struct WAnsweredData {
     pub id: i32,
     pub full_spent_time_ms: i32,
     pub audio_times: i32,
-    pub checked_date: DateTime<UTC>,
+    pub checked_date: DateTime<Utc>,
     pub active_answer_time_ms: i32,
 }
 
@@ -577,8 +553,8 @@ pub struct UserMetrics {
     pub new_words_today: i32,
     pub quizes_since_break: i32,
     pub quizes_today: i32,
-    pub break_until: DateTime<UTC>,
-    pub today: DateTime<UTC>,
+    pub break_until: DateTime<Utc>,
+    pub today: DateTime<Utc>,
     pub max_words_since_break: i32,
     pub max_words_today: i32,
     pub max_quizes_since_break: i32,
@@ -601,8 +577,8 @@ pub struct UpdateUserMetrics {
     pub new_words_today: Option<i32>,
     pub quizes_since_break: Option<i32>,
     pub quizes_today: Option<i32>,
-    pub break_until: Option<DateTime<UTC>>,
-    pub today: Option<DateTime<UTC>>,
+    pub break_until: Option<DateTime<Utc>>,
+    pub today: Option<DateTime<Utc>>,
     pub max_words_since_break: Option<i32>,
     pub max_words_today: Option<i32>,
     pub max_quizes_since_break: Option<i32>,
@@ -640,11 +616,11 @@ pub struct UserStats {
     pub all_words: i32,
     pub quiz_all_times: i32,
     pub quiz_correct_times: i32,
-    pub last_nag_email: Option<DateTime<UTC>>,
+    pub last_nag_email: Option<DateTime<Utc>>,
 }
 
 #[derive(Insertable, Queryable, Associations, Identifiable, Debug, Serialize, Deserialize)]
-#[has_many(event_experiences, foreign_key = "event_id")]
+
 #[belongs_to(UserGroup, foreign_key = "required_group")]
 #[table_name="events"]
 pub struct Event {
@@ -681,8 +657,8 @@ pub struct NewEvent<'a> {
 pub struct EventExperience {
     pub user_id: i32,
     pub event_id: i32,
-    pub event_init: DateTime<UTC>,
-    pub event_finish: Option<DateTime<UTC>>,
+    pub event_init: DateTime<Utc>,
+    pub event_finish: Option<DateTime<Utc>>,
 }
 
 #[derive(Insertable)]
@@ -701,7 +677,7 @@ pub struct EventUserdata {
     pub id: i32,
     pub user_id: i32,
     pub event_id: i32,
-    pub created: DateTime<UTC>,
+    pub created: DateTime<Utc>,
     pub key: Option<String>,
     pub data: String,
 }
@@ -728,5 +704,5 @@ pub struct ResetEmailSecrets {
     pub user_id: i32,
     pub email: String,
     pub secret: String,
-    pub added: DateTime<UTC>,
+    pub added: DateTime<Utc>,
 }

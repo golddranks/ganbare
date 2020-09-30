@@ -555,7 +555,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
             let mut filename = "%FT%H-%M-%SZ".to_string();
             filename.extend(thread_rng().gen_ascii_chars().take(10));
             filename.push_str(extension);
-            filename = format!("{}", chrono::UTC::now().format(&filename));
+            filename = format!("{}", chrono::offset::Utc::now().format(&filename));
             new_path.push(&filename);
 
             let mut file = fs::File::create(new_path)?;

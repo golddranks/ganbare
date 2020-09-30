@@ -69,6 +69,8 @@ fn pepper_salt_pw_hash(plaintext_pw: &str,
        })
 }
 
+const TEST_STRETCHING_TIME: Duration = Duration::from_millis(500);
+
 pub fn set_password(plaintext_pw: &str,
                     pepper: &[u8],
                     stretch_time: Duration)
@@ -148,7 +150,7 @@ fn test_set_check_password1() {
     use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
-    let pw = set_password("password", &pepper).unwrap();
+    let pw = set_password("password", &pepper, TEST_STRETCHING_TIME).unwrap();
     check_password("password", pw, &pepper).expect("Passwords should match!");
 }
 
@@ -157,7 +159,7 @@ fn test_set_check_password2() {
     use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
-    let pw = set_password("password1", &pepper).unwrap();
+    let pw = set_password("password1", &pepper, TEST_STRETCHING_TIME).unwrap();
     if let Ok(()) = check_password("password2", pw, &pepper) {
         panic!("Passwords shouldn't match!");
     }
@@ -169,7 +171,7 @@ fn test_set_stretch_password1() {
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
-    let init_pw = set_password("daggerfish", &pepper).unwrap();
+    let init_pw = set_password("daggerfish", &pepper, TEST_STRETCHING_TIME).unwrap();
     println!("hashed init_hash.");
     let stretched_pw_0 = stretch_password(11, init_pw);
     println!("stretched 10 → 11.");
@@ -191,7 +193,7 @@ fn test_set_stretch_password2() {
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
-    let init_pw_1 = set_password("swordfish", &pepper).unwrap();
+    let init_pw_1 = set_password("swordfish", &pepper, TEST_STRETCHING_TIME).unwrap();
     println!("hashed init_hash.");
     let init_pw_2 = stretch_password(10, init_pw_1);
     println!("stretched 10 → 10.");
@@ -207,7 +209,7 @@ fn test_set_stretch_password3() {
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
-    let init_pw = set_password("schwertfisch", &pepper).unwrap();
+    let init_pw = set_password("schwertfisch", &pepper, TEST_STRETCHING_TIME).unwrap();
     println!("hashed init_hash.");
     let stretched_pw_0 = stretch_password(11, init_pw);
     println!("stretched 10 → 11.");
@@ -227,7 +229,7 @@ fn test_set_stretch_check_password1() {
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
-    let init_pw = set_password("miekkakala", &pepper).unwrap();
+    let init_pw = set_password("miekkakala", &pepper, TEST_STRETCHING_TIME).unwrap();
     println!("hashed init_hash.");
     let stretched_pw = stretch_password(11, init_pw);
     println!("stretched 10 → 11.");
@@ -241,7 +243,7 @@ fn test_set_stretch_check_password2() {
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
-    let init_pw = set_password("miekkakala", &pepper).unwrap();
+    let init_pw = set_password("miekkakala", &pepper, TEST_STRETCHING_TIME).unwrap();
     println!("hashed init_hash.");
     let stretched_pw = stretch_password(11, init_pw);
     println!("stretched 10 → 11.");

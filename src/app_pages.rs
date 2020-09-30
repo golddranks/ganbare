@@ -23,7 +23,7 @@ fn dispatch_events(conn: &Connection,
     use ganbare_backend::EventExperience;
 
     if let Some((Event { name, .. }, EventExperience { event_init, .. })) = ev_exp {
-        if name == "training" && event_init < chrono::UTC::now() - *TRAINING_PERIOD {
+        if name == "training" && event_init < chrono::offset::Utc::now() - *TRAINING_PERIOD {
 
             // User has trained for the whole training period; has he done posttest yet?
             if !event::is_done(conn, "posttest", user_id).err_500()?
