@@ -41,3 +41,7 @@ serde = "1.0"
 
 [patch.crates-io]
 lettre = { git = "https://github.com/golddranks/lettre", branch = "v0.6.x" }
+hyper-native-tls = { git = "https://github.com/golddranks/hyper-native-tls" }
+formdata = { git = "https://github.com/golddranks/formdata" }
+mime_multipart = { git = "https://github.com/golddranks/mime-multipart", branch = "update_temporary" }
+textnonce = { git = "https://github.com/golddranks/textnonce" }
