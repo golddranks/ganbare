@@ -1,5 +1,5 @@
 # Ganbare
-A web service that helps me to do what I do. (Protip: Something related to Japanese language and language learning. And science.) I license the server code itself as copyleft open source for now, but the contents of the app (example sentences, audio, images etc.) are not licensed, and they are not in this repository. The `static` folder contains some CC 3.0 BY licensed assets that are not by me. If you use this code, kindly inform me too.
+A web service that has something to do with learning Japanese pronunciation. I license the server code itself as copyleft open source for now, but the contents of the app (example sentences, audio, images etc.) are not licensed, and they are not in this repository. The `static` folder contains some CC 3.0 BY licensed assets that are not by me. If you use this code, kindly inform me too.
 
 ## Requirements to build
 
