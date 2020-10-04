@@ -149,10 +149,10 @@ pub fn initiate(conn: &Connection,
 
     let ev: Event = events::table.filter(events::name.eq(event_name)).get_result(&**conn)?;
 
-    let exp: EventExperience = diesel::insert(&NewEventExperience {
+    let exp: EventExperience = diesel::insert_into(event_experiences::table).values(&NewEventExperience {
                                                    user_id: user_id,
                                                    event_id: ev.id,
-                                               }).into(event_experiences::table)
+                                               })
             .get_result(&**conn)?;
 
     Ok(Some((ev, exp)))
@@ -277,12 +277,12 @@ pub fn save_userdata(conn: &Connection,
     time_it!("save_userdata",
              match key {
                  None => {
-                     Ok(diesel::insert(&NewEventUserdata {
+                     Ok(diesel::insert_into(event_userdata::table).values(&NewEventUserdata {
                                             event_id: event.id,
                                             user_id: user_id,
                                             key: key,
                                             data: data,
-                                        }).into(event_userdata::table)
+                                        })
                                 .get_result(&**conn)?)
                  }
                  Some(k) => {
@@ -295,12 +295,12 @@ pub fn save_userdata(conn: &Connection,
         if let Some(userdata) = result {
             Ok(userdata)
         } else {
-            Ok(diesel::insert(&NewEventUserdata {
+            Ok(diesel::insert_into(event_userdata::table).values(&NewEventUserdata {
                                    event_id: event.id,
                                    user_id: user_id,
                                    key: key,
                                    data: data,
-                               }).into(event_userdata::table)
+                               })
                        .get_result(&**conn)?)
         }
     }

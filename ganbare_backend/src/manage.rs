@@ -51,7 +51,7 @@ pub fn create_quiz(conn: &Connection,
         skill_level: 2, // FIXME
     };
 
-    let quiz: QuizQuestion = diesel::insert(&new_quiz).into(quiz_questions::table)
+    let quiz: QuizQuestion = diesel::insert_into(quiz_questions::table).values(&new_quiz)
         .get_result(&**conn)
         .chain_err(|| "Couldn't create a new question!")?;
 
@@ -85,7 +85,7 @@ pub fn create_quiz(conn: &Connection,
             q_audio_bundle: q_bundle.id,
         };
 
-        let answer: Answer = diesel::insert(&new_answer).into(question_answers::table)
+        let answer: Answer = diesel::insert_into(question_answers::table).values(&new_answer)
             .get_result(&**conn)
             .chain_err(|| "Couldn't create a new answer!")?;
 
@@ -180,7 +180,7 @@ pub fn create_or_update_word(conn: &Connection,
             priority: w.priority,
         };
 
-        let word = diesel::insert(&new_word).into(words::table).get_result(&**conn)?;
+        let word = diesel::insert_into(words::table).values(&new_word).get_result(&**conn)?;
         return Ok(word);
     }
 
@@ -343,11 +343,11 @@ pub fn post_question(conn: &Connection,
     debug!("Post question: {:?} and answers: {:?}", question, answers);
 
     let q: QuizQuestion =
-        diesel::insert(&question).into(quiz_questions::table).get_result(&**conn)?;
+        diesel::insert_into(quiz_questions::table).values(&question).get_result(&**conn)?;
 
     for aa in &mut answers {
         aa.question_id = q.id;
-        diesel::insert(aa).into(question_answers::table).execute(&**conn)?;
+        diesel::insert_into(question_answers::table).values(&*aa).execute(&**conn)?;
     }
     Ok(q.id)
 }
@@ -360,11 +360,11 @@ pub fn post_exercise(conn: &Connection,
 
     conn.transaction(|| -> Result<i32> {
 
-            let q: Exercise = diesel::insert(&exercise).into(exercises::table).get_result(&**conn)?;
+            let q: Exercise = diesel::insert_into(exercises::table).values(&exercise).get_result(&**conn)?;
 
             for aa in &mut answers {
                 aa.exercise_id = q.id;
-                diesel::insert(aa).into(exercise_variants::table).execute(&**conn)?;
+                diesel::insert_into(exercise_variants::table).values(&*aa).execute(&**conn)?;
             }
             Ok(q.id)
 
@@ -470,9 +470,8 @@ pub fn replace_audio_bundle(conn: &Connection, bundle_id: i32, new_bundle_id: i3
     })
 }
 
+use ureq;
 use regex::Regex;
-use reqwest::Client;
-use reqwest::header::ContentType;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -488,16 +487,10 @@ lazy_static! {
 
     static ref CONVERTED_LINKS: RwLock<HashMap<String, String>>
         = RwLock::new(HashMap::<String, String>::new());
-
-    static ref HTTP_CLIENT: Client
-        = Client::new().expect("If this fails, we are done for anyway.");
 }
 
 pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
     use rand::{thread_rng, Rng};
-    use mime::Mime;
-    use mime::TopLevel::Image;
-    use mime::SubLevel::{Png, Jpeg, Gif};
     use std::fs;
     use std::io;
     use rand::distributions::Alphanumeric;
@@ -523,11 +516,9 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
 
             info!("Downloading the link target.");
             let desanitized_url = url.replace("&amp;", "&");
-            let req = HTTP_CLIENT.get(&desanitized_url);
-            let mut resp =
-                req.send().map_err(|e| Error::from(format!("Couldn't load the URL. {:?}", e)))?;
+            let resp = ureq::get(&desanitized_url).call();
 
-            assert!(resp.status().is_success());
+            assert!(resp.status() < 400);
 
             let extension = {
                 let fuzzy_guess_url: Option<&str> = EXTENSION_GUESS.captures_iter(url)
@@ -535,7 +526,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
                     .and_then(|c| c.get(0))
                     .map(|g| g.as_str());
                 let file_extension = url_match.get(2).map(|m| m.as_str());
-                let content_type = resp.headers().get::<ContentType>();
+                let content_type = resp.header("Content-Type");
 
                 debug!("Original file extension: {:?}, Guess from URL: {:?}, Content type: {:?}",
                        file_extension,
@@ -543,9 +534,9 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
                        content_type);
 
                 match content_type {
-                    Some(&ContentType(Mime(Image, Png, _))) => ".png",
-                    Some(&ContentType(Mime(Image, Jpeg, _))) => ".jpg",
-                    Some(&ContentType(Mime(Image, Gif, _))) => ".gif",
+                    Some("image/png") => ".png",
+                    Some("image/jpeg") => ".jpg",
+                    Some("image/gif") => ".gif",
                     Some(_) | None => {
                         file_extension.or_else(|| fuzzy_guess_url).unwrap_or(".noextension")
                     }
@@ -560,7 +551,7 @@ pub fn sanitize_links(text: &str, image_dir: &Path) -> Result<String> {
             new_path.push(&filename);
 
             let mut file = fs::File::create(new_path)?;
-            io::copy(&mut resp, &mut file)?;
+            io::copy(&mut resp.into_reader(), &mut file)?;
             info!("Saved the file to {:?}", file);
             let new_url = String::from("/api/images/") + &filename;
 

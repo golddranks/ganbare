@@ -96,13 +96,13 @@ pub fn add_user(conn: &Connection,
 
     let new_user = NewUser { email: email };
 
-    let user: User = diesel::insert(&new_user).into(users::table).get_result(&**conn)?;
+    let user: User = diesel::insert_into(users::table).values(&new_user).get_result(&**conn)?;
 
-    diesel::insert(&pw.into_db(user.id)).into(passwords::table).execute(&**conn)?;
+    diesel::insert_into(passwords::table).values(&pw.into_db(user.id)).execute(&**conn)?;
 
-    diesel::insert(&NewUserMetrics { id: user.id }).into(user_metrics::table).execute(&**conn)?;
+    diesel::insert_into(user_metrics::table).values(&NewUserMetrics { id: user.id }).execute(&**conn)?;
 
-    diesel::insert(&NewUserStats { id: user.id }).into(user_stats::table).execute(&**conn)?;
+    diesel::insert_into(user_stats::table).values(&NewUserStats { id: user.id }).execute(&**conn)?;
 
     info!("Created a new user, with email {:?}.", email);
     Ok(user)
@@ -126,7 +126,7 @@ pub fn set_password(conn: &Connection,
         let pw = password::set_password(password, pepper, stretching_time)
             .chain_err(|| "Setting password didn't succeed!")?;
 
-        diesel::insert(&pw.into_db(u.id)).into(passwords::table)
+        diesel::insert_into(passwords::table).values(&pw.into_db(u.id))
             .execute(&**conn)
             .chain_err(|| "Couldn't insert the new password into database!")?;
 
@@ -210,13 +210,13 @@ pub fn send_pw_change_email(conn: &Connection,
     let (new_secret, hmac) = session::new_token_and_hmac(hmac_key)?;
 
     let result =
-        diesel::insert(&ResetEmailSecrets {
+        diesel::insert_into(reset_email_secrets::table).values(&ResetEmailSecrets {
                             secret: new_secret,
                             user_id: user.id,
                             email:
                                 user.email.expect("We just found this user by the email address!"),
                             added: chrono::offset::Utc::now(),
-                        }).into(reset_email_secrets::table)
+                        })
                 .get_result(&**conn)?;
 
     Ok((result, hmac))
@@ -308,11 +308,11 @@ pub fn join_user_group_by_id(conn: &Connection,
                              -> Result<GroupMembership> {
     use schema::group_memberships;
 
-    let membership: GroupMembership = diesel::insert(&GroupMembership {
+    let membership: GroupMembership = diesel::insert_into(group_memberships::table).values(&GroupMembership {
                                                           user_id: user_id,
                                                           group_id: group_id,
                                                           anonymous: false,
-                                                      }).into(group_memberships::table)
+                                                      })
             .get_result(&**conn)?;
     Ok(membership)
 }
@@ -380,11 +380,11 @@ pub fn join_user_group_by_name(conn: &Connection,
         .first(&**conn)?;
 
     // FIXME when diesel gets UPSERT, streamline this
-    let membership: Option<GroupMembership> = diesel::insert(&GroupMembership {
+    let membership: Option<GroupMembership> = diesel::insert_into(group_memberships::table).values(&GroupMembership {
                                                                   user_id: user_id,
                                                                   group_id: group.id,
                                                                   anonymous: false,
-                                                              }).into(group_memberships::table)
+                                                              })
             .get_result(&**conn)
             .optional()
             .or_else(|e| match e {
@@ -460,7 +460,7 @@ pub fn get_users_by_group(conn: &Connection,
 pub fn get_group(conn: &Connection, group_name: &str) -> Result<Option<UserGroup>> {
     use schema::user_groups;
 
-    let group: Option<(UserGroup)> =
+    let group: Option<UserGroup> =
         user_groups::table.filter(user_groups::group_name.eq(group_name))
             .get_result(&**conn)
             .optional()?;

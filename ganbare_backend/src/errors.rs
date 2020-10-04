@@ -8,7 +8,7 @@ error_chain! {
             DieselError(::diesel::result::Error);
             DieselMigrationError(::diesel_migrations::RunMigrationsError);
             FmtError(::std::fmt::Error);
-            R2D2Error(::r2d2::Error);
+            R2D2Error(diesel::r2d2::Error);
             DataEncodingError(::data_encoding::DecodeError);
             ChronoParseError(::chrono::ParseError);
         }

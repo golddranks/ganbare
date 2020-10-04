@@ -12,13 +12,13 @@ use ganbare::errors::Result;
 use ganbare::user;
 use ganbare::session;
 use ganbare::errors;
+use diesel::r2d2;
 use std::path::PathBuf;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 pub use std::time::{Instant, Duration};
 use time::Duration as TimeDuration;
 use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
 use time;
-use r2d2;
 use ganbare_backend::ConnManager;
 use ganbare_backend::Connection;
 use ganbare_backend::session::UserSession;
@@ -263,9 +263,13 @@ lazy_static! {
     };
 
     pub static ref POOL: r2d2::Pool<ConnManager> = {
-       let manager = ConnManager::new(DATABASE_URL.as_str());
+        info!("about to create ConnManager");
+        let manager = ConnManager::new(DATABASE_URL.as_str());
+        info!("created ConnManager");
 
-       r2d2::Pool::new(manager).expect("Failed to create pool.")
+        let r = r2d2::Pool::new(manager).expect("Failed to create pool.");
+        info!("created r2d2::Pool");
+        r
     };
 }
 
@@ -282,7 +286,11 @@ pub fn get_version_info() -> (&'static str, &'static str, bool) {
 pub fn db_connect() -> Result<Connection> {
     use ganbare_backend::ResultExt;
 
-    let conn = time_it!("connect to db", POOL.get().chain_err(|| "DB timeout"))?;
+    info!("before time_it");
+    let conn = time_it!("connect to db", {
+        info!("inside time_it");
+        POOL.get().chain_err(|| { info!("error"); "DB timeout" })
+    })?;
     Ok(conn)
 }
 

@@ -67,7 +67,7 @@ pub fn get_create_narrator(conn: &Connection, mut name: &str) -> Result<Narrator
     Ok(match narrator {
            Some(narrator) => narrator,
            None => {
-               diesel::insert(&NewNarrator { name: name }).into(narrators::table)
+               diesel::insert_into(narrators::table).values(&NewNarrator { name: name })
                    .get_result(&**conn)
                    .chain_err(|| "Database error!")?
            }
@@ -217,7 +217,7 @@ fn default_narrator_id(conn: &Connection, opt_narrator: &mut Option<Narrator>) -
         Ok(narrator.id)
     } else {
 
-        let new_narrator: Narrator = diesel::insert(&NewNarrator { name: "anonymous" }).into(narrators::table)
+        let new_narrator: Narrator = diesel::insert_into(narrators::table).values(&NewNarrator { name: "anonymous" })
             .get_result(&**conn)
             .chain_err(|| "Couldn't create a new narrator!")?;
 
@@ -230,9 +230,9 @@ fn default_narrator_id(conn: &Connection, opt_narrator: &mut Option<Narrator>) -
 
 pub fn new_bundle(conn: &Connection, name: &str) -> Result<AudioBundle> {
     use schema::audio_bundles;
-    let bundle: AudioBundle = diesel::insert(&NewAudioBundle { listname: name }).into(audio_bundles::table)
+    let bundle: AudioBundle = diesel::insert_into(audio_bundles::table).values(&NewAudioBundle { listname: name })
         .get_result(&**conn)
-        .chain_err(|| "Can't insert a new audio bundle!")?;
+        .chain_err(|| "Can't insert_into().values a new audio bundle!")?;
 
     info!("{:?}", bundle);
 
@@ -289,7 +289,7 @@ pub fn get_create_bundle(conn: &Connection, listname: &str) -> Result<AudioBundl
     Ok(match bundle {
            Some(bundle) => bundle,
            None => {
-               diesel::insert(&NewAudioBundle { listname: listname }).into(audio_bundles::table)
+               diesel::insert_into(audio_bundles::table).values(&NewAudioBundle { listname: listname })
                    .get_result(&**conn)?
            }
        })
@@ -389,7 +389,7 @@ pub fn save(conn: &Connection,
         file_sha2: hash,
     };
 
-    let audio_file: AudioFile = diesel::insert(&new_q_audio).into(audio_files::table)
+    let audio_file: AudioFile = diesel::insert_into(audio_files::table).values(&new_q_audio)
         .get_result(&**conn)
         .chain_err(|| "Couldn't create a new audio file!")?;
 
@@ -432,7 +432,7 @@ pub fn load_all_from_bundle(conn: &Connection, bundle_id: i32) -> Result<Vec<Aud
 
 pub fn load_random_from_bundle(conn: &Connection, bundle_id: i32) -> Result<AudioFile> {
     use schema::{audio_files, narrators};
-    use rand::{Rng, thread_rng};
+    use rand::Rng;
 
     let mut q_audio_files: Vec<(AudioFile, Narrator)> =
         audio_files::table.inner_join(narrators::table)

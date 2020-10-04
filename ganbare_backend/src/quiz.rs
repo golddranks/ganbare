@@ -87,33 +87,33 @@ fn new_pending_item(conn: &Connection,
         Word(id) => ("word", id),
     };
 
-    Ok(diesel::insert(&NewPendingItem {
+    Ok(diesel::insert_into(pending_items::table).values(&NewPendingItem {
                            user_id: user_id,
                            audio_file_id: audio_file_id,
                            item_type: item_type,
                            test_item: test_item,
-                       }).into(pending_items::table)
+                       })
                .get_result(&**conn)?)
 }
 
 fn register_future_q_answer(conn: &Connection, data: &QAskedData) -> Result<()> {
     use schema::q_asked_data;
 
-    diesel::insert(data).into(q_asked_data::table).execute(&**conn)?;
+    diesel::insert_into(q_asked_data::table).values(data).execute(&**conn)?;
     Ok(())
 }
 
 fn register_future_e_answer(conn: &Connection, data: &EAskedData) -> Result<()> {
     use schema::e_asked_data;
 
-    diesel::insert(data).into(e_asked_data::table).execute(&**conn)?;
+    diesel::insert_into(e_asked_data::table).values(data).execute(&**conn)?;
     Ok(())
 }
 
 fn register_future_w_answer(conn: &Connection, data: &WAskedData) -> Result<()> {
     use schema::w_asked_data;
 
-    diesel::insert(data).into(w_asked_data::table).execute(&**conn)?;
+    diesel::insert_into(w_asked_data::table).values(data).execute(&**conn)?;
     Ok(())
 }
 
@@ -191,7 +191,7 @@ fn log_answer_new_due_item(conn: &Connection,
         item_type: item_type,
     };
 
-    let due_item: DueItem = diesel::insert(&new_due_item).into(due_items::table)
+    let due_item: DueItem = diesel::insert_into(due_items::table).values(&new_due_item)
         .get_result(&**conn)?;
 
     Ok(log_answer_due_item(conn, due_item, skill_id, correct, metrics)?)
@@ -214,7 +214,7 @@ fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData) ->
     pending_item.pending = false;
     let _: PendingItem = pending_item.save_changes(&**conn)?;
 
-    diesel::insert(answered).into(w_answered_data::table).execute(&**conn)?;
+    diesel::insert_into(w_answered_data::table).values(answered).execute(&**conn)?;
 
     let word: Word = words::table.filter(words::id.eq(asked.word_id)).get_result(&**conn)?;
 
@@ -260,7 +260,7 @@ fn log_answer_question(conn: &Connection,
 
     let correct = asked.correct_qa_id == answered.answered_qa_id.unwrap_or(-1);
 
-    diesel::insert(answered).into(q_answered_data::table).execute(&**conn)?;
+    diesel::insert_into(q_answered_data::table).values(answered).execute(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
@@ -323,7 +323,7 @@ fn log_answer_question(conn: &Connection,
             question_id: asked.question_id,
             due: due_item.id,
         };
-           let _: QuestionData = diesel::insert(&questiondata).into(question_data::table)
+           let _: QuestionData = diesel::insert_into(question_data::table).values(&questiondata)
             .get_result(&**conn)?;
        })
 }
@@ -352,7 +352,7 @@ fn log_answer_exercise(conn: &Connection,
     pending_item.pending = false;
     let _: PendingItem = pending_item.save_changes(&**conn)?;
 
-    diesel::insert(answered).into(e_answered_data::table).execute(&**conn)?;
+    diesel::insert_into(e_answered_data::table).values(answered).execute(&**conn)?;
 
     let mut stats: UserStats = user_stats::table.filter(user_stats::id.eq(user_id))
         .get_result(&**conn)?;
@@ -413,7 +413,7 @@ fn log_answer_exercise(conn: &Connection,
             exercise_id: asked.exercise_id,
         };
            let _: ExerciseData =
-            diesel::insert(&exercisedata).into(exercise_data::table)
+            diesel::insert_into(exercise_data::table).values(&exercisedata)
                 .get_result(&**conn)
                 .chain_err(|| "Couldn't save the question tally data to database!")?;
        })
@@ -611,13 +611,13 @@ fn choose_new_question(conn: &Connection, user_id: i32) -> Result<Option<QuizQue
 */
     let new_question: Option<QuizQuestion> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::Integer,
-        diesel::types::Text,
-        diesel::types::Text,
-        diesel::types::Text,
-        diesel::types::Bool,
-        diesel::types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Text,
+        diesel::sql_types::Text,
+        diesel::sql_types::Text,
+        diesel::sql_types::Bool,
+        diesel::sql_types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -675,10 +675,10 @@ fn choose_new_exercise(conn: &Connection, user_id: i32) -> Result<Option<Exercis
 */
     let new_exercise: Option<Exercise> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::Integer,
-        diesel::types::Bool,
-        diesel::types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Bool,
+        diesel::sql_types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -793,14 +793,14 @@ fn choose_new_random_word(conn: &Connection, user_id: i32) -> Result<Option<Word
 */
     let new_word: Option<Word> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::Text,
-        diesel::types::Text,
-        diesel::types::Integer,
-        diesel::types::Integer,
-        diesel::types::Bool,
-        diesel::types::Integer,
-        diesel::types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Text,
+        diesel::sql_types::Text,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Bool,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -872,14 +872,14 @@ fn choose_new_paired_word(conn: &Connection, user_id: i32) -> Result<Option<Word
 */
     let new_word: Option<Word> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::Text,
-        diesel::types::Text,
-        diesel::types::Integer,
-        diesel::types::Integer,
-        diesel::types::Bool,
-        diesel::types::Integer,
-        diesel::types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Text,
+        diesel::sql_types::Text,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Bool,
+        diesel::sql_types::Integer,
+        diesel::sql_types::Integer,
         )>(&format!(r###"
 SELECT
     id,
@@ -1078,8 +1078,6 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
 
 fn ask_new_question(conn: &Connection, id: i32) -> Result<(QuizQuestion, i32, Vec<Answer>, i32)> {
-    use rand::Rng;
-
     let (question, answers, q_audio_bundles) = try_or!{ load_question(conn, id)?,
                 else bail!(
                     ErrorKind::DatabaseOdd(

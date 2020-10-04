@@ -13,7 +13,7 @@ extern crate error_chain;
 #[macro_use]
 pub extern crate ganbare_backend;
 
-#[macro_use] 
+extern crate diesel;
 extern crate diesel_migrations;
 
 extern crate try_map;
@@ -33,9 +33,6 @@ extern crate lettre;
 extern crate data_encoding;
 extern crate serde;
 extern crate serde_json;
-
-extern crate r2d2;
-extern crate r2d2_diesel;
 
 #[macro_use]
 mod helpers;
@@ -320,11 +317,14 @@ pub fn main() {
     env_logger::init();
     info!("Starting.");
     check_env_vars();
+    debug!("Env vars OK.");
     let conn = db_connect().expect("Can't connect to database!");
+    debug!("Connected to DB.");
     let installed = ganbare::db::check(&conn).expect("Something funny with the DB!");
     info!("Database OK. Installed: {}", installed);
 
     let mut app = Pencil::new(".");
+    debug!("Init Pencil.");
 
     include_templates!(app,
                        "templates",

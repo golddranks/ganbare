@@ -8,11 +8,8 @@ extern crate serde;
 #[macro_use]
 pub extern crate diesel;
 
-#[macro_use]
 pub extern crate diesel_migrations;
 
-extern crate r2d2;
-extern crate r2d2_diesel;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
@@ -21,6 +18,7 @@ extern crate mime;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate ureq;
 extern crate try_map;
 extern crate tempdir;
 extern crate crypto;
@@ -29,7 +27,6 @@ extern crate rand;
 extern crate data_encoding;
 extern crate unicode_normalization;
 extern crate regex;
-extern crate reqwest;
 extern crate dotenv;
 #[macro_use]
 extern crate binary_macros;
@@ -40,8 +37,8 @@ use std::sync::atomic::{Ordering, AtomicBool};
 
 pub use diesel::prelude::*;
 pub use diesel::pg::PgConnection as DieselPgConnection;
-pub type ConnManager = r2d2_diesel::ConnectionManager<DieselPgConnection>;
-pub type Connection = r2d2::PooledConnection<ConnManager>;
+pub type ConnManager = diesel::r2d2::ConnectionManager<DieselPgConnection>;
+pub type Connection = diesel::r2d2::PooledConnection<ConnManager>;
 pub use diesel::Connection as ConnectionTrait;
 
 
@@ -113,10 +110,10 @@ pub use errors::*;
 
 
 pub mod sql {
-    use diesel::types;
+    use diesel::sql_types::{Numeric, Text, Nullable};
 
-    no_arg_sql_function!(random, types::Numeric);
-    sql_function!(lower, lower_sql_function, (string: types::Nullable<types::Text>) -> types::Nullable<types::Text>);
+    no_arg_sql_function!(random, Numeric);
+    sql_function!(fn lower(x: Nullable<Text>) -> Nullable<Text>);
 }
 
 
@@ -194,8 +191,7 @@ pub mod skill {
         Ok(match skill_nugget {
                Some(nugget) => nugget,
                None => {
-            diesel::insert(&NewSkillNugget{ skill_summary: skill_summary })
-                .into(skill_nuggets::table)
+            diesel::insert_into(skill_nuggets::table).values(&NewSkillNugget{ skill_summary: skill_summary })
                 .get_result(&**conn)
                 .chain_err(|| "Database error!")?
         }
@@ -343,11 +339,11 @@ pub mod skill {
                 .set(skill_data::skill_level.eq(skill_data.skill_level + level_increment))
                 .get_result(&**conn)?
            } else {
-               diesel::insert(&SkillData {
+               diesel::insert_into(skill_data::table).values(&SkillData {
                                    user_id: user_id,
                                    skill_nugget: skill_id,
                                    skill_level: level_increment,
-                               }).into(skill_data::table)
+                               })
                        .get_result(&**conn)?
            })
 

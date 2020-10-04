@@ -1,7 +1,7 @@
 use super::*;
 use std::thread;
 use std::time::Duration;
-use rand::{Rng, thread_rng};
+use rand::{Rng, thread_rng, RngCore};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha2::Sha512;
@@ -22,10 +22,6 @@ pub struct UserSession {
 }
 
 pub fn new_token_and_hmac(hmac_key: &[u8]) -> Result<(String, String)> {
-    use crypto::hmac::Hmac;
-    use crypto::mac::Mac;
-    use crypto::sha2::Sha512;
-
     let token = session::fresh_token()?;
     let mut hmac_checker = Hmac::new(Sha512::new(), hmac_key);
     hmac_checker.input(&token[..]);
@@ -37,10 +33,6 @@ pub fn new_token_and_hmac(hmac_key: &[u8]) -> Result<(String, String)> {
 }
 
 pub fn verify_token(token_base64url: &str, hmac_base64url: &str, hmac_key: &[u8]) -> Result<bool> {
-    use crypto::hmac::Hmac;
-    use crypto::mac::{Mac, MacResult};
-    use crypto::sha2::Sha512;
-
     let token = BASE64URL_NOPAD.decode(token_base64url.as_bytes())?;
     let hmac = BASE64URL_NOPAD.decode(hmac_base64url.as_bytes())?;
 
@@ -54,7 +46,6 @@ pub fn verify_token(token_base64url: &str, hmac_base64url: &str, hmac_key: &[u8]
 }
 
 pub fn fresh_token() -> Result<[u8; SESSID_BITS / 8]> {
-    use rand::{Rng, thread_rng, RngCore};
     let mut session_id = [0_u8; SESSID_BITS / 8];
     thread_rng()
         .fill_bytes(&mut session_id);
@@ -289,7 +280,7 @@ pub fn start(conn: &Connection, user: &User) -> Result<UserSession> {
 
     update_user_last_seen(conn, user.id, session_started)?;
 
-    let db_sess: Session = diesel::insert(&new_sess).into(sessions::table)
+    let db_sess: Session = diesel::insert_into(sessions::table).values(&new_sess)
         .get_result(&**conn)
         .chain_err(|| "Couldn't start a session!")?;
 

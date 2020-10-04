@@ -8,13 +8,13 @@ default = [ "specify_schema" ]
 specify_schema = ["ganbare_backend/specify_schema"]
 
 [dependencies]
-diesel = { version = "0.99", features = ["chrono", "large-tables", "postgres"]}
-diesel_migrations = { version = "0.99" }
+diesel = { version = "1", features = ["chrono", "32-column-tables", "postgres", "r2d2"]}
+diesel_migrations = { version = "1" }
 dotenv = "0.15"
 ganbare_backend = { path = "ganbare_backend" }
 chrono = { version = "0.4", features = ["serde"]}
 rand = "0.7"
-sharp_pencil = "0.4"
+sharp_pencil = "0.5"
 hyper = "0.10.13"
 env_logger = "0.7"
 log = "0.4"
@@ -30,8 +30,6 @@ multi_mut = "0.1"
 cookie = "0.12"
 typemap = "0.3"
 error-chain = { version = "0.12", default-features = false }
-r2d2 = "0.8"
-r2d2-diesel = "0.99"
 rust-crypto = "0.2"
 lettre = "0.6"
 data-encoding = "2"
@@ -41,7 +39,3 @@ serde = "1.0"
 
 [patch.crates-io]
 lettre = { git = "https://github.com/golddranks/lettre", branch = "v0.6.x" }
-hyper-native-tls = { git = "https://github.com/golddranks/hyper-native-tls" }
-formdata = { git = "https://github.com/golddranks/formdata" }
-mime_multipart = { git = "https://github.com/golddranks/mime-multipart" }
-textnonce = { git = "https://github.com/golddranks/textnonce" }

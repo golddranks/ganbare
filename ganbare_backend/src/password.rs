@@ -3,6 +3,7 @@ extern crate dotenv;
 use super::errors::*;
 use super::models::Password;
 use std::time::{Instant, Duration};
+use rand::{thread_rng, RngCore};
 
 #[derive(Clone, Copy)]
 pub struct HashedPassword {
@@ -76,7 +77,6 @@ pub fn set_password(plaintext_pw: &str,
                     pepper: &[u8],
                     stretch_time: Duration)
                     -> Result<HashedPassword> {
-    use rand::{Rng, thread_rng, RngCore};
 
     if plaintext_pw.len() < 8 {
         return Err(ErrorKind::PasswordTooShort.into());
@@ -148,7 +148,6 @@ pub fn check_password(plaintext_pw: &str, pw_from_db: HashedPassword, pepper: &[
 
 #[test]
 fn test_set_check_password1() {
-    use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
     let pw = set_password("password", &pepper, TEST_STRETCHING_TIME).unwrap();
@@ -157,7 +156,6 @@ fn test_set_check_password1() {
 
 #[test]
 fn test_set_check_password2() {
-    use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
     let pw = set_password("password1", &pepper, TEST_STRETCHING_TIME).unwrap();
@@ -168,7 +166,6 @@ fn test_set_check_password2() {
 
 #[test]
 fn test_set_stretch_password1() {
-    use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
@@ -190,7 +187,6 @@ fn test_set_stretch_password1() {
 
 #[test]
 fn test_set_stretch_password2() {
-    use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
@@ -206,7 +202,6 @@ fn test_set_stretch_password2() {
 
 #[test]
 fn test_set_stretch_password3() {
-    use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
@@ -226,7 +221,6 @@ fn test_set_stretch_password3() {
 
 #[test]
 fn test_set_stretch_check_password1() {
-    use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 
@@ -240,7 +234,6 @@ fn test_set_stretch_check_password1() {
 
 #[test]
 fn test_set_stretch_check_password2() {
-    use rand::{StdRng, Rng};
     let mut pepper = [0_u8; 32];
     StdRng::new().unwrap().fill_bytes(&mut pepper);
 

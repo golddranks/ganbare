@@ -6,7 +6,7 @@ use std::time::Duration;
 use self::lettre::email::{EmailBuilder, Email};
 use self::pencil::Handlebars;
 use std::sync::RwLock;
-use std::collections::{VecDeque, BTreeMap};
+use std::collections::VecDeque;
 use email::lettre::email::SendableEmail;
 
 use schema::pending_email_confirms;
@@ -139,7 +139,7 @@ pub fn add_pending_email_confirm(conn: &Connection,
             secret: secret.as_ref(),
             groups: groups,
         };
-        diesel::insert(&confirm).into(pending_email_confirms::table)
+        diesel::insert_into(pending_email_confirms::table).values(&confirm)
             .execute(&**conn)
             .chain_err(|| "Error :(")?;
     }
@@ -147,7 +147,6 @@ pub fn add_pending_email_confirm(conn: &Connection,
 }
 
 pub fn get_all_pending_email_confirms(conn: &Connection) -> Result<Vec<String>> {
-    use schema::pending_email_confirms;
     let emails: Vec<String> = pending_email_confirms::table.select(pending_email_confirms::email)
         .get_results(&**conn)?;
 
@@ -189,7 +188,6 @@ pub fn complete_pending_email_confirm(conn: &Connection,
 }
 
 pub fn clean_old_pendings(conn: &Connection, duration: chrono::Duration) -> Result<usize> {
-    use schema::pending_email_confirms;
     let deadline = chrono::offset::Utc::now() - duration;
     diesel::delete(pending_email_confirms::table.filter(pending_email_confirms::added.lt(deadline)))
         .execute(&**conn)

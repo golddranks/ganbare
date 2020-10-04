@@ -5,10 +5,17 @@ services:
       context: .
       dockerfile: scripts/Dockerfile
       args:
-        PROJECT_ROOT: '5KV6gxzAhAGRH1FfWaoPbg==' # Any base64 value will do
+        GANBARE_BUILDTIME_PEPPER: '5KV6gxzAhAGRH1FfWaoPbg==' # Any base64 value will do
     image: golddranks/ganbare_web:tag
     ports:
       - "8080:8080"
+    environment:
+      RUST_LOG: trace
+      GANBARE_DATABASE_URL: postgres://postgres:password@db/ganbare_dev
+      GANBARE_RUNTIME_PEPPER: '00BGpjB/ITFcy4Ivf+rYaWU+Ro3ciKjIAjJNBEXTfGo='
+      GANBARE_EMAIL_SERVER: localhost:25
+      GANBARE_SITE_DOMAIN: localhost
+      GANBARE_COOKIE_HMAC_KEY: '7YjOdv8IeEw8SZnYl7j/LPXGVHyhGRElm7WXWTGSLcU='
   db:
     build:
       context: .
