@@ -1,4 +1,4 @@
-error_chain! {
+error_chain::error_chain! {
         foreign_links {
             ParseBoolError(::std::str::ParseBoolError);
             VarError(::std::env::VarError);

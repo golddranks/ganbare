@@ -1,17 +1,3 @@
-extern crate ganbare_backend;
-extern crate diesel;
-extern crate handlebars;
-
-#[macro_use]
-extern crate clap;
-extern crate rpassword;
-extern crate dotenv;
-#[macro_use]
-extern crate lazy_static;
-extern crate r2d2;
-extern crate lettre;
-extern crate data_encoding;
-
 use ganbare_backend::models::User;
 use ganbare_backend::Connection;
 use handlebars::Handlebars;
@@ -19,7 +5,7 @@ use ganbare_backend::errors::*;
 use ganbare_backend::user::*;
 use ganbare_backend::email;
 use std::net::{SocketAddr, ToSocketAddrs};
-use diesel::LoadDsl;
+use diesel::query_dsl::RunQueryDsl;
 use std::env;
 use std::time::Duration;
 use ganbare_backend::ConnManager;
@@ -28,6 +14,7 @@ use std::collections::VecDeque;
 use lettre::email::Email;
 use lettre::transport::smtp::SmtpTransportBuilder;
 use lettre::transport::EmailTransport;
+use lazy_static::lazy_static;
 
 
 lazy_static! {
@@ -176,7 +163,7 @@ fn main() {
                                                                           .required(true)))
         .get_matches();
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
+    let pool = diesel::r2d2::Pool::new(manager).expect("Failed to create pool.");
     let pooled_conn = pool.get().unwrap();
 
     match matches.subcommand() {
@@ -279,7 +266,7 @@ fn main() {
                 }
                 Err(err_chain) => {
                     for err in err_chain.iter() {
-                        println!("Error: {}\nCause: {:?}", err, err.cause())
+                        println!("Error: {}\nCause: {:?}", err, err.source())
                     }
                 }
             }

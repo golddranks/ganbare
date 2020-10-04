@@ -2,6 +2,7 @@
 name = "ganbare_backend"
 version = "0.3.0"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
+edition = "2018"
 
 [features]
 default = ["specify_schema"]
@@ -32,7 +33,6 @@ try_map = "0.3"
 handlebars = "3.5"
 byteorder = "1.0"
 serde = { version = "1.0", features = [ "derive" ] }
-serde_derive = "1.0"
 serde_json = "1.0"
 magic = "0.12"
 ureq = "1.5"

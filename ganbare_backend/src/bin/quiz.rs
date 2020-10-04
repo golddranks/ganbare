@@ -1,18 +1,7 @@
-extern crate ganbare_backend;
-extern crate diesel;
-
-#[macro_use]
-extern crate clap;
-extern crate rpassword;
-extern crate lettre;
-extern crate dotenv;
-extern crate handlebars;
-extern crate r2d2;
-
 use ganbare_backend::{Connection, ConnManager};
 use ganbare_backend::errors::*;
 use ganbare_backend::models::*;
-use diesel::LoadDsl;
+use diesel::query_dsl::RunQueryDsl;
 #[macro_use]
 extern crate lazy_static;
 
@@ -56,7 +45,7 @@ fn main() {
         .get_matches();
 
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
+    let pool = diesel::r2d2::Pool::new(manager).expect("Failed to create pool.");
     let conn = pool.get().unwrap();
 
     match matches.subcommand() {

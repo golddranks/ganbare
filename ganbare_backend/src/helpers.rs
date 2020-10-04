@@ -5,7 +5,8 @@ use std::borrow::Borrow;
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::time::{Instant, Duration};
-use errors::Result;
+use crate::errors::Result;
+use log::debug;
 
 pub struct Cache<K, V> {
     expires: Duration,

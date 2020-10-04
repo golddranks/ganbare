@@ -5,6 +5,8 @@ use pencil::abort;
 use ganbare::user;
 use ganbare::manage;
 use std::collections::HashSet;
+use error_chain::bail;
+use crate::{err_400, parse};
 
 pub fn fresh_install_form(req: &mut Request) -> PencilResult {
     if ganbare::db::is_installed() {

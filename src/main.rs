@@ -1,40 +1,3 @@
-#![recursion_limit = "512"]
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate log;
-extern crate mime;
-#[macro_use]
-extern crate hyper;
-
-#[macro_use]
-extern crate error_chain;
-
-#[macro_use]
-pub extern crate ganbare_backend;
-
-extern crate diesel;
-extern crate diesel_migrations;
-
-extern crate try_map;
-extern crate sharp_pencil as pencil;
-extern crate dotenv;
-extern crate env_logger;
-extern crate time;
-extern crate rand;
-extern crate chrono;
-extern crate regex;
-extern crate unicode_normalization;
-extern crate url;
-extern crate cookie;
-extern crate typemap;
-extern crate crypto;
-extern crate lettre;
-extern crate data_encoding;
-extern crate serde;
-extern crate serde_json;
-
-#[macro_use]
 mod helpers;
 mod app_pages;
 mod manager_pages;
@@ -44,6 +7,8 @@ mod test;
 pub use ganbare_backend as ganbare;
 pub use helpers::*;
 
+use lazy_static::lazy_static;
+use log::{info, debug, error, warn};
 pub use std::result::Result as StdResult;
 pub use pencil::{Request, PencilResult};
 
@@ -262,6 +227,7 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
 }
 
 fn set_headers(_req: &Request, resp: &mut pencil::Response) {
+    use hyper::*;
     use hyper::header::*;
 
     header! {

@@ -4,6 +4,8 @@ use super::errors::*;
 use super::models::Password;
 use std::time::{Instant, Duration};
 use rand::{thread_rng, RngCore};
+use binary_macros::base64;
+use log::debug;
 
 #[derive(Clone, Copy)]
 pub struct HashedPassword {

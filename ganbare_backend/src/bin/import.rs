@@ -1,21 +1,8 @@
-extern crate ganbare_backend;
-
-#[macro_use]
-extern crate clap;
-extern crate dotenv;
-extern crate mime;
-extern crate unicode_normalization;
-extern crate tempdir;
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-#[macro_use]
-extern crate lazy_static;
-extern crate r2d2;
-
 use unicode_normalization::UnicodeNormalization;
 use ganbare_backend::*;
 use std::path::PathBuf;
+use lazy_static::lazy_static;
+use log::info;
 
 lazy_static! {
 
@@ -36,7 +23,7 @@ lazy_static! {
 
 fn import_batch(path: &str, narrator: &str, sentences: bool) {
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
+    let pool = diesel::r2d2::Pool::new(manager).expect("Failed to create pool.");
     let pooled_conn = pool.get().unwrap();
 
     let files = std::fs::read_dir(path).unwrap();

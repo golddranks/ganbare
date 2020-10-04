@@ -1,37 +1,8 @@
-#![recursion_limit = "512"]
-
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate serde;
-
 #[macro_use]
 pub extern crate diesel;
 
-pub extern crate diesel_migrations;
-
-#[macro_use]
-extern crate error_chain;
-#[macro_use]
-extern crate log;
-extern crate mime;
-#[macro_use]
-extern crate lazy_static;
-
-extern crate ureq;
-extern crate try_map;
-extern crate tempdir;
-extern crate crypto;
-pub extern crate chrono;
-extern crate rand;
-extern crate data_encoding;
-extern crate unicode_normalization;
-extern crate regex;
-extern crate dotenv;
-#[macro_use]
-extern crate binary_macros;
-extern crate byteorder;
-
+use log::{debug, info, warn};
+use lazy_static::lazy_static;
 pub use try_map::{FallibleMapExt, FlipResultExt};
 use std::sync::atomic::{Ordering, AtomicBool};
 

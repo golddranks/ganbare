@@ -5,13 +5,15 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::collections::BTreeMap;
 use cookie::Cookie as CookiePair;
 use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, Cookie};
-use ganbare::models::User;
+use ganbare_backend::{
+    models::User,
+    errors::Result,
+    user,
+    session,
+    errors,
+};
 use std::net::IpAddr;
 use std::result::Result as StdResult;
-use ganbare::errors::Result;
-use ganbare::user;
-use ganbare::session;
-use ganbare::errors;
 use diesel::r2d2;
 use std::path::PathBuf;
 pub use try_map::{FallibleMapExt, FlipResultExt};
@@ -22,8 +24,11 @@ use time;
 use ganbare_backend::ConnManager;
 use ganbare_backend::Connection;
 use ganbare_backend::session::UserSession;
-use LOGGED_OUT_CACHE;
-use lazy_static;
+use crate::LOGGED_OUT_CACHE;
+use ganbare_backend::time_it;
+use error_chain::bail;
+use log::{info, debug, error, warn};
+use lazy_static::lazy_static;
 
 pub use ganbare_backend::PERF_TRACE;
 
@@ -585,6 +590,7 @@ impl HeaderProcessor for PencilResult {
     }
 }
 
+#[macro_export]
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
 }
@@ -645,6 +651,7 @@ impl<T, E> CarrierInternal<T, E> for std::result::Result<T, E>
     }
 }
 
+#[macro_export]
 macro_rules! err_400 {
     ($t:expr , $format_string:expr $(, $param:expr)* ) => {
         match CarrierInternal::ok_or($t) {
@@ -663,6 +670,7 @@ macro_rules! err_400 {
 }
 
 #[cfg(debug_assertions)]
+#[macro_export]
 macro_rules! include_templates(
     ($app:ident, $temp_dir:expr, $($file:expr),*) => { {
         $app.template_folder = $temp_dir.to_string();
@@ -674,6 +682,7 @@ macro_rules! include_templates(
 );
 
 #[cfg(not(debug_assertions))]
+#[macro_export]
 macro_rules! include_templates(
     ($app:ident, $temp_dir:expr, $($file:expr),*) => { {
         let mut reg = $app.handlebars_registry
@@ -719,6 +728,7 @@ pub fn do_logout(conn: &Connection, sess: &UserSession) -> StdResult<(), PencilE
     Ok(())
 }
 
+#[macro_export]
 macro_rules! parse {
     ($expression:expr) => {
         $expression

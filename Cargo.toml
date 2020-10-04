@@ -2,6 +2,7 @@
 name = "ganbare"
 version = "1.0.3"
 authors = ["Pyry Kontio <pyry.kontio@drasa.eu>"]
+edition = "2018"
 
 [features]
 default = [ "specify_schema" ]
@@ -14,7 +15,7 @@ dotenv = "0.15"
 ganbare_backend = { path = "ganbare_backend" }
 chrono = { version = "0.4", features = ["serde"]}
 rand = "0.7"
-sharp_pencil = "0.5"
+pencil = { version = "0.5", package = "sharp_pencil" }
 hyper = "0.10.13"
 env_logger = "0.7"
 log = "0.4"

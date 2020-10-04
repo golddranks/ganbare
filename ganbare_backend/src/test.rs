@@ -1,5 +1,6 @@
 use super::*;
 use quiz::{Answered, Quiz, QuizSerialized};
+use serde::Serialize;
 
 pub fn save_answer_test_item(conn: &Connection,
                              user_id: i32,

@@ -10,6 +10,7 @@ use std::collections::VecDeque;
 use email::lettre::email::SendableEmail;
 
 use schema::pending_email_confirms;
+use serde::Serialize;
 use super::*;
 
 #[derive(Serialize)]

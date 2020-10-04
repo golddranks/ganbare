@@ -1,6 +1,6 @@
 use super::schema::*;
 use chrono::{DateTime, offset::Utc};
-use serde::{Deserializer, Deserialize};
+use serde::{Deserializer, Deserialize, Serialize};
 
 pub fn double_option<'de, T, D>(de: D) -> Result<Option<Option<T>>, D::Error>
     where T: Deserialize<'de>,

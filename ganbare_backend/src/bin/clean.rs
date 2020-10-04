@@ -1,25 +1,9 @@
-extern crate ganbare_backend;
-#[macro_use]
-extern crate clap;
-extern crate dotenv;
-extern crate mime;
-extern crate unicode_normalization;
-extern crate tempdir;
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-#[macro_use]
-extern crate lazy_static;
-extern crate rand;
-extern crate regex;
-extern crate crypto;
-extern crate r2d2;
-extern crate magic;
-
 use ganbare_backend::*;
 use std::path::PathBuf;
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
+use lazy_static::lazy_static;
+use log::info;
 
 lazy_static! {
 
@@ -133,7 +117,7 @@ pub fn outbound_urls_to_inbound() -> Result<Vec<String>> {
 
 fn get_pooled_conn() -> Connection {
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
+    let pool = diesel::r2d2::Pool::new(manager).expect("Failed to create pool.");
     pool.get().unwrap()
 }
 
@@ -179,7 +163,7 @@ fn normalize_unicode() {
 
 fn clean_unused_audio() {
     let manager = ConnManager::new(DATABASE_URL.as_str());
-    let pool = r2d2::Pool::new(manager).expect("Failed to create pool.");
+    let pool = diesel::r2d2::Pool::new(manager).expect("Failed to create pool.");
     let pooled_conn = pool.get().unwrap();
 
     let fs_files = std::fs::read_dir(&*AUDIO_DIR).unwrap();
@@ -354,9 +338,9 @@ fn merge_redundant_skills() {
 
     let originals: Vec<(i32, i64, String)> =
         sql::<(
-        diesel::types::Integer,
-        diesel::types::BigInt,
-        diesel::types::Text,
+        diesel::sql_types::Integer,
+        diesel::sql_types::BigInt,
+        diesel::sql_types::Text,
         )>(r###"
 SELECT MIN(id), COUNT(id), skill_summary FROM skill_nuggets GROUP BY skill_summary HAVING COUNT(id) > 1;
 "###).get_results(&conn).expect("DB error");

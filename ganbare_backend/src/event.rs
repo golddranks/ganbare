@@ -1,4 +1,6 @@
 use super::*;
+use error_chain::bail;
+use log::debug;
 
 pub fn update_event(conn: &Connection, item: &UpdateEvent) -> Result<Option<Event>> {
     use schema::events;

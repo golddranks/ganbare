@@ -7,6 +7,7 @@ use crypto::mac::{Mac, MacResult};
 use crypto::sha2::Sha512;
 use chrono::{self, DateTime, offset::Utc};
 use data_encoding::BASE64URL_NOPAD;
+use error_chain::bail;
 
 pub const SESSID_BITS: usize = 128;
 pub const HMAC_BITS: usize = 512;

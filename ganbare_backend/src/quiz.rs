@@ -1,6 +1,8 @@
 use super::*;
 use rand::{Rng, thread_rng, seq::SliceRandom};
 use unicode_normalization::UnicodeNormalization;
+use serde::Serialize;
+use error_chain::bail;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Answered {
