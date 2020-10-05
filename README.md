@@ -28,12 +28,12 @@ The Dockerfile is designed to cache the dependencies, so re-builds should be rel
 
 ### During build, you need a 256-bit base64-encoded pepper that gets built into the binary:
 
-    export GANBARE_BUILDTIME_PEPPER=$(head -c 32 /dev/random | base64)
+    $ export GANBARE_BUILDTIME_PEPPER=$(head -c 32 /dev/random | base64)
 
 ### All set?
 
-    scripts/build_static.sh # Builds TypeScript and SASS and places the results under ./static/
-    cargo build # Builds the app
+    $ scripts/build_static.sh # Builds TypeScript and SASS and places the results under ./static/
+    $ cargo build # Builds the app
 
 ## Running without Docker
 
@@ -50,7 +50,7 @@ psql (12.4, server 13.0 (Debian 13.0-1.pgdg100+1))
 
 After configuring (see below), just launch the app:
 
-    cargo run
+    $ cargo run
 
 ### Configuration
 
