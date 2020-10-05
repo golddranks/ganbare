@@ -1,5 +1,5 @@
 # Ganbare
-A web service that has something to do with teaching and learning Japanese pronunciation. I license the server code itself as copyleft open source for now, but the contents of the app (example sentences, audio, images etc.) are not licensed, and they are not in this repository. The `static` folder contains some CC 3.0 BY licensed assets that are not by me. If you use this code, kindly inform me too.
+A web service that has something to do with teaching and learning Japanese pronunciation. I license the server code itself as copyleft open source for now, but the contents of the app (example sentences, audio, images etc.) are not licensed, and they are not in this repository. The `static` folder contains some CC 3.0 BY licensed assets that are not by me. As the contents and assets are the "meat" of this app, the usefulness of open sourcing this code is questionable, but then again, why not? If you use this code, kindly inform me too.
 
 ## Quickstart using docker-compose
 
@@ -35,7 +35,7 @@ The Dockerfile is designed to cache the dependencies, so re-builds should be rel
     scripts/build_static.sh # Builds TypeScript and SASS and places the results under ./static/
     cargo build # Builds the app
 
-## Running without docker
+## Running without Docker
 
 If you want to run the app locally, it might still help to run the database in Docker:
 
@@ -50,13 +50,28 @@ psql (12.4, server 13.0 (Debian 13.0-1.pgdg100+1))
 
 ## Configuration
 
-The server is configured using environmental variables, or an `.env` file in the project directory. The following are required:
+For debug builds, the following directories are used runtime. All files are accessed relative to the directory the app was launched from.
+
+* `static`
+* `migrations`
+* `templates`
+* `audio`
+* `images`
+* `user_audio`
+
+For release builds, only `static`, `audio`, `user_audio` and `images` are used. (`migrations` and `templates` are compiled statically inside the binary.)
+
+The server is configured using environmental variables, or an `.env` file in the root directory. The following are required:
 
     GANBARE_DATABASE_URL=postgres://postgres@localhost:5432/ganbare_dev
     GANBARE_RUNTIME_PEPPER 256-bit base64-encoded random value for peppering the password hashes.
-    GANBARE_EMAIL_SERVER Whatever e-mail server works for you. e.g. mail.yourisp.net:25, mailgun, AWS SES...
+    GANBARE_EMAIL_SERVER Whatever e-mail server works for you. e.g. mail.yourisp.net:25, Mailgun, AWS SES...
     GANBARE_SITE_DOMAIN Set this right for cookies etc. to work.
     GANBARE_COOKIE_HMAC_KEY 256-bit base64-encoded random value for signing cookies.
+
+After configuring, just launch the app:
+
+    cargo run
 
 The following have defaults, and you may omit them:
 
@@ -85,6 +100,3 @@ The following have defaults, and you may omit them:
     GANBARE_EMAIL_EXPIRE_DAYS How old sessions are cleaned. Defaults to 14 days.
     GANBARE_SESSION_EXPIRE_DAYS How account invitation emails are cleaned. Defaults to 14 days.
     GANBARE_TRAINING_PERIOD_DAYS Defaults to 10. This many days since starting training add users to group "posttest".
-
-For debug builds, directories `static`, `migrations` and `templates`, `audio` and `images` are used runtime.
-For release builds, only `static`, `audio` and `images` are used, as `migrations` and `templates` are compiled statically inside the binary.
