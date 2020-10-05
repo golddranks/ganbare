@@ -2,8 +2,8 @@
 *.map
 .env
 .env.*
-/ganbare_backend/src/bin/posttest.rs
-/ganbare_backend/src/bin/pretest.rs
+posttest.tsv
+pretest.tsv
 .sass-cache
 *.css.map
 .DS_Store

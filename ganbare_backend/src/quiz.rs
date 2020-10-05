@@ -1331,6 +1331,30 @@ pub enum QuizSerialized {
     Exercise(&'static str, i32),
 }
 
+impl QuizSerialized {
+    pub fn from_iter<I: Iterator<Item=&'static str>>(mut iter: I) -> Result<Self> {
+        let col_err = || Error::from("Should have three columns.");
+        let variant = iter.next().ok_or_else(col_err)?;
+        let word = iter.next().ok_or_else(col_err)?;
+        let id: i32 = iter.next().ok_or_else(col_err)?.parse()?;
+        Ok(match variant {
+            "word" => QuizSerialized::Word(word, id),
+            "question" => QuizSerialized::Question(word, id),
+            "exercise" => QuizSerialized::Exercise(word, id),
+            _ => bail!("Expected word/question/exercise"),
+        })
+    }
+}
+
+pub fn read_quiz_tsv(tsv: String) -> Result<Vec<QuizSerialized>> {
+    let mut quiz = Vec::new();
+    for line in Box::leak(tsv.into_boxed_str()).lines() {
+        if line.starts_with("//") || line.trim().len() == 0 { continue }
+        quiz.push(QuizSerialized::from_iter(line.split('\t'))?);
+    }
+    Ok(quiz)
+}
+
 pub fn test_item(conn: &Connection,
                  user_id: i32,
                  quiz_str: &QuizSerialized)

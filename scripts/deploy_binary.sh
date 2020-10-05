@@ -1,27 +1,9 @@
 #!/bin/sh
-DEPLOY_ROOT_DIR=/srv/ganbare_production
-DEPLOY_SERVER=akusento.ganba.re
-DEPLOY_DB_NAME=ganbare_production
-DEPLOY_LOCAL_PEPPER=$(cat .env.ganbare_production_runtime_pepper)
-DEPLOY_PORT=8000
-DEPLOY_SITE_DOMAIN=akusento.ganba.re
-DEPLOY_SITE_LINK=https://akusento.ganba.re/
-DEPLOY_EMAIL_DOMAIN=ganba.re
-DEPLOY_EMAIL_SERVER=smtp.mailgun.org:587
-DEPLOY_EMAIL_SMTP_USERNAME=postmaster@ganba.re
-DEPLOY_EMAIL_SMTP_PASSWORD=$(cat .env.ganbare_email_password)
-DEPLOY_BUILD_NUMBER="$(cat build_number.txt)"
-DEPLOY_COMMIT_NAME="$(git log HEAD --oneline --no-walk)"
-DEPLOY_PARANOID=true
-DEPLOY_CONTAINER_NAME=ganbare_runner_production
-DEPLOY_LOGLEVEL=ganbare=debug,ganbare_backend=debug
-DEPLOY_CACHE_MAX_AGE=1200
-DEPLOY_SERVER_THREADS=25
-DEPLOY_PERF_TRACE=true
-DEPLOY_COOKIE_HMAC_KEY=$(cat .env.ganbare_production_cookie_hmac_key)
-DEPLOY_ENABLE_SOURCE_MAPS=false
 
-ssh $DEPLOY_SERVER /bin/sh <<EOF
+ENVFILE={1:?Usage: deploy_binary.sh  <prd.env|stg.env>}
+. "$ENVFILE"
+
+ssh "$DEPLOY_SERVER" /bin/sh <<EOF
 docker pull golddranks/ganbare_run
 docker stop $DEPLOY_CONTAINER_NAME && docker rm $DEPLOY_CONTAINER_NAME
 docker run -d --restart=unless-stopped \

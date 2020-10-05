@@ -1,3 +1,5 @@
+use std::fs;
+
 use crate::*;
 use ganbare::test::*;
 use ganbare::quiz::*;
@@ -44,9 +46,9 @@ pub fn get_new_quiz_pretest(conn: &Connection,
                             user_id: i32,
                             event: &Event)
                             -> Result<Option<Quiz>> {
-
-    let quizes = include!("../pretest.rs");
-
+    let tsv = fs::read_to_string("pretest.tsv")
+        .or_else(|_| fs::read_to_string("test_placeholder.tsv"))?;
+    let quizes = ganbare::quiz::read_quiz_tsv(tsv)?;
     let mut quiz = test::get_new_quiz_test(conn, user_id, event, &quizes)?;
 
     if let Some(Quiz::E(ref mut e)) = quiz {
@@ -61,9 +63,9 @@ pub fn get_new_quiz_posttest(conn: &Connection,
                              user_id: i32,
                              event: &Event)
                              -> Result<Option<Quiz>> {
-
-    let quizes = include!("../posttest.rs");
-
+    let tsv = fs::read_to_string("posttest.tsv")
+        .or_else(|_| fs::read_to_string("test_placeholder.tsv"))?;
+    let quizes = ganbare::quiz::read_quiz_tsv(tsv)?;
     let mut quiz = test::get_new_quiz_test(conn, user_id, event, &quizes)?;
 
     if let Some(Quiz::E(ref mut e)) = quiz {

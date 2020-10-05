@@ -7,7 +7,7 @@ services:
       dockerfile: scripts/Dockerfile
       args:
         GANBARE_BUILDTIME_PEPPER: '5KV6gxzAhAGRH1FfWaoPbg==' # Any base64 value will do
-    image: golddranks/ganbare_web:tag
+    image: golddranks/ganbare_web
     ports:
       - "8080:8080"
     depends_on:
@@ -19,7 +19,7 @@ services:
       GANBARE_EMAIL_SERVER: localhost:25
       GANBARE_SITE_DOMAIN: localhost
       GANBARE_COOKIE_HMAC_KEY: '7YjOdv8IeEw8SZnYl7j/LPXGVHyhGRElm7WXWTGSLcU='
-      GANBARE_PERF_TRACE: true
+      GANBARE_PERF_TRACE: 'true'
     volumes:
       - ./audio:/srv/audio:ro
       - ./images:/srv/images:ro
@@ -29,7 +29,7 @@ services:
     build:
       context: .
       dockerfile: scripts/Dockerfile.database
-    image: golddranks/ganbare_database:tag
+    image: golddranks/ganbare_database
     ports:
       - "5432:5432"
     environment:

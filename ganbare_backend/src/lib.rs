@@ -1,6 +1,10 @@
 #[macro_use]
 pub extern crate diesel;
 
+#[cfg(not(debug_assertions))]
+#[macro_use]
+pub extern crate diesel_migrations;
+
 use log::{debug, info, warn};
 use lazy_static::lazy_static;
 pub use try_map::{FallibleMapExt, FlipResultExt};
@@ -89,9 +93,6 @@ pub mod sql {
 
 pub mod db {
     use super::*;
-    #[cfg(not(debug_assertions))]
-    #[import_macros]
-    use diesel_migrations;
 
     pub fn check(conn: &Connection) -> Result<bool> {
         run_migrations(conn).chain_err(|| "Couldn't run the migrations.")?;
