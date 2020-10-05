@@ -48,7 +48,11 @@ psql (12.4, server 13.0 (Debian 13.0-1.pgdg100+1))
 ... yay, seems to work! ^D
 ```
 
-## Configuration
+After configuring (see below), just launch the app:
+
+    cargo run
+
+### Configuration
 
 For debug builds, the following directories are used runtime. All files are accessed relative to the directory the app was launched from.
 
@@ -68,10 +72,6 @@ The server is configured using environmental variables, or an `.env` file in the
     GANBARE_EMAIL_SERVER Whatever e-mail server works for you. e.g. mail.yourisp.net:25, Mailgun, AWS SES...
     GANBARE_SITE_DOMAIN Set this right for cookies etc. to work.
     GANBARE_COOKIE_HMAC_KEY 256-bit base64-encoded random value for signing cookies.
-
-After configuring, just launch the app:
-
-    cargo run
 
 The following have defaults, and you may omit them:
 
