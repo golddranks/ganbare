@@ -790,8 +790,8 @@ fn missing_images() {
 fn check_tests() {
     use quiz::QuizSerialized;
 
-    let pre_quiz = include!("../../../pretest.rs");
-    let post_quiz = include!("../../../posttest.rs");
+    let pre_quiz = include!("pretest.rs");
+    let post_quiz = include!("posttest.rs");
     let quizes = pre_quiz.into_iter().chain(post_quiz.into_iter());
 
     let conn = get_pooled_conn();

@@ -20,6 +20,10 @@ services:
       GANBARE_SITE_DOMAIN: localhost
       GANBARE_COOKIE_HMAC_KEY: '7YjOdv8IeEw8SZnYl7j/LPXGVHyhGRElm7WXWTGSLcU='
       GANBARE_PERF_TRACE: true
+    volumes:
+      - ./audio:/srv/audio:ro
+      - ./images:/srv/images:ro
+      - ./user_audio:/srv/user_audio:ro
   db:
     tty: true
     build:

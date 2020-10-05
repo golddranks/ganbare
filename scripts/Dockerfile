@@ -11,7 +11,6 @@ RUN cargo build -v --release --target=x86_64-unknown-linux-musl
 
 COPY ganbare_backend ./ganbare_backend
 COPY migrations ./migrations
-COPY posttest.rs pretest.rs ./
 ARG GANBARE_BUILDTIME_PEPPER
 RUN touch ganbare_backend/src/lib.rs && cargo build -v --release --target=x86_64-unknown-linux-musl
 
