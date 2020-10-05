@@ -5,13 +5,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::collections::BTreeMap;
 use cookie::Cookie as CookiePair;
 use pencil::{self, Request, Response, abort, PencilError, PencilResult, SetCookie, Cookie};
-use ganbare_backend::{
-    models::User,
-    errors::Result,
-    user,
-    session,
-    errors,
-};
+use ganbare_backend::{DEV_MODE, errors::Result, errors, models::User, session, user};
 use std::net::IpAddr;
 use std::result::Result as StdResult;
 use diesel::r2d2;
@@ -121,7 +115,7 @@ lazy_static! {
     pub static ref LOG : String = {
         dotenv::dotenv().ok();
         env::var("GANBARE_LOG")
-            .unwrap_or(if ganbare_backend::DEV_MODE { "ganbare=debug,ganbare_backend=debug".to_owned() }
+            .unwrap_or(if DEV_MODE { "ganbare=debug,ganbare_backend=debug".to_owned() }
                 else { "ganbare=info,ganbare_backend=info".to_owned() })
     };
 
@@ -231,8 +225,8 @@ lazy_static! {
 
     pub static ref ENABLE_SOURCE_MAPS : bool = {
         dotenv::dotenv().ok();
-        env::var("GANBARE_ENABLE_SOURCE_MAPS").map(|s| s.parse::<bool>().unwrap_or(false))
-            .unwrap_or(false)
+        env::var("GANBARE_ENABLE_SOURCE_MAPS").map(|s| s.parse::<bool>().unwrap_or(DEV_MODE))
+            .unwrap_or(DEV_MODE)
     };
 
     pub static ref RUNTIME_PEPPER : Vec<u8> = {
