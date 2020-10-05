@@ -118,6 +118,13 @@ lazy_static! {
             )
     };
 
+    pub static ref LOG : String = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_LOG")
+            .unwrap_or(if ganbare_backend::DEV_MODE { "ganbare=debug,ganbare_backend=debug".to_owned() }
+                else { "ganbare=info,ganbare_backend=info".to_owned() })
+    };
+
     pub static ref SITE_DOMAIN : String = {
         dotenv::dotenv().ok();
         env::var("GANBARE_SITE_DOMAIN")
@@ -693,6 +700,7 @@ macro_rules! include_templates(
 /// Try and dereference required env vars for the `lazy_static!`
 /// to run and check if the values are present.
 pub fn check_env_vars() {
+    lazy_static::initialize(&LOG);
     lazy_static::initialize(&DATABASE_URL);
     lazy_static::initialize(&EMAIL_SERVER);
     lazy_static::initialize(&SITE_DOMAIN);

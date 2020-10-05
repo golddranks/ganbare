@@ -4,6 +4,7 @@ mod manager_pages;
 mod http_api;
 mod test;
 
+pub use ganbare::DEV_MODE;
 pub use ganbare_backend as ganbare;
 pub use helpers::*;
 
@@ -272,8 +273,9 @@ impl typemap::Key for RequestTime {
 }
 
 pub fn main() {
+    std::env::set_var("RUST_LOG", helpers::LOG.to_owned());
     pretty_env_logger::init();
-    info!("Starting.");
+    info!("Starting in {} mode.", if DEV_MODE { "dev" } else { "release" });
     check_env_vars();
     debug!("Env vars OK.");
     let conn = db_connect().expect("Can't connect to database!");
@@ -328,9 +330,6 @@ pub fn main() {
 
     // DEBUGGING
     app.get("/src/<file_path:path>", "source_maps", source_maps);
-
-    app.set_debug(true);
-    app.set_log_level();
 
     // BASIC FUNCTIONALITY
     app.get("/favicon.ico", "favicon", favicon);

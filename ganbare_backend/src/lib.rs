@@ -17,6 +17,13 @@ pub type Connection = diesel::r2d2::PooledConnection<ConnManager>;
 pub use diesel::Connection as ConnectionTrait;
 
 
+#[cfg(debug_assertions)]
+pub const DEV_MODE: bool = true;
+
+#[cfg(not(debug_assertions))]
+pub const DEV_MODE: bool = false;
+
+
 macro_rules! try_or {
     ($t:expr , else $e:expr ) => {  match $t { Some(x) => x, None => { $e } };  }
 }
@@ -31,8 +38,8 @@ lazy_static! {
     pub static ref PERF_TRACE: bool = {
         dotenv::dotenv().ok();
         std::env::var("GANBARE_PERF_TRACE")
-            .map(|s| s.parse().unwrap_or(false))
-            .unwrap_or(false)
+            .map(|s| s.parse().unwrap_or(DEV_MODE))
+            .unwrap_or(DEV_MODE)
     };
 }
 

@@ -6,24 +6,25 @@ services:
       context: .
       dockerfile: scripts/Dockerfile
       args:
-        GANBARE_BUILDTIME_PEPPER: '5KV6gxzAhAGRH1FfWaoPbg==' # Any base64 value will do
+        DEBUG: 'YES' # Enabled for local debugging
+        BUILDTIME_PEPPER: '5KV6gxzAhAGRH1FfWaoPbg==' # Any base64 value will do
     image: golddranks/ganbare_web
     ports:
       - "8080:8080"
     depends_on:
       - db
     environment:
-      RUST_LOG: hyper=info,ganbare=trace,ganbare_backend=trace
       GANBARE_DATABASE_URL: postgres://postgres:password@db/ganbare_dev
       GANBARE_RUNTIME_PEPPER: '00BGpjB/ITFcy4Ivf+rYaWU+Ro3ciKjIAjJNBEXTfGo='
       GANBARE_EMAIL_SERVER: localhost:25
       GANBARE_SITE_DOMAIN: localhost
       GANBARE_COOKIE_HMAC_KEY: '7YjOdv8IeEw8SZnYl7j/LPXGVHyhGRElm7WXWTGSLcU='
-      GANBARE_PERF_TRACE: 'true'
     volumes:
       - ./audio:/srv/audio:ro
       - ./images:/srv/images:ro
       - ./user_audio:/srv/user_audio:ro
+      - ./migrations:/srv/migrations:ro # These are needed in debug mode
+      - ./templates:/srv/templates:ro # These are needed in debug mode
   db:
     tty: true
     build:
