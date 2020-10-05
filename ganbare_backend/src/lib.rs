@@ -1,7 +1,5 @@
 #[macro_use]
 pub extern crate diesel;
-#[macro_use]
-pub extern crate diesel_migrations;
 
 use log::{debug, info, warn};
 use lazy_static::lazy_static;
@@ -44,14 +42,12 @@ macro_rules! time_it {
     
                 let res = $code;
     
-                let end = Instant::now();
-                let lag = end.duration_since(start);
-                debug!("{}:{} time_it {} took {}s {}ms!",
+                let lag = start.elapsed();
+                debug!("{}:{} time_it {} took {} ms!",
                     file!(),
                     line!(),
                     $comment,
-                    lag.as_secs(),
-                    lag.subsec_nanos()/1_000_000);
+                    lag.as_millis());
                 res
             } else {
                 $code
@@ -93,6 +89,9 @@ pub mod sql {
 
 pub mod db {
     use super::*;
+    #[cfg(not(debug_assertions))]
+    #[import_macros]
+    use diesel_migrations;
 
     pub fn check(conn: &Connection) -> Result<bool> {
         run_migrations(conn).chain_err(|| "Couldn't run the migrations.")?;

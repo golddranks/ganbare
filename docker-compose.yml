@@ -19,6 +19,7 @@ services:
       GANBARE_EMAIL_SERVER: localhost:25
       GANBARE_SITE_DOMAIN: localhost
       GANBARE_COOKIE_HMAC_KEY: '7YjOdv8IeEw8SZnYl7j/LPXGVHyhGRElm7WXWTGSLcU='
+      GANBARE_PERF_TRACE: true
   db:
     tty: true
     build:

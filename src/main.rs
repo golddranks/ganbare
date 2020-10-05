@@ -19,6 +19,8 @@ pub use ganbare::errors::{Error, ErrorKind};
 pub use ganbare::Connection;
 use lettre::transport::EmailTransport;
 pub use ganbare::helpers::Cache;
+use std::time::Instant;
+
 
 pub fn favicon(_: &mut Request) -> PencilResult {
     use pencil::helpers::send_file;
@@ -243,42 +245,26 @@ fn set_headers(_req: &Request, resp: &mut pencil::Response) {
     }
 }
 
-
-use std::time::Instant;
-
-#[allow(dead_code)]
-struct KeyType;
-impl typemap::Key for KeyType {
-    type Value = Instant;
-}
-
 #[allow(unused_variables)]
 fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
     if *PERF_TRACE {
         let start = Instant::now();
-        req.extensions_data.insert::<KeyType>(start);
+        req.extensions_data.insert::<RequestTime>(start);
     }
     None
 }
 
 
 #[allow(unused_variables)]
-fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
-    if *PERF_TRACE {
-        let start = req.extensions_data
-            .get::<KeyType>()
-            .expect("We inserted this in resp_time_start, and if this is run and that isn't, \
-                     there's a bug somewhere.");
-        let end = Instant::now();
-        let lag = end.duration_since(*start);
-        debug!("Request {} took {:?}s {:?}ms",
-            req.url, lag.as_secs(),
-            lag.subsec_nanos()/1_000_000, );
-    }
+fn resp_time_stop(req: &Request, resp: &mut pencil::Response) {
+    let start = req.extensions_data.get::<RequestTime>().unwrap();
+    let lag = start.elapsed();
+    debug!("Request from {} to {} {}, response: {} took {} ms", req.remote_addr, req.method, req.url, resp.status_code, start.elapsed().as_millis());
 }
 
 use pencil::Pencil;
 
+#[allow(dead_code)]
 struct RequestTime;
 
 impl typemap::Key for RequestTime {
@@ -297,21 +283,6 @@ pub fn main() {
 
     debug!("Initing Pencil.");
     let mut app = Pencil::new(".");
-    app.before_request(|req| {
-        req.extensions_data.insert::<RequestTime>(Instant::now());
-        info!("Request from {} to {} {}", req.remote_addr, req.method, req.url);
-        None
-    });
-    app.after_request(|req, _resp| {
-        if let Some(start) = req.extensions_data.get::<RequestTime>() {
-            debug!("Request from {} to {} {} took {} ms", req.remote_addr, req.method, req.url, start.elapsed().as_millis());
-        }
-    });
-    app.teardown_request(|e| {
-        if let Some(e) = e {
-            error!("Error: {}", e);
-        }
-    });
 
     include_templates!(app,
                        "templates",
@@ -347,11 +318,13 @@ pub fn main() {
     app.enable_static_cached_file_handling(Duration::from_secs(*CACHE_MAX_AGE as u64));
 
     // Note: resp_time_start MUST be the first one
-    app.before_request(resp_time_start);
+    if *PERF_TRACE { app.before_request(resp_time_start); }
+    app.before_request(|req| { info!("Request from {} to {} {}", req.remote_addr, req.method, req.url); None });
     app.before_request(check_if_cached);
     app.before_request(csrf_check);
     app.after_request(set_headers);
-    app.after_request(resp_time_stop);
+    app.teardown_request(|e| { e.map(|e| error!("Error: {}", e));});
+    if *PERF_TRACE { app.after_request(resp_time_stop); }
 
     // DEBUGGING
     app.get("/src/<file_path:path>", "source_maps", source_maps);
@@ -584,7 +557,7 @@ pub fn main() {
 
     std::thread::spawn(background_control_thread);
 
-    info!("Ready. Running on {}, serving at {} with {} threads",
+    info!("Ready. Running on http://{}, serving at {} with {} threads",
           *SERVER_BINDING,
           *SITE_DOMAIN,
           *SERVER_THREADS);
