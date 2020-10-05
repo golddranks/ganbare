@@ -1,8 +1,8 @@
-{{#partial page_script_link}}
+{{#*inline "page_script_link"}}
 <script src="/static/ts/survey.js"></script>
-{{/partial}}
+{{/inline}}
 
-{{#partial main_section}}
+{{#*inline "main_section"}}
 	<section id="topmessage">
 		<button id="backButton" class="iconlike uiButton" style="display: None;"><img src="/static/images/back.png"></button>
 	</section>
@@ -25,6 +25,6 @@
 			</div>
 		</div>
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

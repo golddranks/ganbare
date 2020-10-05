@@ -1,4 +1,4 @@
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<header>
 		<h1>{{ title }}</h1>
@@ -29,10 +29,10 @@
 <button id="infoOver" style="display: none" >Eteenpäin &gt;</button><input type="hidden" value="{{ event_name }}" name="event_ok">
 </form>
 
-{{/partial}}
+{{/inline}}
 
 
-{{#partial page_script_inline}}
+{{#*inline "page_script_inline"}}
 
 let maxCards = 2;
 
@@ -66,6 +66,6 @@ $("#nextInfoCard").click(function() {
 	updateInfoCard();
 });
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

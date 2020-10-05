@@ -1,4 +1,4 @@
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<h1>Send mail</h1>
 
@@ -17,9 +17,9 @@
 	</form>
 
 
-{{/partial}}
+{{/inline}}
 
-{{#partial page_script_inline}}
+{{#*inline "page_script_inline"}}
 
 	var userGroups = $("#userGroups");
 	$.get("/api/groups", function(resp) {
@@ -32,6 +32,6 @@
 		$('#group_number').val(resp.length);
 	})
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html main_class="fullwidth" ~}}

@@ -1,11 +1,11 @@
-{{#partial page_script_link}}
+{{#*inline "page_script_link"}}
 	<script src="/static/js/howler.js"></script>
 	<script src="/static/js/recorder.min.js"></script>
 	<script src="/static/ts/mictest.js"></script>
-{{/partial}}
+{{/inline}}
 
 
-{{#partial main_section}}
+{{#*inline "main_section"}}
 	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
 	<section id="settings" style="display: none;">
 		<ul id="settingsMenu">
@@ -56,6 +56,6 @@
 	<form action="/ok" method="post" style="display: inline-block"><button>Aloita koe</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
 </section>
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

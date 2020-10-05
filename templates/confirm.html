@@ -1,4 +1,4 @@
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<header>
 		<h1>{{ title }}</h1>
@@ -24,9 +24,9 @@
 		</div>
 	</form>
 
-{{/partial}}
+{{/inline}}
 
-{{#partial page_script_inline}}
+{{#*inline "page_script_inline"}}
 $(function() {
 	
 	var new_password = $("#password");
@@ -56,6 +56,6 @@ $(function() {
 		}, 5000);
 	});
 })
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

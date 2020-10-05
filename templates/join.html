@@ -1,4 +1,4 @@
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<header>
 		<h1>{{ title }}</h1>
@@ -21,9 +21,9 @@
 		</div>
 	</form>
 
-{{/partial}}
+{{/inline}}
 
-{{#partial page_script_inline}}
+{{#*inline "page_script_inline"}}
 	
 	var email = $("#email");
 	$("#createuser").submit(function( event ) {
@@ -34,6 +34,6 @@
 		}
 	});
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

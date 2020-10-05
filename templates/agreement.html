@@ -1,4 +1,4 @@
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<h2>Suostumus tietojen keräämiseen</h2>
 	<p class="wordyExplanation">
@@ -25,15 +25,15 @@
 		<button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok">
 	</form>
 
-{{/partial}}
+{{/inline}}
 
-{{#partial page_script_inline}}
+{{#*inline "page_script_inline"}}
 $("#agreeForm").submit((e) => {
 	if ( ! $("#agree").is(":checked")) {
 		e.preventDefault();
 		$("#agreeErrorMsg").show();
 	}
 });
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

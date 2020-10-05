@@ -1,8 +1,8 @@
-{{#partial page_script_link}}
+{{#*inline "page_script_link"}}
 	<script src="static/ts/users.js"></script>
-{{/partial}}
+{{/inline}}
 
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<h1>Users</h1>
 
@@ -37,6 +37,6 @@
 
 	<input type="checkbox" id="show_anon"><label for="show_anon">Show anon</label>
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html main_class="fullwidth" ~}}

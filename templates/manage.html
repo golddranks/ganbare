@@ -1,9 +1,9 @@
-{{#partial page_script_link}}
+{{#*inline "page_script_link"}}
 	<script src="/static/js/howler.min.js"></script>
 	<script src="static/ts/manage.js"></script>
-{{/partial}}
+{{/inline}}
 
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<h1>Manager</h1>
 	<p style="max-width: 28em; margin: auto;" id="build_number"></p>
@@ -16,9 +16,9 @@
 	<ul class="manage">
 	</ul>
 
-{{/partial}}
+{{/inline}}
 
-{{#partial page_script_inline}}
+{{#*inline "page_script_inline"}}
 
 window["show_id"] = {{ show_id }};
 
@@ -28,6 +28,6 @@ $.get("/api/build_number", function(resp) {
 	let release = resp[2];
 	$("#build_number").html("Build number: "+build+"<br>Commit: "+commit+"<br>Optimised: "+release);
 });
-{{/partial}}
+{{/inline}}
 
 {{~> base.html main_class="fullwidth" ~}}

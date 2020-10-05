@@ -1,10 +1,10 @@
 
-{{#partial page_script_link}}
+{{#*inline "page_script_link"}}
 <script src="/static/js/howler.min.js"></script>
 <script src="/static/ts/accentuate.js"></script>
-{{/partial}}
+{{/inline}}
 
-{{#partial main_section}}
+{{#*inline "main_section"}}
 	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
 	<section id="settings" style="display: none;">
 		<ul id="settingsMenu">
@@ -170,9 +170,9 @@
 <button id="infoOver" style="display: none" >Eteenpäin</button><input type="hidden" value="{{ event_name }}" name="event_ok">
 </form>
 
-{{/partial}}
+{{/inline}}
 
-{{#partial page_script_inline}}
+{{#*inline "page_script_inline"}}
 
 let maxCards = 7;
 
@@ -250,6 +250,6 @@ setWordShowButton("/static/content_audio/hashi2.mp3", $("#rightHashiButton2"));
 setWordShowButton("/static/content_audio/hashini1.mp3", $("#leftHashiniButton"));
 setWordShowButton("/static/content_audio/hashini2.mp3", $("#rightHashiniButton"));
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

@@ -1,12 +1,12 @@
-{{#partial page_script_link}}
+{{#*inline "page_script_link"}}
 	<script src="/static/js/howler.min.js"></script>
 	<script src="/static/js/recorder.min.js"></script>
 	<script>window.testing = {{#if testing }}true{{else}}false{{/if}};</script>
 	<script>window.event_name = {{#if event_name }}"{{ event_name }}"{{else}}null{{/if}};</script>
 	<script src="/static/ts/retelling.js"></script>
-{{/partial}}
+{{/inline}}
 
-{{#partial main_section}}
+{{#*inline "main_section"}}
 	<section id="topmessage">
 		<p class="topmessageparagraph" style="display: none;"></p>
 	</section>
@@ -39,6 +39,6 @@
 		</div>
 	</section>
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

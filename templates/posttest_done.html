@@ -1,10 +1,10 @@
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<h1>Testi on nyt ohi!</h1>
 	<p>Kiitos että osallistuit kokeeseen!</p>
 	<p>Nyt kokeen jälkeen ohjelman harjoitustoiminnot ovat edelleen vapaasti käytettävissäsi. Opiskelun iloa!</p>
 	<form action="/ok" method="post"><button>Ok</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html ~}}

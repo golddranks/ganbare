@@ -1,9 +1,9 @@
-{{#partial page_script_link}}
+{{#*inline "page_script_link"}}
 	<script src="/static/js/howler.min.js"></script>
 	<script src="static/ts/audio.js"></script>
-{{/partial}}
+{{/inline}}
 
-{{#partial main_section}}
+{{#*inline "main_section"}}
 
 	<h1>Audio</h1>
 
@@ -16,6 +16,6 @@
 		</tbody>
 	</table>
 
-{{/partial}}
+{{/inline}}
 
 {{~> base.html main_class="fullwidth" ~}}
