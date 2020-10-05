@@ -22,7 +22,7 @@ The Dockerfile is designed to cache the dependencies, so re-builds should be rel
 * OpenSSL (anything supported by Rust crate openssl 0.10)
 * libpq (anything supported by Rust crate pq-sys 0.4; try installing PostgreSQL to get this.)
 
-### For poking the database (not hard requirements, as the app automigrates if only the DB exists)
+### For poking the database (not hard requirements; the app automigrates)
 * For playing with the migrations, you can use the diesel command line tool (`cargo install diesel_cli`, my `diesel --version` prints `diesel 1.4.1`)
 * Of course `psql` helps too!
 
@@ -32,7 +32,8 @@ The Dockerfile is designed to cache the dependencies, so re-builds should be rel
 
 ### All set?
 
-    cargo build
+    scripts/build_static.sh # Builds TypeScript and SASS and places the results under ./static/
+    cargo build # Builds the app
 
 ## Running without docker
 
@@ -51,10 +52,10 @@ psql (12.4, server 13.0 (Debian 13.0-1.pgdg100+1))
 
 The server is configured using environmental variables, or an `.env` file in the project directory. The following are required:
 
-    GANBARE_DATABASE_URL=postgres://drasa@localhost/ganbare_dev
+    GANBARE_DATABASE_URL=postgres://postgres@localhost:5432/ganbare_dev
     GANBARE_RUNTIME_PEPPER 256-bit base64-encoded random value for peppering the password hashes.
-    GANBARE_EMAIL_SERVER=mail.yourisp.net:25
-    GANBARE_SITE_DOMAIN Set this right for production for cookies etc. to work.
+    GANBARE_EMAIL_SERVER Whatever e-mail server works for you. e.g. mail.yourisp.net:25, mailgun, AWS SES...
+    GANBARE_SITE_DOMAIN Set this right for cookies etc. to work.
     GANBARE_COOKIE_HMAC_KEY 256-bit base64-encoded random value for signing cookies.
 
 The following have defaults, and you may omit them:
