@@ -17,7 +17,7 @@ chrono = { version = "0.4", features = ["serde"]}
 rand = "0.7"
 pencil = { version = "0.5", package = "sharp_pencil" }
 hyper = "0.10.13"
-env_logger = "0.7"
+pretty_env_logger = "0.4"
 log = "0.4"
 lazy_static = "1"
 handlebars = { version = "3.5"}

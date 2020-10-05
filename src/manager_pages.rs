@@ -10,10 +10,13 @@ use crate::{err_400, parse};
 
 pub fn fresh_install_form(req: &mut Request) -> PencilResult {
     if ganbare::db::is_installed() {
+        info!("Ganbare is already installed.");
         return abort(401);
     };
     let context = new_template_context();
-    req.app.render_template("fresh_install.html", &context)
+    let resp = req.app.render_template("fresh_install.html", &context);
+
+    resp
 }
 
 pub fn fresh_install_post(req: &mut Request) -> PencilResult {

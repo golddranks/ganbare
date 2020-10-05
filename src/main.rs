@@ -279,8 +279,14 @@ fn resp_time_stop(req: &Request, _resp: &mut pencil::Response) {
 
 use pencil::Pencil;
 
+struct RequestTime;
+
+impl typemap::Key for RequestTime {
+    type Value = Instant;
+}
+
 pub fn main() {
-    env_logger::init();
+    pretty_env_logger::init();
     info!("Starting.");
     check_env_vars();
     debug!("Env vars OK.");
@@ -289,8 +295,23 @@ pub fn main() {
     let installed = ganbare::db::check(&conn).expect("Something funny with the DB!");
     info!("Database OK. Installed: {}", installed);
 
+    debug!("Initing Pencil.");
     let mut app = Pencil::new(".");
-    debug!("Init Pencil.");
+    app.before_request(|req| {
+        req.extensions_data.insert::<RequestTime>(Instant::now());
+        info!("Request from {} to {} {}", req.remote_addr, req.method, req.url);
+        None
+    });
+    app.after_request(|req, _resp| {
+        if let Some(start) = req.extensions_data.get::<RequestTime>() {
+            debug!("Request from {} to {} {} took {} ms", req.remote_addr, req.method, req.url, start.elapsed().as_millis());
+        }
+    });
+    app.teardown_request(|e| {
+        if let Some(e) = e {
+            error!("Error: {}", e);
+        }
+    });
 
     include_templates!(app,
                        "templates",

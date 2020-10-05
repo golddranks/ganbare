@@ -268,13 +268,8 @@ lazy_static! {
     };
 
     pub static ref POOL: r2d2::Pool<ConnManager> = {
-        info!("about to create ConnManager");
         let manager = ConnManager::new(DATABASE_URL.as_str());
-        info!("created ConnManager");
-
-        let r = r2d2::Pool::new(manager).expect("Failed to create pool.");
-        info!("created r2d2::Pool");
-        r
+        r2d2::Pool::new(manager).expect("Failed to create pool.")
     };
 }
 
@@ -291,9 +286,7 @@ pub fn get_version_info() -> (&'static str, &'static str, bool) {
 pub fn db_connect() -> Result<Connection> {
     use ganbare_backend::ResultExt;
 
-    info!("before time_it");
     let conn = time_it!("connect to db", {
-        info!("inside time_it");
         POOL.get().chain_err(|| { info!("error"); "DB timeout" })
     })?;
     Ok(conn)

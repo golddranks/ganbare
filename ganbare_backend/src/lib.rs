@@ -1,5 +1,7 @@
 #[macro_use]
 pub extern crate diesel;
+#[macro_use]
+pub extern crate diesel_migrations;
 
 use log::{debug, info, warn};
 use lazy_static::lazy_static;

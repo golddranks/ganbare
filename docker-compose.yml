@@ -1,6 +1,7 @@
 version: "3.8"
 services:
   web:
+    tty: true
     build:
       context: .
       dockerfile: scripts/Dockerfile
@@ -9,14 +10,17 @@ services:
     image: golddranks/ganbare_web:tag
     ports:
       - "8080:8080"
+    depends_on:
+      - db
     environment:
-      RUST_LOG: trace
+      RUST_LOG: hyper=info,ganbare=trace,ganbare_backend=trace
       GANBARE_DATABASE_URL: postgres://postgres:password@db/ganbare_dev
       GANBARE_RUNTIME_PEPPER: '00BGpjB/ITFcy4Ivf+rYaWU+Ro3ciKjIAjJNBEXTfGo='
       GANBARE_EMAIL_SERVER: localhost:25
       GANBARE_SITE_DOMAIN: localhost
       GANBARE_COOKIE_HMAC_KEY: '7YjOdv8IeEw8SZnYl7j/LPXGVHyhGRElm7WXWTGSLcU='
   db:
+    tty: true
     build:
       context: .
       dockerfile: scripts/Dockerfile.database
@@ -25,3 +29,4 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: password
+      POSTGRES_DB: ganbare_dev
