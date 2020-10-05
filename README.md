@@ -1,28 +1,66 @@
 # Ganbare
 A web service that has something to do with teaching and learning Japanese pronunciation. I license the server code itself as copyleft open source for now, but the contents of the app (example sentences, audio, images etc.) are not licensed, and they are not in this repository. The `static` folder contains some CC 3.0 BY licensed assets that are not by me. If you use this code, kindly inform me too.
 
-## Requirements to build
+## Quickstart using docker-compose
 
-* A working nightly Rust environment (`rustc 1.17.0-nightly (c49d10207 2017-02-07)` as of writing this)
-* A TypeScript compiler (`tsc -v` prints `Version 2.1.4`)
-* A Sass compiler (`sass -v` prints `Sass 3.4.23 (Selective Steve)`)
-* Preferably the diesel command line tool installed (`cargo install diesel_cli`)
-* Having `psql` installed for poking the database also helps tremendously.
+Have Docker installed, and type this in the repo root:
+```
+$ docker-compose up --build web
+```
+... then access http://localhost:8080 with your browser.
 
-## How to start (1. setup a database 2. create an .env file 3. start the server)
+The Dockerfile is designed to cache the dependencies, so re-builds should be relatively quick.
 
-    $ docker run --name ganbare-postgres -d --restart=unless-stopped -e POSTGRES_USER=$USER -e POSTGRES_DB=ganbare_dev -p 127.0.0.1:5432:5432 golddranks/ganbare_database
+## Requirements for building without Docker
+
+### Build tools
+* A working Rust environment (My `rustc -V` prints `rustc 1.46.0 (04488afe3 2020-08-24)`)
+* A TypeScript compiler (My `tsc -v` prints `Version 4.0.3`)
+* A Sass compiler (My `sass --version` prints `1.26.11`, using the Dart Sass)
+
+### Dependencies not handled by cargo
+* OpenSSL (anything supported by Rust crate openssl 0.10)
+* libpq (anything supported by Rust crate pq-sys 0.4; try installing PostgreSQL to get this.)
+
+### For poking the database (not hard requirements, as the app automigrates if only the DB exists)
+* For playing with the migrations, you can use the diesel command line tool (`cargo install diesel_cli`, my `diesel --version` prints `diesel 1.4.1`)
+* Of course `psql` helps too!
+
+### During build, you need a 256-bit base64-encoded pepper that gets built into the binary:
+
+    export GANBARE_BUILDTIME_PEPPER=$(head -c 32 /dev/random | base64)
+
+### All set?
+
+    cargo build
+
+## Running without docker
+
+If you want to run the app locally, it might still help to run the database in Docker:
+
+```
+$ docker-compose up db
+$ psql -p 5432 -U postgres -h localhost -d ganbare_dev
+> Password for user postgres:
+< password
+psql (12.4, server 13.0 (Debian 13.0-1.pgdg100+1)) 
+... yay, seems to work! ^D
+```
+
+## Configuration
 
 The server is configured using environmental variables, or an `.env` file in the project directory. The following are required:
 
     GANBARE_DATABASE_URL=postgres://drasa@localhost/ganbare_dev
-    GANBARE_RUNTIME_PEPPER=some 32-byte random value encoded with Base64 (usually 44 ASCII characters) for peppering the password hashes.
+    GANBARE_RUNTIME_PEPPER 256-bit base64-encoded random value for peppering the password hashes.
     GANBARE_EMAIL_SERVER=mail.yourisp.net:25
     GANBARE_SITE_DOMAIN Set this right for production for cookies etc. to work.
-    GANBARE_COOKIE_HMAC_KEY This is used for signing cookies. 32-bite random value encoded with Base64. Get some `head -c32 /dev/urandom | base64`
+    GANBARE_COOKIE_HMAC_KEY 256-bit base64-encoded random value for signing cookies.
 
 The following have defaults, and you may omit them:
 
+    GANBARE_LOG Log level. Syntax example: ganbare=debug,ganbare_backend=debug. Defaults to debug in debug builds and info in release builds.
+    GANBARE_PERF_TRACE prints timings of various operations into debug log. Defaults to to true in debug builds, false in release builds.
     GANBARE_PARANOID Defaults to true. When on, HTTPS is required. Cookies are sent with "Secure" flag. Strictens the anti-CSRF measures. (Checks Origin & Referer of all mutating HTTP METHODS, and prevents even non-mutating requests to the HTTP API) Enforces ContentSecurityPolicy as an anti-XSS measure.
     GANBARE_EMAIL_SMTP_USERNAME SMTP username. Defaults to empty string.
     GANBARE_EMAIL_SMTP_PASSWORD password. Defaults to empty string.
@@ -39,47 +77,13 @@ The following have defaults, and you may omit them:
     GANBARE_CONTENT_SECURITY_POLICY Sets the contents of Content-Security-Policy header. Defaults to "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com"
     GANBARE_CACHE_MAX_AGE Sets the max-age of cache control of static files. Defaults to conservative 30 seconds. Change this to a larger number on production!
     GANBARE_SERVER_THREADS Sets the amount of threads. Defaults to 20. Note that the server is syncronous at the moment, so recommended setting for production are: HAProxy with option http-server-close and server maxconns set to the same value as GANBARE_SERVER_THREADS.
-    GANBARE_PERF_TRACE prints timings of various operations into debug log. Defaults to false.
     GANBARE_PASSWORD_STRETCHING_MS How long new passwords are stretched in milliseconds. Defaults to 500 ms.
     GANBARE_ENABLE_SOURCE_MAPS Defaults to false. Whether it allows to see files in /src using HTTP.
     NAG_EMAIL_ABSENCE_PERIOD_HOURS How much to wait for the user to be absent before sending a nag email. Defaults to 52 hours.
     GANBARE_NAG_EMAIL_GRACE_PERIOD_HOURS How much to wait for the user to ignore the nag email to send another. Defaults to 48 hours.
     GANBARE_EMAIL_EXPIRE_DAYS How old sessions are cleaned. Defaults to 14 days.
     GANBARE_SESSION_EXPIRE_DAYS How account invitation emails are cleaned. Defaults to 14 days.
-    RUST_LOG Log level. Try ganbare=debug,ganbare_backend=debug if you want to debug stuff.
     GANBARE_TRAINING_PERIOD_DAYS Defaults to 10. This many days since starting training add users to group "posttest".
 
-During build, you need the following env var too: 
-
-    GANBARE_BUILDTIME_PEPPER=some 32-byte random value encoded with Base64 (usually 44 ASCII characters) for peppering the password hashes.
-
-After creating an `.env` file, start the server: (`./build_everything.sh` ensures that not only Rust but TypeScript and SCSS files are built too.)
-
-    $ ./build_everything.sh && cargo run
-
-Navigate to localhost:8080 with your browser. For debug builds, directories `static`, `migrations` and `templates`, `audio` and `images` are used runtime.
+For debug builds, directories `static`, `migrations` and `templates`, `audio` and `images` are used runtime.
 For release builds, only `static`, `audio` and `images` are used, as `migrations` and `templates` are compiled statically inside the binary.
-
-## How to build & deploy easily
-Just do
-
-    $ ./build_musl && ./deploy_binary_testing
-
-## How to build a distributable, statically linked MUSL binary
-
-The `Dockerfile.build` is for that. It assembles the build environment for building a statically-linked MUSL-based Linux binary:
-
-    $ docker build -f Dockerfile.build -t golddranks/ganbare_build .
-    $ docker run -it --rm --name ganbare_builder -v $PWD:/workdir golddranks/ganbare_build
-
-There you go, a readymade binary in your target folder.
-
-## How to build and run a container for distribution.
-
-`Dockerfile.run` is for that.
-
-    $ docker build -f Dockerfile.run -t golddranks/ganbare_run .
-    $ docker run -d --name ganbare_runner -p 8080:8080 -e "GANBARE_RUNTIME_PEPPER=${GANBARE_RUNTIME_PEPPER}" -v $PWD/audio:/ganbare/audio -v $PWD/images:/ganbare/images golddranks/ganbare_run
-
-Notes about running: Ganbare needs a PostgreSQL database connection, and mounted volume for user-uploaded images and audio.
-Mount the volume using docker `-v` flag. Everthing else you shall configure using environmental variables.
