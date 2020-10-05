@@ -11,7 +11,7 @@ $ docker-compose up --build web
 
 The Dockerfile is designed to cache the dependencies, so re-builds should be relatively quick.
 
-## Requirements for building without Docker
+## Building without Docker
 
 ### Build tools
 * A working Rust environment (My `rustc -V` prints `rustc 1.46.0 (04488afe3 2020-08-24)`)
