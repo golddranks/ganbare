@@ -116,8 +116,8 @@ Google Cloud. Cloud Run & SQL. Still no CI/CD for the time being. build & push l
 Some quirks:
 - See: https://cloud.google.com/sql/docs/postgres/connect-run
 - Enable the Cloud SQL Admin API (seems to be a common pattern in GCP - services are "enabled" individually)
-- Create a DB instance. The creating databases with Japanese collation isn't supported from the Console.
-- Enter the database via Cloud Shell & `gcloud sql connect $DB_INSTANCEE`
+- Create a DB instance. Creating databases with Japanese collation isn't supported from the Console.
+- Enter the database via Cloud Shell & `gcloud sql connect $DB_INSTANCE`
 - Create the database manually: `CREATE DATABASE ganbare_prd OWNER postgres ENCODING 'UTF8' LC_COLLATE 'ja_JP.UTF-8' LC_CTYPE 'ja_JP.UTF-8' TEMPLATE 'template0';`
 - Connect the Cloud Run service to Cloud SQL by creating a new revision.
 - Managed Cloud Run doesn't connect to Cloud SQL via TCP, but locally created Unix socket.
