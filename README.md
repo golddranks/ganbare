@@ -119,7 +119,7 @@ Some quirks:
 - Create a DB instance. Creating databases with Japanese collation isn't supported from the Console.
 - Enter the database via Cloud Shell & `gcloud sql connect $DB_INSTANCE`
 - Create the database manually: `CREATE DATABASE ganbare_prd OWNER postgres ENCODING 'UTF8' LC_COLLATE 'ja_JP.UTF-8' LC_CTYPE 'ja_JP.UTF-8' TEMPLATE 'template0';`
-- Connect the Cloud Run service to Cloud SQL by creating a new revision.
-- Managed Cloud Run doesn't connect to Cloud SQL via TCP, but locally created Unix socket.
+- Connect the Cloud Run service to Cloud SQL from "new revision" settings.
+- Managed Cloud Run doesn't connect to Cloud SQL via TCP, but locally created Unix socket!
 - `GANBARE_DATABASE_URL` was a bit hard to get right: `postgres://postgres:$DB_PASSWORD@ganbare_prd?host=/cloudsql/$DB_INSTANCE_CONNECTION` (no `.s.PGSQL.5432` in the end)
 - You can get `$DB_INSTANCE_CONNECTION` by `gcloud sql instances describe $DB_INSTANCE | grep connectionName`
