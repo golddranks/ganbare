@@ -31,6 +31,12 @@ pub fn favicon(_: &mut Request) -> PencilResult {
             .set_static_cache()
 }
 
+pub fn health_check(_: &mut Request) -> PencilResult {
+    let conn = db_connect().err_500()?;
+    ganbare_backend::user::get_group(&conn, "admins").err_500()?;
+    Ok(Response::from("OK."))
+}
+
 pub fn source_maps(req: &mut Request) -> PencilResult {
     if !*ENABLE_SOURCE_MAPS {
         return pencil::helpers::abort(404);
@@ -263,7 +269,7 @@ fn resp_time_stop(req: &Request, resp: &mut pencil::Response) {
     debug!("Request from {} to {} {}, response: {} took {} ms", req.remote_addr, req.method, req.url, resp.status_code, start.elapsed().as_millis());
 }
 
-use pencil::Pencil;
+use pencil::{Pencil, Response};
 
 #[allow(dead_code)]
 struct RequestTime;
@@ -332,6 +338,7 @@ pub fn main() {
     app.get("/src/<file_path:path>", "source_maps", source_maps);
 
     // BASIC FUNCTIONALITY
+    app.get("/health_check", "health_check", health_check);
     app.get("/favicon.ico", "favicon", favicon);
     app.get("/", "hello", app_pages::hello);
     app.get("/welcome", "welcome", app_pages::text_pages);
