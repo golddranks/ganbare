@@ -1,8 +1,10 @@
 #!/bin/sh
+set -eu
 
-ENVFILE={1:?Usage: deploy_binary.sh  <prd.env|stg.env>}
+ENVFILE="${1:?Usage: deploy_binary.sh <prd.env|stg.env>}"
 . "$ENVFILE"
 
+# shellcheck disable=SC2087
 ssh "$DEPLOY_SERVER" /bin/sh <<EOF
 docker pull golddranks/ganbare_run
 docker stop $DEPLOY_CONTAINER_NAME && docker rm $DEPLOY_CONTAINER_NAME

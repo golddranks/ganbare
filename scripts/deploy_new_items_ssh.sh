@@ -1,8 +1,9 @@
 #!/bin/sh
+set -eu
 
-. local.env
+. scripts/local.env
 
-ENVFILE={1:?Usage: deploy_new_items.sh  <prd.env|stg.env>}
+ENVFILE="${1:?Usage: deploy_new_items.sh <prd.env|stg.env>}"
 . "$ENVFILE"
 
 echo "Local DB: $LOCAL_DB_NAME Remote DB: $DEPLOY_DB_NAME"
@@ -12,6 +13,7 @@ echo "Moving the SQL data to the server"
 rsync -r new_items_temp.sql "$DEPLOY_SERVER:"
 rm new_items_temp.sql
 echo "SSH to server and insert the data"
+# shellcheck disable=SC2087
 ssh "$DEPLOY_SERVER" /bin/sh <<EOF
 psql -h localhost -d $DEPLOY_DB_NAME -f new_items_temp.sql
 rm new_items_temp.sql
