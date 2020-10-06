@@ -179,10 +179,16 @@ lazy_static! {
             .unwrap_or_else(|_|  "".into())
     };
 
+    pub static ref PORT : u16 = {
+        dotenv::dotenv().ok();
+        env::var("PORT") // This is provided by many cloud environments
+            .map(|p| p.parse::<u16>().unwrap_or(8080)).unwrap_or(8080)
+    };
+
     pub static ref SERVER_BINDING : SocketAddr = {
         dotenv::dotenv().ok();
         let binding = env::var("GANBARE_SERVER_BINDING")
-            .unwrap_or_else(|_| "localhost:8080".into());
+            .unwrap_or_else(|_| format!("localhost:{}", *PORT));
         binding.to_socket_addrs().expect("GANBARE_SERVER_BINDING: Format: domain:port").next()
             .expect("GANBARE_SERVER_BINDING: Format: domain:port")
     };
