@@ -107,7 +107,7 @@ The following have defaults, and you may omit them:
 
 ### The old deployment (ca. 2017)
 
-Via shell scripts and SSH. No CI/CD, build & push locally. Using Docker Hub as container registry. Running the app on Docker, and a local PostgreSQL install. I forget if I used Nginx or HAProxy as a reverse proxy. Docker volumes for media asset (app provided and user uploaded) storage. No proper way to seed the data, just pg_dump / pg_restore. (See the backup scripts under `scripts/`)
+A dedicated server, via shell scripts and SSH. No CI/CD, build & push locally. Using Docker Hub as container registry. Running the app on Docker, and a local PostgreSQL install. I forget if I used Nginx or HAProxy as a reverse proxy. Docker volumes for media asset (app provided and user uploaded) storage. No proper way to seed the data, just pg_dump / pg_restore. (See the backup scripts under `scripts/`)
 
 ### The new deployment (ca. 2020)
 
