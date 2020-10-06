@@ -100,3 +100,26 @@ The following have defaults, and you may omit them:
     GANBARE_EMAIL_EXPIRE_DAYS How old sessions are cleaned. Defaults to 14 days.
     GANBARE_SESSION_EXPIRE_DAYS How account invitation emails are cleaned. Defaults to 14 days.
     GANBARE_TRAINING_PERIOD_DAYS Defaults to 10. This many days since starting training add users to group "posttest".
+
+## Deploying
+
+(Of course, this is very deployment instance specific. Consider these as my personal notes.)
+
+### The old deployment (ca. 2017)
+
+Via shell scripts and SSH. No CI/CD, build & push locally. Using Docker Hub as container registry. Running the app on Docker, and a local PostgreSQL install. I forget if I used Nginx or HAProxy as a reverse proxy. Docker volumes for media asset (app provided and user uploaded) storage. No proper way to seed the data, just pg_dump / pg_restore. (See the backup scripts under `scripts/`)
+
+### The new deployment (ca. 2020)
+
+Google Cloud. Cloud Run & SQL. Still no CI/CD for the time being. build & push locally. Using GCR as container registry.
+
+Some quirks:
+- See: https://cloud.google.com/sql/docs/postgres/connect-run
+- Enable the Cloud SQL Admin API (seems to be a common pattern in GCP - services are "enabled" individually)
+- Create a DB instance. The creating databases with Japanese collation isn't supported from the Console.
+- Enter the database via Cloud Shell & `gcloud sql connect $DB_INSTANCEE`
+- Create the database manually: `CREATE DATABASE ganbare_prd OWNER postgres ENCODING 'UTF8' LC_COLLATE 'ja_JP.UTF-8' LC_CTYPE 'ja_JP.UTF-8' TEMPLATE 'template0';`
+- Connect the Cloud Run service to Cloud SQL by creating a new revision.
+- Managed Cloud Run doesn't connect to Cloud SQL via TCP, but locally created Unix socket.
+- `GANBARE_DATABASE_URL` was a bit hard to get right: `postgres://postgres:$DB_PASSWORD@ganbare_prd?host=/cloudsql/$DB_INSTANCE_CONNECTION` (no `.s.PGSQL.5432` in the end)
+- You can get `$DB_INSTANCE_CONNECTION` by `gcloud sql instances describe $DB_INSTANCE | grep connectionName`
