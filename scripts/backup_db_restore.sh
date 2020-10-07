@@ -1,4 +1,5 @@
 #!/bin/sh
+set -eu
 
 . scripts/local.env
 

@@ -266,7 +266,7 @@ fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
 fn resp_time_stop(req: &Request, resp: &mut pencil::Response) {
     let start = req.extensions_data.get::<RequestTime>().unwrap();
     let lag = start.elapsed();
-    debug!("Request from {} to {} {}, response: {} took {} ms", req.remote_addr, req.method, req.url, resp.status_code, start.elapsed().as_millis());
+    debug!("Request from {} to {} {}, response: {} took {} ms", remote_addrs_string(req), req.method, req.url, resp.status_code, start.elapsed().as_millis());
 }
 
 use pencil::{Pencil, Response};
@@ -276,6 +276,20 @@ struct RequestTime;
 
 impl typemap::Key for RequestTime {
     type Value = Instant;
+}
+
+fn remote_addrs_string(req: &Request) -> String {
+    use hyper::*;
+    header! { (Forwarded, "Forwarded") => [String] }
+    header! { (XForwardedFor, "X-Forwarded-For") => [String] }
+
+    if let Some(Forwarded(addr)) = req.headers().get::<Forwarded>() {
+        addr.to_string()
+    } else if let Some(XForwardedFor(addr)) = req.headers().get::<XForwardedFor>() {
+        addr.to_string()
+    } else {
+        req.remote_addr().to_string()
+    }
 }
 
 pub fn main() {
@@ -327,7 +341,7 @@ pub fn main() {
 
     // Note: resp_time_start MUST be the first one
     if *PERF_TRACE { app.before_request(resp_time_start); }
-    app.before_request(|req| { info!("Request from {} to {} {}", req.remote_addr, req.method, req.url); None });
+    app.before_request(|req| { info!("Request from {} to {} {}", remote_addrs_string(req), req.method, req.url); None });
     app.before_request(check_if_cached);
     app.before_request(csrf_check);
     app.after_request(set_headers);
