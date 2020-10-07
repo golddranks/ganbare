@@ -286,7 +286,7 @@ pub fn add_users(req: &mut Request) -> PencilResult {
                                  &hmac,
                                  &*SITE_DOMAIN,
                                  &*SITE_LINK,
-                                 &**req.app
+                                 &*req.app
                                      .handlebars_registry
                                      .read()
                                      .expect("The registry is basically read-only after startup."),

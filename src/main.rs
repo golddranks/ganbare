@@ -340,6 +340,7 @@ pub fn main() {
     if *FREEZE_STATIC_FILES {
         app.enable_static_cached_file_handling(Duration::from_secs(*CACHE_MAX_AGE as u64));
     } else {
+        app.set_template_debug(true);
         app.enable_static_file_handling();
     }
 

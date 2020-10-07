@@ -265,8 +265,8 @@
 button:focus,
 input[type="submit"]:focus,
 input[type="reset"]:focus,
-input[type="button"]:focus, {
-	outline:0;
+input[type="button"]:focus {
+	outline: 0;
 }
 
 /* This fixes the ugly button background color on mobile Chrome */
@@ -280,7 +280,7 @@ input[type="button"],
 button,
 .answerButton
 .button {
-
+	backface-visibility: 		 hidden;
 	-webkit-backface-visibility: hidden;
 	-moz-backface-visibility:    hidden;
 	-ms-backface-visibility:     hidden;
@@ -475,20 +475,27 @@ input.wordShowKana {
 		padding-bottom: 0;
 		margin-bottom: 0;
 	}
+	@include breakpoint(xsmall) {
+		.smallscreen {
+			display: inline;
+		}
+		.bigscreen {
+			display: none;
+		}
+		.multilineButton {
+			line-height: 1.7em;
+		}
+	}
 
 	@include breakpoint(xxsmall) {
 		#questionText {
 			min-height: 5.5em;
 		}
 		.multilineButton {
-			line-height: 1.7em;
 			height: 5.3em;
 			width: 100%;
 			white-space: normal;
 			margin-bottom: 0.25em;
-		}
-		.smallscreen {
-			display: inline;
 		}
 	}
 

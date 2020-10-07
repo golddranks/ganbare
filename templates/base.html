@@ -48,18 +48,18 @@
 					</footer>
 
 			</div>
-
-		<!-- Scripts -->
-			<!--[if lte IE 8]><script src="static/js/respond.min.js"></script><![endif]-->
 			<script>
-				document.body.className = 'ontouchstart' in document.documentElement ? '' : 'hover';
-				$(function() {
-					{{#if alert_msg }}alert('{{ alert_msg }}');{{/if}}
-					document.body.className = document.body.className.replace(/\bis-loading\b/, '');
-					{{> page_script_inline}}
-				});
-				document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
+				// TODO: https://stackoverflow.com/a/63110674/1106456 Fix sticky hover on touchscreen using this new method?
+				if ('ontouchstart' in document.documentElement === false) { document.body.classList.add('hover') };
+				if (navigator.userAgent.match(/(MSIE|rv:11\.0)/)) { document.body.classList.add('is-ie') };
+				if ('addEventListener' in window) {
+					window.addEventListener('load', function() {
+						let alert_msg = '{{ alert_msg }}';
+						if (alert_msg) { alert(alert_msg); }
+						document.body.classList.remove("is-loading");
+						{{> page_script_inline}}
+					});
+				}
 			</script>
-
 	</body>
 </html>

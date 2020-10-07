@@ -22,13 +22,9 @@
 		opacity: 0.95;
 		text-align: center;
 		min-height: 17em;
-
-		@include vendor('transform-origin', '50% 50%');
-		@include vendor('transform', 'rotateX(0deg)');
-		@include vendor('transition', (
-			'opacity #{_duration(main)} ease',
-			'transform #{_duration(main)} ease',
-		));
+		transform-origin: 50% 50%;
+		transform: rotateX(0deg);
+		transition: opacity #{_duration(main)} ease, transform #{_duration(main)} ease;
 
 		.avatar {
 			position: relative;
