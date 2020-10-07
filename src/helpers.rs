@@ -269,6 +269,11 @@ lazy_static! {
             )
     };
 
+    pub static ref FREEZE_STATIC_FILES: bool = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_FREEZE_STATIC_FILES").map(|s| s.parse().unwrap_or(!DEV_MODE)).unwrap_or(!DEV_MODE)
+    };
+
     pub static ref POOL: r2d2::Pool<ConnManager> = {
         let manager = ConnManager::new(DATABASE_URL.as_str());
         r2d2::Pool::new(manager).expect("Failed to create pool.")

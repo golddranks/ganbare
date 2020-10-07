@@ -337,7 +337,11 @@ pub fn main() {
                        "posttest_info.html",
                        "posttest_done.html");
 
-    app.enable_static_cached_file_handling(Duration::from_secs(*CACHE_MAX_AGE as u64));
+    if *FREEZE_STATIC_FILES {
+        app.enable_static_cached_file_handling(Duration::from_secs(*CACHE_MAX_AGE as u64));
+    } else {
+        app.enable_static_file_handling();
+    }
 
     // Note: resp_time_start MUST be the first one
     if *PERF_TRACE { app.before_request(resp_time_start); }

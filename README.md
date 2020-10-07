@@ -97,6 +97,7 @@ GANBARE_PERF_TRACE prints timings of various operations into debug log. Defaults
 GANBARE_ENABLE_SOURCE_MAPS Whether it allows to see files in /src using HTTP. Defaults to true in debug builds and false in release builds.
 GANBARE_PARANOID Defaults to true. When on, HTTPS is required. Cookies are sent with "Secure" flag. Strictens the anti-CSRF measures. (Checks Origin & Referer of all mutating HTTP METHODS, and prevents even non-mutating requests to the HTTP API) Enforces ContentSecurityPolicy as an anti-XSS measure.
 GANBARE_CONTENT_SECURITY_POLICY Sets the contents of Content-Security-Policy header. Defaults to "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com"
+GANBARE_FREEZE_STATIC_FILES Are static files considered truly static and thus never stale as cached? False in debug builds, true in release builds.
 
 # Deployment settings (ignore if running from Dockerfile)
 GANBARE_SERVER_BINDING defaults to localhost:8080. When running inside a container, change this to 0.0.0.0:8080 for the site to be accessible from host.
