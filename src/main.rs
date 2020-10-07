@@ -581,6 +581,7 @@ pub fn main() {
              http_api::save_eventdata);
 
     std::thread::spawn(background_control_thread);
+    
 
     info!("Ready. Running on http://{}, serving at {} with {} threads",
           *SERVER_BINDING,

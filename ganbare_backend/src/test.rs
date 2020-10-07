@@ -81,7 +81,7 @@ pub fn get_new_quiz_test(conn: &Connection,
                              user_id,
                              Some("pending_test_item"),
                              &format!("{}", pi_id))?;
-        println!("New question number {}", number);
+        info!("New question number {}", number);
         quiz
 
     } else {
@@ -92,7 +92,7 @@ pub fn get_new_quiz_test(conn: &Connection,
 
         assert!(pending_item.test_item);
 
-        println!("Returning a pending item ID {}.", pending_item.id);
+        info!("Returning a pending item ID {}.", pending_item.id);
 
         quiz::penditem_to_quiz(conn, &pending_item)?
     };
