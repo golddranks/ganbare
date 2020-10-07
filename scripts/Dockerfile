@@ -58,6 +58,7 @@ ENV OUT_DIR=${OUT_DIR:-release}
 COPY --from=0 /work/target/x86_64-unknown-linux-musl/${OUT_DIR}/ganbare .
 COPY --from=0 /etc/ssl/certs/ca-certificates.crt ./ca-certificates.ctr
 COPY --from=1 /work/static ./static
+COPY private_assets ./private_assets
 
 VOLUME /srv/audio /srv/images /srv/user_audio
 ENV GANBARE_SERVER_BINDING=0.0.0.0:8080 \

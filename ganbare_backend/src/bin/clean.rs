@@ -790,11 +790,11 @@ fn missing_images() {
 fn check_tests() {
     use quiz::QuizSerialized;
 
-    let tsv = fs::read_to_string("../src/posttest.tsv")
-        .or_else(|_| fs::read_to_string("../src/test_placeholder.tsv"))?;
+    let tsv = fs::read_to_string("../private_assets/pretest.tsv")
+        .or_else(|_| fs::read_to_string("../private_assets/test_placeholder.tsv"))?;
     let pre_quiz = ganbare::quiz::read_quiz_tsv(tsv)?;
-    let tsv = fs::read_to_string("../src/posttest.tsv")
-        .or_else(|_| fs::read_to_string("../src/test_placeholder.tsv"))?;
+    let tsv = fs::read_to_string("../private_assets/posttest.tsv")
+        .or_else(|_| fs::read_to_string("../private_assets/test_placeholder.tsv"))?;
     let post_quiz = ganbare::quiz::read_quiz_tsv(tsv)?;
 
     let quizes = pre_quiz.into_iter().chain(post_quiz.into_iter());

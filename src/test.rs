@@ -47,8 +47,8 @@ pub fn get_new_quiz_pretest(conn: &Connection,
                             user_id: i32,
                             event: &Event)
                             -> Result<Option<Quiz>> {
-    let tsv = fs::read_to_string("pretest.tsv")
-        .or_else(|_| fs::read_to_string("test_placeholder.tsv"))
+    let tsv = fs::read_to_string("private_assets/pretest.tsv")
+        .or_else(|_| fs::read_to_string("private_assets/test_placeholder.tsv"))
         .chain_err(|| "No pretest.tsv or even placefolder found!")?;
     let quizes = ganbare::quiz::read_quiz_tsv(tsv)
         .chain_err(|| "Malformed pre/posttest quiz .tsv")?;
