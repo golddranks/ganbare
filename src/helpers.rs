@@ -377,7 +377,7 @@ impl<'a> Serialize for TemplateContext<'a> {
 
 pub fn new_template_context<'a>() -> TemplateContext<'a> {
     let mut ctx = TemplateContext { map: BTreeMap::new() };
-    ctx.insert("title", "akusento.ganba.re");
+    ctx.insert("title", "accent.ganba.re");
     ctx.insert("jquery_url", JQUERY_URL.as_str());
     ctx.insert("font_stylesheet", FONT_URL.as_str());
     ctx
