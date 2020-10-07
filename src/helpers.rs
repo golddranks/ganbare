@@ -131,9 +131,9 @@ lazy_static! {
         dotenv::dotenv().ok();
         env::var("GANBARE_SITE_LINK")
             .unwrap_or_else(|_| if DEV_MODE {
-                format!("http://{}:8080", *SITE_DOMAIN)
+                format!("http://{}:8080/", *SITE_DOMAIN)
             } else {
-                format!("https://{}", *SITE_DOMAIN)
+                format!("https://{}/", *SITE_DOMAIN)
             })
     };
 
