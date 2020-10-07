@@ -78,20 +78,17 @@ lazy_static! {
     pub static ref SITE_LINK : String = {
         dotenv::dotenv().ok();
         env::var("GANBARE_SITE_LINK")
-            .unwrap_or_else(|_|
-                format!("http://{}:8081", env::var("GANBARE_SITE_DOMAIN")
-                    .unwrap_or_else(|_| "".into()))
-            )
+            .unwrap_or_else(|_| if DEV_MODE {
+                format!("http://{}:8080", SITE_DOMAIN)
+            } else {
+                format!("https://{}", SITE_DOMAIN)
+            })
     };
 
     pub static ref EMAIL_SERVER : SocketAddr = {
         dotenv::dotenv().ok();
         let binding = env::var("GANBARE_EMAIL_SERVER")
-            .expect(
-                "GANBARE_EMAIL_SERVER:\
-                Specify an outbound email server,\
-                like this: mail.yourisp.com:25"
-            );
+            .unwrap_or("mail.yourisp.com:25".to_string());
         binding.to_socket_addrs().expect("Format: domain:port").next().expect("Format: domain:port")
     };
 
@@ -124,7 +121,7 @@ lazy_static! {
     pub static ref EMAIL_NAME : String = {
         dotenv::dotenv().ok();
         env::var("GANBARE_EMAIL_NAME")
-            .unwrap_or_else(|_|  "".into())
+            .unwrap_or_else(|_|  "ganba.re応援団".into())
     };
 
 }

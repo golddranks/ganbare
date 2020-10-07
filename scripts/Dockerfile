@@ -63,7 +63,6 @@ VOLUME /srv/audio /srv/images /srv/user_audio
 ENV GANBARE_SERVER_BINDING=0.0.0.0:8080 \
 	GANBARE_JQUERY=https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js \
 	GANBARE_FONT_URL=https://fonts.googleapis.com/css?family=Source+Sans+Pro:300 \
-	GANBARE_EMAIL_NAME=ganba.re応援団 \
 	SSL_CERT_FILE=/srv/ca-certificates.crt
 
 EXPOSE 8080

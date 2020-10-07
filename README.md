@@ -69,20 +69,20 @@ The server is configured using environmental variables, or an `.env` file in the
 
     GANBARE_DATABASE_URL=postgres://postgres:password@localhost:5432/ganbare_dev
     GANBARE_RUNTIME_PEPPER 256-bit base64-encoded random value for peppering the password hashes.
-    GANBARE_EMAIL_SERVER Whatever e-mail server works for you. e.g. mail.yourisp.net:25, Mailgun, AWS SES...
     GANBARE_SITE_DOMAIN Set this right for cookies etc. to work.
     GANBARE_COOKIE_HMAC_KEY 256-bit base64-encoded random value for signing cookies.
 
 The following have defaults, and you may omit them:
 
 ```
-# E-mail settings (you might have to change these if you want your e-mails to work well)
+# E-mail settings (you might have to change these if you want your e-mails to work)
+GANBARE_EMAIL_SERVER Whatever e-mail server works for you, e.g. Mailgun, AWS SES... Defaults to "mail.yourisp.com:25".
 GANBARE_EMAIL_SMTP_USERNAME SMTP username. Defaults to empty string.
 GANBARE_EMAIL_SMTP_PASSWORD password. Defaults to empty string.
-GANBARE_SITE_LINK defaults to http://$GANBARE_SITE_DOMAIN:8081. This is used, for example, in email messages to link to the site.
 GANBARE_EMAIL_DOMAIN If the e-mail domain is different than the site domain. (e.g. app in subdomain but emails from main domain) Defaults to $GANBARE_SITE_DOMAIN
+GANBARE_SITE_LINK This is used in email messages for linking to the site. Defaults to http://$GANBARE_SITE_DOMAIN:8080 in debug builds and https://$GANBARE_SITE_DOMAIN in release builds.
 GANBARE_EMAIL_ADDRESS The default e-mail address that the emails from the app are send from. Defaults to support@$GANBARE_EMAIL_DOMAIN
-GANBARE_EMAIL_NAME The name part of the e-mail address. Defaults to empty string.
+GANBARE_EMAIL_NAME The name part of the e-mail address. Defaults to "ganba.re応援団".
 
 # Performance settings (not neccessary to tweak, but on higher volumes, maybe?)
 GANBARE_CACHE_MAX_AGE Sets the max-age of cache control of static files. Defaults to short 30 seconds. You might want to change this to a larger number on production!
