@@ -1,17 +1,12 @@
 {{#*inline "main_section"}}
-	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
-	<section id="settings" style="display: none;">
-		<ul id="settingsMenu">
-			<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
-			<li><a href="/change_password">Vaihda salasanaa</a></li>
-		</ul>
-	</section>
+
+{{> settings_menu}}
 
 <section>
 	<h1>Kiitos :3</h1>
 	<p class="wordyExplanation">Kiitos Nooralle.</p>
 	<p class="wordyExplanation">Kiitos Jönsselle.</p>
-	<p class="wordyExplanation">Kiitos sinulle.</p>
+	<p class="wordyExplanation">Kiitos sinulle...</p>
 </section>
 
 {{/inline}}

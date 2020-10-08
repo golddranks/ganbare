@@ -87,6 +87,15 @@ pub fn hello(req: &mut Request) -> PencilResult {
     }
 }
 
+pub fn plain_page(req: &mut Request) -> PencilResult {
+    let mut endpoint = req.endpoint().expect("Pencil guarantees that this is always set.");
+
+    let context = new_template_context();
+
+    endpoint.push_str(".html");
+    req.app.render_template(&endpoint, &context)
+}
+
 pub fn ok(req: &mut Request) -> PencilResult {
 
     let (conn, sess) = auth_user(req, "")?;
