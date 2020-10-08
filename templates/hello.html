@@ -13,7 +13,7 @@
 		<button class="compact">Vaihda unohtunut salasana</button>
 	</form>
 	{{/if}}
-	<h2>{{#if authError}}Kokeile uudelleen{{/if}}{{#unless authError}}Koehenkilö, kirjaudu sisään{{/unless}}</h2>
+	<h2>{{#if authError}}Kokeile uudelleen{{/if}}{{#unless authError}}Kirjaudu sisään{{/unless}}</h2>
 	<form method="post" action="/login">
 		<div class="field">
 			<input type="email" name="email" id="email" value="{{ email }}" placeholder="Sähköposti" />
