@@ -202,7 +202,7 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
 
         if let Some(&Origin { host: Host { ref hostname, .. }, .. }) = origin {
             if hostname != &**SITE_DOMAIN {
-                println!("Someone tried to do a request with a wrong Origin: {} Possible CSRF? \
+                warn!("Someone tried to do a request with a wrong Origin: {} Possible CSRF? \
                         Details: {:?}, {:?}",
                          hostname,
                          origin,
@@ -217,13 +217,13 @@ fn csrf_check(req: &mut Request) -> Option<PencilResult> {
                 Ok(None) | Err(_) => return Some(pencil::abort(400)),
             };
             if hostname != &**SITE_DOMAIN {
-                println!("Someone tried to do a request with a wrong Referer: {} Possible CSRF?",
+                warn!("Someone tried to do a request with a wrong Referer: {} Possible CSRF?",
                          hostname);
                 return Some(pencil::abort(403));
             }
         }
         if origin.is_none() && referer.is_none() {
-            println!("Someone tried to do a request with no Referer or Origin while triggering \
+            warn!("Someone tried to do a request with no Referer or Origin while triggering \
                     the anti-CSRF heuristics!");
             println!("Accessing with HTTP method: {:?}. The first segment of path: {:?}",
                      req.method(),
