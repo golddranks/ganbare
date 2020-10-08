@@ -15,7 +15,10 @@
 }
 
 #main {
-
+		.thanks {
+			line-height: 1.5;
+			text-align: left;
+		}
 
 		max-width: 40em;
 		&.fullwidth {
@@ -128,6 +131,10 @@
 				li {
 					margin: 0;
 					list-style-type: none;
+					margin-bottom: 1.5em;
+				}
+				li:last-child {
+					margin-bottom: 0.5em;
 				}
 			}
 			font-size: 0.8rem;

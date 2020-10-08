@@ -1,38 +1,3 @@
-{{#*inline "settings_menu"}}
-<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
-<section id="settings" style="display: none;">
-	<ul id="settingsMenu">
-		<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
-		<li><form action="/change_password" method="get"><button type="submit" class="linklike">Vaihda salasanaa</button></form></li>
-		<li><form action="/thanks" method="get">Kiitokset</form></li>
-	</ul>
-</section>
-<script>
-const main = document.getElementById("main");
-const settingsArea = document.getElementById("settings");
-const menuButton = document.getElementById("menuButton");
-const settingsMenu = document.getElementById("settingsMenu");
-
-function toggleMenu(event) {
-	settingsArea.style.display = (settingsArea.dataset.toggled ^= 1) ? "block" : "none";
-	main.classList.toggle("menuOn");
-	event.stopPropagation(); 
-}
-
-function cancelMenu(event) {
-	settingsArea.style.display = "none";
-	main.classList.remove("menuOn");
-	event.stopPropagation(); 
-}
-
-settingsArea.style.display = "none";
-settingsArea.addEventListener("click", cancelMenu);
-document.body.addEventListener("click", cancelMenu);
-menuButton.addEventListener("click", toggleMenu);
-settingsMenu.addEventListener("click", event => event.stopPropagation());
-</script>
-{{/inline}}
-
 <!DOCTYPE HTML>
 <!--
 	Identity by HTML5 UP
@@ -71,14 +36,6 @@ settingsMenu.addEventListener("click", event => event.stopPropagation());
 					<footer id="footer">
 						<ul class="copyright">
 							<li>&copy; <a href="https://twitter.com/golddranks">Pyry Kontio</a></li>
-							<li>
-							Design: <a href="http://html5up.net">HTML5 UP</a>
-							</li>
-							<li>
-							Icons: <a href="http://www.flaticon.com/authors/appzgear" title="Appzgear">Appzgear</a> &amp; <a href="https://www.iconfinder.com/iconsets/wirecons-free-vector-icons">Wirecons </a>
-							</li>
-							<li>SFX: <a href="https://www.freesound.org/people/SgtPepperArc360/sounds/341732/#">SgtPepperArc360</a>
-							</li>
 						</ul>
 					</footer>
 

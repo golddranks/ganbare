@@ -547,7 +547,7 @@ dependencies = [
  "rust-crypto",
  "serde",
  "serde_json",
- "sharp_pencil 0.6.0",
+ "sharp_pencil",
  "tempdir",
  "time 0.1.44",
  "try_map",
@@ -582,7 +582,7 @@ dependencies = [
  "rust-crypto",
  "serde",
  "serde_json",
- "sharp_pencil 0.5.0",
+ "sharp_pencil",
  "tempdir",
  "try_map",
  "unicode-normalization",
@@ -1668,27 +1668,6 @@ name = "sha1"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2579985fda508104f7587689507983eadd6a6e84dd35d6d115361f530916fa0d"
-
-[[package]]
-name = "sharp_pencil"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c155fab8ab4239340163cbdca4f6f44bf313e4dd875d1ee6bd2bf9881953ab8"
-dependencies = [
- "formdata",
- "handlebars",
- "hyper",
- "lazycell",
- "log 0.4.11",
- "mime",
- "mime_guess",
- "regex",
- "serde",
- "serde_json",
- "time 0.1.44",
- "typemap",
- "url 1.7.2",
-]
 
 [[package]]
 name = "sharp_pencil"

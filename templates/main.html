@@ -10,8 +10,14 @@
 	<section id="topmessage">
 		<p class="topmessageparagraph" style="display: none;"></p>
 	</section>
-	{{> settings_menu}}
-
+	<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
+	<section id="settings" style="display: none;">
+		<ul id="settingsMenu">
+			<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
+			<li><a href="/change_password">Vaihda salasanaa</a></li>
+			<li><a href="/thanks">Kiitokset</a></li>
+		</ul>
+	</section>
 	<div id="errorSection" style="display: none; ">
 		<p id="errorStatus">{{ error_msg }}</p>
 	</div>

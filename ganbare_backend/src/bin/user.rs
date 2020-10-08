@@ -15,6 +15,7 @@ use lettre::email::Email;
 use lettre::transport::smtp::SmtpTransportBuilder;
 use lettre::transport::EmailTransport;
 use lazy_static::lazy_static;
+use ganbare_backend::DEV_MODE;
 
 
 lazy_static! {
@@ -79,9 +80,9 @@ lazy_static! {
         dotenv::dotenv().ok();
         env::var("GANBARE_SITE_LINK")
             .unwrap_or_else(|_| if DEV_MODE {
-                format!("http://{}:8080", SITE_DOMAIN)
+                format!("http://{}:8080", *SITE_DOMAIN)
             } else {
-                format!("https://{}", SITE_DOMAIN)
+                format!("https://{}", *SITE_DOMAIN)
             })
     };
 
@@ -147,6 +148,9 @@ fn main() {
         .subcommand(SubCommand::with_name("passwd")
                         .about("Set passwords")
                         .arg(Arg::with_name("email").required(true)))
+        .subcommand(SubCommand::with_name("chpasswd")
+                        .about("Change passwords")
+                        .arg(Arg::with_name("email").required(true)))
         .subcommand(SubCommand::with_name("ls").about("List all users"))
         .subcommand(SubCommand::with_name("rm").about("Remove user").arg(Arg::with_name("email")
                                                                              .required(true)))
@@ -188,6 +192,24 @@ fn main() {
                     return;
                 }
             };
+        }
+        ("chpasswd", Some(args)) => {
+            let email = args.value_of("email").unwrap();
+            println!("Changing user {} password.", email);
+            println!("Enter a password:");
+            let password = match rpassword::read_password() {
+                Err(_) => {
+                    println!("Error: couldn't read the password from keyboard.");
+                    return;
+                }
+                Ok(pw) => pw,
+            };
+            let u = get_user_by_email(&pooled_conn, email).unwrap().unwrap();
+            change_password(&pooled_conn,
+                u.id,
+                &password,
+                &*RUNTIME_PEPPER,
+                *PASSWORD_STRETCHING_TIME).unwrap();
         }
         ("ls", Some(_)) => {
             let users = list_users(&pooled_conn).unwrap();

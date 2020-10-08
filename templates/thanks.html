@@ -1,12 +1,60 @@
 {{#*inline "main_section"}}
 
-{{> settings_menu}}
+<button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
+<section id="settings" style="display: none;">
+	<ul id="settingsMenu">
+		<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
+		<li><a href="/change_password" method="get">Vaihda salasanaa</a></li>
+		<li><a href="/thanks">Kiitokset</a></li>
+	</ul>
+</section>
+<script>
+const main = document.getElementById("main");
+const settingsArea = document.getElementById("settings");
+const menuButton = document.getElementById("menuButton");
+const settingsMenu = document.getElementById("settingsMenu");
+
+function toggleMenu(event) {
+	settingsArea.style.display = (settingsArea.dataset.toggled ^= 1) ? "block" : "none";
+	main.classList.toggle("menuOn");
+	event.stopPropagation(); 
+}
+
+function cancelMenu(event) {
+	settingsArea.style.display = "none";
+	main.classList.remove("menuOn");
+	event.stopPropagation(); 
+}
+
+settingsArea.style.display = "none";
+settingsArea.addEventListener("click", cancelMenu);
+document.body.addEventListener("click", cancelMenu);
+menuButton.addEventListener("click", toggleMenu);
+settingsMenu.addEventListener("click", event => event.stopPropagation());
+</script>
 
 <section>
-	<h1>Kiitos :3</h1>
-	<p class="wordyExplanation">Kiitos Nooralle.</p>
-	<p class="wordyExplanation">Kiitos Jönsselle.</p>
-	<p class="wordyExplanation">Kiitos sinulle...</p>
+	<h1>Kiitos</h1>
+	<p class="thanks">Kiitos teille kaikille, jotka lahjoititte äänenne esimerkkisanoja ja -lauseita varten.
+		(Lisään nimiä osallistuneiden suostumuksella myöhemmin)</p>
+	<p class="thanks">Kiitos Jönsselle upean Opiskellaan Japania-yhteisön ylläpitämisestä.</p>
+	<p class="thanks">Kiitos japanin opettajilleni; ilman teitä en olisi päässyt näin pitkälle.</p>
+	<p class="thanks">Kiitos Nooralle tuesta ja kannustuksesta.</p>
+	<p class="thanks">Kiitos sinulle kun käytät tätä ohjelmaa :3</p>
+	<br>
+	<p class="thanks">Kiitos myös seuraavien CC BY-SA 3.0 -lisensoitujen grafiikoiden, designien ja äänien tarjoamisesta:</p>
+	<p class="thanks" style="margin-bottom: 0.5em;">sivun design-pohja:
+		<a href="http://html5up.net">HTML5 UP</a></p>
+	<p class="thanks" style="margin-bottom: 0.5em;">kuvakkeet:
+		<a href="http://www.flaticon.com/authors/appzgear" title="Appzgear">Appzgear</a> &
+		<a href="https://www.iconfinder.com/iconsets/wirecons-free-vector-icons">Wirecons</a>
+	</p>
+	<p class="thanks" style="margin-bottom: 0.5em;">ääniefektit:
+		<a href="https://www.freesound.org/people/SgtPepperArc360/sounds/341732/#">SgtPepperArc360</a>
+	</p>
+	<form action="/" method="get" style="display: inline-block">
+		<button style="margin-top: 1em;">Eipä kestä</button>
+	</form>
 </section>
 
 {{/inline}}
