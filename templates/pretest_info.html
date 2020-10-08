@@ -51,8 +51,12 @@
 
 <section id="micCheckOk" style="display: none">
 	<h1>Testi</h1>
-	<p>Kuulitko oman äänesi? Jos kuulit, kaikki on kunnossa, ja voit aloittaa kokeen.</p>
-	<p>Jos et kuullut, varmista että kaiuttimet ovat päällä ja mikrofoni toimii, ja paina "tarkista uudelleen".</p>
+	<p class="wordyExplanation">Kuuletko nauhoittamasi testiäänen? Jos kuulit, kaikki on kunnossa, ja voit aloittaa kokeen.</p>
+	<p class="wordyExplanation">Jos et kuullut, varmista että kaiuttimet ovat päällä ja mikrofoni toimii ja paina "tarkista uudelleen".</p>
+	<p class="wordyExplanation">Jos mikrofoni ei toimi, voi olla, että joudut säätämään selaimesi asetuksia.
+		Yleensä painamalla lukkokuvaketta osoitepalkin vieressä, näet, onko sivustolle annettu oikeudet käyttää mikrofonia.
+		Jos olet kännykällä, voi myös olla että koko selaimella ei ole oikeus käyttää mikrofonia.
+		Tarkista kännykkäsi asetukset. Sivun uudelleenlataus on suositeltavaa asetusten muuttamisen jälkeen.</p>
 	<button id="checkMicAgain">tarkista uudelleen</button>
 	<form action="/ok" method="post" style="display: inline-block"><button>Aloita koe</button><input type="hidden" value="{{ event_name }}" name="event_ok"></form>
 </section>
