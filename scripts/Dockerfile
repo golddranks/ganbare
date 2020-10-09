@@ -25,7 +25,7 @@ COPY migrations ./migrations
 RUN touch ganbare_backend/src/lib.rs
 RUN export BUILD_FLAG="${BUILD_FLAG#--debug}" && cargo build -v $BUILD_FLAG --target=x86_64-unknown-linux-musl
 
-COPY src ./src
+COPY src/*.rs ./src/
 COPY templates ./templates
 RUN touch src/main.rs
 RUN export BUILD_FLAG="${BUILD_FLAG#--debug}" && cargo build -v $BUILD_FLAG --target=x86_64-unknown-linux-musl
