@@ -45,7 +45,7 @@ function incrementFactory() {
 	];
 
 	var answers_1 = [
-		'satunnaisesti; <br class="smallscreen">joitakin kertoja<br>vuodessa tai harvemmin',
+		'en ollenkaan tai satunnaisesti <br>(enintään joitakin kertoja vuodessa)',
 		'silloin tällöin, mutta <br class="smallscreen">joskus on <br class="bigscreen">viikkojen <br class="smallscreen">tai kuukausien taukoja',
 		'viikoittain tai ainakin<br>monta kertaa kuussa',
 		'monta kertaa viikossa',
