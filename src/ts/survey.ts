@@ -61,10 +61,10 @@ function incrementFactory() {
 	];
 
 	var answers_3 = [
-		"käyn monta tuntia viikossa",
-		"käyn kerran viikossa",
-		"käyn satunnaisesti/<wbr>lyhytkestoisesti",
 		"en tällä hetkellä",
+		"käyn satunnaisesti/<wbr>lyhytkestoisesti",
+		"käyn kerran viikossa",
+		"käyn monta tuntia viikossa",
 	];
 
 	var answers_4 = [
