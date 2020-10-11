@@ -253,16 +253,8 @@ fn set_headers(_req: &Request, resp: &mut pencil::Response) {
     }
 }
 
-#[allow(unused_variables)]
-fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
-    if *PERF_TRACE {
-        let start = Instant::now();
-        req.extensions_data.insert::<RequestTime>(start);
-    }
-    None
-}
-
 fn before_request_log(req: &mut Request<'_, '_, '_>) -> Option<PencilResult> {
+    req.extensions_data.insert::<RequestTime>(Instant::now());
     if *LOG_COOKIES {
         let mut cookies = String::new();
         if let Some(cookie) = req.cookies() {
@@ -281,10 +273,10 @@ fn before_request_log(req: &mut Request<'_, '_, '_>) -> Option<PencilResult> {
 }
 
 #[allow(unused_variables)]
-fn resp_time_stop(req: &Request, resp: &mut pencil::Response) {
+fn resp_log(req: &Request, resp: &mut pencil::Response) {
     let start = req.extensions_data.get::<RequestTime>().unwrap();
-    let lag = start.elapsed();
-    debug!("host:{}\tmethod:{}\turi:{}\tstatus:{}\treqtime:{}", remote_addrs_string(req), req.method, req.url, resp.status_code, start.elapsed().as_secs_f32());
+    let reqtime = start.elapsed().as_secs_f32();
+    info!("host:{}\tmethod:{}\turi:{}\tstatus:{}\treqtime:{}", remote_addrs_string(req), req.method, req.url, resp.status_code, reqtime);
 }
 
 use pencil::{Pencil, Response};
@@ -363,14 +355,12 @@ pub fn main() {
         app.enable_static_file_handling();
     }
 
-    // Note: resp_time_start MUST be the first one
-    if *PERF_TRACE { app.before_request(resp_time_start); }
     app.before_request(before_request_log);
     app.before_request(check_if_cached);
     app.before_request(csrf_check);
     app.after_request(set_headers);
-    app.teardown_request(|e| { e.map(|e| error!("Error: {}", e));});
-    if *PERF_TRACE { app.after_request(resp_time_stop); }
+    app.teardown_request(|e| { e.map(|e| error!("error:{}", e));});
+    app.after_request(resp_log);
 
     // DEBUGGING
     app.get("/src/<file_path:path>", "source_maps", source_maps);
