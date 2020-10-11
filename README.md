@@ -93,6 +93,7 @@ GANBARE_PASSWORD_STRETCHING_MS How long new passwords are stretched in milliseco
 
 # Debugging settings (ignore if you're not a developer)
 GANBARE_LOG Log level. Syntax example: ganbare=debug,ganbare_backend=debug. Defaults to debug in debug builds and info in release builds.
+LOG_COOKIES Whether to log request cookies as part of the access log. Defaults to to true in debug builds, false in release builds.
 GANBARE_PERF_TRACE prints timings of various operations into debug log. Defaults to to true in debug builds, false in release builds.
 GANBARE_ENABLE_SOURCE_MAPS Whether it allows to see files in /src using HTTP. Defaults to true in debug builds and false in release builds.
 GANBARE_PARANOID Defaults to true. When on, HTTPS is required. Cookies are sent with "Secure" flag. Strictens the anti-CSRF measures. (Checks Origin & Referer of all mutating HTTP METHODS, and prevents even non-mutating requests to the HTTP API) Enforces ContentSecurityPolicy as an anti-XSS measure.

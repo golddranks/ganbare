@@ -119,6 +119,12 @@ lazy_static! {
                 else { "ganbare=info,ganbare_backend=info".to_owned() })
     };
 
+    pub static ref LOG_COOKIES: bool = {
+        dotenv::dotenv().ok();
+        env::var("GANBARE_LOG_COOKIES").map(|s| s.parse::<bool>().unwrap_or(DEV_MODE))
+            .unwrap_or(DEV_MODE)
+    };
+
     pub static ref SITE_DOMAIN : String = {
         dotenv::dotenv().ok();
         env::var("GANBARE_SITE_DOMAIN")

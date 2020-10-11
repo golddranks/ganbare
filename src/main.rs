@@ -7,6 +7,7 @@ mod test;
 pub use ganbare::DEV_MODE;
 pub use ganbare_backend as ganbare;
 pub use helpers::*;
+use std::fmt::Write;
 
 use lazy_static::lazy_static;
 use log::{info, debug, error, warn};
@@ -261,12 +262,29 @@ fn resp_time_start(req: &mut Request) -> Option<PencilResult> {
     None
 }
 
+fn before_request_log(req: &mut Request<'_, '_, '_>) -> Option<PencilResult> {
+    if *LOG_COOKIES {
+        let mut cookies = String::new();
+        if let Some(cookie) = req.cookies() {
+            for c in &cookie.0 {
+                let mut c = c.splitn(2, '=');
+                if let (Some(key), Some(value)) = (c.next(), c.next()) {
+                    let _ = write!(cookies, "cookie_{}:{}\t", key, value); // Ignore errors
+                }
+            }
+        }
+        info!("host:{}\tmethod:{}\turi:{}\t{}", remote_addrs_string(req), req.method, req.url, cookies);
+    } else {
+        info!("host:{}\tmethod:{}\turi:{}", remote_addrs_string(req), req.method, req.url);
+    }
+    None
+}
 
 #[allow(unused_variables)]
 fn resp_time_stop(req: &Request, resp: &mut pencil::Response) {
     let start = req.extensions_data.get::<RequestTime>().unwrap();
     let lag = start.elapsed();
-    debug!("Request from {} to {} {}, response: {} took {} ms", remote_addrs_string(req), req.method, req.url, resp.status_code, start.elapsed().as_millis());
+    debug!("host:{}\tmethod:{}\turi:{}\tstatus:{}\treqtime:{}", remote_addrs_string(req), req.method, req.url, resp.status_code, start.elapsed().as_secs_f32());
 }
 
 use pencil::{Pencil, Response};
@@ -347,7 +365,7 @@ pub fn main() {
 
     // Note: resp_time_start MUST be the first one
     if *PERF_TRACE { app.before_request(resp_time_start); }
-    app.before_request(|req| { info!("Request from {} to {} {}", remote_addrs_string(req), req.method, req.url); None });
+    app.before_request(before_request_log);
     app.before_request(check_if_cached);
     app.before_request(csrf_check);
     app.after_request(set_headers);
