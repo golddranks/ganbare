@@ -82,7 +82,7 @@ $(function() {
 			});
 
 			var user_item = $('<tr></tr>').appendTo(userActivityRows);
-			var user_email_cell = $('<th>'+user.email+'</th>').appendTo(user_item);
+			var user_email_cell = $('<th class="narrowText">'+user.id+': '+user.email+'</th>').appendTo(user_item);
 			user_email_cell.click(() => list_user_skills(user.id));
 			$('<button class="compact narrDelButton"><i class="fa fa-trash" aria-hidden="true"></i></button>')
 				.appendTo(user_email_cell)
