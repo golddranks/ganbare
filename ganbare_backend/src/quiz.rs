@@ -611,7 +611,6 @@ fn choose_new_question(conn: &Connection, user_id: i32) -> Result<Option<QuizQue
         .first(&**conn)
         .optional()?;
 */
-    debug!("Choosing new question for user {}", user_id);
     let new_question: Option<QuizQuestion> =
         sql::<(
         diesel::sql_types::Integer,
@@ -757,12 +756,13 @@ fn choose_q_or_e(conn: &Connection,
         return Ok(None);
     }
 
-
+    debug!("Choosing random overdue item for user {}", user_id);
     if let Some(quiztype) = choose_random_overdue_item(conn, user_id)? {
         debug!("There is an overdue quiz item; presenting that.");
         return Ok(Some(quiztype));
     }
 
+    debug!("Choosing new question for user {}", user_id);
     if let Some(quiztype) = choose_new_q_or_e(conn, user_id)? {
         debug!("No overdue quiz items; presenting a new quiz.");
         return Ok(Some(quiztype));

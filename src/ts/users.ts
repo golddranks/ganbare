@@ -36,7 +36,7 @@ $(function() {
 			var sessions = u[5];
 
 			var user_list_tr = $('<tr></tr>').appendTo(usersList);
-			$('<th scope="row">'+user.email+'</th>').appendTo(user_list_tr);
+			$('<th scope="row" class="narrowText">'+user.id+': '+user.email+'</th>').appendTo(user_list_tr);
 
 			var user_groups = new Array();
 			groups.forEach(function(group) {
