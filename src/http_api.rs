@@ -1,6 +1,7 @@
 
 use super::*;
 use chrono::offset::Utc;
+use diesel::Connection;
 use pencil::{abort, jsonify, Response, redirect};
 use pencil::helpers::{send_file_range, send_from_directory_range};
 use regex;
@@ -248,10 +249,12 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
     let answer = err_400!(parse_next_quiz_answer(req),
                           "Can't parse form data? {:?}",
                           req.form());
-
+    
     let new_quiz = time_it!("next_quiz",
-                            quiz::get_next_quiz(&conn, sess.user_id, answer)
-                                .err_500_debug(sess.user_id, &*req))?;
+                            conn.transaction(||
+                                quiz::get_next_quiz(&conn, sess.user_id, answer)
+                            ).err_500_debug(sess.user_id, &*req)
+                        )?;
 
     match new_quiz {
             Some(quiz) => quiz_to_json(quiz),

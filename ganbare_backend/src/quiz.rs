@@ -208,7 +208,7 @@ fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData) ->
             .get_result(&**conn)?;
 
     if !pending_item.pending {
-        info!("User is trying to answer twice to the same question! Ignoring the later answer.");
+        info!("User is trying to ack twice the same word! Ignoring the later answer.");
         return Ok(());
     }
 
@@ -346,7 +346,7 @@ fn log_answer_exercise(conn: &Connection,
             .get_result(&**conn)?;
 
     if !pending_item.pending {
-        info!("User is trying to answer twice to the same question! Ignoring the later answer.");
+        info!("User is trying to answer twice to the same excercise! Ignoring the later answer.");
         return Ok(());
     }
 
@@ -611,6 +611,7 @@ fn choose_new_question(conn: &Connection, user_id: i32) -> Result<Option<QuizQue
         .first(&**conn)
         .optional()?;
 */
+    debug!("Choosing new question for user {}", user_id);
     let new_question: Option<QuizQuestion> =
         sql::<(
         diesel::sql_types::Integer,
@@ -925,7 +926,9 @@ ORDER BY words.priority DESC, RANDOM();
 fn choose_new_word(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Word>> {
 
 
-    if metrics.new_words_since_break >= metrics.max_words_since_break ||
+    if metrics.quizes_since_break >= metrics.max_quizes_since_break ||
+       metrics.quizes_today >= metrics.max_quizes_today ||
+       metrics.new_words_since_break >= metrics.max_words_since_break ||
        metrics.new_words_today >= metrics.max_words_today ||
        metrics.break_until > chrono::offset::Utc::now() {
         debug!("Enough words for today. The break/daily limits are full.");
@@ -1045,8 +1048,11 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
                      current_overdue.is_none();
 
     // Start a break if the limits are full.
+    // New: break is going to start even if word limit is not full, if the quiz limits are
+    // this is because we don't want to introduce new words if users are overwhelmed with
+    // quizes of already existing ones
 
-    if words && new_quizes && due_quizes {
+    if words || (new_quizes && due_quizes) {
         debug!("Starting a break because the break limits are full.");
 
         let time_since_last_break = chrono::offset::Utc::now().signed_duration_since(metrics.break_until);
@@ -1118,12 +1124,12 @@ pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
            pi if pi.item_type == "question" => {
 
         let asked: QAskedData = q_asked_data::table.filter(q_asked_data::id.eq(pi.id))
-            .get_result(&**conn)?;
+            .get_result(&**conn).chain_err(|| ErrorKind::DatabaseOdd("Bug: If item was in pending, it should also be in asked data?!"))?;
 
         let (question, answers, _) = try_or!{ load_question(conn, asked.question_id)?,
                 else bail!(
                     ErrorKind::DatabaseOdd(
-                        "Bug: If the item was set pending in the first place, it should exists!"
+                        "Bug: If the item was set pending in the first place, it should exist!"
                     )) };
 
         let mut answer_choices: Vec<_> =
@@ -1169,7 +1175,7 @@ pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
         let word = try_or!{ load_word(conn, asked.word_id)?,
                 else bail!(
                     ErrorKind::DatabaseOdd(
-                        "Bug: If the item was set pending in the first place, it should exists!"
+                        "Bug: If the item was set pending in the first place, it should exist!"
                     )) };
 
         Quiz::W(WordJson {
@@ -1490,7 +1496,7 @@ fn get_new_quiz_inner(conn: &Connection,
                       user_id: i32,
                       metrics: &mut UserMetrics)
                       -> Result<Option<Quiz>> {
-
+    debug!("Get new quiz for user {}", user_id);
 
     // Pending item first (items that were asked,
     // but not answered because of loss of connection, user closing the session etc.)
