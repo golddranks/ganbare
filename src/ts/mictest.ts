@@ -80,6 +80,7 @@ function startRecording(eventName: string, callback: (recording: boolean, startC
 		let rec;
 		if (global_rec === null) {
 			console.log("Starting a new recorder stream.");
+			Recorder.prototype.audioContext = Recorder.prototype.audioContext || new window.AudioContext;
 			rec = new Recorder({encoderPath: "/static/js/encoderWorker.min.js", leaveStreamOpen: true });
 		} else {
 			console.log("Using an already started recorder stream.");

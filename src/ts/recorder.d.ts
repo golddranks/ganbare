@@ -12,4 +12,5 @@ declare class Recorder {
 	clearStream();
 	addEventListener( type: RecorderEventType, listener: (ev) => void, useCapture? );
 	static isRecordingSupported(): boolean;
+	audioContext: any;
 }

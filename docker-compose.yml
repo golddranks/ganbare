@@ -14,6 +14,7 @@ services:
     depends_on:
       - db
     environment:
+      GANBARE_PARANOID: 'false'
       GANBARE_DATABASE_URL: postgres://postgres:password@db/ganbare_dev
       GANBARE_RUNTIME_PEPPER: '00BGpjB/ITFcy4Ivf+rYaWU+Ro3ciKjIAjJNBEXTfGo='
       GANBARE_EMAIL_SERVER: localhost:25
