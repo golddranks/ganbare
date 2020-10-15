@@ -1059,6 +1059,8 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     // this is because we don't want to introduce new words if users are overwhelmed with
     // quizes of already existing ones
 
+    debug!("About to start a short break: {} {} {} {} {}", no_words, no_new_quizes, no_due_quizes, quiz_limit_reached, word_limit_reached);
+
     if no_words || (no_new_quizes && no_due_quizes) {
         debug!("Starting a short break because the break limits are full: Quizes since break: {}/{} No words: {} No new quizes: {} No due quizes: {}",
             metrics.quizes_since_break, metrics.max_quizes_since_break, no_words, no_new_quizes, no_due_quizes);
