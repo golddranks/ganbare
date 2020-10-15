@@ -1018,15 +1018,17 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
     let current_overdue = choose_random_overdue_item(conn, user_id)?;
 
-    let quiz_limit_reached = metrics.quizes_today >= metrics.max_quizes_today;
-    let word_limit_reached = metrics.new_words_today >= metrics.max_words_today;
-    let words = word_limit_reached || no_new_words;
-    let new_quizes = quiz_limit_reached || no_new_quizes;
-    let due_quizes = quiz_limit_reached || current_overdue.is_none();
+    let daily_quiz_limit_reached = metrics.quizes_today >= metrics.max_quizes_today;
+    let daily_word_limit_reached = metrics.new_words_today >= metrics.max_words_today;
+    let no_words = daily_word_limit_reached || no_new_words;
+    let no_new_quizes = daily_quiz_limit_reached || no_new_quizes;
+    let no_due_quizes = daily_quiz_limit_reached || current_overdue.is_none();
 
-    if words && new_quizes && due_quizes {
+    debug!("About to start a long break: {} {} {} {} {}", no_words, no_new_quizes, no_due_quizes, daily_quiz_limit_reached, daily_word_limit_reached);
+
+    if no_words && no_new_quizes && no_due_quizes {
         debug!("Starting a long break because the daily limits are full: Quizes today: {}/{} No words: {} No new quizes: {} No due quizes: {}",
-            metrics.quizes_today, metrics.max_quizes_today, words, new_quizes, due_quizes);
+            metrics.quizes_today, metrics.max_quizes_today, no_words, no_new_quizes, no_due_quizes);
 
         metrics.new_words_since_break = 0;
         metrics.quizes_since_break = 0;
@@ -1048,18 +1050,18 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
                                })));
     }
 
-    let quiz_limit_reached = metrics.quizes_since_break >= metrics.max_quizes_since_break;
-    let word_limit_reached = metrics.new_words_since_break >= metrics.max_words_since_break;
-    let no_words = word_limit_reached || no_new_words;
-    let no_new_quizes = quiz_limit_reached || no_new_quizes;
-    let no_due_quizes = quiz_limit_reached || current_overdue.is_none();
+    let session_quiz_limit_reached = metrics.quizes_since_break >= metrics.max_quizes_since_break;
+    let session_word_limit_reached = metrics.new_words_since_break >= metrics.max_words_since_break;
+    let no_words = session_word_limit_reached || no_new_words;
+    let no_new_quizes = session_quiz_limit_reached || no_new_quizes;
+    let no_due_quizes = session_quiz_limit_reached || current_overdue.is_none();
 
     // Start a break if the limits are full.
     // New: break is going to start even if word limit is not full, if the quiz limits are
     // this is because we don't want to introduce new words if users are overwhelmed with
     // quizes of already existing ones
 
-    debug!("About to start a short break: {} {} {} {} {}", no_words, no_new_quizes, no_due_quizes, quiz_limit_reached, word_limit_reached);
+    debug!("About to start a short break: {} {} {} {} {}", no_words, no_new_quizes, no_due_quizes, session_quiz_limit_reached, session_word_limit_reached);
 
     if no_words || (no_new_quizes && no_due_quizes) {
         debug!("Starting a short break because the break limits are full: Quizes since break: {}/{} No words: {} No new quizes: {} No due quizes: {}",
