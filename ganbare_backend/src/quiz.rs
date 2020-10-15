@@ -1023,8 +1023,8 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     let due_quizes = metrics.quizes_today >= metrics.max_quizes_today || current_overdue.is_none();
 
     if words && new_quizes && due_quizes {
-        debug!("Starting a long break because the daily limits are full: Words: {} New quizes: {} Due quizes: {}",
-            words, new_quizes, due_quizes);
+        debug!("Starting a long break because the daily limits are full: Quizes today: {}/{} No words: {} No new quizes: {} No due quizes: {}",
+            metrics.quizes_today, metrics.max_quizes_today, words, new_quizes, due_quizes);
 
         metrics.new_words_since_break = 0;
         metrics.quizes_since_break = 0;
@@ -1057,8 +1057,8 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     // quizes of already existing ones
 
     if no_words || (no_new_quizes && no_due_quizes) {
-        debug!("Starting a short break because the break limits are full: Words: {} New quizes: {} Due quizes: {}",
-            no_words, no_new_quizes, no_due_quizes);
+        debug!("Starting a short break because the break limits are full: Quizes since break: {}/{} No words: {} No new quizes: {} No due quizes: {}",
+            metrics.quizes_since_break, metrics.max_quizes_since_break, no_words, no_new_quizes, no_due_quizes);
 
         let time_since_last_break = chrono::offset::Utc::now().signed_duration_since(metrics.break_until);
 
