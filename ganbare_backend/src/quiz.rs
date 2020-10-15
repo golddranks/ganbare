@@ -1018,9 +1018,11 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
     let current_overdue = choose_random_overdue_item(conn, user_id)?;
 
-    let words = metrics.new_words_today >= metrics.max_words_today || no_new_words;
-    let new_quizes = metrics.quizes_today >= metrics.max_quizes_today || no_new_quizes;
-    let due_quizes = metrics.quizes_today >= metrics.max_quizes_today || current_overdue.is_none();
+    let quiz_limit_reached = metrics.quizes_today >= metrics.max_quizes_today;
+    let word_limit_reached = metrics.new_words_today >= metrics.max_words_today;
+    let words = word_limit_reached || no_new_words;
+    let new_quizes = quiz_limit_reached || no_new_quizes;
+    let due_quizes = quiz_limit_reached || current_overdue.is_none();
 
     if words && new_quizes && due_quizes {
         debug!("Starting a long break because the daily limits are full: Quizes today: {}/{} No words: {} No new quizes: {} No due quizes: {}",
@@ -1046,10 +1048,11 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
                                })));
     }
 
-    let no_words = metrics.new_words_since_break >= metrics.max_words_since_break || no_new_words;
-    let no_new_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || no_new_quizes;
-    let no_due_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break ||
-                     current_overdue.is_none();
+    let quiz_limit_reached = metrics.quizes_since_break >= metrics.max_quizes_since_break;
+    let word_limit_reached = metrics.new_words_since_break >= metrics.max_words_since_break;
+    let no_words = word_limit_reached || no_new_words;
+    let no_new_quizes = quiz_limit_reached || no_new_quizes;
+    let no_due_quizes = quiz_limit_reached || current_overdue.is_none();
 
     // Start a break if the limits are full.
     // New: break is going to start even if word limit is not full, if the quiz limits are
@@ -1086,7 +1089,8 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     }
 
     unreachable!("check_break. Either the break limits or daily limits should be full and those \
-                  code paths return, so this should never happen. Words: {:?} New quizes: {:?} Due quizes: {:?}", no_words, no_new_quizes, no_due_quizes);
+                  code paths return, so this should never happen. No words: {:?} No new quizes: {:?} No due quizes: {:?}",
+                  no_words, no_new_quizes, no_due_quizes);
 }
 
 
