@@ -1006,6 +1006,7 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
     let (next_existing_due, no_new_words, no_new_quizes) = things_left_to_do(conn, user_id)?;
 
+    debug!("No new words available: {:?}", no_new_words);
     debug!("No new quizes available: {:?} (either limited by lack of new words or by lack of \
             quizes themselves)",
            no_new_quizes);
@@ -1021,8 +1022,8 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     let new_quizes = metrics.quizes_today >= metrics.max_quizes_today || no_new_quizes;
     let due_quizes = metrics.quizes_today >= metrics.max_quizes_today || current_overdue.is_none();
 
-    if words || (new_quizes && due_quizes) {
-        debug!("Starting a break because the daily limits are full: Words: {} New quizes: {} Due quizes: {}",
+    if words && new_quizes && due_quizes {
+        debug!("Starting a long break because the daily limits are full: Words: {} New quizes: {} Due quizes: {}",
             words, new_quizes, due_quizes);
 
         metrics.new_words_since_break = 0;
@@ -1045,9 +1046,9 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
                                })));
     }
 
-    let words = metrics.new_words_since_break >= metrics.max_words_since_break || no_new_words;
-    let new_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || no_new_quizes;
-    let due_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break ||
+    let no_words = metrics.new_words_since_break >= metrics.max_words_since_break || no_new_words;
+    let no_new_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break || no_new_quizes;
+    let no_due_quizes = metrics.quizes_since_break >= metrics.max_quizes_since_break ||
                      current_overdue.is_none();
 
     // Start a break if the limits are full.
@@ -1055,9 +1056,9 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     // this is because we don't want to introduce new words if users are overwhelmed with
     // quizes of already existing ones
 
-    if words || (new_quizes && due_quizes) {
-        debug!("Starting a break because the break limits are full: Words: {} New quizes: {} Due quizes: {}",
-            words, new_quizes, due_quizes);
+    if no_words || (no_new_quizes && no_due_quizes) {
+        debug!("Starting a short break because the break limits are full: Words: {} New quizes: {} Due quizes: {}",
+            no_words, no_new_quizes, no_due_quizes);
 
         let time_since_last_break = chrono::offset::Utc::now().signed_duration_since(metrics.break_until);
 
@@ -1085,7 +1086,7 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
     }
 
     unreachable!("check_break. Either the break limits or daily limits should be full and those \
-                  code paths return, so this should never happen.");
+                  code paths return, so this should never happen. Words: {:?} New quizes: {:?} Due quizes: {:?}", no_words, no_new_quizes, no_due_quizes);
 }
 
 
