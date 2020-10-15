@@ -1020,7 +1020,7 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
     let daily_quiz_limit_reached = metrics.quizes_today >= metrics.max_quizes_today;
     let daily_word_limit_reached = metrics.new_words_today >= metrics.max_words_today;
-    let no_words = daily_word_limit_reached || no_new_words;
+    let no_words = daily_word_limit_reached || daily_quiz_limit_reached || no_new_words;
     let no_new_quizes = daily_quiz_limit_reached || no_new_quizes;
     let no_due_quizes = daily_quiz_limit_reached || current_overdue.is_none();
 
@@ -1052,7 +1052,7 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
     let session_quiz_limit_reached = metrics.quizes_since_break >= metrics.max_quizes_since_break;
     let session_word_limit_reached = metrics.new_words_since_break >= metrics.max_words_since_break;
-    let no_words = session_word_limit_reached || no_new_words;
+    let no_words = session_word_limit_reached || session_quiz_limit_reached || no_new_words;
     let no_new_quizes = session_quiz_limit_reached || no_new_quizes;
     let no_due_quizes = session_quiz_limit_reached || current_overdue.is_none();
 
@@ -1063,7 +1063,7 @@ fn check_break(conn: &Connection, user_id: i32, metrics: &mut UserMetrics) -> Re
 
     debug!("About to start a short break: {} {} {} {} {}", no_words, no_new_quizes, no_due_quizes, session_quiz_limit_reached, session_word_limit_reached);
 
-    if no_words || (no_new_quizes && no_due_quizes) {
+    if no_words && no_new_quizes && no_due_quizes {
         debug!("Starting a short break because the break limits are full: Quizes since break: {}/{} No words: {} No new quizes: {} No due quizes: {}",
             metrics.quizes_since_break, metrics.max_quizes_since_break, no_words, no_new_quizes, no_due_quizes);
 
