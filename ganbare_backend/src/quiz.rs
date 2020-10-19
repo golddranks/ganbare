@@ -123,7 +123,7 @@ fn log_answer_due_item(conn: &Connection,
                        mut due_item: DueItem,
                        skill_id: i32,
                        correct: bool,
-                       metrics: &UserMetrics)
+                       metrics: &mut UserMetrics)
                        -> Result<DueItem> {
     use std::cmp::max;
 
@@ -136,6 +136,8 @@ fn log_answer_due_item(conn: &Connection,
                               chrono::Duration::seconds(metrics.cooldown_delay as i64);
 
     if due_item.correct_streak_this_time >= metrics.streak_limit {
+        metrics.quizes_since_break += metrics.streak_limit;
+        metrics.quizes_today += metrics.streak_limit;
         due_item.correct_streak_this_time = 0;
         due_item.correct_streak_overall = if correct {
             due_item.correct_streak_overall + 1
@@ -170,7 +172,7 @@ fn log_answer_new_due_item(conn: &Connection,
                            item_type: &str,
                            skill_id: i32,
                            correct: bool,
-                           metrics: &UserMetrics)
+                           metrics: &mut UserMetrics)
                            -> Result<DueItem> {
     use schema::due_items;
 
@@ -199,7 +201,7 @@ fn log_answer_new_due_item(conn: &Connection,
     Ok(log_answer_due_item(conn, due_item, skill_id, correct, metrics)?)
 }
 
-fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData) -> Result<()> {
+fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData, metrics: &mut UserMetrics) -> Result<()> {
     use schema::{user_stats, pending_items, w_asked_data, w_answered_data, words};
 
     let (mut pending_item, asked): (PendingItem, WAskedData) =
@@ -213,6 +215,8 @@ fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData) ->
     }
 
     // This Q&A is now considered done
+    metrics.new_words_today += 1;
+    metrics.new_words_since_break += 1;
     pending_item.pending = false;
     let _: PendingItem = pending_item.save_changes(&**conn)?;
 
@@ -241,7 +245,7 @@ fn log_answer_word(conn: &Connection, user_id: i32, answered: &WAnsweredData) ->
 fn log_answer_question(conn: &Connection,
                        user_id: i32,
                        answered: &QAnsweredData,
-                       metrics: &UserMetrics)
+                       metrics: &mut UserMetrics)
                        -> Result<()> {
     use schema::{user_stats, pending_items, q_asked_data, q_answered_data, due_items, question_data,
                  quiz_questions};
@@ -333,7 +337,7 @@ fn log_answer_question(conn: &Connection,
 fn log_answer_exercise(conn: &Connection,
                        user_id: i32,
                        answered: &EAnsweredData,
-                       metrics: &UserMetrics)
+                       metrics: &mut UserMetrics)
                        -> Result<()> {
     use schema::{user_stats, pending_items, e_asked_data, e_answered_data, due_items, exercise_data,
                  exercises};
@@ -924,7 +928,7 @@ ORDER BY words.priority DESC, RANDOM();
     Ok(new_word)
 }
 
-fn choose_new_word(conn: &Connection, metrics: &mut UserMetrics) -> Result<Option<Word>> {
+fn choose_new_word(conn: &Connection, metrics: &UserMetrics) -> Result<Option<Word>> {
 
 
     if metrics.quizes_since_break >= metrics.max_quizes_since_break ||
@@ -1527,8 +1531,6 @@ fn get_new_quiz_inner(conn: &Connection,
     // (except if they are on a cooldown period), and after that, new ones
 
     if let Some(quiztype) = choose_q_or_e(conn, user_id, metrics)? {
-        metrics.quizes_today += 1;
-        metrics.quizes_since_break += 1;
         return return_q_or_e(conn, user_id, quiztype);
     }
 
@@ -1536,8 +1538,6 @@ fn get_new_quiz_inner(conn: &Connection,
     // No questions & exercises available at the moment. Introducing new words
 
     if let Some(the_word) = choose_new_word(conn, metrics)? {
-        metrics.new_words_today += 1;
-        metrics.new_words_since_break += 1;
         return return_word(conn, user_id, the_word);
     }
 
@@ -1545,8 +1545,6 @@ fn get_new_quiz_inner(conn: &Connection,
     // If there's nothing else, time to show the cooled-down stuff!
 
     if let Some(quiztype) = choose_cooldown_q_or_e(conn, user_id, metrics)? {
-        metrics.quizes_today += 1;
-        metrics.quizes_since_break += 1;
         return return_q_or_e(conn, user_id, quiztype);
     }
 
@@ -1593,13 +1591,13 @@ pub fn get_next_quiz(conn: &Connection,
 
     match answer_enum {
         Answered::W(answer_word) => {
-            log_answer_word(conn, user_id, &answer_word)?;
+            log_answer_word(conn, user_id, &answer_word, &mut metrics)?;
         }
         Answered::E(exercise) => {
-            log_answer_exercise(conn, user_id, &exercise, &metrics)?;
+            log_answer_exercise(conn, user_id, &exercise, &mut metrics)?;
         }
         Answered::Q(answer) => {
-            log_answer_question(conn, user_id, &answer, &metrics)?;
+            log_answer_question(conn, user_id, &answer, &mut metrics)?;
         }
     }
 
