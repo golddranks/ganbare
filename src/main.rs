@@ -373,6 +373,7 @@ pub fn main() {
     app.get("/agreement", "agreement", app_pages::text_pages);
     app.get("/info", "info", app_pages::text_pages);
     app.get("/survey", "survey", app_pages::survey);
+    app.get("/end_survey", "end_survey", app_pages::end_survey);
     app.get("/thanks", "thanks", app_pages::plain_page);
     app.get("/pretest_info", "pretest_info", app_pages::text_pages);
     app.get("/pretest", "pretest", app_pages::pre_post_test);

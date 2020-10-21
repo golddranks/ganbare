@@ -42,6 +42,7 @@ fn dispatch_events(conn: &Connection,
         "agreement" => redirect("/agreement", 303),
         "info" => redirect("/info", 303),
         "survey" => redirect("/survey", 303),
+        "end_survey" => redirect("/end_survey", 303),
         "pretest_info" => redirect("/pretest_info", 303),
         "pretest" => redirect("/pretest", 303),
         "pretest_retelling" => redirect("/pretest_retelling", 303),
@@ -117,6 +118,21 @@ pub fn survey(req: &mut Request) -> PencilResult {
 
     let mut context = new_template_context();
     context.insert("event_name", "survey");
+    let answered_questions = event::get_userdata(&conn, &event, sess.user_id, "answered_questions")
+        .err_500()?
+        .map(|d| d.data)
+        .unwrap_or_else(|| "".to_string());
+
+    context.insert("answered_questions", answered_questions);
+    req.app.render_template("survey.html", &context).refresh_cookie(&sess)
+}
+
+pub fn end_survey(req: &mut Request) -> PencilResult {
+    let (conn, sess) = auth_user(req, "")?;
+    let (event, _) = event::require_ongoing(&conn, "end_survey", sess.user_id).err_401()?;
+
+    let mut context = new_template_context();
+    context.insert("event_name", "end_survey");
     let answered_questions = event::get_userdata(&conn, &event, sess.user_id, "answered_questions")
         .err_500()?
         .map(|d| d.data)
