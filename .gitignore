@@ -19,3 +19,5 @@ target
 /user_audio/
 /ganbare_backend/src/bin/image_cleanup
 /ganbare_backend/src/bin/image_cleanup_done
+2020_pretest_results
+2020_posttest_results
