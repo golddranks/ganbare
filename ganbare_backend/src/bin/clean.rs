@@ -1,5 +1,6 @@
 use ganbare_backend::*;
 use std::path::PathBuf;
+use std::fs;
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 use lazy_static::lazy_static;
@@ -791,11 +792,11 @@ fn check_tests() {
     use quiz::QuizSerialized;
 
     let tsv = fs::read_to_string("../private_assets/pretest.tsv")
-        .or_else(|_| fs::read_to_string("../private_assets/test_placeholder.tsv"))?;
-    let pre_quiz = ganbare::quiz::read_quiz_tsv(tsv)?;
+        .or_else(|_| fs::read_to_string("../private_assets/test_placeholder.tsv")).expect("placeholder should exist");
+    let pre_quiz = ganbare_backend::quiz::read_quiz_tsv(tsv).expect("invalid file");
     let tsv = fs::read_to_string("../private_assets/posttest.tsv")
-        .or_else(|_| fs::read_to_string("../private_assets/test_placeholder.tsv"))?;
-    let post_quiz = ganbare::quiz::read_quiz_tsv(tsv)?;
+        .or_else(|_| fs::read_to_string("../private_assets/test_placeholder.tsv")).expect("placeholder should exist");
+    let post_quiz = ganbare_backend::quiz::read_quiz_tsv(tsv).expect("invalid file");
 
     let quizes = pre_quiz.into_iter().chain(post_quiz.into_iter());
 

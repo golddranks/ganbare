@@ -51,9 +51,9 @@ pub fn get_new_quiz_pretest(conn: &Connection,
         .or_else(|_| fs::read_to_string("private_assets/test_placeholder.tsv"))
         .chain_err(|| "No pretest.tsv or even placefolder found!")?;
     let quizes = ganbare::quiz::read_quiz_tsv(tsv)
-        .chain_err(|| "Malformed pre/posttest quiz .tsv")?;
+        .chain_err(|| "Malformed pretest quiz .tsv")?;
     let mut quiz = test::get_new_quiz_test(conn, user_id, event, &quizes)
-        .chain_err(|| "Failed getting new pre/posttest quiz item.")?;
+        .chain_err(|| "Failed getting new pretest quiz item.")?;
 
     if let Some(Quiz::E(ref mut e)) = quiz {
         e.must_record = true;
@@ -67,13 +67,13 @@ pub fn get_new_quiz_posttest(conn: &Connection,
                              user_id: i32,
                              event: &Event)
                              -> Result<Option<Quiz>> {
-    let tsv = fs::read_to_string("posttest.tsv")
-        .or_else(|_| fs::read_to_string("test_placeholder.tsv"))
+    let tsv = fs::read_to_string("private_assets/posttest.tsv")
+        .or_else(|_| fs::read_to_string("private_assets/test_placeholder.tsv"))
         .chain_err(|| "No posttest.tsv or even placefolder found!")?;
     let quizes = ganbare::quiz::read_quiz_tsv(tsv)
-        .chain_err(|| "Malformed pre/posttest quiz .tsv")?;
+        .chain_err(|| "Malformed posttest quiz .tsv")?;
     let mut quiz = test::get_new_quiz_test(conn, user_id, event, &quizes)
-        .chain_err(|| "Failed getting new pre/posttest quiz item.")?;
+        .chain_err(|| "Failed getting new posttest quiz item.")?;
 
     if let Some(Quiz::E(ref mut e)) = quiz {
         e.must_record = true;
