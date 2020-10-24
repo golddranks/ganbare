@@ -360,7 +360,7 @@ function incrementFactory(questions) {
 					let opiskelin_yn = $("input[name=opiskelin_yn]:checked").val();
 					var answerData = {q: question, a:
 						{
-							opiskelin: opiskelin_yn == "joo" ? $("#opiskelin").val() : true,
+							opiskelin: opiskelin_yn == "joo" ? $("#opiskelin").val() : false,
 						}
 					};
 					answerQuestion(answerData, i);
