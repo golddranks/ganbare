@@ -335,7 +335,7 @@ function incrementFactory(questions) {
 				.appendTo(answerButtons)
 				.one('click', function() {
 					var answerData = {q: question, a:
-						{	gender: $("input[name=genber]:checked").val() }
+						{	gender: $("input[name=gender]:checked").val() }
 					};
 					answerQuestion(answerData, i);
 				});
