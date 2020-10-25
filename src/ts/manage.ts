@@ -897,7 +897,7 @@ function drawList(nugget_resp, bundle_resp, narrator_resp) {
 
 
 			answers.forEach(function(ans) {
-				var q_answer = $('<div class="answer bordered weak"></div>').appendTo(a_list);
+				var q_answer = $('<div class="answer bordered weak">Answer id: '+ans.id+'</div>').appendTo(a_list);
 				var q_bundle = $('<p></p>').appendTo(q_answer);
 				createBundle(ans.q_audio_bundle, q_bundle, function(updated_value, update_bundle_cb) {
 					$.ajax({

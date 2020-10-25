@@ -95,7 +95,7 @@
 			if (ue.user.email === null) {
 				return;
 			}
-			var userRow = $('<tr class="narrowText"><td>'+ue.user.email+'</td></tr>').appendTo(usersList);
+			var userRow = $('<tr><td class="narrowText">'+ue.user.id+':'+ue.user.email+'</td></tr>').appendTo(usersList);
 			eventResp.forEach(function(tuple) {
 				var event = tuple[0];
 				var work = ue.workable[event.id];

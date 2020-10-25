@@ -819,7 +819,8 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "lettre"
 version = "0.6.3"
-source = "git+https://github.com/golddranks/lettre?branch=v0.6.x#4a5ae055405a8ff391e948a1570400eb9587931a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21a63b33271f41d9b5ce33f5e7a9c2732e16b6eea04f904d7f77fbea95269236"
 dependencies = [
  "bufstream",
  "email",
