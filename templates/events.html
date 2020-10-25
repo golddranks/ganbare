@@ -70,7 +70,7 @@
 			});
 
 			if (event.published === true) {
-				var eventNameSpan = $('<span class="vertical">'+event.name+'</span>')
+				var eventNameSpan = $('<span class="vertical">'+event.id+':'+event.name+'</span>')
 				.appendTo(eventCell);
 			} else {
 				var eventNameSpan = $('<span class="vertical"><strike>'+event.name+'</strike></span>')
