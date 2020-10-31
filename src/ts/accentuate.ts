@@ -31,10 +31,17 @@ $("#settingsMenu").click(function( event ) { event.stopPropagation(); });
 // Accentuate 1.0
 
 function moraize(word: string): {mora:string, rising: boolean, falling: boolean, flatEnd: boolean}[] {
-
+	console.log(word);
 	function isYouon(i: number): boolean {
-		return (word.charAt(i) === "ゃ" || word.charAt(i) === "ゅ" || word.charAt(i) === "ょ")
+		let c = word.charAt(i);
+		return (c === "ゃ" || c === "ゅ" || c === "ょ" || c === "y" || c === "h" || c === "s")
 	};
+
+	function isVowel(i: number): boolean {
+		let c = word.charAt(i);
+		console.log("is vowel", c, (c === "a" || c === "i" || c === "u" || c === "e" || c === "o"));
+		return (c === "a" || c === "i" || c === "u" || c === "e" || c === "o")
+	}
 
 	function isRising(i: number): boolean {
 		return (word.charAt(i) === "／")
@@ -50,8 +57,12 @@ function moraize(word: string): {mora:string, rising: boolean, falling: boolean,
 
 	let moras: {mora:string, rising: boolean, falling: boolean, flatEnd: boolean}[] = new Array();
 	let rising = false;
-	for (let i = 0, len = word.length; i < len; i++) {
-		if (isYouon(i)) {
+	let independent = true;
+	for (let i = 0; i < word.length; i++) {
+		if (isYouon(i) && !independent) {
+			moras[moras.length-1].mora += word.charAt(i);
+		} else if (isVowel(i) && !independent) {
+			independent = true;
 			moras[moras.length-1].mora += word.charAt(i);
 		} else if (isRising(i)) {
 			rising = true;
@@ -62,6 +73,7 @@ function moraize(word: string): {mora:string, rising: boolean, falling: boolean,
 		} else {
 			moras.push({mora: word.charAt(i), rising: rising, falling: false, flatEnd: false});
 			rising = false;
+			independent = false;
 		}
 	}
 
@@ -108,24 +120,39 @@ function accentuate(word: string, showAccent: boolean): string {
 			accentuated.push("</span>");
 		} else {
 			let first = mora[0];
-			let second = mora[1];
+			let final = mora[mora.length-1];
 			let first_accent = accent;
-			let second_accent = accent;
+			let final_accent = accent;
 			if (accent == end) {
 				first_accent = middle;
-				second_accent = end;
+				final_accent = end;
 			} else if (accent == start_end) {
 				first_accent = start_flat;
-				second_accent = end;
+				final_accent = end;
 			} else if (accent == peak) {
 				first_accent = start;
-				second_accent = end;
+				final_accent = end;
+			} else if (accent == start_end_flat) {
+				first_accent = start;
+				final_accent = flat_end;
+			} else if (accent == start) {
+				first_accent = start;
+				final_accent = flat_end;
 			}
 			accentuated.push(first_accent);
 			accentuated.push(first);
 			accentuated.push("</span>");
-			accentuated.push(second_accent);
-			accentuated.push(second);
+			for (var i = 1; i < mora.length-1; i++) {
+				if (accent === empty) {
+					accentuated.push(empty);
+				} else {
+					accentuated.push(middle);
+				}
+				accentuated.push(mora[i]);
+				accentuated.push("</span>");
+			}
+			accentuated.push(final_accent);
+			accentuated.push(final);
 			accentuated.push("</span>");
 		}
 	}
@@ -199,3 +226,26 @@ function accentuate(word: string, showAccent: boolean): string {
 $(".accentuate").html(function(i, text) { return accentuate(text, true); });
 
 })
+
+function romanize(word: string): string {
+	let output = [];
+
+	let kana = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどぱぴぷぺぽばびぶべぼ";
+	let romaji = ["a","i","u","e","o","ka","ki","ku","ke","ko","sa","shi","su","se","so","ta","chi","tsu","te","to","na","ni","nu","ne","no","ha","hi","fu","he","ho","ma","mi","mu","me","mo","ya","yu","yo","ra","ri","ru","re","ro","wa","o","n","ga","gi","gu","ge","go","za","ji","zu","ze","zo","da","ji","dzu","de","do","pa","pi","pu","pe","po","ba","bi","bu","be","bo"];
+
+	let youon = "ゃゅょ";
+	let youon_romaji = "auo";
+
+	for (let i = 0; i < word.length; i++) {
+		let j = kana.indexOf(word.charAt(i));
+		let y = youon.indexOf(word.charAt(i));
+		if (j >= 0) {
+			output.push(romaji[j]);
+		} else if (y >= 0) {
+			output[output.length-1] = output[output.length-1].replace("i", youon_romaji[y]);
+		} else {
+			output.push(word.charAt(i));
+		}
+	}
+	return output.join("")
+}

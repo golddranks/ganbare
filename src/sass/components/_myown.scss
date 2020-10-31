@@ -583,3 +583,26 @@ span.accent {
 	 width: 14em;
 	 text-align: left;
 }
+
+.romaji {
+	display: none;
+}
+
+.kana {
+	display: inline;
+}
+
+.showRomaji {
+	.accent {
+		width: 0.8em;
+		display: inline-block;
+	}
+
+	.romaji {
+		display: inline;
+	}
+
+	.kana {
+		display: none;
+	}
+}

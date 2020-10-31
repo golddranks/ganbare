@@ -159,15 +159,9 @@ var answers_15 = [
 ];
 
 var answers_16 = [
-	'10-15 vuotta',
-	'15-20 vuotta',
-	'20-25 vuotta',
-	'25-30 vuotta',
-	'30-35 vuotta',
-	'35-40 vuotta',
-	'40-45 vuotta',
-	'45-50 vuotta',
-	'yli 50 vuotta',
+	'ei lainkaan',
+	'hieman',
+	'paljon',
 ];
 
 var textfield = "textfield";
@@ -435,29 +429,42 @@ var pre_questions = [
 	{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
 	];
 
-var post_questions = [
+	var post_questions = [
 
-	{q: "<p>14日間、お疲れさまでした！</p><p>Kysymme testijakson lopuksi muutamia lisäkysymyksiä. Voit aina peruuttaa ja vastata uudelleen kysymyksiin. Valitse vaihtoehto, joka kuvaa sinua parhaiten.</p>", a: answers_0},
-	{q: "Opiskelin 14 vuorokauden koejakson aikana japania jollain muullakin tavalla kuin tällä sovelluksella, millä?", a: other_studies},
-	{q: "Aksenttien erottaminen oli aluksi...", a: answers_12},
-	{q: "Aksenttien muistaminen oli aluksi...", a: answers_12},
-	{q: "Aksenttien erottaminen oli 14 vuorokauden harjoittelun jälkeen...", a: answers_12},
-	{q: "Aksenttien muistaminen oli 14 vuorokauden harjoittelun jälkeen...", a: answers_12},
-	{q: "Arvioin, että taitoni aksenttien suhteen...", a: answers_13},
-	{q: "Jos testijakson aikana heräsi omia havaintoja tai ajatuksia aksentin oppimisesta, kerro niistä:", a: textfield},
-	{q: "Sävelkorvani musiikin suhteen on...", a: answers_14},
-	{q: "Sukupuoleni on", a: gender},
-	{q: "Ikäni on", a: age},
-	{q: "Minua kiinnostaa jatkaa tämän sovelluksen käyttöä", a: answers_15},
-	{q: "Kehitysehdotuksia tätä sovellusta varten:", a: textfield},
-	{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
-];
+		{q: "<p>14日間、お疲れさまでした！</p><p>Kysymme testijakson lopuksi muutamia lisäkysymyksiä. Voit aina peruuttaa ja vastata uudelleen kysymyksiin. Valitse vaihtoehto, joka kuvaa sinua parhaiten.</p>", a: answers_0},
+		{q: "Opiskelin 14 vuorokauden koejakson aikana japania jollain muullakin tavalla kuin tällä sovelluksella, millä?", a: other_studies},
+		{q: "Aksenttien erottaminen oli aluksi...", a: answers_12},
+		{q: "Aksenttien muistaminen oli aluksi...", a: answers_12},
+		{q: "Aksenttien erottaminen oli 14 vuorokauden harjoittelun jälkeen...", a: answers_12},
+		{q: "Aksenttien muistaminen oli 14 vuorokauden harjoittelun jälkeen...", a: answers_12},
+		{q: "Arvioin, että taitoni aksenttien suhteen...", a: answers_13},
+		{q: "Jos testijakson aikana heräsi omia havaintoja tai ajatuksia aksentin oppimisesta, kerro niistä:", a: textfield},
+		{q: "Sävelkorvani musiikin suhteen on...", a: answers_14},
+		{q: "Sukupuoleni on", a: gender},
+		{q: "Ikäni on", a: age},
+		{q: "Minua kiinnostaa jatkaa tämän sovelluksen käyttöä", a: answers_15},
+		{q: "Kehitysehdotuksia tätä sovellusta varten:", a: textfield},
+		{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
+	];
 
+	var mini_questions = [
+
+		{q: "Kysymme joitakin yleisluontoisia tietoja sinusta. Valitse vaihtoehto, joka kuvaa sinua parhaiten.", a: answers_0},
+		{q: "äidinkieleni on", a: languages},
+		{q: "Sukupuoleni on", a: gender},
+		{q: "Ikäni on", a: age},
+		{q: "Sävelkorvani musiikin suhteen on...", a: answers_14},
+		{q: "Minulla on aiempaa kokemusta kielestä jossa äänenkorkeudet voivat vaikuttaa sanojen merkityksiin (esim. kiina, riikinruotsi, balttikielet...)", a: answers_16},
+		{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
+	];
+		
 var questions;
 if (event_name == "survey") {
 	questions = pre_questions;
 } else if (event_name == "end_survey") {
 	questions = post_questions;
+} else if (event_name == "mini_survey") {
+	questions = mini_questions;
 } else {
 	throw new Error("Unknown event name: "+event_name);
 }

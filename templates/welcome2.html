@@ -1,0 +1,68 @@
+{{#*inline "main_section"}}
+
+	<header>
+		<h1>{{ title }}</h1>
+		<p>Opetellaan japanin ääntämystä!</p>
+	</header>
+	<hr />
+<section class="infoCard" id="infoCard1">
+	<p class="wordyExplanation">Tervetuloa mukaan! Osallistumalla tähän pieneen kokeeseen autat edistämään tutkimusta
+		japanin ääntämisen opettamisesta ja oppimisesta.</p>
+	<p class="wordyExplanation">Tämä kysely ja testi kestää n. 5-10 minuuttia.</p>
+</section>
+<section class="infoCard" id="infoCard2">
+	<p class="wordyExplanation">Koe etenee seuraavasti:</p>
+	<ul class="wordyExplanation">
+	<li>Ensin pyydämme suostumustasi tietojen keräämiseen.</li>
+	<li>Kysymme muutaman yleisluontoisen kysymyksen.</li>
+	<li>Opetamme, mitä japanin "sanakorot" ovat.</li>
+	<li>Testaamme, kuinka hyvin pärjäät japanin sanakorkoa koskevia tehtävissä.</li>
+	</ul>
+</section>
+
+<button id="nextInfoCard">Eteenpäin &gt;</button>
+
+<form action="/ok" method="post" style="display: inline">
+<button id="infoOver" style="display: none" >Eteenpäin &gt;</button><input type="hidden" value="{{ event_name }}" name="event_ok">
+</form>
+
+{{/inline}}
+
+
+{{#*inline "page_script_inline"}}
+
+let maxCards = 2;
+
+function getCurrentCard() {
+	let loc = parseInt(location.hash[1]) || 1;
+	loc = Math.max(Math.min(loc, maxCards), 1);
+	return loc;
+}
+
+function updateInfoCard() {
+	let currentInfoCard = getCurrentCard();
+
+	$(".infoCard").hide();
+	$("#infoCard"+currentInfoCard).show();
+	$("#cardPerCard").text("("+currentInfoCard + "/"+maxCards+")");
+
+
+	$("#nextInfoCard").show();
+	$("#infoOver").hide();
+
+	if (currentInfoCard == maxCards) {
+		$("#nextInfoCard").hide();
+		$("#infoOver").show();
+	}
+}
+
+updateInfoCard();
+
+$("#nextInfoCard").click(function() {
+	location.hash = "#"+(getCurrentCard() + 1);
+	updateInfoCard();
+});
+
+{{/inline}}
+
+{{~> base.html ~}}

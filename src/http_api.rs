@@ -174,6 +174,9 @@ pub fn new_quiz_testing(req: &mut Request) -> PencilResult {
                  ganbare::event::is_ongoing(&conn, "posttest", sess.user_id).err_500())? {
         debug!("Posttest questions!");
         test::get_new_quiz_posttest(&conn, sess.user_id, &ev).err_500()?
+    } else if let Some((ev, _)) = ganbare::event::is_ongoing(&conn, "simple_test", sess.user_id).err_500()? {
+        debug!("Simple test questions!");
+        test::get_new_quiz_pretest(&conn, sess.user_id, &ev).err_500()?
     } else {
         None
     };
@@ -265,7 +268,6 @@ pub fn next_quiz(req: &mut Request) -> PencilResult {
 
 pub fn next_quiz_testing(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
-
     let answer = err_400!(parse_next_quiz_answer(req),
                           "Can't parse form data? {:?}",
                           req.form());
@@ -276,6 +278,9 @@ pub fn next_quiz_testing(req: &mut Request) -> PencilResult {
     } else if let Some((ev, _)) =
         ganbare::event::is_ongoing(&conn, "posttest", sess.user_id).err_500()? {
         test::get_next_quiz_posttest(&conn, sess.user_id, answer, &ev).err_500()?
+    } else if let Some((ev, _)) =
+        ganbare::event::is_ongoing(&conn, "simple_test", sess.user_id).err_500()? {
+        test::get_next_quiz_pretest(&conn, sess.user_id, answer, &ev).err_500()?
     } else {
         None
     };

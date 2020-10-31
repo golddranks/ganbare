@@ -39,13 +39,19 @@ fn dispatch_events(conn: &Connection,
 
     let redirect = match &*event.name {
         "welcome" => redirect("/welcome", 303),
+        "welcome2" => redirect("/welcome2", 303),
         "agreement" => redirect("/agreement", 303),
         "info" => redirect("/info", 303),
+        "over" => redirect("/over", 303),
         "survey" => redirect("/survey", 303),
+        "mini_survey" => redirect("/mini_survey", 303),
         "end_survey" => redirect("/end_survey", 303),
         "pretest_info" => redirect("/pretest_info", 303),
         "pretest" => redirect("/pretest", 303),
         "pretest_retelling" => redirect("/pretest_retelling", 303),
+        "simple_test_info" => redirect("/simple_test_info", 303),
+        "simple_test" => redirect("/simple_test", 303),
+        "simple_test_done" => redirect("/simple_test_done", 303),
         "pretest_done" => redirect("/pretest_done", 303),
         "sorting_ceremony" => redirect("/sorting", 303),
         "posttest_info" => redirect("/posttest_info", 303),
@@ -63,7 +69,7 @@ fn dispatch_events(conn: &Connection,
 
 fn main_quiz(req: &mut Request, conn: &Connection, user_id: i32) -> PencilResult {
     let mut context = new_template_context();
-
+    
     if !user::check_user_group(conn, user_id, "questions").err_500()? &&
        !user::check_user_group(conn, user_id, "exercises").err_500()? {
         context.insert("alert_msg", "Et kuulu mihinkään harjoitusryhmään!");
@@ -142,6 +148,21 @@ pub fn end_survey(req: &mut Request) -> PencilResult {
     req.app.render_template("survey.html", &context).refresh_cookie(&sess)
 }
 
+pub fn mini_survey(req: &mut Request) -> PencilResult {
+    let (conn, sess) = auth_user(req, "")?;
+    let (event, _) = event::require_ongoing(&conn, "mini_survey", sess.user_id).err_401()?;
+
+    let mut context = new_template_context();
+    context.insert("event_name", "mini_survey");
+    let answered_questions = event::get_userdata(&conn, &event, sess.user_id, "answered_questions")
+        .err_500()?
+        .map(|d| d.data)
+        .unwrap_or_else(|| "".to_string());
+
+    context.insert("answered_questions", answered_questions);
+    req.app.render_template("survey.html", &context).refresh_cookie(&sess)
+}
+
 pub fn text_pages(req: &mut Request) -> PencilResult {
     let (conn, sess) = auth_user(req, "")?;
 
@@ -151,6 +172,10 @@ pub fn text_pages(req: &mut Request) -> PencilResult {
     event::require_started(&conn, endpoint, sess.user_id).err_401()?;
     let mut context = new_template_context();
     context.insert("event_name", endpoint);
+    
+    if user::check_user_group(&conn, sess.user_id, "romaji").err_500()? {
+        context.insert("main_class", "showRomaji");
+    }
 
     let mut template = endpoint.to_owned();
     template.push_str(".html");
@@ -169,14 +194,24 @@ pub fn pre_post_test(req: &mut Request) -> PencilResult {
             } else {
                 return redirect("/", 303).refresh_cookie(&sess);
             }
-        }
+        },
         Some("posttest") => {
             if event::is_ongoing(&conn, "posttest", sess.user_id).err_500()?.is_some() {
                 context.insert("testing", "true");
             } else {
                 return redirect("/", 303).refresh_cookie(&sess);
             }
-        }
+        },
+        Some("simple_test") => {
+            if event::is_ongoing(&conn, "simple_test", sess.user_id).err_500()?.is_some() {
+                context.insert("testing", "true");
+                if user::check_user_group(&conn, sess.user_id, "romaji").err_500()? {
+                    context.insert("main_class", "showRomaji");
+                }            
+            } else {
+                return redirect("/", 303).refresh_cookie(&sess);
+            }
+        },
         _ => unreachable!(),
     }
 

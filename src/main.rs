@@ -319,9 +319,11 @@ pub fn main() {
     include_templates!(app,
                        "templates",
                        "base.html",
+                       "over.html",
                        "thanks.html",
                        "fresh_install.html",
                        "welcome.html",
+                       "welcome2.html",
                        "reset_password.html",
                        "send_mail.html",
                        "retelling.html",
@@ -346,7 +348,9 @@ pub fn main() {
                        "pretest_info.html",
                        "pretest_done.html",
                        "posttest_info.html",
-                       "posttest_done.html");
+                       "posttest_done.html",
+                       "simple_test_info.html",
+                       "simple_test_done.html");
 
     if *FREEZE_STATIC_FILES {
         app.enable_static_cached_file_handling(Duration::from_secs(*CACHE_MAX_AGE as u64));
@@ -370,13 +374,19 @@ pub fn main() {
     app.get("/favicon.ico", "favicon", favicon);
     app.get("/", "hello", app_pages::hello);
     app.get("/welcome", "welcome", app_pages::text_pages);
+    app.get("/welcome2", "welcome2", app_pages::text_pages);
+    app.get("/over", "over", app_pages::text_pages);
     app.get("/agreement", "agreement", app_pages::text_pages);
     app.get("/info", "info", app_pages::text_pages);
     app.get("/survey", "survey", app_pages::survey);
     app.get("/end_survey", "end_survey", app_pages::end_survey);
+    app.get("/mini_survey", "mini_survey", app_pages::mini_survey);
     app.get("/thanks", "thanks", app_pages::plain_page);
     app.get("/pretest_info", "pretest_info", app_pages::text_pages);
     app.get("/pretest", "pretest", app_pages::pre_post_test);
+    app.get("/simple_test", "simple_test", app_pages::pre_post_test);
+    app.get("/simple_test_info", "simple_test_info", app_pages::text_pages);
+    app.get("/simple_test_done", "simple_test_done", app_pages::text_pages);
     app.get("/pretest_retelling",
             "pretest_retelling",
             app_pages::retelling);

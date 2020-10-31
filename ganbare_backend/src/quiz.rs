@@ -45,7 +45,7 @@ pub struct QuestionJson {
 #[derive(Serialize, Debug, Clone)]
 pub struct ExerciseJson {
     pub quiz_type: &'static str,
-    pub event_name: &'static str,
+    pub event_name: String,
     pub asked_id: i32,
     pub word: String,
     pub explanation: String,
@@ -1176,7 +1176,7 @@ pub fn penditem_to_quiz(conn: &Connection, pi: &PendingItem) -> Result<Quiz> {
 
         Quiz::E(ExerciseJson {
                     quiz_type: "exercise",
-                    event_name: "training",
+                    event_name: "training".to_owned(),
                     asked_id: pi.id,
                     word: word.word.nfc().collect::<String>(),
                     explanation: word.explanation,
@@ -1277,7 +1277,7 @@ pub fn return_q_or_e(conn: &Connection, user_id: i32, quiztype: QuizType) -> Res
 
             let quiz_json = ExerciseJson {
                 quiz_type: "exercise",
-                event_name: "training",
+                event_name: "training".to_owned(),
                 asked_id: pending_item.id,
                 word: word.word.nfc().collect::<String>(),
                 explanation: word.explanation,
@@ -1491,7 +1491,7 @@ pub fn test_item(conn: &Connection,
 
             Quiz::E(ExerciseJson {
                         quiz_type: "exercise",
-                        event_name: "pretest or posttest",
+                        event_name: "pretest or posttest".to_owned(),
                         asked_id: pending_item.id,
                         word: word.word.nfc().collect::<String>(),
                         explanation: word.explanation,

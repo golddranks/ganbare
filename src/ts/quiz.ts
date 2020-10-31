@@ -6,6 +6,46 @@ $(function() {
 
 // Accentuate 1.0
 
+function romanize(word: string): string {
+	let output = [];
+
+	let phrases = {
+		"次はあさをイメージしてください": "tsugi wa asa o imeeji shite kudasai",
+		"これ、なんて読むの？かちだよ": "kore, nante yomu no? kachi da yo",
+		"いつか行く": "itsuka iku",
+		"たけが短い": "take ga mijikai",
+		"かえる前に考えましょう": "kaeru mae ni kangaemashoo",
+		"あの人のしょうがいはね…": "ano hito no shoogai wa ne...",
+		"これからはる": "kore kara haru",
+		"むらがある": "mura ga aru",
+	};
+
+	let wordStripped = word.replace("・", "").replace("*", "").replace("＝", "").replace("／", "");
+
+	if (phrases[wordStripped]) {
+		return phrases[wordStripped];
+	}
+
+	let kana = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどぱぴぷぺぽばびぶべぼ";
+	let romaji = ["a","i","u","e","o","ka","ki","ku","ke","ko","sa","shi","su","se","so","ta","chi","tsu","te","to","na","ni","nu","ne","no","ha","hi","fu","he","ho","ma","mi","mu","me","mo","ya","yu","yo","ra","ri","ru","re","ro","wa","o","n","ga","gi","gu","ge","go","za","ji","zu","ze","zo","da","ji","dzu","de","do","pa","pi","pu","pe","po","ba","bi","bu","be","bo"];
+
+	let youon = "ゃゅょ";
+	let youon_romaji = "auo";
+
+	for (let i = 0; i < word.length; i++) {
+		let j = kana.indexOf(word.charAt(i));
+		let y = youon.indexOf(word.charAt(i));
+		if (j >= 0) {
+			output.push(romaji[j]);
+		} else if (y >= 0) {
+			output[output.length-1] = output[output.length-1].replace("i", youon_romaji[y]);
+		} else {
+			output.push(word.charAt(i));
+		}
+	}
+	return output.join("")
+}
+
 function moraize(word: string): {mora:string, rising: boolean, falling: boolean, flatEnd: boolean}[] {
 
 	function isYouon(i: number): boolean {
@@ -793,7 +833,11 @@ function showWord(word: WordJson) {
 	word_avatar.hide();
 	console.log("showWord!");
 	buttonSection.show();
-	wordShowKana.html(accentuate(word.word, word.show_accents));
+	let wordString = word.word;
+	if ($("#main").hasClass("showRomaji")) {
+		wordString = romanize(wordString);
+	}
+	wordShowKana.html(accentuate(wordString, word.show_accents));
 	wordExplanation.html(word.explanation);
 	var wordAudio = new Howl({ src: ['/api/audio.mp3?'+word.asked_id]});
 
@@ -875,7 +919,11 @@ function showExercise(exercise: ExerciseJson) {
 			console.log("Exercise started");
 
 			wordShowSection.slideDown();
-			wordShowKana.html(accentuate(exercise.word, false));
+			let wordString = exercise.word;
+			if ($("#main").hasClass("showRomaji")) {
+				wordString = romanize(wordString);
+			}
+			wordShowKana.html(accentuate(wordString, false));
 			wordExplanation.html(exercise.explanation);
 		
 			var exerciseAudio = new Howl({ src: ['/api/audio.mp3?'+exercise.asked_id]});
@@ -1010,6 +1058,7 @@ function showQuiz(quiz: Quiz): void {
 }
 
 function start() {
+	console.log("start");
 	clearError();
 	if (!checkRecordingSupport()) { return; }; // If required but not supported, abort.
 	var jqxhr = $.getJSON(new_quiz_api, showQuiz);

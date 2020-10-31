@@ -1,0 +1,50 @@
+{{#*inline "main_section"}}
+
+	<header>
+		<h1>{{ title }}</h1>
+		<p>Opetellaan japanin ääntämystä!</p>
+	</header>
+	<hr />
+<section class="infoCard" id="infoCard1">
+	<p class="wordyExplanation">Koe on nyt ohi. Kiitos osallistumisesta.</p>
+</section>
+{{/inline}}
+
+
+{{#*inline "page_script_inline"}}
+
+let maxCards = 2;
+
+function getCurrentCard() {
+	let loc = parseInt(location.hash[1]) || 1;
+	loc = Math.max(Math.min(loc, maxCards), 1);
+	return loc;
+}
+
+function updateInfoCard() {
+	let currentInfoCard = getCurrentCard();
+
+	$(".infoCard").hide();
+	$("#infoCard"+currentInfoCard).show();
+	$("#cardPerCard").text("("+currentInfoCard + "/"+maxCards+")");
+
+
+	$("#nextInfoCard").show();
+	$("#infoOver").hide();
+
+	if (currentInfoCard == maxCards) {
+		$("#nextInfoCard").hide();
+		$("#infoOver").show();
+	}
+}
+
+updateInfoCard();
+
+$("#nextInfoCard").click(function() {
+	location.hash = "#"+(getCurrentCard() + 1);
+	updateInfoCard();
+});
+
+{{/inline}}
+
+{{~> base.html ~}}

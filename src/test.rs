@@ -57,7 +57,7 @@ pub fn get_new_quiz_pretest(conn: &Connection,
 
     if let Some(Quiz::E(ref mut e)) = quiz {
         e.must_record = true;
-        e.event_name = "pretest";
+        e.event_name = event.name.to_owned();
     }
 
     Ok(quiz)
@@ -77,7 +77,7 @@ pub fn get_new_quiz_posttest(conn: &Connection,
 
     if let Some(Quiz::E(ref mut e)) = quiz {
         e.must_record = true;
-        e.event_name = "posttest";
+        e.event_name = "posttest".to_owned();
     }
 
     Ok(quiz)
