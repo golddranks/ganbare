@@ -164,6 +164,21 @@ var answers_16 = [
 	'paljon',
 ];
 
+var answers_17 = [
+	'en lainkaan',
+	'olen tutustunut itsenäisesti alkeisiin',
+	'olen käynyt alkeiskurssilla',
+	'olen opiskellut pidemmälle',
+];
+
+var answers_18 = [
+	'en lainkaan',
+	'hieman (esim. muutama elokuva)',
+	'olen katsonut, mutta alle 6 tuntia (esim. yksi 13-jaksoisen sarja + yksi elokuva)',
+	'olen katsonut, mutta alle 20 tuntia',
+	'olen katsonut, yli 20 tuntia',
+];
+
 var textfield = "textfield";
 var fourfold = "fourfold";
 var languages = "languages";
@@ -453,6 +468,8 @@ var pre_questions = [
 		{q: "äidinkieleni on", a: languages},
 		{q: "Sukupuoleni on", a: gender},
 		{q: "Ikäni on", a: age},
+		{q: "Olen opiskellut japania", a: answers_17},
+		{q: "Olen viimeisen vuoden aikana kuluttanut japaninkielistä viihdettä (esim. anime)", a: answers_18},
 		{q: "Sävelkorvani musiikin suhteen on...", a: answers_14},
 		{q: "Minulla on aiempaa kokemusta kielestä jossa äänenkorkeudet voivat vaikuttaa sanojen merkityksiin (esim. kiina, riikinruotsi, balttikielet...)", a: answers_16},
 		{q: "Jos haluat tarkentaa aiempia vastauksia, sana on vapaa:", a: textfield},
