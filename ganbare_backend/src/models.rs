@@ -698,4 +698,5 @@ pub struct ResetEmailSecrets {
     pub email: String,
     pub secret: String,
     pub added: DateTime<Utc>,
+    pub type_: String,
 }

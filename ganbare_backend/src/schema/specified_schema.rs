@@ -26,6 +26,14 @@ table! {
 }
 
 table! {
+    disable_nag_codes (user_id) {
+        user_id -> Int4,
+        code -> Bytea,
+        refreshed_at -> Timestamptz,
+    }
+}
+
+table! {
     due_items (id) {
         id -> Int4,
         user_id -> Int4,
@@ -208,11 +216,13 @@ table! {
 }
 
 table! {
-    reset_email_secrets (user_id) {
+    reset_email_secrets (user_id, type_) {
         user_id -> Int4,
         email -> Varchar,
         secret -> Varchar,
         added -> Timestamptz,
+        #[sql_name = "type"]
+        type_ -> Varchar,
     }
 }
 
@@ -329,6 +339,7 @@ joinable!(anon_aliases -> user_groups (group_id));
 joinable!(anon_aliases -> users (user_id));
 joinable!(audio_files -> audio_bundles (bundle_id));
 joinable!(audio_files -> narrators (narrators_id));
+joinable!(disable_nag_codes -> users (user_id));
 joinable!(due_items -> users (user_id));
 joinable!(e_answered_data -> e_asked_data (id));
 joinable!(e_asked_data -> exercise_variants (word_id));
@@ -374,6 +385,7 @@ allow_tables_to_appear_in_same_query!(
     anon_aliases,
     audio_bundles,
     audio_files,
+    disable_nag_codes,
     due_items,
     e_answered_data,
     e_asked_data,

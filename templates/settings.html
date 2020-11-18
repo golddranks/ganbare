@@ -1,5 +1,8 @@
 {{#*inline "main_section"}}
-
+<section id="topmessage">
+	<form action="/"><button id="backButton" class="iconlike uiButton"><img src="/static/images/back.png"></button></form>
+	<p class="topmessageparagraph" style="display: none;"></p>
+</section>
 <button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
 <section id="settings" style="display: none;">
 	<ul id="settingsMenu">
@@ -34,50 +37,15 @@ menuButton.addEventListener("click", toggleMenu);
 settingsMenu.addEventListener("click", event => event.stopPropagation());
 </script>
 
-	<header>
-		<h1>{{ title }}</h1>
-		<p>Opetellaan japanin ääntämystä!</p>
-	</header>
-	<hr />
-<section class="infoCard" id="infoCard1">
-	<p class="wordyExplanation">Koe on nyt ohi. Kiitos osallistumisesta.</p>
+<section>
+	<h1>Asetukset</h1>
+	<form action="/settings" method="post" style="display: inline-block">
+		Lähetä muistutussähköposti<br>jos minua ei näy kahteen päivään:<br><br>
+		<input type="radio" name="nag_emails" id="no_nag_emails" value="off" {{#unless nag_emails}}checked{{/unless}}><label for="no_nag_emails">pois</label>
+		<input type="radio" name="nag_emails" id="yes_nag_emails" value="on" {{#if nag_emails}}checked{{/if}}><label for="yes_nag_emails">päällä</label><br>
+		<button style="margin-top: 1em;">Ok</button>
+	</form>
 </section>
-{{/inline}}
-
-
-{{#*inline "page_script_inline"}}
-
-let maxCards = 2;
-
-function getCurrentCard() {
-	let loc = parseInt(location.hash[1]) || 1;
-	loc = Math.max(Math.min(loc, maxCards), 1);
-	return loc;
-}
-
-function updateInfoCard() {
-	let currentInfoCard = getCurrentCard();
-
-	$(".infoCard").hide();
-	$("#infoCard"+currentInfoCard).show();
-	$("#cardPerCard").text("("+currentInfoCard + "/"+maxCards+")");
-
-
-	$("#nextInfoCard").show();
-	$("#infoOver").hide();
-
-	if (currentInfoCard == maxCards) {
-		$("#nextInfoCard").hide();
-		$("#infoOver").show();
-	}
-}
-
-updateInfoCard();
-
-$("#nextInfoCard").click(function() {
-	location.hash = "#"+(getCurrentCard() + 1);
-	updateInfoCard();
-});
 
 {{/inline}}
 

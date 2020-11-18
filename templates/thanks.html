@@ -1,10 +1,16 @@
 {{#*inline "main_section"}}
 
+<section id="topmessage">
+	<form action="/"><button id="backButton" class="iconlike uiButton"><img src="/static/images/back.png"></button></form>
+	<p class="topmessageparagraph" style="display: none;"></p>
+</section>
+
 <button id="menuButton" class="iconlike uiButton"><img src="/static/images/menu.png"></button>
 <section id="settings" style="display: none;">
 	<ul id="settingsMenu">
 		<li><form action="/logout" method="post"><button type="submit" class="linklike">Kirjaudu ulos</button></form></li>
 		<li><a href="/change_password" method="get">Vaihda salasanaa</a></li>
+		<li><a href="/settings">Asetukset</a></li>
 		<li><a href="/thanks">Kiitokset</a></li>
 	</ul>
 </section>
@@ -52,9 +58,6 @@ settingsMenu.addEventListener("click", event => event.stopPropagation());
 	<p class="thanks" style="margin-bottom: 0.5em;">ääniefektit:
 		<a href="https://www.freesound.org/people/SgtPepperArc360/sounds/341732/#">SgtPepperArc360</a>
 	</p>
-	<form action="/" method="get" style="display: inline-block">
-		<button style="margin-top: 1em;">Eipä kestä</button>
-	</form>
 </section>
 
 {{/inline}}

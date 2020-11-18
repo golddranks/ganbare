@@ -7,6 +7,8 @@
 		<h1>おつかれさまです！</h1>
 		<p>Et ole käynyt vähään aikaan <strong>{{ site_name }}</strong>-sivustolla harjoittelemassa japanin ääntämystä.<p>
 		<p>Hyppää suoraan treenaamaan tästä linkistä: <a href="{{ site_link }}">{{ site_link }}</a></p>
-		<p>Sait tämän viestin automaattisesti, koska et ole muutamaan päivään käynyt sivulla. Näiden viestien tulo lakkaa automaattisesti kokeen loputtua. Jos et halua näitä viestejä, vastaa tähän mailiin niin asetan muistutukset pois.<p>
+		<p>Sait tämän viestin automaattisesti, koska et ole muutamaan päivään käynyt sivulla.
+			Jos et halua näitä viestejä, voit vaihtaa muistutusasetuksia <a href="{{ site_link }}settings">asetussivulta</a>
+			tai suoraan kirjautumatta sisään painamalla <a href="{{ site_link }}disable_nag?secret={{ secret }}&hmac={{ hmac }}">tästä</a>.
 	</body>
 </html>

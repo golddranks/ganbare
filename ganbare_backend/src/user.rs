@@ -136,7 +136,7 @@ pub fn set_password(conn: &Connection,
     }
 }
 
-pub fn check_password_reset(conn: &Connection,
+pub fn check_pw_reset_secret(conn: &Connection,
                             secret: &str)
                             -> Result<Option<(ResetEmailSecrets, User)>> {
     use schema::{reset_email_secrets, users};
@@ -149,7 +149,7 @@ pub fn check_password_reset(conn: &Connection,
 
     Ok(match confirm {
            Some((c, u)) => {
-               if c.added < chrono::offset::Utc::now() - chrono::Duration::days(1) {
+               if c.added < chrono::offset::Utc::now() - chrono::Duration::days(2) {
                    diesel::delete(
                     reset_email_secrets::table
                         .filter(reset_email_secrets::user_id.eq(c.user_id))
@@ -173,7 +173,7 @@ pub fn invalidate_password_reset(conn: &Connection, secret: &ResetEmailSecrets) 
     Ok(())
 }
 
-pub fn send_pw_change_email(conn: &Connection,
+pub fn pw_change_secret(conn: &Connection,
                             email: &str,
                             hmac_key: &[u8])
                             -> Result<(ResetEmailSecrets, String)> {
@@ -186,15 +186,9 @@ pub fn send_pw_change_email(conn: &Connection,
             .get_result(&**conn)
             .optional()?;
 
-    if let Some((secret, user)) = earlier_email {
+    if let Some((secret, _)) = earlier_email {
         if secret.added > chrono::offset::Utc::now() - chrono::Duration::days(1) {
             return Err(ErrorKind::RateLimitExceeded.into()); // Flood filter
-        } else {
-            // Possible to send a new request; delete/invalidate the earlier ones:
-            diesel::delete(
-                reset_email_secrets::table
-                    .filter(reset_email_secrets::user_id.eq(user.id))
-            ).execute(&**conn)?;
         }
     }
 
@@ -207,18 +201,35 @@ pub fn send_pw_change_email(conn: &Connection,
         None => return Err(ErrorKind::NoSuchUser(email.to_string()).into()),
     };
 
+
+    new_email_secret(conn, user.id, user.email.expect("We just found this user using the e-mail!"), hmac_key, "pw_reset")
+}
+
+pub fn disable_nag_secret(conn: &Connection, user_id: i32, hmac_key: &[u8]) -> Result<(ResetEmailSecrets, String)> {
+    new_email_secret(conn, user_id, String::new(), hmac_key, "disable_nag")
+}
+
+pub fn new_email_secret(conn: &Connection, user_id: i32, initiated_email: String, hmac_key: &[u8], type_: &str) -> Result<(ResetEmailSecrets, String)> {
+    use schema::reset_email_secrets;
+
+    // Possible to send a new request; delete/invalidate the earlier ones:
+    diesel::delete(
+        reset_email_secrets::table
+            .filter(reset_email_secrets::user_id.eq(user_id))
+            .filter(reset_email_secrets::type_.eq(type_))
+    ).execute(&**conn)?;
+
     let (new_secret, hmac) = session::new_token_and_hmac(hmac_key)?;
 
     let result =
         diesel::insert_into(reset_email_secrets::table).values(&ResetEmailSecrets {
                             secret: new_secret,
-                            user_id: user.id,
-                            email:
-                                user.email.expect("We just found this user by the email address!"),
+                            user_id,
+                            email: initiated_email,
                             added: chrono::offset::Utc::now(),
+                            type_: type_.to_string(),
                         })
                 .get_result(&**conn)?;
-
     Ok((result, hmac))
 }
 

@@ -56,10 +56,10 @@ pub fn send_confirmation(queue: &RwLock<VecDeque<Email>>,
                          -> Result<()> {
 
     let data = EmailData {
-        secret: secret,
-        hmac: hmac,
-        site_link: site_link,
-        site_name: site_name,
+        secret,
+        hmac,
+        site_link,
+        site_name,
     };
     let email = EmailBuilder::new()
         .to(email_addr)
@@ -86,8 +86,8 @@ pub fn send_pw_reset_email(queue: &RwLock<VecDeque<Email>>,
     let data = EmailData {
         secret: &secret.secret,
         hmac: hmac,
-        site_link: site_link,
-        site_name: site_name,
+        site_link,
+        site_name,
     };
     let email = EmailBuilder::new()
         .to(secret.email.as_str())
@@ -201,6 +201,7 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
                        nag_grace_period: chrono::Duration,
                        site_name: &str,
                        site_link: &str,
+                       hmac_key: &[u8],
                        hb_registry: &Handlebars,
                        from: (&str, &str))
                        -> Result<()> {
@@ -228,10 +229,12 @@ pub fn send_nag_emails(queue: &RwLock<VecDeque<Email>>,
             continue; // We have sent a nag email recently
         }
 
+        let (secret, hmac) = user::disable_nag_secret(conn, user_id, hmac_key)?;
+
         let data = EmailData {
-            secret: "",
-            hmac: "",
-            site_link: site_link,
+            secret: &*secret.secret,
+            hmac: &*hmac,
+            site_link,
             site_name: site_name,
         };
         let email = EmailBuilder::new()

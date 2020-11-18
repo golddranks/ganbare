@@ -98,6 +98,7 @@ pub fn background_control_thread() {
                                               *NAG_EMAIL_GRACE_PERIOD,
                                               &*SITE_DOMAIN,
                                               &*SITE_LINK,
+                                              COOKIE_HMAC_KEY.as_slice(),
                                               &*app.handlebars_registry
                                                   .read()
                                                   .expect("The registry is basically \
@@ -172,6 +173,7 @@ pub fn background_control_thread() {
         if ! outgoing_mails.is_empty() {
             info!("Sending {} mails!", outgoing_mails.len());
             for email in outgoing_mails.drain(..) {
+                debug!("E-mail: {}", email);
                 match mailer.send(email) {
                     Ok(_) => (),
                     Err(e) => error!("Couldn't send email! Error: {}", e),
@@ -321,6 +323,8 @@ pub fn main() {
                        "base.html",
                        "over.html",
                        "thanks.html",
+                       "settings.html",
+                       "nag_disabled.html",
                        "fresh_install.html",
                        "welcome.html",
                        "welcome2.html",
@@ -382,6 +386,9 @@ pub fn main() {
     app.get("/end_survey", "end_survey", app_pages::end_survey);
     app.get("/mini_survey", "mini_survey", app_pages::mini_survey);
     app.get("/thanks", "thanks", app_pages::plain_page);
+    app.get("/settings", "settings_get", app_pages::settings_get);
+    app.post("/settings", "settings_post", app_pages::settings_post);
+    app.get("/disable_nag", "disable_nag", app_pages::disable_nag);
     app.get("/pretest_info", "pretest_info", app_pages::text_pages);
     app.get("/pretest", "pretest", app_pages::pre_post_test);
     app.get("/simple_test", "simple_test", app_pages::pre_post_test);

@@ -103,6 +103,54 @@ pub fn plain_page(req: &mut Request) -> PencilResult {
     req.app.render_template(&endpoint, &context)
 }
 
+pub fn settings_get(req: &mut Request) -> PencilResult {
+    let (conn, sess) = auth_user(req, "")?;
+
+    let mut context = new_template_context();
+    if user::check_user_group(&conn, sess.user_id, "nag_emails").err_500()? {
+        context.insert("nag_emails", "on");
+    }
+
+    req.app.render_template("settings.html", &context)
+}
+
+pub fn settings_post(req: &mut Request) -> PencilResult {
+    let (conn, sess) = auth_user(req, "")?;
+
+    let nag_emails: &str = err_400!(req.form().get("nag_emails"), "Field nag_emails is missing!");
+
+    if nag_emails == "on" {
+        user::join_user_group_by_name(&conn, sess.user_id, "nag_emails").err_500()?;
+    } else {
+        user::remove_user_group_by_name(&conn, sess.user_id, "nag_emails").err_500()?;
+    }
+
+    redirect("/settings", 303).refresh_cookie(&sess)
+}
+
+pub fn disable_nag(req: &mut Request) -> PencilResult {
+
+    let secret = err_400!(req.args().get("secret"), "secret token missing");
+    let hmac = err_400!(req.args().get("hmac"), "hmac missing");
+
+    if !err_400!(session::verify_token(secret, hmac, COOKIE_HMAC_KEY.as_slice()),
+                 "Bad request!") {
+        return pencil::abort(401);
+    }
+
+    let conn = db_connect().err_500()?;
+
+    let user_id = match user::check_pw_reset_secret(&conn, secret).err_500()? {
+        Some((secret, _)) => secret.user_id,
+        None => return redirect("/", 303),
+    };
+
+    user::remove_user_group_by_name(&conn, user_id, "nag_emails").err_500()?;
+
+    let context = new_template_context();
+    req.app.render_template("nag_disabled.html", &context)
+}
+
 pub fn ok(req: &mut Request) -> PencilResult {
 
     let (conn, sess) = auth_user(req, "")?;
@@ -471,7 +519,7 @@ pub fn confirm_password_reset_form(req: &mut Request) -> PencilResult {
     let changed: Option<&str> = req.args().get("changed");
     let conn = db_connect().err_500()?;
 
-    let email = match user::check_password_reset(&conn, secret).err_500()? {
+    let email = match user::check_pw_reset_secret(&conn, secret).err_500()? {
         Some((secret, _)) => secret.email,
         None => return redirect("/", 303),
     };
@@ -507,7 +555,7 @@ pub fn confirm_password_reset_post(req: &mut Request) -> PencilResult {
 
     let conn = db_connect().err_500()?;
 
-    let (secret, user) = match user::check_password_reset(&conn, secret).err_500()? {
+    let (secret, user) = match user::check_pw_reset_secret(&conn, secret).err_500()? {
         Some((secret, user)) => (secret, user),
         None => return redirect("/", 303),
     };
@@ -564,7 +612,7 @@ pub fn send_pw_reset_email(req: &mut Request) -> PencilResult {
 
     let conn = db_connect().err_500()?;
 
-    match user::send_pw_change_email(&conn, user_email, COOKIE_HMAC_KEY.as_slice()) {
+    match user::pw_change_secret(&conn, user_email, COOKIE_HMAC_KEY.as_slice()) {
         Ok((secret, hmac)) => {
             email::send_pw_reset_email(&*MAIL_QUEUE,
                                        &secret,
