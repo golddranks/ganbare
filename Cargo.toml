@@ -32,7 +32,7 @@ cookie = "0.12"
 typemap = "0.3"
 error-chain = { version = "0.12", default-features = false }
 rust-crypto = "0.2"
-lettre = "0.6"
+lettre = "0.9"
 data-encoding = "2"
 time = "0.1"
 serde_json = "1.0"
